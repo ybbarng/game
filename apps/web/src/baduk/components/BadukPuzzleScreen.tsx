@@ -3,6 +3,7 @@
 import {
   type BadukState,
   legalPoints,
+  pointAt,
   pointName,
   step,
 } from "@game/baduk-engine";
@@ -26,6 +27,7 @@ import {
   defenseFor,
   explainSolved,
   judgeMove,
+  koPointOf,
   PUZZLE_SIZE,
   puzzleState,
   solutionOf,
@@ -60,7 +62,33 @@ const CAPTURE_TEXT: Record<
     hint: "백 돌 하나를 따내면서 △ 백 돌을 단수로 만드는 자리를 찾아요",
     follow: "백은 되따내지 못했어요. 이제 따내세요",
   },
+  "long-ladder": {
+    prompt: "축으로 △ 백 돌을 판 끝까지 몰아 잡으세요.",
+    hint: "단수를 치면 백은 남은 활로로 뻗어요. 그 자리 옆에 흑 돌이 있어야 뻗어도 활로가 둘뿐이라 다시 단수를 칠 수 있어요.",
+  },
+  breaker: {
+    prompt: "□ 축머리를 피해 축으로 △ 백 돌을 잡으세요.",
+    hint: "두 쪽 단수를 차례로 이어 두어 보세요. 백이 뻗어 가는 길에 □ 돌이 나오는 쪽은 안 돼요.",
+  },
 };
+
+/** 패로 버티기 글. `follow`는 백이 받은 뒤 */
+const KO_FIGHT_TEXT = {
+  threat: {
+    prompt: "× 자리는 지금 되따낼 수 없어요. 팻감을 쓰세요.",
+    follow: "백이 받았어요. 이제 패를 되따내세요.",
+    hint: "활로가 둘인 백 돌을 찾아 단수로 몰아요. 백이 받지 않으면 따낼 수 있어야 팻감이에요.",
+    solved: "되따냈어요!",
+    wrong: "그 수는 팻감이 아니에요",
+  },
+  answer: {
+    prompt: "백이 팻감을 썼어요. △ 흑 돌을 살려 받으세요.",
+    follow: "",
+    hint: "△ 흑 돌은 활로가 하나뿐이에요. 그 활로에 두어 이웃 흑 돌과 이어요.",
+    solved: "받았어요!",
+    wrong: "그 수로는 △ 흑 돌을 잃어요",
+  },
+} as const;
 
 /** 바둑 문제 하나. 흑이 둔다 */
 export function BadukPuzzleScreen({
@@ -137,15 +165,33 @@ function BadukPuzzleRun({
 
   const legal = status === "play" ? legalPoints(state) : [];
   const capture = puzzle.kind === "capture" ? CAPTURE_TEXT[puzzle.theme] : null;
+  const ko = puzzle.kind === "kofight" ? KO_FIGHT_TEXT[puzzle.mode] : null;
   const live = puzzle.kind === "life" && puzzle.goal === "live";
   const shape = puzzle.kind === "life" ? puzzle.shape : undefined;
-  const goal = capture
+  const goal = ko
     ? run.step === 0
-      ? capture.prompt
-      : (capture.follow ?? "계속 몰아 따내세요")
-    : live
-      ? "△ 흑 무리를 살리세요"
-      : "△ 백 무리를 잡으세요";
+      ? ko.prompt
+      : ko.follow
+    : capture
+      ? run.step === 0
+        ? capture.prompt
+        : (capture.follow ?? "계속 몰아 따내세요")
+      : live
+        ? "△ 흑 무리를 살리세요"
+        : "△ 백 무리를 잡으세요";
+  const marks: Record<number, string> = {};
+  if (puzzle.kind === "kofight") {
+    // 팻감 쓰기: 첫 수 앞에는 되따낼 수 없는 자리를 ×로. 팻감 받기: 노림받은 흑 돌을 △로
+    if (puzzle.mode === "threat" && run.step === 0 && status !== "solved")
+      marks[koPointOf(puzzle)] = "×";
+    if (puzzle.mode === "answer" && state.board[target]) marks[target] = "△";
+  } else {
+    if (state.board[target]) marks[target] = "△";
+    if (puzzle.kind === "capture" && puzzle.breaker) {
+      const breaker = pointAt(puzzle.breaker, PUZZLE_SIZE);
+      if (state.board[breaker]) marks[breaker] = "□";
+    }
+  }
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   const prompt =
     aim !== null
@@ -173,28 +219,40 @@ function BadukPuzzleRun({
             setAim(null);
             run.play(at);
           }}
-          marks={state.board[target] ? { [target]: "△" } : {}}
+          marks={marks}
         />
       }
       status={status}
       prompt={prompt}
       waitingText="백이 받는 중…"
-      solvedText={capture ? "따냈어요!" : live ? "살았어요!" : "잡았어요!"}
+      solvedText={
+        ko
+          ? ko.solved
+          : capture
+            ? "따냈어요!"
+            : live
+              ? "살았어요!"
+              : "잡았어요!"
+      }
       wrongText={
-        capture
-          ? "그 수로는 못 따내요"
-          : live
-            ? "그 수로는 살 수 없어요"
-            : "그 수로는 백이 살아요"
+        ko
+          ? ko.wrong
+          : capture
+            ? "그 수로는 못 따내요"
+            : live
+              ? "그 수로는 살 수 없어요"
+              : "그 수로는 백이 살아요"
       }
       wrongHint={
-        capture
-          ? capture.hint
-          : shape
-            ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요`
-            : live
-              ? "눈 자리를 둘로 나누는 곳을 찾아요"
-              : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요"
+        ko
+          ? ko.hint
+          : capture
+            ? capture.hint
+            : shape
+              ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요`
+              : live
+                ? "눈 자리를 둘로 나누는 곳을 찾아요"
+                : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요"
       }
       shown={shown !== null}
       explain={run.explain}

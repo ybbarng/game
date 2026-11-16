@@ -7,11 +7,31 @@
  *   다른 수는 반대 결과(사는 문제면 잡히고, 잡는 문제면 산다)가 된다(`lifeWrongMovesFail`)
  * - 이름 있는 모양(직삼·곡삼·T자 네 집·오궁도화·뭉친 다섯 집·매화육궁): 무작위가 아니라 모양을 손으로 놓은 사활 문제다.
  *   바깥을 둘러싼 돌은 귀에 한 집씩 두 눈을 가져 벤슨 방법으로 산 돌이다(안쪽 싸움만 남는다)
+ * - 긴 축·축머리: 판 끝까지 가는 축이라 `captureMoves`로는 너무 오래 걸린다. 공격을 단수로만 좁힌 축 읽기(`ladderMoves`)로
+ *   두 단수 가운데 정답만 축이 되고, 축머리 문제는 축머리 돌을 치우면 다른 쪽 단수도 축이 되는지 본다(ladder.test.ts)
+ * - 패로 버티기(팻감 쓰기·팻감 받기): 손으로 놓은 패 모양과 팻감 모양을 판 대칭으로 돌려 놓았다.
+ *   `setup`의 수를 먼저 두고 시작해, 같은 판 모양 금지가 실제 판 기록으로 걸린다(ko-fight.test.ts)
  * 해설은 장면에서 만든다(study.ts).
  */
 
-/** 잡기 문제의 모양: 단수 방향, 축, 장문, 환격, 패 */
-export type CaptureTheme = "atari" | "ladder" | "net" | "snapback" | "ko";
+/** 잡기 문제의 모양: 단수 방향, 축, 장문, 환격, 패, 긴 축, 축머리 */
+export type CaptureTheme =
+  | "atari"
+  | "ladder"
+  | "net"
+  | "snapback"
+  | "ko"
+  | "long-ladder"
+  | "breaker";
+
+/** 축 읽기(`ladderMoves`)로 판정하는 모양. 나머지는 `captureMoves`로 읽는다 */
+export const LADDER_THEMES: readonly CaptureTheme[] = [
+  "long-ladder",
+  "breaker",
+];
+
+/** 패로 버티기: 팻감 쓰기(패를 따인 쪽), 팻감 받기(패를 따낸 쪽) */
+export type KoFightMode = "threat" | "answer";
 
 /** 이름 있는 눈 모양: 직삼, 곡삼, T자 네 집, 오궁도화, 뭉친 다섯 집, 매화육궁 */
 export type LifeShape =
@@ -46,7 +66,28 @@ export type BadukPuzzle = {
   /** 첫 정답 자리 */
   solution: string;
 } & (
-  | { kind: "capture"; theme: CaptureTheme; within: number }
+  | {
+      kind: "capture";
+      theme: CaptureTheme;
+      within: number;
+      /** 축머리 문제: 축을 깨는 백 돌 자리 */
+      breaker?: string;
+    }
+  | {
+      /**
+       * 패로 버티기. `black`·`white`는 `setup`을 두기 전의 판이고, `setup`을 번갈아 둔 뒤 흑 차례로 시작한다
+       * (`setup`의 마지막 수는 늘 백이라, 수가 홀수 개면 백부터 둔다).
+       * - threat(팻감 쓰기): 백이 방금 패를 따냈다. 흑은 `solution`(팻감)을 두고, 백이 `reply`로 받으면 `ko`에 되따낸다.
+       *   `target`은 팻감이 노리는 백 무리
+       * - answer(팻감 받기): 흑이 패를 따냈고, 백이 팻감을 썼다. 흑은 `solution`으로 받는다.
+       *   `target`은 백 팻감이 노리는 흑 무리, `ko`는 백이 받은 뒤 되따낼 자리
+       */
+      kind: "kofight";
+      mode: KoFightMode;
+      setup: readonly string[];
+      ko: string;
+      reply?: string;
+    }
   | {
       kind: "life";
       goal: "live" | "kill";
@@ -70,6 +111,16 @@ type RawCapture = {
   target: string;
   solution: string;
   within: number;
+  breaker?: string;
+};
+type RawKoFight = {
+  black: string[];
+  white: string[];
+  setup: string[];
+  ko: string;
+  target: string;
+  solution: string;
+  reply?: string;
 };
 type RawLife = {
   black: string[];
@@ -352,6 +403,211 @@ const KOS: readonly RawCapture[] = [
     target: "C7",
     solution: "A9",
     within: 2,
+  },
+];
+
+/**
+ * 긴 축: 판 끝까지 몰아 잡는다. 두 활로 가운데 한쪽 단수만 축이 된다(다른 쪽은 백이 넓은 쪽으로 뻗어 활로가 셋).
+ * `within`은 백이 가장 오래 버틸 때 흑이 둘 수다
+ */
+const LONG_LADDERS: readonly RawCapture[] = [
+  {
+    black: ["B6", "B7", "D7"],
+    white: ["C7"],
+    target: "C7",
+    solution: "C8",
+    within: 12,
+  },
+  {
+    black: ["G3", "G1", "F1"],
+    white: ["G2"],
+    target: "G2",
+    solution: "H2",
+    within: 12,
+  },
+  {
+    black: ["D3", "C3", "C5"],
+    white: ["C4"],
+    target: "C4",
+    solution: "B4",
+    within: 11,
+  },
+  {
+    black: ["F8", "G7", "G6"],
+    white: ["F7"],
+    target: "F7",
+    solution: "E7",
+    within: 11,
+  },
+  {
+    black: ["F5", "F7", "E7"],
+    white: ["F6"],
+    target: "F6",
+    solution: "G6",
+    within: 10,
+  },
+];
+
+/**
+ * 축머리: 두 활로 어느 쪽 단수도 축이 되는 모양인데, 한쪽 길 끝에 백 돌(축머리)이 있다.
+ * 그쪽으로 몰면 백이 축머리와 이어져 빠져나가니, 축머리를 피하는 쪽에서 몬다
+ */
+const BREAKERS: readonly RawCapture[] = [
+  {
+    black: ["C5", "D7", "E6"],
+    white: ["D6", "G3"],
+    target: "D6",
+    breaker: "G3",
+    solution: "D5",
+    within: 6,
+  },
+  {
+    black: ["C4", "D5", "E3"],
+    white: ["D4", "C1"],
+    target: "D4",
+    breaker: "C1",
+    solution: "D3",
+    within: 10,
+  },
+  {
+    black: ["D3", "C4", "E5"],
+    white: ["D4", "G3"],
+    target: "D4",
+    breaker: "G3",
+    solution: "E4",
+    within: 7,
+  },
+  {
+    black: ["C7", "E6", "D5"],
+    white: ["D6", "A5"],
+    target: "D6",
+    breaker: "A5",
+    solution: "C6",
+    within: 6,
+  },
+  {
+    black: ["E3", "G4", "F5"],
+    white: ["F4", "G1"],
+    target: "F4",
+    breaker: "G1",
+    solution: "F3",
+    within: 10,
+  },
+];
+
+/**
+ * 팻감 쓰기: 백이 방금 `setup`으로 패를 따냈다. 흑이 `ko`에 바로 되따내면 같은 판 모양이 되어 둘 수 없다.
+ * 흑은 다른 곳에서 백 두 점을 단수로 모는 팻감을 쓰고(판에 단수가 되는 수는 이것 하나), 백이 이어 받으면 되따낸다
+ */
+const KO_THREATS: readonly RawKoFight[] = [
+  {
+    black: ["D7", "C6", "D5", "E6", "H3", "H4"],
+    white: ["E7", "F6", "E5", "J3", "J4", "H5", "J6"],
+    setup: ["D6"],
+    ko: "E6",
+    target: "J3",
+    solution: "J2",
+    reply: "J5",
+  },
+  {
+    black: ["G9", "F8", "E9", "B3", "B4"],
+    white: ["D9", "E8", "A3", "A4", "B5", "A6"],
+    setup: ["F9"],
+    ko: "E9",
+    target: "A3",
+    solution: "A2",
+    reply: "A5",
+  },
+  {
+    black: ["D3", "C4", "D5", "E4", "H6", "H5"],
+    white: ["E3", "F4", "E5", "J6", "J5", "H4", "J3"],
+    setup: ["D4"],
+    ko: "E4",
+    target: "J6",
+    solution: "J7",
+    reply: "J4",
+  },
+  {
+    black: ["J3", "H4", "J5", "E8", "F8"],
+    white: ["J6", "H5", "E9", "F9", "G8", "H9"],
+    setup: ["J4"],
+    ko: "J5",
+    target: "E9",
+    solution: "D9",
+    reply: "G9",
+  },
+  {
+    black: ["G6", "F7", "E6", "F5", "D2", "E2"],
+    white: ["G5", "F4", "E5", "D1", "E1", "F2", "G1"],
+    setup: ["F6"],
+    ko: "F5",
+    target: "D1",
+    solution: "C1",
+    reply: "F1",
+  },
+  {
+    black: ["A3", "B4", "A5", "F8", "E8"],
+    white: ["A6", "B5", "F9", "E9", "D8", "C9"],
+    setup: ["A4"],
+    ko: "A5",
+    target: "F9",
+    solution: "G9",
+    reply: "D9",
+  },
+];
+
+/**
+ * 팻감 받기: 흑이 `setup` 첫 수로 패를 따냈고, 백이 둘째 수로 흑 두 점을 단수로 모는 팻감을 썼다.
+ * 노림받은 돌(두 점)이 패(한 점)보다 많으니 받는다. 살리는 수는 하나뿐이다
+ */
+const KO_ANSWERS: readonly RawKoFight[] = [
+  {
+    black: ["F7", "G6", "F5", "A4", "A5", "B6", "A7"],
+    white: ["E7", "D6", "E5", "F6", "B4", "B5"],
+    setup: ["E6", "A3"],
+    ko: "F6",
+    target: "A4",
+    solution: "A6",
+  },
+  {
+    black: ["C1", "D2", "J7", "J6", "H5", "J4"],
+    white: ["F1", "E2", "D1", "H7", "H6"],
+    setup: ["E1", "J8"],
+    ko: "D1",
+    target: "J7",
+    solution: "J5",
+  },
+  {
+    black: ["C4", "D3", "E4", "E9", "D9", "C8", "B9"],
+    white: ["C5", "D6", "E5", "D4", "E8", "D8"],
+    setup: ["D5", "F9"],
+    ko: "D4",
+    target: "E9",
+    solution: "C9",
+  },
+  {
+    black: ["J7", "H6", "D1", "E1", "F2", "G1"],
+    white: ["J4", "H5", "J6", "D2", "E2"],
+    setup: ["J5", "C1"],
+    ko: "J6",
+    target: "D1",
+    solution: "F1",
+  },
+  {
+    black: ["C6", "D7", "E6", "G1", "F1", "E2", "D1"],
+    white: ["C5", "D4", "E5", "D6", "G2", "F2"],
+    setup: ["D5", "H1"],
+    ko: "D6",
+    target: "G1",
+    solution: "E1",
+  },
+  {
+    black: ["G1", "F2", "A5", "A4", "B3", "A2"],
+    white: ["D1", "E2", "F1", "B5", "B4"],
+    setup: ["E1", "A6"],
+    ko: "F1",
+    target: "A5",
+    solution: "A3",
   },
 ];
 
@@ -822,6 +1078,23 @@ const captureSet = (
   })),
 });
 
+const koFightSet = (
+  mode: KoFightMode,
+  title: string,
+  summary: string,
+  raws: readonly RawKoFight[],
+): BadukPuzzleSet => ({
+  id: mode === "threat" ? "ko-threat" : "ko-answer",
+  title,
+  summary,
+  puzzles: raws.map((p, i) => ({
+    id: `${mode === "threat" ? "ko-threat" : "ko-answer"}-${i + 1}`,
+    kind: "kofight",
+    mode,
+    ...p,
+  })),
+});
+
 const lifeSet = (
   goal: "live" | "kill",
   title: string,
@@ -858,48 +1131,72 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
   captureSet(
     "atari",
     "단수 방향",
-    "활로가 둘인 돌에 단수를 친다. 달아날 길을 막는 쪽에서 쳐야 따낸다",
+    "활로가 둘인 돌에 단수를 친다. 달아날 길을 막는 쪽에서 쳐야 따낸다.",
     ATARI,
   ),
   captureSet(
     "ladder",
     "축",
-    "계속 단수를 치며 몰아 판 끝이나 내 돌에 부딪히게 해 따낸다",
+    "계속 단수를 치며 몰아 판 끝이나 내 돌에 부딪히게 해 따낸다.",
     LADDERS,
   ),
   captureSet(
     "net",
     "장문",
-    "바로 단수 치지 않고 한 칸 떨어져 길을 막는다. 어느 쪽으로 나와도 잡힌다",
+    "바로 단수 치지 않고 한 칸 떨어져 길을 막는다. 어느 쪽으로 나와도 잡힌다.",
     NETS,
   ),
   captureSet(
     "snapback",
     "환격(되따내기)",
-    "일부러 한 점을 내준다. 백이 따내면 그 자리에 다시 두어 더 많은 백 돌을 되따낸다",
+    "일부러 한 점을 내준다. 백이 따내면 그 자리에 다시 두어 더 많은 백 돌을 되따낸다.",
     SNAPBACKS,
   ),
   captureSet(
     "ko",
     "패 따내기",
-    "패를 따내며 단수를 친다. 백은 바로 되따낼 수 없어(같은 판 모양 금지) 달아날 틈이 없다",
+    "패를 따내며 단수를 친다. 백은 바로 되따낼 수 없어(같은 판 모양 금지) 달아날 틈이 없다.",
     KOS,
   ),
   lifeSet(
     "live",
     "두 눈 만들기",
-    "눈이 둘이면 상대가 아무리 두어도 잡히지 않는다. 눈을 둘로 나누는 자리를 찾는다",
+    "눈이 둘이면 상대가 아무리 두어도 잡히지 않는다. 눈을 둘로 나누는 자리를 찾는다.",
     LIVE,
   ),
   lifeSet(
     "kill",
     "눈 빼앗기",
-    "상대 눈 자리 한가운데(급소)에 두어 두 눈을 못 만들게 한다",
+    "상대 눈 자리 한가운데(급소)에 두어 두 눈을 못 만들게 한다.",
     KILL,
   ),
   shapeSet(
     "이름 있는 모양",
-    "직삼·곡삼·T자 네 집·오궁도화·매화육궁처럼 이름 있는 눈 모양은 급소 하나로 살고 죽는다. 급소를 먼저 차지한다",
+    "직삼·곡삼·T자 네 집·오궁도화·매화육궁처럼 이름 있는 눈 모양은 급소 하나로 살고 죽는다. 급소를 먼저 차지한다.",
     SHAPES,
+  ),
+  koFightSet(
+    "threat",
+    "팻감 쓰기",
+    "상대가 방금 패를 따내 바로 되따낼 수 없다. 다른 곳에 팻감을 두고, 상대가 받으면 그때 되따낸다.",
+    KO_THREATS,
+  ),
+  koFightSet(
+    "answer",
+    "팻감 받기",
+    "내가 패를 따냈더니 상대가 팻감을 썼다. 노리는 돌이 패보다 많으면 받는다.",
+    KO_ANSWERS,
+  ),
+  captureSet(
+    "long-ladder",
+    "긴 축",
+    "단수를 이어 쳐서 판 끝까지 몬다. 어느 쪽에서 단수를 쳐야 축이 되는지 고른다.",
+    LONG_LADDERS,
+  ),
+  captureSet(
+    "breaker",
+    "축머리",
+    "축이 가는 길에 상대 돌(축머리)이 있으면 축이 깨진다. 축머리가 없는 쪽으로 몬다.",
+    BREAKERS,
   ),
 ];
