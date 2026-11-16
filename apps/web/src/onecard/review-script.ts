@@ -1,14 +1,26 @@
 import {
   type Action,
   type OnecardRules,
+  type OnecardState,
   STANDARD_ONECARD_RULES,
   shoutWindows,
   viewOf,
 } from "@game/onecard-engine";
 
+import type { KitTimer } from "@/game/kit";
 import type { GameArchive } from "@/review/archive";
 
 import { onecardKit } from "./kit";
+
+/** 시간이 다 된 창이 넣는 행동(LocalMatch와 같이 `later`면 그 순간 상태로 정한다) */
+function fire(
+  timer: KitTimer<Action, OnecardState>,
+  state: OnecardState,
+): { seat: number; action: Action } | null {
+  return "action" in timer
+    ? { seat: timer.seat, action: timer.action }
+    : timer.later(state);
+}
 
 /** 대본 기록의 규칙: 셋이서 다섯 장(판이 짧고 자리 판이 셋) */
 export const SCRIPT_RULES: OnecardRules = {
@@ -50,8 +62,9 @@ export function scriptedOnecardLog(
     }
     const timers = onecardKit.timers?.(state) ?? [];
     const gather = timers.find((t) => t.key.startsWith("g"));
-    if (gather) {
-      push(gather.seat, gather.action);
+    const gathered = gather && fire(gather, state);
+    if (gathered) {
+      push(gathered.seat, gathered.action);
       continue;
     }
     const open = shoutWindows(state).find((w) => !pressed.has(w.id));
@@ -62,7 +75,7 @@ export function scriptedOnecardLog(
       push(seat, { type: "shout", seen: state.turnNo, rt: 400 });
       continue;
     }
-    const closing = timers[0];
+    const closing = timers[0] && fire(timers[0], state);
     if (closing) {
       push(closing.seat, closing.action);
       continue;

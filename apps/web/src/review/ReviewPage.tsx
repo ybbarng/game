@@ -1,23 +1,17 @@
 "use client";
 
-import type { MatchState as HeartsState } from "@game/hearts-engine";
-import type { MatchState } from "@game/mighty-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BadukReplay } from "@/baduk/components/BadukReplay";
 import { BaseballReplay } from "@/baseball/components/BaseballReplay";
 import { ChessReplay } from "@/chess/components/ChessReplay";
 import { GalaxyReplay } from "@/galaxy/components/GalaxyReplay";
 import { botName } from "@/game/bot-names";
-import type { GameKit } from "@/game/kit";
-import { mightyKit } from "@/game/mighty-kit";
 import { useSettings } from "@/game/settings";
 import { GostopReplay } from "@/gostop/components/GostopReplay";
-import { heartsKit } from "@/hearts/kit";
 import { JanggiReplay } from "@/janggi/components/JanggiReplay";
 import { MinhwatuReplay } from "@/minhwatu/components/MinhwatuReplay";
 import { NyrongppongReplay } from "@/nyrongppong/components/NyrongppongReplay";
 import { OmokReplay } from "@/omok/components/OmokReplay";
-import { OnecardReplay } from "@/onecard/components/OnecardReplay";
 import { YutReplay } from "@/yut/components/YutReplay";
 
 import {
@@ -28,13 +22,10 @@ import {
   listArchives,
   loadArchive,
 } from "./archive";
-import { HeartsRound } from "./HeartsRound";
-import { MightyRound } from "./MightyRounds";
 import { ReplayView } from "./ReplayView";
 import { replayArchive } from "./replay";
-import { roundSpans } from "./rounds";
-
-type AnyKit = GameKit<unknown, unknown, unknown, unknown, unknown, unknown>;
+import type { ReplayTable } from "./replay-table";
+import { replayTableFor } from "./replay-tables";
 
 const GAME_NAME: Record<string, string> = {
   mighty: "♠ 마이티",
@@ -228,22 +219,11 @@ function ArchiveView({
   archive: GameArchive;
   onBack: () => void;
 }) {
-  // 판 게임은 카드 게임 화면을 쓰지 않고 판 전용 다시 보기를 쓴다.
-  if (
-    archive.game === "omok" ||
-    archive.game === "janggi" ||
-    archive.game === "chess" ||
-    archive.game === "baduk" ||
-    archive.game === "nyrongppong" ||
-    archive.game === "gostop" ||
-    archive.game === "minhwatu" ||
-    archive.game === "baseball" ||
-    archive.game === "yut" ||
-    archive.game === "galaxy" ||
-    archive.game === "onecard"
-  )
-    return <BoardArchiveView archive={archive} onBack={onBack} />;
-  return <CardArchiveView archive={archive} onBack={onBack} />;
+  // 마이티·하트·원카드는 게임 화면 위에서 다시 본다. 그 밖의 게임은 게임마다 다시 보기 화면을 쓴다.
+  const table = replayTableFor(archive.game);
+  if (table)
+    return <CardArchiveView archive={archive} table={table} onBack={onBack} />;
+  return <BoardArchiveView archive={archive} onBack={onBack} />;
 }
 
 /** 판 게임(오목·장기) 다시 보기 */
@@ -289,8 +269,6 @@ function BoardArchiveView({
           <YutReplay archive={archive} name={name} />
         ) : archive.game === "galaxy" ? (
           <GalaxyReplay archive={archive} name={name} />
-        ) : archive.game === "onecard" ? (
-          <OnecardReplay archive={archive} name={name} />
         ) : (
           <OmokReplay archive={archive} name={name} />
         )}
@@ -299,25 +277,23 @@ function BoardArchiveView({
   );
 }
 
+/** 판 위 다시 보기(마이티·하트·원카드): 판마다 한눈에 보기 → 게임 화면 위에서 한 걸음씩 */
 function CardArchiveView({
   archive,
+  table,
   onBack,
 }: {
   archive: GameArchive;
+  table: ReplayTable;
   onBack: () => void;
 }) {
   const botNames = useSettings((s) => s.botNames);
-  const hearts = archive.game === "hearts";
-  const kit = (hearts ? heartsKit : mightyKit) as unknown as AnyKit;
-  const replayed = useMemo(() => replayArchive(kit, archive), [kit, archive]);
-  const spans = useMemo(
-    () =>
-      roundSpans(
-        replayed.events as { type: string }[][],
-        (i) => (replayed.states[i] as { roundNumber: number }).roundNumber,
-      ),
-    [replayed],
+  const replayed = useMemo(
+    () => replayArchive(table.kit, archive),
+    [table, archive],
   );
+  const spans = useMemo(() => table.spans(replayed), [table, replayed]);
+  const Round = table.Round;
   const [replayAt, setReplayAt] = useState<number | null>(null);
   const name = (seat: number) =>
     seat === archive.seat
@@ -327,7 +303,7 @@ function CardArchiveView({
   if (replayAt !== null)
     return (
       <ReplayView
-        game={archive.game}
+        table={table}
         replayed={replayed}
         seat={archive.seat}
         seatNames={archive.seatNames}
@@ -366,29 +342,17 @@ function CardArchiveView({
         {replayed.error && (
           <p className="text-sm text-rose-300">{replayed.error}</p>
         )}
-        {[...spans]
-          .reverse()
-          .map((span) =>
-            hearts ? (
-              <HeartsRound
-                key={span.start}
-                span={span}
-                states={replayed.states as HeartsState[]}
-                seat={archive.seat}
-                name={name}
-                onReplay={setReplayAt}
-              />
-            ) : (
-              <MightyRound
-                key={span.start}
-                span={span}
-                states={replayed.states as MatchState[]}
-                seat={archive.seat}
-                name={name}
-                onReplay={setReplayAt}
-              />
-            ),
-          )}
+        {[...spans].reverse().map((span) => (
+          <Round
+            key={span.start}
+            span={span}
+            states={replayed.states}
+            events={replayed.events}
+            seat={archive.seat}
+            name={name}
+            onReplay={setReplayAt}
+          />
+        ))}
       </div>
     </main>
   );

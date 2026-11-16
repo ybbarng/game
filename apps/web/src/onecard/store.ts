@@ -226,6 +226,16 @@ interface OnecardStore {
   ): void;
   setSeatNames(seatNames: string[]): void;
   /**
+   * 다시 보기(`ReplayHost`)를 붙인다. 저장·내 기록·복기 기록은 남기지 않는다. `events`는 지금 걸음의 사건으로,
+   * 화면이 그 걸음 동안 말풍선을 남긴다. 붙일 때는 카드 연출·소리를 내지 않고(앞뒤로 건너뛸 때 엉뚱한 카드가 날지 않게),
+   * 한 걸음 앞으로 갈 때만 평소처럼 연출한다
+   */
+  attachReplay(
+    host: OnecardHost,
+    seatNames: string[] | null,
+    events: readonly GameEvent[],
+  ): void;
+  /**
    * 튜토리얼 연습 판. 장면 상태(`initialState`)가 있으면 거기서, 없으면 `rules`로 처음부터.
    * 컴퓨터는 넘겨받은 것(장면 대본 또는 실전 컴퓨터)을 쓴다
    */
@@ -459,6 +469,36 @@ export const useOnecard = create<OnecardStore>((set, get) => {
 
     setSeatNames(seatNames) {
       set({ seatNames });
+    },
+
+    attachReplay(host, seatNames, events) {
+      stop();
+      claimShout = null;
+      get().local?.dispose();
+      // 사건 번호(`eventSeq`)를 올리지 않아 카드 연출·결과 띠가 다시 돌지 않는다
+      set({
+        host,
+        local: null,
+        seatNames,
+        reconnecting: false,
+        hostLeft: false,
+        offlineSeats: [],
+        view: host.current(),
+        events: [...events],
+        shoutEvents: countShouts(events),
+        notice: null,
+        practice: false,
+        dealing: null,
+      });
+      unsubscribe = host.subscribe((snapshot) => {
+        set({
+          view: snapshot.view,
+          events: snapshot.events,
+          eventSeq: get().eventSeq + 1,
+          shoutEvents: countShouts(snapshot.events, get().shoutEvents),
+        });
+        react(snapshot.events, host.seat, snapshot.view.rules);
+      });
     },
 
     startPractice({ rules, initialState, bot }) {

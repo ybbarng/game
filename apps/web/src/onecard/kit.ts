@@ -306,7 +306,7 @@ export const onecardKit: OnecardKit = {
       voids: state.hands.map(() => []),
       tally: state.hands.map((hand, seat) => ({
         seat,
-        label: "",
+        label: "남은 카드",
         value: `${hand.length}장`,
       })),
     }),

@@ -1,5 +1,6 @@
 import type {
   GameEvent,
+  OnecardRules,
   OnecardState,
   OnecardView,
 } from "@game/onecard-engine";
@@ -42,7 +43,8 @@ describe("기록 → 판 상태 다시 만들기", () => {
     const before = states[at - 1] as OnecardState;
     const after = states[at] as OnecardState;
     expect(after.hands[2]?.length).toBe(
-      (before.hands[2]?.length ?? 0) + archive.rules.catchPenalty,
+      (before.hands[2]?.length ?? 0) +
+        (archive.rules as OnecardRules).catchPenalty,
     );
   });
 
