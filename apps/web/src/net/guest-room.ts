@@ -59,6 +59,9 @@ import {
 } from "./time-witness";
 import { connectionFingerprints, type Transport } from "./transport";
 
+/** 다른 게임의 방에 들어가면 나오는 거절 사유. 온라인 화면이 이 글로 오류 화면을 띄운다 */
+export const OTHER_GAME_ROOM = "다른 게임의 방이에요.";
+
 /**
  * 판 끝 검증 결과. `unchecked`는 통과했지만 맞춰 보지 못한 것(방장과 컴퓨터 계획 판 번호가 달라 컴퓨터 수를 다시
  * 계산하지 못함 등, net/bot-plan.ts). 부정이 아니라 「확인 못 함」으로 보인다
@@ -117,14 +120,14 @@ export class RemoteMatch<
   /** 결과는 방장 엔진이 정한다. 거절되면 `rejected` 메시지로 알려 온다 */
   submit(action: ActionT): SubmitResult {
     if (this.last.decision === null && !this.offTurn?.(this.last, action))
-      return { ok: false, error: "지금은 차례가 아니다" };
+      return { ok: false, error: "지금은 차례가 아니에요." };
     // 보낸 행동의 결과(다음 화면이나 거절)가 오기 전에는 다음 행동을 보내지 않는다.
     // 멘탈 포커에서는 낼 카드 열쇠를 공개하므로, 두 번 누르면 두 번째 카드까지 드러난다.
     if (this.inFlight)
-      return { ok: false, error: "앞 행동을 처리하는 중입니다" };
+      return { ok: false, error: "앞 행동을 처리하는 중이에요." };
     const outgoing = this.transform ? this.transform(action) : action;
     if (outgoing === null)
-      return { ok: false, error: "지금은 할 수 없습니다(섞고 나누는 중)" };
+      return { ok: false, error: "지금은 할 수 없어요(섞고 나누는 중)." };
     this.sent.push(JSON.stringify(outgoing));
     this.inFlight = true;
     this.expectMine = this.mine === null ? null : this.mine + 1;
@@ -593,7 +596,7 @@ export class GuestRoom<
       this.audited = true;
       const result: AuditResult = {
         ok: false,
-        reason: "방장이 판 끝 기록을 공개하지 않고 나가 검증하지 못했다",
+        reason: "방장이 판 끝 기록을 공개하지 않고 나가 검증하지 못했어요.",
       };
       for (const l of this.listeners.audit) l(result);
     }
@@ -1053,7 +1056,7 @@ export class GuestRoom<
     if (!input) {
       this.raiseIncident({
         seat: 0,
-        reason: "방장이 시드를 공개하지 않아 검증하지 못했다",
+        reason: "방장이 시드를 공개하지 않아 검증하지 못했어요.",
       });
       return;
     }
@@ -1212,7 +1215,7 @@ export class GuestRoom<
         if (message.lobby.game && message.lobby.game !== this.kit.id) {
           this.kicked = true;
           this.transport.leave();
-          for (const l of this.listeners.rejected) l("다른 게임의 방입니다");
+          for (const l of this.listeners.rejected) l(OTHER_GAME_ROOM);
           return;
         }
         this.lobby = message.lobby;
@@ -1224,7 +1227,7 @@ export class GuestRoom<
         const myHash = await this.commitHash;
         const mine = message.commitments.find((c) => c.seat === this.seat);
         if (mine?.hash !== myHash)
-          this.startProblem = "방장이 시작할 때 내 약속을 빼거나 바꿨다";
+          this.startProblem = "방장이 시작할 때 내 약속을 빼거나 바꿨어요.";
         if (this.startedCommitments.length === 0)
           this.startedCommitments = message.commitments;
         this.commitments = message.commitments;
@@ -1352,7 +1355,7 @@ export class GuestRoom<
     )
       await this.fair.whenRevealedOpened();
     const input = this.fairInput(log);
-    if (!input) return { ok: false, reason: "검증할 정보가 없다" };
+    if (!input) return { ok: false, reason: "검증할 정보가 없어요." };
     // 끝까지 하지 못한 판(그만두기 등)은 열쇠가 다 모이지 않아 그 앞까지만 본다(verifyFairLog).
     const verdict = await verifyFairLog(input);
     if (verdict.ok) this.emitArchive(input.rules, input.seed, log);
@@ -1389,14 +1392,14 @@ export class GuestRoom<
       if (announced?.hash !== c.hash)
         return {
           ok: false,
-          reason: `${c.seat}번 자리 약속이 시작 때와 다르다`,
+          reason: `${c.seat}번 자리 약속이 시작 때와 달라요.`,
         };
     }
     if (!finalCommitments.some((c) => c.seat === this.seat))
-      return { ok: false, reason: "방장이 내 값을 시드에서 뺐다" };
+      return { ok: false, reason: "방장이 내 값을 시드에서 뺐어요." };
     const mine = reveals.find((r) => r.seat === this.seat);
     if (mine?.secret !== this.secret)
-      return { ok: false, reason: "방장이 내 비밀 값을 바꿨다" };
+      return { ok: false, reason: "방장이 내 비밀 값을 바꿨어요." };
     const seed = await deriveSeed(finalCommitments, reveals);
     return seed;
   }
@@ -1408,7 +1411,7 @@ export class GuestRoom<
     finalCommitments?: Commitment[],
   ): Promise<AuditResult> {
     if (this.seat === null || !this.lobby || !this.match)
-      return { ok: false, reason: "대국 정보가 없다" };
+      return { ok: false, reason: "대국 정보가 없어요." };
     if (this.startProblem) return { ok: false, reason: this.startProblem };
     // 실제로 시드에 쓴 약속: 시작 때 알린 것 중에서만, 바꾸지 않고, 내 것과 방장 것은 반드시 들어 있어야 한다.
     if (finalCommitments) {
@@ -1419,13 +1422,13 @@ export class GuestRoom<
         if (announced?.hash !== c.hash)
           return {
             ok: false,
-            reason: `${c.seat}번 자리 약속이 시작 때와 다르다`,
+            reason: `${c.seat}번 자리 약속이 시작 때와 달라요.`,
           };
       }
       if (!finalCommitments.some((c) => c.seat === this.seat))
-        return { ok: false, reason: "방장이 내 값을 시드에서 뺐다" };
+        return { ok: false, reason: "방장이 내 값을 시드에서 뺐어요." };
       if (!finalCommitments.some((c) => c.seat === 0))
-        return { ok: false, reason: "방장 약속이 없다" };
+        return { ok: false, reason: "방장 약속이 없어요." };
       this.commitments = finalCommitments;
     }
     const mine = reveals.find((r) => r.seat === this.seat);
@@ -1433,7 +1436,7 @@ export class GuestRoom<
       this.commitments.some((c) => c.seat === this.seat) &&
       mine?.secret !== this.secret
     ) {
-      return { ok: false, reason: "방장이 내 비밀 값을 바꿨다" };
+      return { ok: false, reason: "방장이 내 비밀 값을 바꿨어요." };
     }
     const seed = await deriveSeed(this.commitments, reveals);
     if (!seed.ok) return seed;
@@ -1502,7 +1505,7 @@ export class GuestRoom<
         if (botSeats.has(seat) && !entry.bot)
           return {
             ok: false,
-            reason: `기록 ${index + 1}번째: 컴퓨터 자리를 사람이 뒀다`,
+            reason: `기록 ${index + 1}번째: 컴퓨터 자리를 사람이 뒀어요.`,
           };
         if (entry.bot) {
           const view = this.kit.viewOf(state, seat);
@@ -1516,7 +1519,7 @@ export class GuestRoom<
           if (bare(expected) !== bare(action))
             return {
               ok: false,
-              reason: `기록 ${index + 1}번째: 컴퓨터가 둘 수와 다르다(방장이 컴퓨터를 조종했다)`,
+              reason: `기록 ${index + 1}번째: 컴퓨터가 둘 수와 달라요(방장이 컴퓨터를 조종했어요).`,
             };
           // 고수 컴퓨터는 생각이 길어 중간중간 화면에 차례를 넘긴다.
           if (index % 8 === 0) await new Promise((r) => setTimeout(r, 0));
@@ -1526,7 +1529,7 @@ export class GuestRoom<
       if (!result.ok)
         return {
           ok: false,
-          reason: `기록 ${index + 1}번째 행동이 규칙에 맞지 않는다`,
+          reason: `기록 ${index + 1}번째 행동이 규칙에 맞지 않아요.`,
         };
       state = result.state;
       if (timing) turns.push(timing.turn(state));
@@ -1540,7 +1543,7 @@ export class GuestRoom<
     const unsignedEnd = this.kit.verifyUnsignedDone?.(context) ?? null;
     if (unsignedEnd) return { ok: false, reason: unsignedEnd };
     if (replayedViews.at(-1) !== JSON.stringify(this.match.current())) {
-      return { ok: false, reason: "다시 계산한 결과가 내가 본 화면과 다르다" };
+      return { ok: false, reason: "다시 계산한 결과가 내가 본 화면과 달라요." };
     }
     // 기록 속 내 자리 행동이 내가 보낸 행동과 같아야 한다(방장의 바꿔치기, 모의 침투 A3).
     // 끊긴 적이 있으면 그동안 컴퓨터가 대신 둔 수가 끼어 있을 수 있으므로, 내가 보낸 것이 빠짐없이 차례대로 들어 있는지만 본다.
@@ -1557,14 +1560,17 @@ export class GuestRoom<
     const sent = this.match.sent;
     if (!this.everDisconnected) {
       if (JSON.stringify(mineInLog) !== JSON.stringify(sent))
-        return { ok: false, reason: "기록 속 내 행동이 내가 보낸 것과 다르다" };
+        return {
+          ok: false,
+          reason: "기록 속 내 행동이 내가 보낸 것과 달라요.",
+        };
     } else {
       let at = 0;
       for (const action of mineInLog) if (action === sent[at]) at++;
       if (at < sent.length)
         return {
           ok: false,
-          reason: "내가 보낸 행동이 기록에서 빠졌거나 바뀌었다",
+          reason: "내가 보낸 행동이 기록에서 빠졌거나 바뀌었어요.",
         };
     }
     // 게임 중 받은 화면이 모두 다시 돌린 화면 중에 차례대로 있어야 한다(중간 화면 조작).
@@ -1575,7 +1581,7 @@ export class GuestRoom<
       if (cursor === replayedViews.length)
         return {
           ok: false,
-          reason: `게임 중 받은 ${i + 1}번째 화면이 기록과 맞지 않는다`,
+          reason: `게임 중 받은 ${i + 1}번째 화면이 기록과 맞지 않아요.`,
         };
     }
     // 방장이 적은 시간(쓴 시간·시간패·시간 상한)이 내 기기에서 잰 사이와 맞는가(손님 시계 확인, docs/50 3-2)

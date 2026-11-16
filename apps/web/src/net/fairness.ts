@@ -42,9 +42,12 @@ export async function deriveSeed(
   for (const c of commitments) {
     const secret = bySeat.get(c.seat);
     if (secret === undefined)
-      return { ok: false, reason: `${c.seat}번 자리가 값을 공개하지 않았다` };
+      return {
+        ok: false,
+        reason: `${c.seat}번 자리가 값을 공개하지 않았어요.`,
+      };
     if ((await commit(secret)) !== c.hash)
-      return { ok: false, reason: `${c.seat}번 자리의 값이 약속과 다르다` };
+      return { ok: false, reason: `${c.seat}번 자리의 값이 약속과 달라요.` };
   }
   const joined = [...commitments]
     .sort((a, b) => a.seat - b.seat)

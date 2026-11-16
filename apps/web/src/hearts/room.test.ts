@@ -89,6 +89,6 @@ describe("하트 온라인 방", () => {
     const errors: string[] = [];
     guest.on("rejected", (e) => errors.push(e));
     await until(() => errors.length > 0);
-    expect(errors).toEqual(["다른 게임의 방입니다"]);
+    expect(errors).toEqual(["다른 게임의 방이에요."]);
   });
 });
