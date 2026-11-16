@@ -33,6 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   private var escMonitor: Any?
   /// 자동 업데이트(Sparkle). .app으로 띄웠을 때만 켜진다
   private let updater = Updater()
+  /// 말풍선에 지금 새 판 알림이 떠 있다(힌트 줄이 오면 그것으로 바뀐다)
+  private var updateNoticeShown = false
+  private var updateNoticeUp: Bool { updateNoticeShown && bubble.isShown }
 
   /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
   enum WebWindow { case records, tiers, settings }
@@ -124,6 +127,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
       guard let self else { return event }
       let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+      // 새 판 말풍선이 떠 있으면: Enter는 설치(Sparkle 창), Esc는 닫기만, 다른 키는 닫고 그대로 큐브에(docs/47 15-12)
+      if self.updateNoticeUp, event.window === self.cube.panel, !event.isARepeat {
+        let plain = mods.subtracting([.function, .numericPad, .capsLock]).isEmpty
+        if plain, event.keyCode == 36 || event.keyCode == 76 {
+          self.installFromNotice()
+          return nil
+        }
+        self.hideUpdateNotice()
+        if plain, event.keyCode == 53 { return nil }
+      }
       // F1(맥북은 fn+F1): 「단축키 보기」. 큐브 옆 표를 켜고 끈다(웹에는 보내지 않는다).
       // 맥북에서 fn 없이 누르면 밝기 키라 앱에 오지 않는다. 힌트 키(\)는 그대로 웹에 간다
       if event.keyCode == UInt16(Config.shortcutsKeyCode), event.window === self.cube.panel,
@@ -172,6 +185,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in
       self?.pushStoreToWebWindows()
       (self?.sheets[.records] as? NativeRecordsWindow)?.reload()
+      // 맞추는 동안 미룬 새 판 알림(큐브에 그대로 있을 때만)
+      if self?.cube.focused == true { self?.showUpdateNoticeIfDue() }
     }
     cube.menuProvider = { [weak self] in self?.buildMenu(forWindow: true) ?? NSMenu() }
     cube.onReady = { [weak self] in
@@ -189,13 +204,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     NotificationCenter.default.addObserver(
       forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
     ) { [weak self] _ in
-      MainActor.assumeIsolated { self?.hideKeys() }
+      MainActor.assumeIsolated {
+        self?.hideKeys()
+        self?.hideUpdateNotice()
+      }
     }
     cube.onHint = { [weak self] lines in
       guard let self else { return }
       if let lines, !lines.isEmpty, self.cube.panel.isVisible {
+        self.updateNoticeShown = false
         self.bubble.show(lines: lines, cube: self.cube.panel.frame, visible: self.cubeScreen)
-      } else {
+      } else if !self.updateNoticeUp {
         self.bubble.hide()
       }
     }
@@ -319,6 +338,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     NSApp.activate(ignoringOtherApps: true)
     cube.panel.makeKeyAndOrderFront(nil)
     cube.takeKeys()
+    showUpdateNoticeIfDue()
+  }
+
+  // MARK: 새 판 말풍선(docs/47 15-12)
+  // 메뉴 막대 아이콘이 가려지면 메뉴 첫 줄의 「새 판 … 설치…」를 못 본다. 사용자가 큐브로 온 순간에만 큐브 옆에 알린다
+  // (포커스는 이미 사용자가 옮겼다). 같은 판은 하루에 한 번, 맞추는 중이면 미룬다(`UpdateNotice`)
+
+  private func showUpdateNoticeIfDue() {
+    guard let version = updater.pendingVersion, cube.panel.isVisible, !bubble.isShown else { return }
+    let d = UserDefaults.standard
+    let last = d.string(forKey: UpdateNotice.versionKey).map {
+      UpdateNotice.Shown(version: $0, at: Date(timeIntervalSince1970: d.double(forKey: UpdateNotice.atKey)))
+    }
+    let now = Date()
+    guard UpdateNotice.shouldShow(pending: version, last: last, now: now, solving: cube.solving) else { return }
+    d.set(version, forKey: UpdateNotice.versionKey)
+    d.set(now.timeIntervalSince1970, forKey: UpdateNotice.atKey)
+    if Config.debug { print("[cubie] update notice \(version)"); fflush(stdout) }
+    updateNoticeShown = true
+    bubble.show(
+      lines: HintBubble.updateLines(version: version), cube: cube.panel.frame, visible: cubeScreen
+    ) { [weak self] in self?.installFromNotice() }
+  }
+
+  private func hideUpdateNotice() {
+    guard updateNoticeShown else { return }
+    updateNoticeShown = false
+    bubble.hide()
+  }
+
+  private func installFromNotice() {
+    hideUpdateNotice()
+    updater.checkForUpdates()
   }
 
   /// 기억한 앱을 앞으로. 큐브 창은 그대로 떠 있다

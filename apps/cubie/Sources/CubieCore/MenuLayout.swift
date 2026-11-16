@@ -81,8 +81,8 @@ public enum MenuEntry: Equatable, Sendable {
 
 public enum MenuLayout {
   /// 맨 위 메뉴. `forWindow`: 큐브 위 오른쪽 클릭 메뉴(이미 큐브 위라 「큐브로 가기·숨기기」가 없고, 앱 전체의 프로필 칸과
-  /// 「업데이트 확인…」과 새 판 알림은 메뉴 막대 메뉴에만 둔다). 「Cubie 끝내기」는 둘 다 맨 끝에 둔다: 메뉴 막대 아이콘이
-  /// 노치·숨기기 앱에 가려지면 오른쪽 클릭이 앱을 끄는 유일한 길이다(2026-11-16, docs/47 15-19)
+  /// 「업데이트 확인…」은 메뉴 막대 메뉴에만 둔다). 「Cubie 끝내기」와 새 판 알림은 둘 다에 둔다: 메뉴 막대 아이콘이
+  /// 노치·숨기기 앱에 가려지면 오른쪽 클릭이 앱을 끄고 새 판을 설치하는 유일한 길이다(2026-11-16, docs/47 15-12·15-19)
   /// `practiceAvailable`: 웹이 연습 단계를 알려 줬나(0.1.6 이하 화면이면 「공식 연습」을 두지 않는다)
   public static func main(
     forWindow: Bool, hotKeyOK: Bool, pendingUpdate: Bool, updaterAvailable: Bool,
@@ -91,7 +91,7 @@ public enum MenuLayout {
     var m: [MenuEntry] = []
     if !forWindow { m += [.profile, .separator] }
     if !hotKeyOK { m += [.hotKeyWarning, .separator] }
-    if !forWindow, pendingUpdate { m += [.installUpdate, .separator] }
+    if pendingUpdate { m += [.installUpdate, .separator] }
     if !forWindow { m += [.focus, .toggleVisible, .separator] }
     m += [.scramble, .hint]
     if practiceAvailable { m.append(.practice) }
