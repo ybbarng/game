@@ -1,4 +1,5 @@
 import {
+  areaScore,
   type Board,
   boardHash,
   type Cell,
@@ -627,4 +628,79 @@ export function lifeWrongMovesFail(
     if (!fails) return false;
   }
   return true;
+}
+
+/** 끝내기 읽기 결과: 두 편이 가장 좋게 둘 때 끝난 판의 점수 차(흑 − 백, 덤 빼고)와, 그 점수 차를 내는 첫 수들(null은 쉬기) */
+export interface EndgameResult {
+  score: number;
+  best: (number | null)[];
+}
+
+/**
+ * 끝내기 읽기(수 배우기 끝내기, docs/23): `toPlay`가 둘 차례에, 정한 빈 자리(`area`) 안에서만 두거나 쉰다.
+ * 두 편이 잇달아 쉬면 판 위 그대로 센다(`areaScore`, 돌 수 + 집 수). 흑은 점수 차를 크게, 백은 작게 둔다.
+ * 판 나머지는 이미 다 막혔다고 보고 두지 않는다(그래서 정한 자리가 적으면 끝까지 읽는다).
+ * 읽는 길 위에서 같은 판 모양이 다시 나오는 수(패 되따내기)는 두지 않는다.
+ * `passed`는 바로 앞 수가 쉬기였는지(이번에도 쉬면 끝난다)
+ */
+export function solveEndgame(
+  board: Board,
+  area: readonly number[],
+  toPlay: Stone,
+  passed = false,
+): EndgameResult {
+  const memo = new Map<string, number>();
+  const path = new Set([boardHash(board)]);
+  const scoreOf = (b: Board) => {
+    const s = areaScore(b);
+    return s.black - s.white;
+  };
+  const value = (b: Board, turn: Stone, afterPass: boolean): number => {
+    const key = `${boardHash(b)}:${turn}:${afterPass ? 1 : 0}`;
+    const known = memo.get(key);
+    if (known !== undefined) return known;
+    const better = (a: number, c: number) =>
+      turn === 1 ? Math.max(a, c) : Math.min(a, c);
+    let result = afterPass ? scoreOf(b) : value(b, other(turn), true);
+    for (const at of area) {
+      const next = place(b, at, turn, path);
+      if (!next) continue;
+      path.add(next.key);
+      result = better(result, value(next.board, other(turn), false));
+      path.delete(next.key);
+    }
+    memo.set(key, result);
+    return result;
+  };
+  const after = (at: number | null): number | null => {
+    if (at === null)
+      return passed ? scoreOf(board) : value(board, other(toPlay), true);
+    const next = place(board, at, toPlay, path);
+    if (!next) return null;
+    path.add(next.key);
+    const v = value(next.board, other(toPlay), false);
+    path.delete(next.key);
+    return v;
+  };
+  let score: number | null = null;
+  let best: (number | null)[] = [];
+  for (const at of [...area, null]) {
+    const v = after(at);
+    if (v === null) continue;
+    if (score === null || (toPlay === 1 ? v > score : v < score)) {
+      score = v;
+      best = [at];
+    } else if (v === score) best.push(at);
+  }
+  return { score: score ?? scoreOf(board), best };
+}
+
+/**
+ * 끝내기 한 곳의 크기: 그 자리들 안에서만 둘 때, 흑이 먼저 둔 결과와 백이 먼저 둔 결과의 점수 차(흑 − 백) 차이.
+ * 「이 끝내기는 n점짜리」의 n이다(먼저 두는 편이 n점을 더 얻는다)
+ */
+export function endgameSize(board: Board, area: readonly number[]): number {
+  return (
+    solveEndgame(board, area, 1).score - solveEndgame(board, area, 2).score
+  );
 }

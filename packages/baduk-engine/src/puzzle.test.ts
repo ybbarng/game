@@ -1,18 +1,27 @@
 import { describe, expect, it } from "vitest";
 
-import { boardHash, type Cell, emptyBoard, pointAt, tryPlace } from "./board";
+import {
+  areaScore,
+  boardHash,
+  type Cell,
+  emptyBoard,
+  pointAt,
+  tryPlace,
+} from "./board";
 import {
   bestDefense,
   canCapture,
   canKill,
   canLive,
   captureMoves,
+  endgameSize,
   koRecapturePoint,
   ladderDefense,
   ladderMoves,
   lifeKeyMoves,
   passAliveStones,
   snapbackGain,
+  solveEndgame,
 } from "./puzzle";
 
 const SIZE = 9;
@@ -124,5 +133,36 @@ describe("축 읽기", () => {
     if (!atari.ok) throw new Error("둘 수 없다");
     const d = ladderDefense(atari.board, 1, p("C7"));
     expect(d).toBe(p("C6"));
+  });
+});
+
+describe("끝내기 읽기", () => {
+  // 흑 D줄, 백 F줄. 그 사이 E줄은 백 돌인데 E5만 비었다. E5는 흑·백 모두에 닿는 빈 점 하나다
+  const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const b = board(
+    rows.map((r) => `D${r}`),
+    [
+      ...rows.map((r) => `F${r}`),
+      ...rows.filter((r) => r !== 5).map((r) => `E${r}`),
+    ],
+  );
+  const base = areaScore(b);
+
+  it("둘 곳이 없으면 쉬고, 판 위 그대로 센 점수 차를 돌려준다", () => {
+    expect(solveEndgame(b, [], 1)).toEqual({
+      score: base.black - base.white,
+      best: [null],
+    });
+  });
+
+  it("빈 점 하나는 흑이 두면 흑 점수가 1, 백이 두면 백 점수가 1 늘어 2점짜리다", () => {
+    expect(solveEndgame(b, [p("E5")], 1)).toEqual({
+      score: base.black + 1 - base.white,
+      best: [p("E5")],
+    });
+    expect(solveEndgame(b, [p("E5")], 2).score).toBe(
+      base.black - base.white - 1,
+    );
+    expect(endgameSize(b, [p("E5")])).toBe(2);
   });
 });
