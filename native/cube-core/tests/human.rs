@@ -75,11 +75,21 @@ fn cue_id(c: SessionCue) -> &'static str {
 
 #[test]
 fn session_matches_site() {
-    let mut r = Report::new("한 판 세션");
-    for (ci, c) in cases(include_str!("../fixtures/session.json"))
-        .iter()
-        .enumerate()
-    {
+    check_session("한 판 세션", include_str!("../fixtures/session.json"));
+}
+
+/// 4×4 야우 한 판(센터 둘·십자 셋 이정표, 길어 자료를 따로 둔다)
+#[test]
+fn session_yau_matches_site() {
+    check_session(
+        "한 판 세션(4×4 야우)",
+        include_str!("../fixtures/session-yau.json"),
+    );
+}
+
+fn check_session(name: &'static str, text: &str) {
+    let mut r = Report::new(name);
+    for (ci, c) in cases(text).iter().enumerate() {
         let n = c.get("n").num() as usize;
         let mut s = SolveSession::new(n);
         let mut now = 0.0;
