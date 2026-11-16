@@ -118,7 +118,7 @@ test(
     expect(reloaded).toBe(2);
     // 판마다 검증: 참가자 화면 채팅에 "문제없음"
     await expect(
-      b.getByText("이번 판을 진짜 카드로 다시 계산했습니다 — 문제없음 ✓"),
+      b.getByText("이번 판을 진짜 카드로 다시 계산했어요 — 문제없음 ✓"),
     ).toBeVisible({ timeout: 30_000 });
     // 게임 끝 검증: 두 참가자 모두 "나 — 문제없음", 실패 줄은 없다.
     for (const p of [a, b]) {

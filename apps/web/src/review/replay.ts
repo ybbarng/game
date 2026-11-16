@@ -55,7 +55,7 @@ export function replayArchive<Rules, State, View, Action, Event, Extra>(
       return {
         states,
         events,
-        error: `${index + 1}번째 행동을 다시 돌릴 수 없다(${result.error})`,
+        error: `${index + 1}번째 행동을 다시 돌릴 수 없어요(${result.error}).`,
       };
     state = deals ? kit.review.cleanup(result.state, state) : result.state;
     states.push(state);

@@ -140,7 +140,7 @@ export function GameHome({
             action={{
               icon: "▶",
               title: "하던 게임 이어하기",
-              detail: "멈춘 곳부터 다시 둡니다.",
+              detail: "멈춘 곳부터 다시 둬요.",
               onClick: resume,
             }}
           />

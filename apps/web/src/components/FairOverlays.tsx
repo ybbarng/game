@@ -77,14 +77,14 @@ export function FairOverlays({
               {incident.pending
                 ? "누가 했는지 확인하는 중…"
                 : incident.seat === null
-                  ? "누군지는 가릴 수 없습니다"
+                  ? "누군지는 가릴 수 없어요."
                   : whoName(incident.seat)}
             </div>
             <div className="mt-0.5 text-xs opacity-90">{incident.reason}</div>
             <div className="mt-1 text-[11px] opacity-75">
               {incident.own
-                ? "내 기기가 직접 확인한 것입니다. 이 판을 멈췄습니다."
-                : "판을 진행하는 방장 기기가 찾아 판을 멈췄습니다(내 기기는 따로 확인하지 못했습니다)."}
+                ? "내 기기가 직접 확인한 거예요. 이 판을 멈췄어요."
+                : "판을 진행하는 방장 기기가 찾아 판을 멈췄어요(내 기기는 따로 확인하지 못했어요)."}
             </div>
           </div>
         </div>
@@ -105,8 +105,8 @@ export function FairOverlays({
           role="status"
           className="absolute inset-x-0 bottom-28 z-[340] mx-auto flex w-fit max-w-[92%] flex-wrap items-center justify-center gap-2 rounded-2xl bg-black/85 px-4 py-2 text-center text-sm shadow-2xl"
         >
-          {offlineNames.join(", ")}님 연결이 끊겼습니다. 그 사람 카드는 그
-          사람만 열 수 있어 돌아오기를 기다립니다.
+          {offlineNames.join(", ")}님 연결이 끊겼어요. 그 사람 카드는 그 사람만
+          열 수 있어 돌아오기를 기다려요.
           {endVote && voteEnd ? (
             <EndVote
               vote={endVote}
@@ -124,7 +124,7 @@ export function FairOverlays({
             </button>
           ) : (
             <span className="text-xs opacity-70">
-              오래 걸리면 끝낼지 투표합니다.
+              오래 걸리면 끝낼지 투표해요.
             </span>
           )}
         </div>
@@ -263,7 +263,7 @@ function EndVote({
   return (
     <span className="flex w-full flex-wrap items-center justify-center gap-2">
       <span className="text-xs opacity-80" data-testid="end-vote-count">
-        끝내기 {ends}/{need}표{host ? " · 방장은 바로 끝낼 수 있습니다" : ""}
+        끝내기 {ends}/{need}표{host ? " · 방장은 바로 끝낼 수 있어요." : ""}
       </span>
       <button
         type="button"

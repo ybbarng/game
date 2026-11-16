@@ -137,7 +137,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
             >
               {decoded && !decoded.ok
                 ? decoded.reason
-                : "친구에게 이 문자열을 보내면 같은 규칙으로 할 수 있습니다."}
+                : "친구에게 이 문자열을 보내면 같은 규칙으로 할 수 있어요."}
             </p>
             {rules &&
               ![...RULE_PRESETS, ...settings.customRules].some(
@@ -277,16 +277,16 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               </button>
             </div>
             <p className="text-xs opacity-60">
-              손패 카드에 그 무늬에서 아직 안 나온 높은 카드를 보여 줍니다. 예:
-              ♥9 (A K J). 친구와 할 때는 꺼집니다.
+              손패 카드에 그 무늬에서 아직 안 나온 높은 카드를 보여 줘요.
+              이를테면 ♥9 옆에 (A K J)처럼 보여요. 친구와 할 때는 꺼져요.
             </p>
           </Section>
 
           <Section title="무늬 표기">
             <SuitStylePicker detail />
             <p className="text-xs opacity-60">
-              공약·프렌드·안내 글에서 무늬를 어떻게 보일지 고릅니다. 카드 그림은
-              그대로입니다. 하트에도 같이 적용됩니다.
+              공약·프렌드·안내 글에서 무늬를 어떻게 보일지 골라요. 카드 그림은
+              그대로예요. 하트에도 같이 적용돼요.
             </p>
           </Section>
 
@@ -308,9 +308,9 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               </button>
             </div>
             <p className="text-xs opacity-60">
-              게임 화면을 마이티 은어로 보여 줍니다. 공약은 셋트(♥13)·둘노,
-              프렌드는 기아·쪼카 프렌드, 조커 무늬는 삽컴!, 조커콜은 쪼카컴!.
-              원작의 "마이티 용어 사용"과 같습니다.
+              게임 화면을 마이티 은어로 보여 줘요. 공약은 셋트(♥13)·둘노,
+              프렌드는 기아·쪼카 프렌드, 조커 무늬는 「삽컴!」, 조커콜은
+              「쪼카컴!」으로 불러요. 원작의 "마이티 용어 사용"과 같아요.
             </p>
           </Section>
 
@@ -329,8 +329,8 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               ))}
             </div>
             <p className="text-xs opacity-60">
-              내 다음 차례부터 1번. 친구와 할 때는 방장이 정한 이름이 빈자리에
-              쓰입니다.
+              내 다음 차례부터 1번이에요. 친구와 할 때는 방장이 정한 이름이
+              빈자리에 쓰여요.
             </p>
           </Section>
 

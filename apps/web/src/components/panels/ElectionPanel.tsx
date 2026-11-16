@@ -49,7 +49,7 @@ export function ElectionPanel({
           text={
             current && view.election.bidder !== null
               ? `지금 최고: ${seatName(view.election.bidder)} ${goalLabel(current, view.rules.playerCount)}`
-              : "아직 아무도 출마하지 않았습니다"
+              : "아직 아무도 출마하지 않았어요."
           }
         />
       </p>
@@ -77,8 +77,8 @@ export function ElectionPanel({
               ? `도움말: 지금 손에 든 카드라면 ${goalLabel(
                   { kiruda: suggestion.kiruda, score: target },
                   view.rules.playerCount,
-                )} 정도까지 노려볼 만합니다.`
-              : "도움말: 지금 공약보다 높게 부르기엔 손에 든 카드가 약해 보입니다. 포기를 고려해 보세요."
+                )} 정도까지 노려볼 만해요.`
+              : "도움말: 지금 공약보다 높게 부르기엔 손에 든 카드가 약해 보여요. 포기를 고려해 보세요."
           }
         />
       </p>

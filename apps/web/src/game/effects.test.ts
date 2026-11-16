@@ -35,7 +35,7 @@ describe("효과 글자", () => {
       "H2",
     ] as const;
     const shown = effect({ type: "dealMiss", seat: 3, hand: [...hand] });
-    expect(shown?.text).toBe("P3 딜미스! 다시 섞습니다");
+    expect(shown?.text).toBe("P3 딜미스! 다시 섞어요.");
     expect(shown?.cards).toEqual(hand);
   });
 
@@ -90,7 +90,7 @@ describe("효과 글자", () => {
       effect({ type: "elected", seat: 2, goal: { kiruda: "H", score: 15 } }),
     ).toMatchObject({
       text: "P2 당선",
-      lines: ["공약 ♥15", "바닥 카드를 가져갑니다"],
+      lines: ["공약 ♥15", "바닥 카드를 가져가요."],
     });
     expect(effect({ type: "friendRevealed", seat: 3 })?.text).toBe(
       "프렌드는 P3!",

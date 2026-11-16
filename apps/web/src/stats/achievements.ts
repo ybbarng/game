@@ -20,14 +20,14 @@ export function commonAchievements(result: KitResult): AchievementSpec[] {
   const streak = (n: number, name: string): AchievementSpec => ({
     id: `streak-${n}`,
     name,
-    text: `${n}${unit}을 내리 이깁니다.`,
+    text: `${n}${unit}을 내리 이겨요.`,
     earned: (records) => longestStreak(resultsOf(result, records)) >= n,
   });
   return [
     {
       id: "first-win",
       name: "첫 승",
-      text: `처음으로 한 ${unit}을 이깁니다.`,
+      text: `처음으로 한 ${unit}을 이겨요.`,
       earned: (records) => wins(records).length > 0,
     },
     streak(3, "3연승"),
@@ -36,19 +36,19 @@ export function commonAchievements(result: KitResult): AchievementSpec[] {
     {
       id: "played-10",
       name: "열 판",
-      text: "열 판을 끝까지 합니다.",
+      text: "열 판을 끝까지 해요.",
       earned: (records) => records.rounds.length >= 10,
     },
     {
       id: "played-100",
       name: "백 판",
-      text: "백 판을 끝까지 합니다.",
+      text: "백 판을 끝까지 해요.",
       earned: (records) => records.rounds.length >= 100,
     },
     {
       id: "online-win",
       name: "친구와 첫 승",
-      text: `친구와 하기에서 처음으로 한 ${unit}을 이깁니다.`,
+      text: `친구와 하기에서 처음으로 한 ${unit}을 이겨요.`,
       earned: (records) => wins(records).some((r) => r.mode === "online"),
     },
   ];

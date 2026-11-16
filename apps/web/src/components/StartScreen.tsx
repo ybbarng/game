@@ -59,20 +59,20 @@ export function StartScreen({
       together={{
         icon: "👥",
         title: "다함께 마이티",
-        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다.",
+        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
         onClick: onTogether,
       }}
       learn={{
         title: "마이티 배우기",
         learned,
         total: LESSONS.length,
-        firstHint: "처음이라면 여기부터. 용어부터 한 판까지",
+        firstHint: "처음이라면 여기서 시작해요. 용어부터 한 판까지 배워요.",
         onClick: onTutorial,
       }}
       onOptions={onOptions}
       aboutLabel="마이티는?"
       onAbout={onAbout}
-      credit="마이티 네트워크 4.0을 이어받아 만들었습니다"
+      credit="마이티 네트워크 4.0을 이어받아 만들었어요."
     />
   );
 }

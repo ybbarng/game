@@ -87,7 +87,7 @@ function stepScript(bidder: boolean): string {
     if (rank) rank.click();
     return click(byText(/지목$/), "kill");
   }
-  if (text.includes("당선을 축하합니다")) {
+  if (text.includes("당선을 축하해요")) {
     // 버릴 카드를 다 골랐는가(2마 1장, 그 밖 3장): "(3/3)", "(1/1)"
     if (!/\((\d)\/\1\)/.test(text)) {
       const card = buttons.find(
@@ -489,7 +489,7 @@ for (const [preset, players] of [
       const [, gone, a, b] = pages as [Page, Page, Page, Page];
       await gone.close();
       // 기다리는 동안은 방장만 바로 끝낼 수 있다.
-      await expect(a.getByText(/연결이 끊겼습니다/)).toBeVisible({
+      await expect(a.getByText(/연결이 끊겼어요/)).toBeVisible({
         timeout: 30_000,
       });
       await a.screenshot({ path: info.outputPath("waiting.png") });
@@ -505,7 +505,7 @@ for (const [preset, players] of [
       await expect(host.getByText("점수판")).toBeVisible();
       await b.getByRole("button", { name: "끝내기", exact: true }).click();
       for (const p of [host, a, b]) {
-        await expect(p.getByText("게임을 중간에 끝냈습니다")).toBeVisible({
+        await expect(p.getByText("게임을 중간에 끝냈어요")).toBeVisible({
           timeout: 30_000,
         });
       }

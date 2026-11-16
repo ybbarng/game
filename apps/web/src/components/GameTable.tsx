@@ -38,6 +38,7 @@ import {
 } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { subj } from "@/lib/josa";
 import { useChat } from "@/net/chat";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
@@ -87,13 +88,13 @@ function waitingText(
     case "election":
       return `${who} 공약 생각 중…`;
     case "kill":
-      return `${who}이(가) 뺄 사람을 고르는 중…`;
+      return `${subj(who)} 뺄 사람을 고르는 중…`;
     case "exchange":
-      return `${who}이(가) 카드를 고르는 중…`;
+      return `${subj(who)} 카드를 고르는 중…`;
     case "friend":
-      return `${who}이(가) 프렌드를 정하는 중…`;
+      return `${subj(who)} 프렌드를 정하는 중…`;
     case "pick":
-      return `${who}이(가) 카드를 고르는 중…`;
+      return `${subj(who)} 카드를 고르는 중…`;
     default:
       return null;
   }
@@ -330,7 +331,7 @@ export function GameTable({
         card,
       );
       useGame.setState({
-        notice: reason ? unplayableText(reason) : "지금 낼 수 없는 카드입니다",
+        notice: reason ? unplayableText(reason) : "지금 낼 수 없는 카드예요.",
       });
       playUiCue("invalid");
       return;
@@ -1098,8 +1099,8 @@ export function GameTable({
                 style={{ left: stage.width / 2, top: layout.hand.top - 30 }}
               >
                 {decision.leading
-                  ? "내가 선입니다 — 낼 카드를 고르세요"
-                  : "내 차례 — 낼 카드를 고르세요"}
+                  ? "내가 선이에요 — 낼 카드를 고르세요."
+                  : "내 차례 — 낼 카드를 고르세요."}
               </div>
             )}
 
@@ -1137,7 +1138,7 @@ export function GameTable({
                 className="absolute inset-x-0 z-[340] mx-auto w-fit max-w-[92%] rounded-xl bg-rose-700/95 px-3 py-1.5 text-center font-semibold text-sm shadow-xl"
                 style={{ top: layout.hud.y + layout.hud.h + 6 }}
               >
-                ⚠ 공정성 검증 실패 — 이 게임은 무효입니다 ({invalid})
+                ⚠ 공정성 검증 실패 — 이 게임은 무효예요 ({invalid})
               </div>
             )}
             {reconnecting && !hostLeft && (
@@ -1146,12 +1147,12 @@ export function GameTable({
                 className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit max-w-[92%] items-center gap-2 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl"
               >
                 <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                방장과 연결이 끊겼습니다. 다시 연결하는 중…
+                방장과 연결이 끊겼어요. 다시 연결하는 중…
               </div>
             )}
             {hostLeft && (
               <div className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit items-center gap-3 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl">
-                방장이 방을 나가 게임이 끝났습니다
+                방장이 방을 나가 게임이 끝났어요.
                 <button
                   type="button"
                   onClick={onExit}

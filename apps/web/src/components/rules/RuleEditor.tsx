@@ -207,8 +207,8 @@ export function RuleEditor({
 
         <Section title="딜미스">
           <p className="pb-1 text-xs opacity-60">
-            받은 카드가 너무 나쁘면 딜미스를 선언하고 다시 나눈다. 켠 조건에
-            맞을 때 선언할 수 있다.
+            받은 카드가 너무 나쁘면 딜미스를 선언하고 다시 나눠요. 켠 조건에
+            맞을 때 선언할 수 있어요.
           </p>
           {DEAL_MISS_FIELDS.map((f) => (
             <Toggle
@@ -225,9 +225,9 @@ export function RuleEditor({
 
         <Section title="여당이 이겼을 때 점수">
           <p className="pb-1 text-xs opacity-60">
-            식으로 나온 값에 따라 돈이 오간다. 식에서 공약은 주공이 건 장수,
+            식으로 나온 값에 따라 돈이 오가요. 식에서 공약은 주공이 건 장수,
             최소는 선거에서 부를 수 있는 가장 낮은 장수(최소 공약), 득점은
-            여당이 딴 점수 카드 장수다.
+            여당이 딴 점수 카드 장수예요.
           </p>
           <Choice
             value={rules.winScoring}

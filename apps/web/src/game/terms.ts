@@ -192,25 +192,25 @@ export function sortHand(
 export function unplayableText(reason: UnplayableReason): string {
   switch (reason.kind) {
     case "notInHand":
-      return "손에 없는 카드입니다";
+      return "손에 없는 카드예요.";
     case "jokerCalled":
-      return "조커콜! 조커를 내야 합니다";
+      return "조커콜! 조커를 내야 해요.";
     case "mustPlayMightyOrJoker":
-      return "마지막 턴에는 낼 수 없어서 지금 마이티나 조커를 내야 합니다";
+      return "마지막 턴에는 낼 수 없어서 지금 마이티나 조커를 내야 해요.";
     case "mightyFirstTrick":
-      return "첫 턴에는 마이티를 낼 수 없습니다";
+      return "첫 턴에는 마이티를 낼 수 없어요.";
     case "mightyLastTrick":
-      return "마지막 턴에는 마이티를 낼 수 없습니다";
+      return "마지막 턴에는 마이티를 낼 수 없어요.";
     case "jokerFirstTrick":
-      return "첫 턴에는 조커를 낼 수 없습니다";
+      return "첫 턴에는 조커를 낼 수 없어요.";
     case "jokerLastTrick":
-      return "마지막 턴에는 조커를 낼 수 없습니다";
+      return "마지막 턴에는 조커를 낼 수 없어요.";
     case "followSuit":
-      return `${SUIT_SYMBOL[reason.suit]} 무늬를 따라 내야 합니다`;
+      return `${SUIT_SYMBOL[reason.suit]} 무늬를 따라 내야 해요.`;
     case "kirudaFirstTrick":
       return reason.leading
-        ? "첫 턴 선은 기루다를 낼 수 없습니다"
-        : "첫 턴에는 기루다를 낼 수 없습니다";
+        ? "첫 턴 선은 기루다를 낼 수 없어요."
+        : "첫 턴에는 기루다를 낼 수 없어요.";
   }
 }
 

@@ -15,7 +15,7 @@ export const SUIT_STYLES: readonly {
     value: "outline",
     label: "그림",
     description:
-      "♠·♥는 채우고 ◆·♣는 테두리만. 색이 같은 무늬끼리 바로 구별된다",
+      "♠·♥는 채우고 ◆·♣는 테두리만 그려요. 색이 같은 무늬끼리 바로 구별돼요.",
   },
   {
     value: "filled",
@@ -25,7 +25,7 @@ export const SUIT_STYLES: readonly {
   {
     value: "symbol",
     label: "기호",
-    description: "기기 글꼴의 무늬 글자. 그림처럼 ◆·♣는 속이 빈 글자(♢·♧)",
+    description: "기기 글꼴의 무늬 글자 · 그림처럼 ◆·♣는 속이 빈 글자(♢·♧)",
   },
   { value: "name", label: "이름", description: "스페이드 13, 클로버 A" },
   { value: "initial", label: "첫 글자", description: "스13, 클A" },

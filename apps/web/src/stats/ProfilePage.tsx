@@ -184,8 +184,8 @@ export function ProfilePage() {
     const count = importStats(await f.text());
     setNotice(
       count === null
-        ? "기록 파일이 아닙니다"
-        : `가져왔습니다. 이제 ${count}판이 있습니다`,
+        ? "기록 파일이 아니에요."
+        : `가져왔어요. 이제 ${count}판이 있어요.`,
     );
     setBook(loadStats());
   };
@@ -293,7 +293,7 @@ export function ProfilePage() {
 
         {hasAny && !hasShown ? (
           <p className="rounded-3xl border border-white/10 bg-black/35 p-4 text-sm text-white/70">
-            이 기간에는 기록이 없습니다.
+            이 기간에는 기록이 없어요.
           </p>
         ) : tab === "mighty" ? (
           <MightyStats book={shown} />
@@ -336,8 +336,8 @@ export function ProfilePage() {
 
         <Card title="기록 관리">
           <p className="text-sm text-white/60">
-            기록은 이 브라우저에만 있습니다. 브라우저 데이터를 지우면 함께
-            사라지니, 가끔 내보내 두세요. 다른 기기에서 가져오면 합칩니다.
+            기록은 이 브라우저에만 있어요. 브라우저 데이터를 지우면 함께
+            사라지니, 가끔 내보내 두세요. 다른 기기에서 가져오면 합쳐요.
           </p>
           <div className="flex flex-wrap gap-2 text-sm">
             <button
@@ -376,7 +376,7 @@ export function ProfilePage() {
                 clearStats();
                 setBook(loadStats());
                 setConfirmClear(false);
-                setNotice("기록을 지웠습니다");
+                setNotice("기록을 지웠어요.");
               }}
               className={cn(
                 "rounded-lg px-3 py-1.5",
@@ -405,11 +405,11 @@ function objectParticle(word: string): string {
 
 function Empty({ what }: { what: string }) {
   return (
-    <Card title="아직 기록이 없습니다">
+    <Card title="아직 기록이 없어요">
       <p className="text-sm text-white/70">
         {what}
-        {objectParticle(what)} 한 판 끝까지 두면 여기에 쌓입니다. 혼자 하기와
-        친구와 하기를 모두 기록하고, 배우기는 기록하지 않습니다.
+        {objectParticle(what)} 한 판 끝까지 두면 여기에 쌓여요. 혼자 하기와
+        친구와 하기를 모두 기록하고, 배우기는 기록하지 않아요.
       </p>
     </Card>
   );
@@ -495,9 +495,7 @@ function MightyStats({ book }: { book: StatsBook }) {
               }))}
             />
           ) : (
-            <p className="text-sm text-white/50">
-              아직 공약을 걸지 않았습니다.
-            </p>
+            <p className="text-sm text-white/50">아직 공약을 걸지 않았어요.</p>
           )}
         </Card>
         <Card title="기루다별 성공률(주공)">
@@ -511,9 +509,7 @@ function MightyStats({ book }: { book: StatsBook }) {
               />
             ))
           ) : (
-            <p className="text-sm text-white/50">
-              아직 공약을 걸지 않았습니다.
-            </p>
+            <p className="text-sm text-white/50">아직 공약을 걸지 않았어요.</p>
           )}
         </Card>
       </div>
@@ -590,7 +586,7 @@ function HeartsStats({ book }: { book: StatsBook }) {
         <StatTile
           label="판 평균 점수"
           value={s.average.toFixed(1)}
-          sub="낮을수록 좋다"
+          sub="낮을수록 좋아요."
         />
         <StatTile
           label="0점 판"

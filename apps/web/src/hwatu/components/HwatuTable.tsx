@@ -293,8 +293,8 @@ export function HwatuOnlineNotes({
           className="rounded-xl bg-rose-700/90 px-3 py-1.5 text-center text-sm"
         >
           {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+            ? "방장이 방을 나갔어요."
+            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
         </p>
       )}
     </div>

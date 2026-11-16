@@ -125,7 +125,7 @@ export function FriendPanel({
           <SuitText text={friendLabel(choice, seatName, { rules, kiruda })} />
           {pickedCard &&
             !available(pickedCard) &&
-            " — 내 손에 있거나 버린 카드라 지목할 수 없습니다"}
+            " — 내 손에 있거나 버린 카드라 지목할 수 없어요."}
         </span>
         <ActionButton
           disabled={!valid}
