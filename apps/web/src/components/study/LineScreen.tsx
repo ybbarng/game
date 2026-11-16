@@ -290,8 +290,8 @@ export function LineScreen({
       : status === "waiting"
         ? waitingText
         : mistake
-          ? "이 수순에서 두는 수가 아니에요. 다시 골라 보세요"
-          : "수순의 다음 수를 두세요";
+          ? "이 수순에서 두는 수가 아니에요. 다시 골라 보세요."
+          : "수순의 다음 수를 두세요.";
   return (
     <main
       data-game={game}

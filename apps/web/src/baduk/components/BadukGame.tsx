@@ -161,7 +161,7 @@ export function BadukGame({
   if (view.phase === "play")
     status = myTurn
       ? aim !== null
-        ? `${pointName(aim, size)}: 한 번 더 누르면 둔다`
+        ? `${pointName(aim, size)}: 한 번 더 누르면 둬요.`
         : opponentPassed
           ? "상대가 쉬었어요 — 나도 쉬면 판 위 그대로 세요"
           : "내 차례 — 판을 눌러 두세요"
