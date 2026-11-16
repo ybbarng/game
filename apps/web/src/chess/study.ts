@@ -5,6 +5,7 @@ import {
   type Board,
   type ChessState,
   createChessScenario,
+  forcesMateAfter,
   isCheckmate,
   KIND_NAMES,
   type Kind,
@@ -36,7 +37,7 @@ export function solutionMove(puzzle: ChessPuzzle): Move {
 
 /**
  * 내 수를 판정한다. 전술·끝내기 문제는 정답 수만 맞다.
- * 메이트 문제의 마지막 수는 메이트면 어느 수든 정답, 그 앞 수는 문제의 정답 수만
+ * 메이트 문제의 첫 수는 문제의 정답 수만, 가운데 수는 남은 수 안에 메이트가 되는 수, 마지막 수는 메이트면 어느 수든 정답
  */
 export function judgeMove(
   puzzle: ChessPuzzle,
@@ -46,9 +47,13 @@ export function judgeMove(
 ): "solved" | "next" | "wrong" {
   if (puzzle.kind !== "mate")
     return sameMove(move, solutionMove(puzzle)) ? "solved" : "wrong";
-  if (isCheckmate(applyMove(state.position, move))) return "solved";
+  const after = applyMove(state.position, move);
+  if (isCheckmate(after)) return "solved";
   if (step >= puzzle.mateIn - 1) return "wrong";
-  return sameMove(move, solutionMove(puzzle)) ? "next" : "wrong";
+  if (step === 0)
+    return sameMove(move, solutionMove(puzzle)) ? "next" : "wrong";
+  // 세 수 문제의 가운데 수: 남은 수 안에 메이트가 되면 어느 수든 맞다.
+  return forcesMateAfter(after, puzzle.mateIn - step - 1) ? "next" : "wrong";
 }
 
 /** 상대(흑)의 받는 수: 고수(화면용 `chessAdvisor`)가 가장 오래 버티는 수를 고른다. 같은 문제는 늘 같은 수 */

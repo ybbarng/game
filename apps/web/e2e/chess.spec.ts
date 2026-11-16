@@ -755,3 +755,109 @@ test(
     expect(maxGap).toBeLessThan(400);
   },
 );
+
+test.describe("체스 수 배우기: 날짜 간격 복습", () => {
+  // 복습 날은 기기의 달력 날짜로 센다. 시간대와 오늘(11월 17일)을 정해 둔다
+  test.use({ timezoneId: "Asia/Seoul" });
+  const kst = (day: number) =>
+    new Date(
+      `2026-11-${String(day).padStart(2, "0")}T12:00:00+09:00`,
+    ).getTime();
+
+  /** 체스 수 배우기 기록을 저장해 두고 목록을 연다 */
+  async function openWith(page: Page, records: Record<string, object>) {
+    await page.clock.setFixedTime(kst(17));
+    await page.goto("/chess");
+    await page.evaluate(
+      (value) => {
+        localStorage.setItem("chess-study", value);
+      },
+      JSON.stringify({ state: { records }, version: 0 }),
+    );
+    await page.reload();
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+  }
+
+  test(
+    "틀린 문제와 날이 된 문제를 첫 화면 「오늘 복습」에 모으고, 풀면 빠진다",
+    { tag: "@only-desktop" },
+    async ({ page }, info) => {
+      await openWith(page, {
+        // 어제 틀림 → 오늘
+        "mate1-1": { misses: 1, streak: 0, missedAt: kst(16) },
+        // 옛 기록(푼 때·틀린 횟수만): 11월 10일에 풂 → 11일부터 늦음
+        "fork-1": { solvedAt: kst(10), misses: 1 },
+        // 두 번 잇달아 맞춤 → 3일 뒤(19일)라 오늘은 아님
+        "king-pawn-1": { solvedAt: kst(16), misses: 0, streak: 2 },
+      });
+      const review = page.getByRole("region", { name: "오늘 복습" });
+      await expect(review.getByText("2문제")).toBeVisible();
+      // 배우기 목록에서 내려 둔 자리가 아니라 맨 위에서 열려 복습 칸이 보인다
+      await expect(review).toBeInViewport();
+      // 늦은 것부터
+      await expect(review.getByRole("button")).toHaveText([
+        "포크 1번",
+        "한 수 메이트 1번",
+        "복습 시작",
+      ]);
+      await page.screenshot({
+        path: info.outputPath("chess-review-today.png"),
+      });
+
+      await review.getByRole("button", { name: "한 수 메이트 1번" }).click();
+      await expect(page.getByText("한 수 메이트 1/12")).toBeVisible();
+      await tapSquare(page, "b5", false);
+      await tapSquare(page, "b8", false);
+      await expect(page.getByRole("status")).toHaveText("체크메이트!");
+      await page.getByRole("button", { name: "← 목록" }).click();
+      await expect(review.getByText("1문제")).toBeVisible();
+      await expect(review.getByRole("button")).toHaveText([
+        "포크 1번",
+        "복습 시작",
+      ]);
+    },
+  );
+
+  test(
+    "오늘 낼 문제가 없으면 다음 복습 날을 알린다",
+    { tag: "@only-desktop" },
+    async ({ page }, info) => {
+      await openWith(page, {
+        "king-pawn-1": { solvedAt: kst(16), misses: 0, streak: 2 },
+      });
+      const review = page.getByRole("region", { name: "오늘 복습" });
+      await expect(
+        review.getByText(
+          "오늘은 복습할 문제가 없어요. 다음 복습은 11월 19일이에요.",
+        ),
+      ).toBeVisible();
+      await page.screenshot({
+        path: info.outputPath("chess-review-next.png"),
+      });
+    },
+  );
+});
+
+test(
+  "체스 수 배우기: 세 수 메이트는 첫 수 뒤 흑이 받고, 남은 수를 알려 준다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const mate3 = page.getByRole("region", { name: "세 수 메이트" });
+    await expect(mate3.getByText("0/14")).toBeVisible();
+    await mate3.getByRole("button", { name: "풀기 시작" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "세 수 만에 메이트: 첫 수를 두세요",
+    );
+    // 정답: 룩 g4 → g7
+    await tapSquare(page, "g4", false);
+    await tapSquare(page, "g7", false);
+    await expect(page.getByRole("status")).toHaveText(
+      "메이트까지 두 수: 다음 수를 두세요",
+    );
+    await page.screenshot({ path: info.outputPath("chess-mate3.png") });
+  },
+);
