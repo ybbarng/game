@@ -183,7 +183,9 @@ class FloatingWindow: NSObject, NSWindowDelegate {
       return e
     }
     // 끌어 옮기기: ⌘ + 끌기는 창 어디서나 바로, 큐브·거울 그냥 끌기는 문턱을 넘으면(그 전에 떼면 클릭)
-    let drag = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]) {
+    let drag = NSEvent.addLocalMonitorForEvents(matching: [
+      .leftMouseDown, .leftMouseDragged, .leftMouseUp, .rightMouseDown,
+    ]) {
       [weak self] e in
       guard let self else { return e }
       return self.handleDrag(e)
@@ -200,6 +202,8 @@ class FloatingWindow: NSObject, NSWindowDelegate {
 
   /// 누르기를 모두 받을 때(연결 없음 화면 등)
   var takesAllClicks: Bool { false }
+  /// 큐브 위 오른쪽 클릭·Control + 클릭에 띄울 메뉴. nil이면 화면에 그대로 넘긴다(웹 화면은 `WKWebView`가 스스로 띄운다)
+  func contextMenu() -> NSMenu? { nil }
   func becameKey() {}
   func resignedKey() {}
   func occlusionChanged() {}
@@ -342,9 +346,20 @@ class FloatingWindow: NSObject, NSWindowDelegate {
   /// 누른 채 끌기를 본다. 누름·뗌은 화면에도 그대로 넘기고, 문턱을 넘은 끌기만 앱이 받아 창을 옮긴다
   private func handleDrag(_ e: NSEvent) -> NSEvent? {
     switch e.type {
-    case .leftMouseDown:
+    case .leftMouseDown, .rightMouseDown:
       guard e.window === panel else { return e }
       press = nil
+      // 오른쪽 클릭(트랙패드 두 손가락 클릭)·Control + 클릭: 큐브 위 메뉴. 투명한 빈 곳은 창이 마우스를 받지 않아 아래 앱으로 간다
+      if WindowGesture.opensMenu(
+        rightButton: e.type == .rightMouseDown, control: e.modifierFlags.contains(.control),
+        command: e.modifierFlags.contains(.command)),
+        let menu = contextMenu()
+      {
+        NSMenu.popUpContextMenu(menu, with: e, for: panel.contentView ?? host)
+        updateMouse()
+        return nil
+      }
+      guard e.type == .leftMouseDown else { return e }
       // ⌘ + 끌기: 창 어디서나 바로 옮기기(맥 기본 창 끌기)
       if e.modifierFlags.contains(.command) {
         panel.performDrag(with: e)
