@@ -44,10 +44,10 @@ const TACTIC_HINT: Record<Tactic, string> = {
 
 /** 전술마다 문제 안내. 전술 이름보다 하는 일을 먼저 쓴다 */
 const TACTIC_PROMPT: Record<Tactic, string> = {
-  fork: "한 기물로 두 곳을 함께 노려 기물을 얻으세요(포크)",
-  pin: "상대 기물 뒤에 값이 더 높은 기물이 있는 줄을 노려, 앞 기물이 비키지 못하게 하세요(핀)",
-  skewer: "킹이나 퀸을 노려 비키게 하고 뒤의 기물을 얻으세요(스큐어)",
-  discovered: "앞을 막던 기물을 비켜 뒤 기물의 길을 여세요(발견 공격)",
+  fork: "한 기물로 두 곳을 함께 노려 기물을 얻으세요(포크).",
+  pin: "상대 기물 뒤에 값이 더 높은 기물이 있는 줄을 노려, 앞 기물이 비키지 못하게 하세요(핀).",
+  skewer: "킹이나 퀸을 노려 비키게 하고 뒤의 기물을 얻으세요(스큐어).",
+  discovered: "앞을 막던 기물을 비켜 뒤 기물의 길을 여세요(발견 공격).",
 };
 
 /** 메이트까지 남은 수를 말로 */
@@ -148,14 +148,14 @@ function ChessPuzzleRun({
   const prompt = tactic
     ? TACTIC_PROMPT[tactic]
     : endgame
-      ? "백이 이기는 단 하나의 수를 찾으세요"
+      ? "백이 이기는 단 하나의 수를 찾으세요."
       : puzzle.kind === "mate" && puzzle.mateIn === 1
-        ? "한 수로 체크메이트하세요"
+        ? "한 수로 체크메이트하세요."
         : puzzle.kind === "mate" && run.step === 0
-          ? `${MATE_IN_WORDS[puzzle.mateIn]} 만에 메이트: 첫 수를 두세요`
+          ? `${MATE_IN_WORDS[puzzle.mateIn]} 만에 메이트: 첫 수를 두세요.`
           : puzzle.kind === "mate" && run.step < puzzle.mateIn - 1
-            ? `메이트까지 ${MATE_IN_WORDS[puzzle.mateIn - run.step]}: 다음 수를 두세요`
-            : "이제 체크메이트하세요";
+            ? `메이트까지 ${MATE_IN_WORDS[puzzle.mateIn - run.step]}: 다음 수를 두세요.`
+            : "이제 체크메이트하세요.";
 
   return (
     <PuzzleScreen
@@ -200,10 +200,10 @@ function ChessPuzzleRun({
       }
       wrongText={
         tactic
-          ? "그 수로는 기물을 얻지 못해요"
+          ? "그 수로는 기물을 얻지 못해요."
           : endgame
-            ? "그 수는 흑이 막아 비겨요"
-            : "메이트가 아니에요"
+            ? "그 수는 흑이 막아 비겨요."
+            : "메이트가 아니에요."
       }
       wrongHint={
         tactic

@@ -215,25 +215,25 @@ export function explainTactic(
   switch (tactic) {
     case "fork":
       return [
-        `${head}: ${targets}${hasBatchim(KIND_NAMES[(after[shape.targets.at(-1) as number] as string)[1] as Kind]) ? "을" : "를"} 함께 노린다(포크)`,
-        "흑은 한 번에 하나만 지킬 수 있어 다른 하나를 잃는다",
+        `${head}: ${targets}${hasBatchim(KIND_NAMES[(after[shape.targets.at(-1) as number] as string)[1] as Kind]) ? "을" : "를"} 함께 노려요(포크).`,
+        "흑은 한 번에 하나만 지킬 수 있어 다른 하나를 잃어요.",
       ];
     case "pin":
       return [
-        `${head}: ${objOf(after, shape.targets[0] as number)} 노린다. 뒤에 ${subjOf(after, shape.back as number)} 있어 비킬 수 없다(핀)`,
+        `${head}: ${objOf(after, shape.targets[0] as number)} 노려요. 뒤에 ${subjOf(after, shape.back as number)} 있어 비킬 수 없어요(핀).`,
         after[shape.back as number] === "bK"
-          ? "뒤에 킹이 있으면 앞 기물은 아예 움직일 수 없어, 묶인 채로 잡힌다"
-          : "앞 기물이 비키면 뒤의 값이 더 높은 기물을 잡는다",
+          ? "뒤에 킹이 있으면 앞 기물은 아예 움직일 수 없어, 묶인 채로 잡혀요."
+          : "앞 기물이 비키면 뒤의 값이 더 높은 기물을 잡아요.",
       ];
     case "skewer":
       return [
-        `${head}: ${objOf(after, shape.targets[0] as number)} 노린다. 비키면 뒤의 ${objOf(after, shape.back as number)} 잡는다(스큐어)`,
-        "핀과 반대로 앞에 값이 더 높은 기물이 있어, 피할 수밖에 없다",
+        `${head}: ${objOf(after, shape.targets[0] as number)} 노려요. 비키면 뒤의 ${objOf(after, shape.back as number)} 잡아요(스큐어).`,
+        "핀과 반대로 앞에 값이 더 높은 기물이 있어, 피할 수밖에 없어요.",
       ];
     case "discovered":
       return [
-        `${head}: 길이 열려 ${subjOf(after, shape.by)} ${targets}${hasBatchim(KIND_NAMES[(after[shape.targets.at(-1) as number] as string)[1] as Kind]) ? "을" : "를"} 노린다(발견 공격)`,
-        "옮긴 기물도 다른 곳을 노려, 흑은 두 노림을 한 번에 막지 못한다",
+        `${head}: 길이 열려 ${subjOf(after, shape.by)} ${targets}${hasBatchim(KIND_NAMES[(after[shape.targets.at(-1) as number] as string)[1] as Kind]) ? "을" : "를"} 노려요(발견 공격).`,
+        "옮긴 기물도 다른 곳을 노려, 흑은 두 노림을 한 번에 막지 못해요.",
       ];
   }
 }
