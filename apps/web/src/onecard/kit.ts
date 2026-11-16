@@ -24,8 +24,8 @@ import {
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
 import { claimsVerifier } from "@/net/claim-verify";
+import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
-
 import { onecardBotFor, toKitBot } from "./bots";
 import { cardName, SUIT_NAMES } from "./cards";
 import { onecardClaims } from "./claims";
@@ -93,6 +93,24 @@ export interface OnecardGame {
 }
 
 export const onecardStats: KitStats<OnecardView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => ((data as OnecardRound).rank === 1 ? "win" : "loss"),
+  },
+  achievements: [
+    anyRound<OnecardRound>(
+      "catch-2",
+      "두 번 잡기",
+      "한 판에 다른 사람을 두 번 잡습니다.",
+      (r) => r.catches >= 2,
+    ),
+    anyRound<OnecardRound>(
+      "clean-out",
+      "깔끔한 1등",
+      "한 번도 잡히지 않고 헛외침 없이 1등으로 다 냅니다.",
+      (r) => r.rank === 1 && r.out && r.caught === 0 && r.falseShouts === 0,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "dealt"),
   roundEnded: (events) => events.some((e) => e.type === "ended"),
   gameEnded: (events) => events.some((e) => e.type === "ended"),

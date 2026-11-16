@@ -27,6 +27,7 @@ import {
 import { createRng } from "@game/mighty-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 
 export type BadukKit = GameKit<
@@ -61,6 +62,21 @@ export interface BadukGame {
 }
 
 export const badukStats: KitStats<BadukView, GameEvent> = {
+  result: { unit: "round", outcome: (data) => (data as BadukRound).outcome },
+  achievements: [
+    anyRound<BadukRound>(
+      "count-win",
+      "세어서 이김",
+      "끝까지 두고 집을 세어 이깁니다.",
+      (r) => r.outcome === "win" && r.by === "score",
+    ),
+    anyRound<BadukRound>(
+      "full-board",
+      "19줄 승리",
+      "19줄 판에서 이깁니다.",
+      (r) => r.outcome === "win" && r.size === 19,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),

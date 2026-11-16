@@ -21,6 +21,7 @@ import {
 } from "@game/omok-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 
 export type OmokKit = GameKit<
@@ -52,6 +53,21 @@ export interface OmokGame {
 }
 
 export const omokStats: KitStats<OmokView, GameEvent> = {
+  result: { unit: "round", outcome: (data) => (data as OmokRound).outcome },
+  achievements: [
+    anyRound<OmokRound>(
+      "fast-five",
+      "번개 오목",
+      "돌이 스무 개 놓이기 전에 다섯을 잇고 이깁니다.",
+      (r) => r.outcome === "win" && r.by === "five" && r.moves < 20,
+    ),
+    anyRound<OmokRound>(
+      "white-win",
+      "백의 승리",
+      "백(나중)으로 이깁니다.",
+      (r) => r.outcome === "win" && r.stone === "white",
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),

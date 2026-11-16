@@ -23,6 +23,7 @@ import {
   viewOf,
 } from "@game/chess-engine";
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 import { chessAdvisor } from "./advisor";
 
@@ -65,6 +66,21 @@ export const DRAW_LABEL: Record<DrawReason, string> = {
 };
 
 export const chessStats: KitStats<ChessView, GameEvent> = {
+  result: { unit: "round", outcome: (data) => (data as ChessRound).outcome },
+  achievements: [
+    anyRound<ChessRound>(
+      "checkmate",
+      "체크메이트",
+      "체크메이트로 이깁니다.",
+      (r) => r.outcome === "win" && r.by === "checkmate",
+    ),
+    anyRound<ChessRound>(
+      "black-win",
+      "흑의 승리",
+      "흑(나중)으로 이깁니다.",
+      (r) => r.outcome === "win" && r.side === "black",
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),
