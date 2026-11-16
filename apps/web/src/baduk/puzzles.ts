@@ -1184,7 +1184,7 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
   koFightSet(
     "answer",
     "팻감 받기",
-    "내가 패를 따냈더니 상대가 팻감을 썼다. 노리는 돌이 패보다 많으면 받는다.",
+    "내가 패를 따냈더니 상대가 팻감을 썼다. 노리는 돌이 패에 걸린 돌보다 많으면 받는다.",
     KO_ANSWERS,
   ),
   captureSet(

@@ -245,17 +245,22 @@ export function explainSolved(
       "백은 바로 되따낼 수 없다(같은 판 모양 금지). 한 번 다른 곳에 두어야 해서 달아날 틈이 없다",
     ],
     "long-ladder": [
-      `${first}에서 단수를 쳐 백을 판 끝까지 몬다(긴 축)`,
-      "반대쪽에서 단수를 치면 백이 넓은 쪽으로 뻗어 활로가 셋이 되어 빠져나간다",
+      `${first}에서 단수를 쳐 백을 판 끝까지 몰았어요(긴 축).`,
+      "반대쪽에서 단수를 치면 백이 뻗은 자리 옆에 흑 돌이 없어 활로가 셋이 되고 빠져나가요.",
     ],
     breaker: [
-      `${puzzle.breaker ?? ""} 백 돌이 축머리다. 그쪽으로 몰면 백이 이 돌과 이어져 활로가 늘어 빠져나간다`,
-      `${first}에서 단수를 치면 축이 축머리가 없는 쪽으로 가서 잡힌다`,
+      `${puzzle.breaker ?? ""} 백 돌이 축머리예요. 그쪽으로 몰면 백이 이 돌과 이어져 활로가 늘고 빠져나가요.`,
+      `${first}에서 단수를 치면 백이 뻗어 가는 길에 축머리가 없어 잡혀요.`,
     ],
   };
+  // 긴 축·축머리는 해요체·마침표로 쓴다(2026-11-17 단원 글과 맞춤). 아홉 수부터는 숫자로
+  const count = COUNT[movesPlayed]
+    ? `${COUNT[movesPlayed]} 수`
+    : `${movesPlayed}수`;
+  const tail = `${count} 만에 백 돌${size > 1 ? ` ${size}개` : ""}을 따냈`;
   return [
     ...lines[puzzle.theme],
-    `${COUNT[movesPlayed] ?? movesPlayed} 수 만에 백 돌${size > 1 ? ` ${size}개` : ""}을 따냈다`,
+    LADDER_THEMES.includes(puzzle.theme) ? `${tail}어요.` : `${tail}다`,
   ];
 }
 
@@ -266,14 +271,14 @@ function explainKoFight(puzzle: KoFight): string[] {
   const ko = puzzle.ko;
   if (puzzle.mode === "threat")
     return [
-      `${puzzle.solution}: 팻감이다. 백 ${COUNT[size]} 점을 단수로 몰아, 백이 받지 않으면 따낸다`,
-      `백이 ${puzzle.reply ?? ""}에 받아 판 모양이 달라졌다. 그래서 ${ko}에 되따낼 수 있다`,
-      "이제 백이 다시 따내려면 백도 먼저 팻감을 써야 한다",
+      `${puzzle.solution}은 팻감이에요. 백 ${COUNT[size]} 점이 단수가 되어, 백이 받지 않으면 따내요.`,
+      `백이 ${puzzle.reply ?? ""}에 받아 판 모양이 달라졌어요. 그래서 ${ko}에 되따낼 수 있어요.`,
+      "이제 백이 다시 따내려면 백도 먼저 팻감을 써야 해요.",
     ];
   const threat = puzzle.setup[puzzle.setup.length - 1] ?? "";
   return [
-    `백 ${threat}은 팻감이다. 흑 ${COUNT[size]} 점을 단수로 몰았다`,
-    `${puzzle.solution}에 두어 받는다. 패는 한 점, 노림받은 돌은 ${COUNT[size]} 점이라 받는 쪽이 낫다`,
-    `받았으니 백은 ${ko}에 되따낼 수 있다. 그러면 이번엔 흑이 팻감을 쓸 차례다`,
+    `백 ${threat}은 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
+    `${puzzle.solution}에 두어 받았어요. 노리는 돌(${COUNT[size]} 점)이 패에 걸린 돌(한 점)보다 많아 받는 쪽이 나아요.`,
+    `받았으니 백은 ${ko}에 되따낼 수 있어요. 그러면 이번엔 흑이 팻감을 쓸 차례예요.`,
   ];
 }

@@ -16,8 +16,11 @@ import {
   AREA_WALLS,
   BADUK_STUDY_LESSONS,
   BREAKER_LESSON_PUZZLE,
+  BREAKER_RIGHT_PATH,
+  BREAKER_WRONG_PATH,
   CORNER_POINTS,
   KO_LESSON_PUZZLE,
+  LADDER_LESSON_PATH,
   LADDER_LESSON_PUZZLE,
   otherSide,
 } from "./study-lessons";
@@ -114,6 +117,35 @@ describe("축 단원 그림", () => {
       .liberties.map((l) => pointName(l, PUZZLE_SIZE))
       .sort();
     expect(libs).toEqual([p.solution, otherSide(p)].sort());
+  });
+});
+
+describe("축 단원 그림의 점(·) 길", () => {
+  const touches = (path: readonly string[], stone: string) =>
+    path.some((n) =>
+      neighbors(pointAt(n, PUZZLE_SIZE), PUZZLE_SIZE).includes(
+        pointAt(stone, PUZZLE_SIZE),
+      ),
+    );
+
+  it("길은 빈 자리이고, 긴 축은 판 끝 가까이까지 간다", () => {
+    expect(LADDER_LESSON_PATH.length).toBeGreaterThanOrEqual(8);
+    for (const n of [...LADDER_LESSON_PATH, ...BREAKER_WRONG_PATH])
+      expect(n).toMatch(/^[A-HJ][1-9]$/);
+    const last = pointAt(LADDER_LESSON_PATH.at(-1) as string, PUZZLE_SIZE);
+    const [x, y] = [last % PUZZLE_SIZE, Math.floor(last / PUZZLE_SIZE)];
+    // 마지막으로 뻗은 자리는 판 끝 줄이거나 그 바로 안쪽 줄이다
+    expect([x, y].some((v) => v <= 1 || v >= PUZZLE_SIZE - 2)).toBe(true);
+  });
+
+  it("축머리 쪽 길은 끝이 축머리 바로 옆이고, 정답 쪽 길은 축머리에 닿지 않는다", () => {
+    const breaker = BREAKER_LESSON_PUZZLE.breaker as string;
+    const { board } = puzzleState(BREAKER_LESSON_PUZZLE);
+    for (const n of [...BREAKER_WRONG_PATH, ...BREAKER_RIGHT_PATH])
+      expect(board[pointAt(n, PUZZLE_SIZE)]).toBe(0);
+    expect(touches([BREAKER_WRONG_PATH.at(-1) as string], breaker)).toBe(true);
+    expect(touches(BREAKER_RIGHT_PATH, breaker)).toBe(false);
+    expect(BREAKER_RIGHT_PATH.length).toBeGreaterThanOrEqual(3);
   });
 });
 
