@@ -20,6 +20,7 @@ const FILES = import.meta.glob<string>(
   [
     "../../../../cubie/Sources/CubieCore/RecordsSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierSheet.swift",
+    "../../../../cubie/Sources/CubieCore/TierShowcase.swift",
     "../../../../cubie/Sources/CubieCore/SettingsSheet.swift",
     "../mini/MiniCubeApp.tsx",
     "../tiers/TiersApp.tsx",
@@ -155,6 +156,15 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       expect(app, `앱 설정 글에 ${pair}가 없다`).toContain(pair);
     }
   });
+
+  it("티어 진열(TierShowcase, 앱 TierShowcase.swift)", () =>
+    sameText("TierShowcase.tsx", "TierShowcase.swift", [
+      "모든 티어",
+      "까지",
+      " 이하",
+      "Ao5 ",
+      " · ",
+    ]));
 
   it("티어 기준표(TierTable)", () =>
     sameText("TierTable.tsx", "TierSheet.swift", [

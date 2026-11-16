@@ -45,6 +45,15 @@ describe("감시 목록", () => {
     expect(watchedEntry("apps/web/src/cube/keymap-editor.ts")).not.toBeNull();
     expect(watchedEntry("apps/web/src/cube/keymap-editor.test.ts")).toBeNull();
     expect(watchedEntry("apps/web/src/cube/tiers/emblem3d/gem.ts")).toBeNull();
+    // 티어 화면 진열도 앱 티어표 창이 그린다(docs/52 5-11, 2026-11-16 「진열은 사이트에만」으로 넘긴 실수)
+    for (const f of [
+      "TierShowcase.tsx",
+      "ladderRing.ts",
+      "EmblemStill.tsx",
+      "emblem3d/spin.ts",
+      "emblem3d/poster.ts",
+    ])
+      expect(watchedEntry(`apps/web/src/cube/tiers/${f}`), f).not.toBeNull();
     // 홈 시연은 해법 표 전부가 앱 코어(hero_show.rs)에 있다: 조각 강조도 함께(2026-11-16)
     expect(watchedEntry("apps/web/src/cube/hero/methods.ts")).not.toBeNull();
     expect(watchedEntry("apps/web/src/cube/piece-marks.ts")).not.toBeNull();

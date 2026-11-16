@@ -71,6 +71,28 @@ export const WATCHED = [
     path: `${WEB}cube/tiers/TierTable.tsx`,
     why: "티어 기준표(앱 NativeTiersWindow)",
   },
+  // 티어 화면 진열(docs/47 14-7 「진열」): 앱 티어표 창도 같은 진열을 직접 그린다(docs/52 5-11, 앱 TierShowcase·NativeTierShowcase).
+  // 2026-11-16 「진열은 사이트에만」으로 넘겼다가 앱 티어표가 옛 모습으로 남은 실수를 되풀이하지 않게 넣는다
+  {
+    path: `${WEB}cube/tiers/TierShowcase.tsx`,
+    why: "티어 진열: 큰 칸·다음 티어·사다리(앱 NativeTierShowcase)",
+  },
+  {
+    path: `${WEB}cube/tiers/ladderRing.ts`,
+    why: "사다리 보고 있는 칸 테두리 색(앱 TierLadderView.ring)",
+  },
+  {
+    path: `${WEB}cube/tiers/EmblemStill.tsx`,
+    why: "구간 표시 마름모(앱 DivisionPipsView)",
+  },
+  {
+    path: `${WEB}cube/tiers/emblem3d/spin.ts`,
+    why: "진열 흔들기 셈(앱 TierShowcase.Sway)",
+  },
+  {
+    path: `${WEB}cube/tiers/emblem3d/poster.ts`,
+    why: "진열 크기·사다리 칸 그림 장 수(앱 TierShowcase, 흔들기 그림)",
+  },
   { path: `${WEB}cube/tiers/table.ts`, why: "티어 표 자료(코어 data.rs)" },
   {
     path: `${WEB}cube/tiers/TierEmblem.tsx`,

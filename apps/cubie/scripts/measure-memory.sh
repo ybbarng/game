@@ -353,6 +353,36 @@ if [ "$NATIVE" = 1 ]; then
   cmd editor close
   sleep 12
   measure "키 배치 편집기 닫은 뒤 12초"
+  # 티어표 진열(docs/52 5-11): 창을 연 동안(큰 칸 흔들기 + 사다리 한 칸씩). 재기 저장소는 기록이 없어 처음은 어두운 아이언,
+  # 그다음 가장 무거운 챌린저를 고른 뒤, 창이 가려진 것처럼 멈춘 동안, 닫은 뒤. 이어서 메뉴 프로필 칸 흔들기(챌린저 띠)
+  cmd tiers open
+  sleep 3
+  cpu_begin
+  sleep 10
+  cpu_end "티어표 진열 흔드는 중(아이언)"
+  measure "티어표 진열 흔드는 중(아이언)"
+  cmd pick 9
+  sleep 2
+  cpu_begin
+  sleep 10
+  cpu_end "티어표 진열 흔드는 중(챌린저)"
+  measure "티어표 진열 흔드는 중(챌린저)"
+  cmd showcase hidden
+  sleep 2
+  cpu_begin
+  sleep 10
+  cpu_end "티어표 가려진 창처럼 멈춤"
+  cmd showcase shown
+  cmd tiers close
+  sleep 12
+  measure "티어표 닫은 뒤 12초"
+  cmd profile open
+  sleep 2
+  cpu_begin
+  sleep 10
+  cpu_end "메뉴 프로필 칸 흔드는 중"
+  measure "메뉴 프로필 칸 흔드는 중"
+  cmd profile close
 fi
 
 cmd state

@@ -6,13 +6,14 @@
 //   node apps/cubie/scripts/window-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr] [앱 실행 파일]
 //
 // 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-tiers.png·compare-settings.png(비교판,
-// 설정은 기본·「사용자」 겹친 키 묻기·바꾼 뒤 셋).
+// 티어표는 진열의 내 티어·챌린저 고름·기록 없음 셋, 설정은 기본·「사용자」 겹친 키 묻기·바꾼 뒤 셋). 네이티브만 찍는 메뉴 프로필
+// 칸 흔들기는 native-profile-sway-dark·light.png(티어 넷 × 각 여섯).
 // 문서 그림은 `cwebp -q 82`로 docs/cubie-native/compare-windows-*.webp에 둔다.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(path.join(here, "../../web/package.json"));
@@ -145,9 +146,11 @@ const WINDOWS = [
   {
     name: "tiers",
     path: "/cube/tiers?n=3",
-    size: { width: 760, height: 760 },
-    shots: ["tiers"],
+    size: { width: 760, height: 820 },
+    // 진열(docs/52 5-11): 내 티어, 사다리에서 챌린저를 고른 때, 혼자 맞추기 기록이 없을 때. 흔들기는 멈춰 정면끼리 견준다
+    shots: ["tiers", "tiers-pick", "tiers-none"],
     full: true,
+    reducedMotion: "reduce",
   },
   {
     name: "settings",
@@ -162,19 +165,36 @@ const WINDOWS = [
 const browser = await webkit.launch();
 try {
   for (const w of WINDOWS) {
-    const ctx = await browser.newContext({
-      viewport: w.size,
-      deviceScaleFactor: 2,
-      colorScheme: "dark",
-    });
-    await ctx.addInitScript((d) => {
-      for (const [k, v] of Object.entries(d)) localStorage.setItem(k, v);
-    }, store);
-    const page = await ctx.newPage();
-    await page.goto(`${BASE}${w.path}`);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(500);
+    const open = async (data) => {
+      const c = await browser.newContext({
+        viewport: w.size,
+        deviceScaleFactor: 2,
+        colorScheme: "dark",
+        ...(w.reducedMotion ? { reducedMotion: w.reducedMotion } : {}),
+      });
+      await c.addInitScript((d) => {
+        for (const [k, v] of Object.entries(d)) localStorage.setItem(k, v);
+      }, data);
+      const p = await c.newPage();
+      await p.goto(`${BASE}${w.path}`);
+      await p.waitForLoadState("networkidle");
+      await p.waitForTimeout(500);
+      return [c, p];
+    };
+    let [ctx, page] = await open(store);
     for (const shot of w.shots) {
+      if (shot === "tiers-pick") {
+        await page.locator("[data-cube-ladder='challenger']").click();
+        await page.waitForSelector("[data-cube-tier-picked='challenger']");
+        await page.waitForTimeout(800);
+      }
+      if (shot === "tiers-none") {
+        // 혼자 맞추기 기록이 없는 저장소(네이티브도 같은 저장소에서 cube.records.v1·cube.best5.v1을 뺀다)
+        await ctx.close();
+        const { "cube.records.v1": _, ...rest } = store;
+        [ctx, page] = await open(rest);
+        await page.waitForTimeout(800);
+      }
       if (shot === "settings-ask") {
         await page
           .locator("[data-settings-keymap] button", { hasText: "사용자" })
@@ -212,8 +232,8 @@ try {
         existsSync(path.join(dir, `web-${s}.png`)),
     );
     if (pairs.length === 0) continue;
-    const img = (f) =>
-      `data:image/png;base64,${readFileSync(path.join(dir, f)).toString("base64")}`;
+    // 같은 폴더의 파일로 건다(장면이 여럿이면 글 안에 그림을 다 넣은 HTML은 WebKit이 몇 장을 그리지 않았다)
+    const img = (f) => f;
     const cols = pairs
       .map(
         (
@@ -222,12 +242,17 @@ try {
 <figure><figcaption>사이트(WebKit) · ${s}</figcaption><img src="${img(`web-${s}.png`)}" style="width:${w.size.width}px"></figure>`,
       )
       .join("");
-    await sheet.setContent(`<!doctype html><meta charset="utf-8"><style>
+    const html = path.join(dir, `compare-${w.name}.html`);
+    writeFileSync(
+      html,
+      `<!doctype html><meta charset="utf-8"><style>
       body{margin:0;background:#3a3a3a;font:13px system-ui;color:#eee}
       main{display:flex;gap:16px;padding:16px;align-items:flex-start;width:max-content}
       figure{margin:0;display:flex;flex-direction:column;gap:6px}
       img{display:block;outline:1px solid #555}
-    </style><main>${cols}</main>`);
+    </style><main>${cols}</main>`,
+    );
+    await sheet.goto(pathToFileURL(html).href);
     await sheet.waitForLoadState("load");
     await sheet
       .locator("main")
