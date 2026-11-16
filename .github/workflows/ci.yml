@@ -156,6 +156,11 @@ jobs:
           changed=()
           if [ -n "$BASE" ]; then changed=(--changed "$BASE"); fi
           pnpm test "${changed[@]}" --reporter=default --reporter=github-actions --reporter=json --outputFile.json=test-times/unit.json
+      # 저장소 전체를 import 대신 파일로 읽는 시험(화면 시험 고르기 등)은 --changed가 고르지 못한다. 바뀐 것만 돈 실행에서도
+      # 늘 돌린다(2026-11-17, 약 1초). 목록은 package.json test:always, 빠짐은 scripts/repo-reading-tests.test.mjs가 본다
+      - name: 늘 도는 단위 시험
+        if: needs.plan.outputs.base != ''
+        run: pnpm test:always --reporter=default --reporter=github-actions
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         continue-on-error: true
         with:
