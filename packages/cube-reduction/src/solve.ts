@@ -390,26 +390,91 @@ interface MacroReads {
   slot: Int32Array;
   readStart: Int32Array;
   reads: Int32Array;
+  /**
+   * 칸 항목 `e`의 점수 상한 재료. 공식이 그 칸의 기준 조각을 다른 칸 하나(`from[e]`, 같은 칸일 수도 있다)의
+   * 기준 조각에서 모두 같은 방향(또는 모두 뒤집혀) 옮겨 오면, 나머지 조각 가운데 그 칸의 조각을 같은 방향으로
+   * 옮겨 온 것은 짝 맞음이 그대로다. 그래서 돌린 뒤 점수 ≤ `from` 칸의 지금 점수 + 새로 들어온 조각 수
+   * (`extra[e]`, 기준이 둘인 짝수 크기는 기준이 안 맞으면 0 그대로). 그렇게 옮기지 않으면 `from[e]`은 -1(상한은 다 맞은 점수)
+   */
+  from: Int32Array;
+  extra: Int32Array;
 }
 
 const readsCache = new WeakMap<readonly Macro[], MacroReads>();
 
-function macroReads(t: SlotTable, macros: readonly Macro[]): MacroReads {
+function macroReads(
+  t: SlotTable,
+  slotOf: Int8Array,
+  macros: readonly Macro[],
+): MacroReads {
   const hit = readsCache.get(macros);
   if (hit) return hit;
+  const st = t.stickers;
+  const anchors = t.anchors;
+  /** 칸 s의 조각(스티커 둘, 칸 차례 그대로) → 기준 조각이면 1, 나머지면 2 */
+  const pieceKind = Array.from({ length: t.start.length }, (_, si) => {
+    const kind = new Map<number, number>();
+    const k0 = t.start[si] as number;
+    for (let j = 0; j < (t.count[si] as number); j++) {
+      const key =
+        (st[k0 + 2 * j] as number) * 4096 + (st[k0 + 2 * j + 1] as number);
+      kind.set(key, j < anchors ? 1 : 2);
+    }
+    return kind;
+  });
+  /** 조각 (q1, q2)가 칸 s'에서 어떤 조각인지: [s', 종류, 뒤집힘(0·1)], 칸의 조각이 아니면 null */
+  const pieceAt = (q1: number, q2: number): [number, number, number] | null => {
+    const s1 = slotOf[q1] as number;
+    if (s1 < 0 || slotOf[q2] !== s1) return null;
+    const kinds = pieceKind[s1] as Map<number, number>;
+    const straight = kinds.get(q1 * 4096 + q2);
+    if (straight) return [s1, straight, 0];
+    const flipped = kinds.get(q2 * 4096 + q1);
+    return flipped ? [s1, flipped, 1] : null;
+  };
   const slotStart = new Int32Array(macros.length + 1);
   const slot: number[] = [];
   const readStart: number[] = [];
   const reads: number[] = [];
+  const from: number[] = [];
+  const extra: number[] = [];
   macros.forEach((m, i) => {
     slotStart[i] = slot.length;
     for (const si of m.slots) {
       slot.push(si);
       readStart.push(reads.length);
       const k0 = t.start[si] as number;
-      const end = k0 + 2 * (t.count[si] as number);
+      const count = t.count[si] as number;
+      const end = k0 + 2 * count;
       for (let k = k0; k < end; k++)
-        reads.push(m.src[t.stickers[k] as number] as number);
+        reads.push(m.src[st[k] as number] as number);
+      // 기준 조각이 모두 한 칸의 기준 조각에서 같은 뒤집힘으로 왔는가
+      let source = -1;
+      let flip = -1;
+      for (let j = 0; j < anchors && flip !== -2; j++) {
+        const at = pieceAt(
+          m.src[st[k0 + 2 * j] as number] as number,
+          m.src[st[k0 + 2 * j + 1] as number] as number,
+        );
+        const [s1, kind, f1] = at ?? [-1, 0, -1];
+        if (kind !== 1 || (j > 0 && (s1 !== source || f1 !== flip))) flip = -2;
+        else [source, flip] = [s1, f1];
+      }
+      if (flip === -2) {
+        from.push(-1);
+        extra.push(0);
+        continue;
+      }
+      let added = 0;
+      for (let j = anchors; j < count; j++) {
+        const at = pieceAt(
+          m.src[st[k0 + 2 * j] as number] as number,
+          m.src[st[k0 + 2 * j + 1] as number] as number,
+        );
+        if (!at || at[0] !== source || at[1] !== 2 || at[2] !== flip) added++;
+      }
+      from.push(source);
+      extra.push(added);
     }
   });
   slotStart[macros.length] = slot.length;
@@ -419,6 +484,8 @@ function macroReads(t: SlotTable, macros: readonly Macro[]): MacroReads {
     slot: Int32Array.from(slot),
     readStart: Int32Array.from(readStart),
     reads: Int32Array.from(reads),
+    from: Int32Array.from(from),
+    extra: Int32Array.from(extra),
   };
   readsCache.set(macros, out);
   return out;
@@ -501,7 +568,7 @@ function solveEdgePhase(
   ) => {
     let best = prev;
     const bySlot = macrosBySlot(macros, g.slots.length);
-    const R = macroReads(t, macros);
+    const R = macroReads(t, g.slotOf, macros);
     /** 공식마다 마지막으로 본 준비 수 번호(한 준비 수에서 공식을 한 번만 본다) */
     const seenAt = new Int32Array(macros.length).fill(-1);
     const openSlots: number[] = [];
@@ -522,9 +589,26 @@ function solveEdgePhase(
           if (seenAt[mi] === si0) continue;
           seenAt[mi] = si0;
           const macro = macros[mi] as Macro;
-          let gain = 0;
+          const length = setup.moves.length + macro.moves.length;
+          const e0 = R.slotStart[mi] as number;
           const e1 = R.slotStart[mi + 1] as number;
-          for (let e = R.slotStart[mi] as number; e < e1; e++) {
+          // 이득 상한(`MacroReads.from`·`extra`). 상한으로도 나아지지 않거나 지금 고른 것보다 좋을 수 없으면 세지 않는다
+          // (이득 ≤ 상한이고 나눗셈은 단조라 실제 비율도 그 이상이다: 고르는 답은 같다)
+          let most = 0;
+          for (let e = e0; e < e1; e++) {
+            const src = R.from[e] as number;
+            const b = src < 0 ? 0 : (before[src] as number);
+            const cap =
+              src < 0
+                ? full
+                : t.anchors === 2 && b === 0
+                  ? 0
+                  : Math.min(full, b + (R.extra[e] as number));
+            most += cap - (before[R.slot[e] as number] as number);
+          }
+          if (most <= 0 || (best && length / most >= best.ratio)) continue;
+          let gain = 0;
+          for (let e = e0; e < e1; e++) {
             gain +=
               readsScore(
                 ca,
@@ -535,7 +619,7 @@ function solveEdgePhase(
               ) - (before[R.slot[e] as number] as number);
           }
           if (gain <= 0) continue;
-          const ratio = (setup.moves.length + macro.moves.length) / gain;
+          const ratio = length / gain;
           if (!best || ratio < best.ratio)
             best = { setup: setup.moves, macro, ratio };
         }

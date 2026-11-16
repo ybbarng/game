@@ -139,8 +139,10 @@ export function centerMacros(n: number): CenterMacros {
   const seen = new Set<string>();
   const g = reductionGeometry(n);
   const pairs: [CubeMove[], CubeMove[]][] = [];
+  // 조각 배열은 한 번만 만든다(아래 자리 표 기억이 배열로 찾는다)
+  const bs = [...outer, ...slices].map((b) => [b]);
   for (const a of [...slices.map((s) => [s]), ...conj]) {
-    for (const b of [...outer, ...slices]) pairs.push([a, [b]]);
+    for (const b of bs) pairs.push([a, b]);
   }
   // 조각(a·b)마다 자리 표와 그 거꾸로를 한 번만 센다(같은 조각이 여러 교환자에 쓰인다)
   const srcOf = new Map<CubeMove[], [Int32Array, Int32Array]>();
@@ -154,15 +156,18 @@ export function centerMacros(n: number): CenterMacros {
     return hit;
   };
   // [m, X s X']: 5×5의 가운데 줄 조각(+ 모양)은 정가운데 층(m)을 써야 셋만 돌릴 수 있다
+  const xsx = outer.map((x) =>
+    slices.map((s) =>
+      s.axis === x.axis || s.turns === 2 ? null : [x, s, ...invert([x])],
+    ),
+  );
   for (const m of innerSlices(n, true)) {
     if (m.turns === 2) continue;
-    for (const x of outer) {
-      if (x.axis === m.axis) continue;
-      for (const s of slices) {
-        if (s.axis === x.axis || s.turns === 2) continue;
-        pairs.push([[m], [x, s, ...invert([x])]]);
-      }
-    }
+    const ms = [m];
+    outer.forEach((x, xi) => {
+      if (x.axis === m.axis) return;
+      for (const b of xsx[xi] ?? []) if (b) pairs.push([ms, b]);
+    });
   }
   for (const [a, b] of pairs) {
     const [sa, sai] = pieceSrc(a);
