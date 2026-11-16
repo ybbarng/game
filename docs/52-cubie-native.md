@@ -949,7 +949,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 
 **비교 그림** `docs/cubie-native/compare-hero-yau.webp`: 4×4 야우 씨앗 5, 멈춤 자리마다 웹(이 브랜치로 빌드한 사이트 미니, WebKit)과 네이티브(화면 밖 스크린샷)를 나란히, 어두운 회색·#000 바탕. 다시 만들기는 5-10과 같고 해법만 `CUBIE_NATIVE_N=4 CUBIE_NATIVE_SHOT_HERO=4-yau:5`, 배포 전에는 사이트 주소에 로컬 서버를 준다.
 
-**남은 것**: 컴퓨터 대결에 야우 넣기와 내 해법 고르기의 큰 큐브 야우(docs/47 8-2 「컴퓨터」).
+**남은 것**: ~~컴퓨터 대결에 야우 넣기와 내 해법 고르기의 큰 큐브 야우~~ 2026-11-17 끝(docs/47 8-8·10-4). 앱에 닿는 것은 4×4 이정표 둘(센터 둘·십자 셋)뿐이다: 코어 `progress.rs`가 같은 판정이고, 공통 자료 `session.json`(4×4 판에 새 이정표)과 야우 한 판 `session-yau.json`(약 300수라 따로, `cargo test --test human session_yau`) 어긋남 0. 앱은 이정표를 소리 신호로만 쓰고 이름을 보이지 않아 Swift는 그대로다. 컴퓨터 대결은 사이트에만 있어 앱과 상관없다.
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

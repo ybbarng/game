@@ -14,7 +14,8 @@ import { CUBE_ROTATIONS, cubeTopology, OPPOSITE_FACE } from "./topology";
  *   기준 색: 홀수 크기는 면 정가운데 색, 짝수 크기는 큐브 전체 방향 24가지 가운데 가장 잘 맞는 방향.
  * - 큰 큐브(4×4부터): 센터를 맞춘 면 수 → 엣지 짝 수 → 조각 점수(코너 8 + 엣지 줄 12)를 차례로 쓴다.
  * - 이정표의 층 단계(십자~윗면)는 큰 큐브도 센터를 다 맞춘 뒤 3×3처럼 본다(코너와 엣지 한 줄).
- * - 이정표: 여러 해법의 대표 단계(층별·CFOP·루·ZZ·코너 먼저). 순서·색과 상관없이 지금 상태가 맞으면 켜진다.
+ * - 이정표: 여러 해법의 대표 단계(층별·CFOP·루·ZZ·코너 먼저, 4×4는 야우의 센터 둘·십자 셋도). 순서·색과
+ *   상관없이 지금 상태가 맞으면 켜진다.
  */
 
 // ── 기준 색(프레임) ──────────────────────────────────────
@@ -366,6 +367,8 @@ export function flowScore(
 // ── 이정표 ────────────────────────────────────────────
 
 export type MilestoneId =
+  | "centers2"
+  | "cross3"
   | "centers"
   | "edges"
   | "cross"
@@ -386,7 +389,7 @@ export interface MilestoneInfo {
   /** 칩 이름 */
   readonly label: string;
   /** 어느 해법의 단계인가(설명용) */
-  readonly method: "reduction" | "layer" | "roux" | "zz" | "corners";
+  readonly method: "yau" | "reduction" | "layer" | "roux" | "zz" | "corners";
 }
 
 /**
@@ -394,6 +397,9 @@ export interface MilestoneInfo {
  * F2L 4/4는 「둘째 층」과 같은 상태라 둘째 층 하나로 둔다. 「윗층」은 다 맞춘 상태라 맨 끝에 둔다.
  */
 export const MILESTONES: readonly MilestoneInfo[] = [
+  // 4×4 야우: 맞은편 두 면의 센터, 그 한 면 쪽 십자 엣지 셋(docs/47 8-7)
+  { id: "centers2", label: "센터 둘", method: "yau" },
+  { id: "cross3", label: "십자 셋", method: "yau" },
   { id: "centers", label: "센터", method: "reduction" },
   { id: "edges", label: "엣지 짝", method: "reduction" },
   { id: "cross", label: "십자", method: "layer" },
@@ -432,14 +438,22 @@ const BIG_LAYER_STEPS: readonly MilestoneId[] = [
   "oll",
 ];
 
+/** 큰 큐브에만 있는 이정표(센터·엣지 짝, 4×4 야우) */
+const BIG_ONLY: readonly MilestoneId[] = [
+  "centers2",
+  "cross3",
+  "centers",
+  "edges",
+];
+
 /** 그 크기에서 켜질 수 있는 이정표(차례대로) */
 export function milestonesFor(n: number): readonly MilestoneId[] {
   if (n === 2) return ["layer1", "oll", "ll"];
   if (n === 3)
-    return MILESTONES.map((m) => m.id).filter(
-      (id) => id !== "centers" && id !== "edges",
-    );
-  return ["centers", "edges", ...BIG_LAYER_STEPS, "ll"];
+    return MILESTONES.map((m) => m.id).filter((id) => !BIG_ONLY.includes(id));
+  // 야우 단계는 야우 풀이(단원 규칙)가 있는 4×4만
+  const yau: MilestoneId[] = n === 4 ? ["centers2", "cross3"] : [];
+  return [...yau, "centers", "edges", ...BIG_LAYER_STEPS, "ll"];
 }
 
 /** 조각 묶음(이정표 판정용). 3×3은 코너·엣지 조각, 큰 큐브는 코너와 엣지 한 줄 */
@@ -681,6 +695,43 @@ function pocketMilestones(colors: Uint8Array, out: Set<MilestoneId>): void {
   }
 }
 
+/** 면 f의 센터 블럭(정가운데·안쪽 센터)이 모두 한 색이면 그 색, 아니면 -1 */
+function centerColor(n: number, colors: Uint8Array, f: number): number {
+  const cells = flowGroups(n).centers[f] as readonly number[];
+  const c = colors[cells[0] as number] as number;
+  for (const s of cells) if (colors[s] !== c) return -1;
+  return c;
+}
+
+/**
+ * 4×4 야우 이정표. 센터 둘: 맞은편 두 면의 센터 블럭이 면마다 한 색이고, 두 색이 맞은편 색끼리(흰·노랑처럼).
+ * 십자 셋: 그 두 면 가운데 한 면 쪽 십자 엣지 줄 넷 가운데 셋 이상이 맞음. 옆 센터는 아직이라 기준 색은 큐브 전체
+ * 방향 24가지 가운데 두 센터 색과 맞는 것으로 보고, 줄은 날개까지 모두 그 기준 색이어야 맞은 것이다.
+ * 어느 색 둘부터 맞추든 같다(다른 이정표처럼 지금 보이는 색만 본다)
+ */
+function yauMilestones(
+  n: number,
+  colors: Uint8Array,
+  out: Set<MilestoneId>,
+): void {
+  const center = [0, 1, 2, 3, 4, 5].map((f) => centerColor(n, colors, f));
+  const p = piecesOf(n);
+  for (const fr of allFrames(n)) {
+    for (let f = 0; f < 6; f++) {
+      const top = OPPOSITE_FACE[f as 0] as number;
+      if (center[f] !== fr[f] || center[top] !== fr[top]) continue;
+      out.add("centers2");
+      let lines = 0;
+      for (const e of p.edgesOn[f] as number[])
+        if (unitOk(p.units[e] as Unit, colors, fr)) lines++;
+      if (lines >= 3) {
+        out.add("cross3");
+        return;
+      }
+    }
+  }
+}
+
 /** 지금 상태에서 켜진 이정표(크기마다 `milestonesFor`의 차례대로) */
 export function milestonesOf(n: number, state: PuzzleState): MilestoneId[] {
   const out = new Set<MilestoneId>();
@@ -694,6 +745,7 @@ export function milestonesOf(n: number, state: PuzzleState): MilestoneId[] {
     eolineMilestone(colors, frame, out);
     cornersMilestone(3, colors, out);
   } else {
+    if (n === 4) yauMilestones(n, colors, out);
     if (pairedEdgeLines(n, state) === 12) out.add("edges");
     if (solvedCenterFaces(n, state) === 6) {
       out.add("centers");
