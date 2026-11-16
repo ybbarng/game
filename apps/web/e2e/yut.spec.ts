@@ -8,6 +8,26 @@ const throwButton = (page: Page) => page.locator("[data-throw]");
 const movableStacks = (page: Page) => page.locator("[data-stack]:enabled");
 const newPiece = (page: Page) => page.locator("[data-new-piece]");
 
+/**
+ * 윷가락을 잡고 아래로 당겼다가 위로 튕겨 놓는다(마우스로 끌었다 놓기, docs/37 13절).
+ * `pull`은 높이 100이 되는 당김 길이(화면 높이의 30%, 적어도 150px)에 견준 비율. 튕기기는 3px씩 열 번에 곧장 위로
+ * (점 사이는 적어도 8ms로 재므로 세기가 낮다): 가운데로 알맞게 던져 낙이 없다
+ */
+async function throwSticks(page: Page, pull = 0.5): Promise<void> {
+  const pad = throwButton(page);
+  const box = await pad.boundingBox();
+  if (!box) throw new Error("윷가락이 보이지 않는다");
+  const height = await page.evaluate(() => window.innerHeight);
+  const reach = Math.max(150, Math.round(height * 0.3));
+  const x = box.x + box.width / 2;
+  const y = box.y + 40;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + reach * pull, { steps: 6 });
+  await page.mouse.move(x, y + reach * pull - 30, { steps: 10 });
+  await page.mouse.up();
+}
+
 /** 말 하나를 고른다. PC는 눌러서 바로, 휴대폰은 겨누고(한 번) 다시 눌러 움직인다 */
 async function pickTarget(page: Page, touch: boolean): Promise<boolean> {
   const stack = movableStacks(page).first();
@@ -33,7 +53,7 @@ async function playStep(page: Page, touch: boolean): Promise<boolean> {
   ).toBeVisible({ timeout: 20_000 });
   if (await over(page).isVisible()) return false;
   if (await throwButton(page).isVisible()) {
-    await throwButton(page).click();
+    await throwSticks(page);
     return true;
   }
   await pickTarget(page, touch);
@@ -122,7 +142,20 @@ test("윷놀이: 게임 목록에서 들어가 입문 컴퓨터와 두다가 판
   // 내 차례가 올 때까지 기다려 한 번 던지고, 첫 움직임 뒤 무르기로 되돌린다.
   await expect(throwButton(page)).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: info.outputPath("yut-throw.png") });
-  await throwButton(page).click();
+  // 조금만 당겼다 놓으면 던지지 않고 다시 던지라고 한다.
+  await throwSticks(page, 0.05);
+  await expect(status(page)).toHaveText("너무 낮게 던졌어요. 다시 던지세요.");
+  await expect(throwButton(page)).toBeVisible();
+  // 당기는 동안 손과 윷이 따라 내려간다.
+  const pad = await throwButton(page).boundingBox();
+  if (!pad) throw new Error("윷가락이 보이지 않는다");
+  await page.mouse.move(pad.x + pad.width / 2, pad.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(pad.x + pad.width / 2, pad.y + 140, { steps: 5 });
+  await expect(throwButton(page)).not.toHaveAttribute("data-pull", "0");
+  await page.screenshot({ path: info.outputPath("yut-pull.png") });
+  await page.mouse.move(pad.x + pad.width / 2, pad.y + 110, { steps: 10 });
+  await page.mouse.up();
   await expect(
     movableStacks(page).or(newPiece(page)).or(throwButton(page)).first(),
   ).toBeVisible({ timeout: 20_000 });
@@ -270,7 +303,7 @@ test(
       for (const p of [host, guest]) {
         if (await over(p).isVisible()) continue;
         if (await throwButton(p).isVisible()) {
-          await throwButton(p).click();
+          await throwSticks(p);
           actions++;
         } else if (
           (await movableStacks(p).count()) > 0 ||

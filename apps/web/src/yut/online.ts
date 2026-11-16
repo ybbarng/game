@@ -27,6 +27,7 @@ export function yutRulesSummary(rules: YutRules): string {
     rules.backDo ? "빽도 있음" : "빽도 없음",
     rules.landOnHome ? "참먹이에 서면 남" : "참먹이를 지나야 남",
     rules.flatPercent === 60 ? "실제 윷 확률" : "고른 확률",
+    ...(rules.version === 2 ? [rules.nak ? "낙 있음" : "낙 없음"] : []),
   ].join(" · ");
 }
 
@@ -49,6 +50,6 @@ export const yutOnline: BoardOnlineGame<
   useStore: useYut,
   botFor: yutBotFor,
   rulesSummary(rules) {
-    return `${yutRulesSummary(rules)}. 첫 차례는 무작위. 던지기 결과는 모두의 기기가 함께 정해 방장도 고를 수 없습니다.`;
+    return `${yutRulesSummary(rules)}. 첫 차례는 무작위. 던지기 결과는 던진 사람의 몸짓과 모두의 기기가 함께 정해 방장도 고를 수 없습니다.`;
   },
 };

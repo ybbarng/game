@@ -6,7 +6,7 @@ import type { HeroView } from "./present";
 
 /**
  * 첫 화면 큐브 연출이 쓰는 해법 표. 설정 화면(「첫 화면 큐브」)과 연출이 모두 이 표만 본다.
- * 새 해법(예: 4×4 야우, 풀이 함수가 생기면)을 더하려면 `HERO_METHODS`에 한 줄을 더하면 된다:
+ * 새 해법을 더하려면 `HERO_METHODS`에 한 줄을 더하면 된다:
  * 설정의 해법 고르기와 「번갈아」 차례에 저절로 나온다.
  *
  * - `id`는 저장값이라 한 번 정하면 바꾸지 않는다(바꾸면 옛 설정이 「번갈아」로 읽힌다).
@@ -23,7 +23,8 @@ import type { HeroView } from "./present";
  * - 첫 면 색(`first`, docs/47 0절 2026-11-10 사용자 「초보자용 해법으로 맞출 때는 무조건 흰색을 첫 면, 그 외에는
  *   십자가 맞추기에 가장 효율적인 것」): 초보자 해법은 늘 흰색(`"white"`). 그 밖은 여섯 색으로 모두 풀어 보고
  *   `first`에 적은 단계(십자, 2×2는 첫 층, 루는 첫 블록, ZZ는 EO라인)의 수가 가장 적은 색을 고른다(같으면 흰색
- *   먼저, 그다음 색 번호 차례). 4×4 이상은 축소(흰·노랑 센터부터)가 끝난 뒤 3×3 단계의 첫 면 색이다.
+ *   먼저, 그다음 색 번호 차례). 4×4 이상 축소법은 축소(흰·노랑 센터부터)가 끝난 뒤 3×3 단계의 첫 면 색이다.
+ *   4×4 야우는 첫 두 센터부터 첫 면 색이다(그 색과 맞은편 센터 → 그 색 십자 셋, 고르는 단계는 십자 셋).
  */
 
 export type HeroSize = 2 | 3 | 4 | 5 | 6 | 7;
@@ -59,6 +60,7 @@ const TAUGHT_VIEW: HeroView = { up: ["cross", "corners"] };
 const CROSS_VIEW: HeroView = { up: ["cross"] };
 
 const ai = () => import("@game/cube-ai");
+const yau = () => import("../learn/yau-hero");
 
 export const HERO_METHODS: readonly HeroMethodDef[] = [
   {
@@ -143,6 +145,21 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
       view: CROSS_VIEW,
       first: CROSS,
     },
+    // 4×4 야우(배우기 단원의 경우별 길, `learn/yau-hero.ts`): 첫 두 센터와 십자를 함께 맞추므로 첫 면 색은
+    // 십자 셋 단계가 가장 싼 색. 「3×3처럼」의 첫 층 코너는 배우는 방식처럼 첫 면을 위에서 보인다
+    ...(size === 4
+      ? [
+          {
+            id: "4-yau",
+            size,
+            label: "야우",
+            solve: async (s: PuzzleState, first: number, until?: StageName) =>
+              (await yau()).solveYauHuman(s, first, until),
+            view: TAUGHT_VIEW,
+            first: { cheapest: "yau-cross3" },
+          },
+        ]
+      : []),
   ]),
 ];
 
@@ -189,10 +206,13 @@ export interface HeroSolve {
 
 /** 색 이름(꾸미는 꼴). 색 번호는 맞춘 큐브에서 그 색이 있던 면(U R F D L B) 차례 */
 const COLOR_WORDS = ["흰", "빨간", "초록", "노란", "주황", "파란"] as const;
+/** 색 이름(이름 꼴, 「흰·노랑 센터」) */
+const COLOR_NOUNS = ["흰", "빨강", "초록", "노랑", "주황", "파랑"] as const;
 
 /**
  * 꼬리표 글. 색이 들어가는 단계는 그 판의 첫 면 색으로 바꾼다: 십자는 첫 면 색, 마지막 층 십자·면은 맞은편 색
- * (흰 십자 → 노란 십자가 늘 맞은편이듯). 축소의 「흰·노랑 센터」는 첫 면 색과 상관없이 늘 흰·노랑부터 맞춘다
+ * (흰 십자 → 노란 십자가 늘 맞은편이듯). 축소의 「흰·노랑 센터」는 첫 면 색과 상관없이 늘 흰·노랑부터 맞춘다.
+ * 야우의 첫 두 센터(`yau-centers`)·십자 셋(`yau-cross3`)은 첫 면 색과 그 맞은편 색
  */
 export function heroStageLabel(
   name: string,
@@ -204,6 +224,10 @@ export function heroStageLabel(
   if (name === "cross") return `${color} 십자`;
   if (name === "eo") return `${opposite} 십자`;
   if (name === "co") return `${opposite} 면`;
+  // 야우는 첫 면 색과 그 맞은편 센터부터, 그 색 십자 셋
+  if (name === "yau-centers")
+    return `${COLOR_NOUNS[first] ?? COLOR_NOUNS[0]}·${COLOR_NOUNS[(first + 3) % 6] ?? COLOR_NOUNS[3]} 센터`;
+  if (name === "yau-cross3") return `${color} 십자 셋`;
   return labels[name] ?? name;
 }
 

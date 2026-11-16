@@ -7,7 +7,7 @@
 //! - `hero/loop.ts`: 시간(`heroTiming`), 무작위 섞기(`randomScramble`), 쥐는 방향(`orientForSolve`), 연출 걸음
 //!   (`scrambleSteps`·`orientSteps`·`solveSteps`, 강조 「잠깐」), 회전 시간(`heroMoveMs`)
 //! - `hero/methods.ts`: 꼬리표(`heroStageLabel`)와 해법 표 전부(`HERO_METHODS`: 2×2 초보자·공식, 3×3 초보자·프리드리히·
-//!   루·ZZ, 4×4~7×7 축소법 초보자·프리드리히)와 첫 면 색 고르기(`solveWithFirst`)
+//!   루·ZZ, 4×4~7×7 축소법 초보자·프리드리히, 4×4 야우)와 첫 면 색 고르기(`solveWithFirst`)
 //!
 //! 사이트와 같은지는 공통 시험 자료 `fixtures/hero-show.json`(2×2·3×3)·`hero-show-big.json`(4×4~7×7)으로 본다(docs/52 5-10).
 
@@ -1603,6 +1603,8 @@ pub enum HeroMethod {
     BigBeginner(u8),
     /// `n-cfop` 축소법(프리드리히): 축소 뒤 3×3 프리드리히(첫 면은 십자가 가장 싼 색), 4~7
     BigCfop(u8),
+    /// `4-yau` 야우(배우기 단원의 경우별 길, 첫 면은 십자 셋이 가장 싼 색)
+    Yau4,
 }
 
 /// 첫 면 색 고르기(사이트 `HeroMethodDef.first`)
@@ -1625,6 +1627,9 @@ impl HeroMethod {
         for n in 4..=7 {
             out.push(HeroMethod::BigBeginner(n));
             out.push(HeroMethod::BigCfop(n));
+            if n == 4 {
+                out.push(HeroMethod::Yau4);
+            }
         }
         out
     }
@@ -1643,6 +1648,7 @@ impl HeroMethod {
             HeroMethod::Zz3 => "3-zz".into(),
             HeroMethod::BigBeginner(n) => format!("{n}-beginner"),
             HeroMethod::BigCfop(n) => format!("{n}-cfop"),
+            HeroMethod::Yau4 => "4-yau".into(),
         }
     }
 
@@ -1651,6 +1657,7 @@ impl HeroMethod {
             HeroMethod::Beginner2 | HeroMethod::Algs2 => 2,
             HeroMethod::Beginner3 | HeroMethod::Cfop3 | HeroMethod::Roux3 | HeroMethod::Zz3 => 3,
             HeroMethod::BigBeginner(n) | HeroMethod::BigCfop(n) => n as usize,
+            HeroMethod::Yau4 => 4,
         }
     }
 
@@ -1663,6 +1670,7 @@ impl HeroMethod {
             HeroMethod::Zz3 => "ZZ",
             HeroMethod::BigBeginner(_) => "축소법(초보자)",
             HeroMethod::BigCfop(_) => "축소법(프리드리히)",
+            HeroMethod::Yau4 => "야우",
         }
     }
 
@@ -1694,7 +1702,7 @@ impl HeroMethod {
                 mirror: vec!["zz-left"],
                 ..HeroView::default()
             },
-            HeroMethod::BigBeginner(_) => HeroView {
+            HeroMethod::BigBeginner(_) | HeroMethod::Yau4 => HeroView {
                 up: vec!["cross", "corners"],
                 ..HeroView::default()
             },
@@ -1714,6 +1722,7 @@ impl HeroMethod {
             HeroMethod::Cfop3 | HeroMethod::BigCfop(_) => FirstRule::Cheapest(StageName::Cross),
             HeroMethod::Roux3 => FirstRule::Cheapest(StageName::Fb),
             HeroMethod::Zz3 => FirstRule::Cheapest(StageName::Eoline),
+            HeroMethod::Yau4 => FirstRule::Cheapest(StageName::YauCross3),
         }
     }
 
@@ -1728,6 +1737,7 @@ impl HeroMethod {
             HeroMethod::Zz3 => solve_zz(state, first),
             HeroMethod::BigBeginner(n) => crate::big::solve_big_beginner(n as usize, state),
             HeroMethod::BigCfop(n) => crate::big::solve_big_cfop(n as usize, state, first),
+            HeroMethod::Yau4 => crate::yau::solve_yau_human(state, first),
         }
     }
 
@@ -1743,6 +1753,8 @@ impl HeroMethod {
 }
 
 const COLOR_WORDS: [&str; 6] = ["흰", "빨간", "초록", "노란", "주황", "파란"];
+/// 이름 꼴(「흰·노랑 센터」)
+const COLOR_NOUNS: [&str; 6] = ["흰", "빨강", "초록", "노랑", "주황", "파랑"];
 
 /// 꼬리표 글(사이트 `heroStageLabel`)
 pub fn hero_stage_label(name: &str, first: usize, label: &str) -> String {
@@ -1752,6 +1764,13 @@ pub fn hero_stage_label(name: &str, first: usize, label: &str) -> String {
         "cross" => format!("{color} 십자"),
         "eo" => format!("{opposite} 십자"),
         "co" => format!("{opposite} 면"),
+        // 야우는 첫 면 색과 그 맞은편 센터부터, 그 색 십자 셋
+        "yau-centers" => format!(
+            "{}·{} 센터",
+            COLOR_NOUNS[first % 6],
+            COLOR_NOUNS[(first + 3) % 6]
+        ),
+        "yau-cross3" => format!("{color} 십자 셋"),
         _ => label.to_string(),
     }
 }

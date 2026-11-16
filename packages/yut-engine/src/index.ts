@@ -1,5 +1,6 @@
 export * from "./board";
 export * from "./chain";
+export * from "./gesture";
 export * from "./match";
 export * from "./rules";
 export * from "./scenario";

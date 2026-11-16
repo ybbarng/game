@@ -2,6 +2,7 @@ export * from "./cards";
 export * from "./decision";
 export * from "./deck";
 export * from "./goal";
+export * from "./joker-call";
 export * from "./match";
 export * from "./presets";
 export * from "./replay";

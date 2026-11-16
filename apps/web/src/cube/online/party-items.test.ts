@@ -31,6 +31,15 @@ import { CubeRoom, DEFAULT_SETTINGS, raceOptionsFor } from "./room";
 
 const NOVICE = levelText("novice");
 
+/** 건 타이머 수를 세는 시계 */
+class CountingClock extends ManualClock {
+  scheduled = 0;
+  override after(ms: number, fn: () => void): () => void {
+    this.scheduled++;
+    return super.after(ms, fn);
+  }
+}
+
 /**
  * 아이템전(docs/51 3-3, docs/47 9-7). 순수 판정(`judgeParty` + 아이템)과 기기마다 RaceHub 하나인 방(ManualClock·DelayNet)으로 본다.
  * 뽑기는 시험용 `draw`로 정해 둔다(모든 기기에 같은 것을 넣는다. 실제 뽑기의 결정성·확률은 items.test.ts)
@@ -715,6 +724,30 @@ describe("아이템전(기기마다)", () => {
         faster,
       ),
     ).toBe(false);
+  });
+
+  it("상대가 다 맞춘 뒤 내가 가만히 있으면 다시 판정하려고 타이머를 걸지 않는다(판정할 일이 남지 않았다)", () => {
+    // 판정을 막는 것이 내 시각뿐이면, 예전에는 1ms마다 다시 깨어 판 전체를 다시 판정했다(2초에 약 2천 번)
+    const clock = new CountingClock();
+    const net = new DelayNet(clock);
+    const host = room(net, "h", clock, true, {});
+    const guest = room(net, "g", clock, false, {});
+    clock.advance(500);
+    at(clock, guest, [{ at: 300, run: play(SOLUTION) }]);
+    expect(host.startRound()).toBe(true);
+    const guestDone = () =>
+      host
+        .session()
+        ?.snapshot()
+        .peers.find((p) => p.id === "g")?.status === "done";
+    runUntil(clock, guestDone, 10_000, 10);
+    clock.advance(500);
+    const before = clock.scheduled;
+    clock.advance(2_000);
+    expect(host.session()?.snapshot().phase).toBe("race");
+    expect(clock.scheduled - before).toBeLessThan(20);
+    host.dispose();
+    guest.dispose();
   });
 
   it("옛 방 상태도 읽힌다: 파티 칸이 없으면 일반, 체력바만이면 예전 지문. 아이템전은 지문에 모드를 넣는다", () => {

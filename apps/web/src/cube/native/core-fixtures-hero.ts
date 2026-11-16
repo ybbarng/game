@@ -39,6 +39,7 @@ import {
   stageCost,
 } from "../hero/methods";
 import { presentSolve } from "../hero/present";
+import { solveYauHuman } from "../learn/yau-hero";
 import { fixtureJson } from "./core-fixtures";
 
 const TAUGHT = { taught: true } as const;
@@ -69,6 +70,7 @@ export const HERO_SYNC: Readonly<
       ],
     ]),
   ),
+  "4-yau": (s, first, until) => solveYauHuman(s, first, until),
 };
 
 /** 사이트 `solveWithFirst`를 바로(비동기 없이): 늘 흰색, 아니면 첫 단계가 가장 싼 색 */
@@ -115,22 +117,39 @@ export function buildHeroShow(): string {
   );
 }
 
-/** 4×4~7×7 축소법 둘(씨앗 하나씩, 4×4는 패리티가 나오는 씨앗 둘) */
+/** `hero-show-big.json`의 판 차례: 4×4~7×7 축소법 둘(씨앗 하나씩, 4×4는 패리티가 나오는 씨앗 둘) */
+export const HERO_SHOW_BIG_CASES: readonly (readonly [
+  method: string,
+  seed: number,
+])[] = [4, 5, 6, 7].flatMap((n) =>
+  ["beginner", "cfop"].flatMap((m) =>
+    (n === 4 ? [1, 2] : [1]).map((seed) => [`${n}-${m}`, seed] as const),
+  ),
+);
+
+/** 4×4 야우(씨앗 넷: 패리티가 나오는 판, 첫 면 색이 흰색이 아닌 판을 함께) */
+export const HERO_SHOW_YAU_SEEDS: readonly number[] = [1, 2, 3, 4];
+
+export function buildHeroShowYau(): string {
+  return heroShowJson(["4-yau"], [...HERO_SHOW_YAU_SEEDS]);
+}
+
 export function buildHeroShowBig(): string {
-  const cases = [4, 5, 6, 7].flatMap((n) =>
-    ["beginner", "cfop"].flatMap((m) =>
-      (n === 4 ? [1, 2] : [1]).map((seed) => heroShowCase(`${n}-${m}`, seed)),
-    ),
+  return fixtureJson(
+    HERO_SHOW_META,
+    HERO_SHOW_BIG_CASES.map(([m, seed]) => heroShowCase(m, seed)),
   );
-  return fixtureJson({ what: HERO_SHOW_WHAT }, cases);
 }
 
 const HERO_SHOW_WHAT =
   "Cubie 홈 시연 한 판: 해법(method, 크기 size) × 씨앗(mulberry32) → 섞기·쥐는 방향 맞추기, 첫 면 색, 보여 주기 변환 뒤 수·단계(이름·꼬리표)·살피는 자리·찾는 돌리기·쉬는 자리·강조(자리·종류·따로·확인·스티커), 연출 걸음([수 또는 빈 글(멈춤), ms, 꼬리표 번호, 강조 수])";
 
+/** 홈 시연 자료(`hero-show.json`·`hero-show-big.json`)의 머리 */
+export const HERO_SHOW_META = { what: HERO_SHOW_WHAT };
+
 function heroShowJson(methods: string[], seeds: number[]): string {
   const cases = methods.flatMap((m) => seeds.map((s) => heroShowCase(m, s)));
-  return fixtureJson({ what: HERO_SHOW_WHAT }, cases);
+  return fixtureJson(HERO_SHOW_META, cases);
 }
 
 /**
