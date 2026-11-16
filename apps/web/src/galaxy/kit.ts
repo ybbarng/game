@@ -23,8 +23,8 @@ import {
 } from "@game/galaxy-engine";
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
-
 import { eventLine } from "./events";
 import { money, squareName } from "./format";
 
@@ -119,6 +119,28 @@ export function metSquares(
 }
 
 export const galaxyStats: KitStats<GalaxyView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => {
+      const r = data as GalaxyRound;
+      if (r.rank === null) return null;
+      return r.rank === 1 ? "win" : "loss";
+    },
+  },
+  achievements: [
+    anyRound<GalaxyRound>(
+      "constellation",
+      "첫 별자리",
+      "판 끝에 별자리를 하나 완성해 둡니다.",
+      (r) => r.completed.length >= 1,
+    ),
+    anyRound<GalaxyRound>(
+      "constellation-3",
+      "별자리 셋",
+      "판 끝에 별자리를 셋 완성해 둡니다.",
+      (r) => r.completed.length >= 3,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "gameStarted"),
   roundEnded: (events) => events.some((e) => e.type === "gameEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),

@@ -18,6 +18,11 @@ export interface RoundRecord<D = unknown> {
   mode: StatsMode;
   /** 판 처음을 보지 못했다(이어하기·새로고침). 사건으로 세는 지표에서는 뺀다 */
   partial?: true;
+  /**
+   * 친구와 한 판에서 같이 앉은 사람 이름(나와 컴퓨터 빼고, 2026-11-17부터). 그 전 기록에는 없다.
+   * 이 기기에만 남고 통계(umami)로 보내지 않는다
+   */
+  with?: string[];
   data: D;
 }
 
@@ -26,6 +31,11 @@ export interface GameRecord<D = unknown> {
   game: string;
   at: number;
   mode: StatsMode;
+  /**
+   * 친구와 한 판에서 같이 앉은 사람 이름(나와 컴퓨터 빼고, 2026-11-17부터). 그 전 기록에는 없다.
+   * 이 기기에만 남고 통계(umami)로 보내지 않는다
+   */
+  with?: string[];
   data: D;
 }
 

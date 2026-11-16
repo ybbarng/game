@@ -30,6 +30,7 @@ import {
 } from "@/net/session";
 import { randomId } from "@/net/transport";
 import { type ArchiveTarget, saveGuestArchive } from "@/review/recorder";
+import { sessionPeople } from "@/stats/people";
 import type { StatsTarget } from "@/stats/recorder";
 
 type Phase = "name" | "connecting" | "lobby" | "full" | "kicked" | "error";
@@ -139,6 +140,8 @@ export function BoardOnlineScreen<
     game: gameId,
     mode: "online" as const,
     key: `online:${roomCode}`,
+    /** 같이 앉은 사람(나와 컴퓨터 빼고). 이 기기 내 기록에만 남는다 */
+    people: sessionPeople(session),
   };
   /** 방장: 복기용 기록은 방이 내준다 */
   const hostArchive = (

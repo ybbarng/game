@@ -25,6 +25,7 @@ import {
 } from "@game/baseball-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { anyRound, countRounds } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 
 export type BaseballKit = GameKit<
@@ -78,6 +79,25 @@ function outcomeOf(result: RoundResult, me: number): BaseballRound["outcome"] {
 }
 
 export const baseballStats: KitStats<BaseballView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => (data as BaseballRound).outcome,
+  },
+  achievements: [
+    anyRound<BaseballRound>(
+      "quick-solve",
+      "다섯 번 안에",
+      "서로 맞히기에서 다섯 번 안에 상대 수를 맞힙니다.",
+      (r) => r.mode === "duel" && r.solved && r.guesses <= 5,
+    ),
+    countRounds<BaseballRound>(
+      "puzzle-10",
+      "퍼즐 열 개",
+      "퍼즐을 열 번 풉니다.",
+      10,
+      (r) => r.mode === "puzzle" && r.solved,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),
