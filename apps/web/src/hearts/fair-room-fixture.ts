@@ -2,6 +2,7 @@ import { ManualClock, prepareGroup } from "@game/fair-play";
 import { heartsIntermediateBot, heartsNormalBot } from "@game/hearts-ai";
 import { WINDOWS_RULES } from "@game/hearts-engine";
 
+import { closeWhenDone } from "@/net/close-when-done";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom, type IncidentNotice } from "@/net/host-room";
 import type { HostStore } from "@/net/host-store";
@@ -10,10 +11,26 @@ import { MemoryNetwork } from "@/net/transport";
 import { heartsKit } from "./kit";
 
 /**
- * 하트 멘탈 포커 방 시험의 공통 준비. 시험을 두 파일(fair-room, fair-room-reload)로 나눠 동시에 돌게 한다
+ * 하트 멘탈 포커 방 시험의 공통 준비. 시험을 여러 파일(fair-room, fair-room-rounds, fair-room-late-open,
+ * fair-room-reload)로 나눠 동시에 돌게 한다
  */
 
 await prepareGroup("r255");
+
+/**
+ * 방장 대국에서 끝난 판 수를 센다. 게임 끝(끝 점수)까지 두면 판 수가 섞기 운에 달려(끝 점수는 10보다 작게 못
+ * 둔다), 볼 판 수만큼 두고 방장이 `finish()`로 판 끝 기록을 보내게 할 때 쓴다(마이티 시험의 `playRounds`와 같다)
+ */
+export function scoredRounds(host: { match: unknown }): () => number {
+  let scored = 0;
+  const match = host.match as {
+    subscribe(listener: (s: { events: { type: string }[] }) => void): void;
+  };
+  match.subscribe((s) => {
+    if (s.events.some((e) => e.type === "roundScored")) scored++;
+  });
+  return () => scored;
+}
 
 export async function until(
   condition: () => boolean,
@@ -29,8 +46,8 @@ export async function until(
 
 /**
  * 끝 점수 기본 10점(규칙 문자열이 받는 가장 작은 값): 한 판에 26점이 나뉘어 대개 한 판, 드물게 두 판에 끝난다
- * (새로고침·끊김·부정·복기는 한 판이면 된다). 판이 바뀌어도 이어 가는지는 첫 시험이 27점으로 본다
- * (한 판에 나눠지는 점수가 26점이라 적어도 두 판)
+ * (새로고침·끊김·부정·복기는 한 판이면 된다). 판이 바뀌어도 이어 가는지는 fair-room-rounds 시험이 27점으로 두
+ * 판을 둔 뒤 끝낸다(한 판에 나눠지는 점수가 26점이라 첫 판에는 게임이 끝나지 않는다)
  */
 export function hostOptions(
   clock: ManualClock,
@@ -87,6 +104,7 @@ export async function setup(
   const incidents: IncidentNotice[] = [];
   host.onIncident((n) => incidents.push(n));
   for (const g of guests) g.on("incident", (n) => incidents.push(n));
+  closeWhenDone(host, guests);
   return { net, host, guests, incidents, clock };
 }
 

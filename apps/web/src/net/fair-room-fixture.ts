@@ -3,6 +3,7 @@
 import { ManualClock, prepareGroup } from "@game/fair-play";
 import { heuristicBot, intermediateBot } from "@game/mighty-ai";
 import type { Action, PlayerView, RuleSet } from "@game/mighty-engine";
+import { closeWhenDone } from "./close-when-done";
 import { type FairSaved, GuestRoom } from "./guest-room";
 
 import { HostRoom, type IncidentNotice } from "./host-room";
@@ -110,6 +111,7 @@ export async function setup(
   const incidents: IncidentNotice[] = [];
   host.onIncident((n) => incidents.push(n));
   for (const g of guests) g.on("incident", (n) => incidents.push(n));
+  closeWhenDone(host, guests);
   return { net, host, guests, incidents, clock };
 }
 

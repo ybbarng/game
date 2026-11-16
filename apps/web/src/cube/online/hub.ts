@@ -110,6 +110,21 @@ export class RaceHub {
     };
   }
 
+  /**
+   * 참가자가 다시 들어온 것으로 알린다. 자리를 되찾은 사람(새 연결)을 이 기기가 확인한 뒤 부른다(docs/47 9-11):
+   * 대결 틀이 그 사람에게 이 판에 보냈던 메시지를 다시 보낸다
+   */
+  joined(participant: string): void {
+    if (this.closed) return;
+    for (const h of this.locals.values())
+      for (const fn of h.join) fn(participant);
+  }
+
+  /** 그 기기가 맡은 참가자 모두가 다시 들어온 것으로 알린다(그 기기가 내 되찾기를 확인했을 때) */
+  rejoin(device: string): void {
+    for (const id of this.init.participantsOf(device)) this.joined(id);
+  }
+
   /** 대결이 끝나면 그 판 참가자 창구를 모두 뗀다 */
   clear(): void {
     this.locals.clear();

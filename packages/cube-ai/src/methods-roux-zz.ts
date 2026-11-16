@@ -14,7 +14,13 @@ import {
   type SearchSpec,
 } from "./piece-search";
 import type { Tracked } from "./search";
-import { type HumanSolve, Solve, type StageName, yTurn } from "./solve";
+import {
+  type HumanSolve,
+  Solve,
+  type StageName,
+  solveUntil,
+  yTurn,
+} from "./solve";
 
 /**
  * 루(Roux)·ZZ 사람 흉내 해법(3×3, docs/47 8-2). 단계마다 사람이 하는 일을 그대로 둔다.
@@ -238,18 +244,20 @@ function lse(s: Solve): void {
 /** 3×3 루: 첫 블록 → 둘째 블록 → CMLL → LSE */
 export function solveRoux(
   state: PuzzleState,
-  opts: { first?: number } = {},
+  opts: { first?: number; until?: StageName | undefined } = {},
 ): HumanSolve {
   const s = startFramed(state, opts.first);
-  whiteDown(s);
-  squareThenPair(s, [], LEFT_SQUARES, LEFT_PAIRS, FB_MOVES, Y_TURNS);
-  s.stage("fb");
-  squareThenPair(s, [], RIGHT_SQUARES, RIGHT_PAIRS, SB_MOVES);
-  s.stage("sb");
-  cmll(s);
-  s.stage("cmll");
-  lse(s);
-  return finish(s);
+  return solveUntil(s, opts.until, () => {
+    whiteDown(s);
+    squareThenPair(s, [], LEFT_SQUARES, LEFT_PAIRS, FB_MOVES, Y_TURNS);
+    s.stage("fb");
+    squareThenPair(s, [], RIGHT_SQUARES, RIGHT_PAIRS, SB_MOVES);
+    s.stage("sb");
+    cmll(s);
+    s.stage("cmll");
+    lse(s);
+    return finish(s);
+  });
 }
 
 // ---------- ZZ ----------
@@ -319,25 +327,27 @@ const PLL_ALGS = PLL.map(([, alg]) => alg);
 /** 3×3 ZZ: EO라인 → 왼쪽 블록 → 오른쪽 블록(R·U·L만) → 윗면(꼭짓점 7가지) → PLL */
 export function solveZZ(
   state: PuzzleState,
-  opts: { first?: number } = {},
+  opts: { first?: number; until?: StageName | undefined } = {},
 ): HumanSolve {
   const s = new Solve(
     3,
     toFacelets(3, state, opts.first ? firstFaceMap(opts.first) : undefined),
   );
-  whiteDown(s);
-  bestOf(
-    s,
-    Y_TURNS.map((pre) => ({ pre, spec: eoLineSpec })),
-  );
-  s.stage("eoline");
-  squareThenPair(s, [], LEFT_SQUARES, LEFT_PAIRS, RUL_MOVES);
-  s.stage("zz-left");
-  squareThenPair(s, LEFT_BLOCK, RIGHT_SQUARES, RIGHT_PAIRS, RUL_MOVES);
-  s.stage("zz-right");
-  applyMatch(s, OCLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
-  s.stage("oll");
-  applyMatch(s, PLL_ALGS, (t) => t.isSolved(), true);
-  s.stage("pll");
-  return finish(s);
+  return solveUntil(s, opts.until, () => {
+    whiteDown(s);
+    bestOf(
+      s,
+      Y_TURNS.map((pre) => ({ pre, spec: eoLineSpec })),
+    );
+    s.stage("eoline");
+    squareThenPair(s, [], LEFT_SQUARES, LEFT_PAIRS, RUL_MOVES);
+    s.stage("zz-left");
+    squareThenPair(s, LEFT_BLOCK, RIGHT_SQUARES, RIGHT_PAIRS, RUL_MOVES);
+    s.stage("zz-right");
+    applyMatch(s, OCLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
+    s.stage("oll");
+    applyMatch(s, PLL_ALGS, (t) => t.isSolved(), true);
+    s.stage("pll");
+    return finish(s);
+  });
 }

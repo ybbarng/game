@@ -145,7 +145,9 @@ function searchRounds(
 ): string | null {
   type Node = {
     p: number[];
-    path: number[];
+    /** 마지막 수(없으면 -1)와 앞 마디. 수 목록을 마디마다 복사하지 않고 끝에서 거슬러 읽는다 */
+    move: number;
+    parent: Node | null;
     ys: number;
     v: boolean;
     phase: Phase;
@@ -153,14 +155,22 @@ function searchRounds(
   };
   const seen = new Set<string>();
   let layer: Node[] = [
-    { p: start, path: [], ys: 0, v: v0, phase: 0, rounds: 1 },
+    {
+      p: start,
+      move: -1,
+      parent: null,
+      ys: 0,
+      v: v0,
+      phase: 0,
+      rounds: 1,
+    },
   ];
   for (let depth = 1; depth <= 14; depth++) {
     const next: Node[] = [];
     let best: Node | null = null;
     for (const node of layer) {
-      const last = node.path.at(-1);
-      const lastLayer = last === undefined ? -1 : (LAYER[last] as number);
+      const last = node.move;
+      const lastLayer = last < 0 ? -1 : (LAYER[last] as number);
       for (let mi = 0; mi < MOVES.length; mi++) {
         const kind = LAYER[mi] as number;
         let phase: Phase;
@@ -187,14 +197,22 @@ function searchRounds(
           phase = 3;
         }
         const perm = PERMS[mi] as number[];
-        const p = node.p.map((i) => perm[i] as number);
+        const p = new Array<number>(node.p.length);
+        for (let i = 0; i < p.length; i++)
+          p[i] = perm[node.p[i] as number] as number;
         const v = node.v || low(p);
-        const k = `${p.join(",")}|${v}|${phase}|${rounds}|${kind}`;
+        // 본 상태 열쇠: 스티커 자리(0..53)마다 글자 하나 + 나머지를 글자 하나로(v 1 · phase 4 · rounds 4 · kind 3가지).
+        // 같은 상태면 같은 글이고 다른 상태면 다른 글이라 예전 「1,2,3|true|…」 글과 같은 판정이다(탐색의 대부분이
+        // 이 글을 만드는 시간이었다)
+        const k =
+          String.fromCharCode(...p) +
+          String.fromCharCode((v ? 1 : 0) + phase * 2 + rounds * 8 + kind * 64);
         if (seen.has(k)) continue;
         seen.add(k);
         const child: Node = {
           p,
-          path: [...node.path, mi],
+          move: mi,
+          parent: node,
           ys: node.ys + (kind === 2 ? 1 : 0),
           v,
           phase,
@@ -208,7 +226,12 @@ function searchRounds(
         next.push(child);
       }
     }
-    if (best) return best.path.map((i) => MOVES[i]).join(" ");
+    if (best) {
+      const names: string[] = [];
+      for (let n: Node | null = best; n && n.move >= 0; n = n.parent)
+        names.push(MOVES[n.move] as string);
+      return names.reverse().join(" ");
+    }
     layer = next;
   }
   return null;
