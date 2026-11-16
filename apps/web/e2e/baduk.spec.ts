@@ -1,4 +1,5 @@
 import {
+  captureMoves,
   groupOf,
   ladderMoves,
   step as playStep,
@@ -7,7 +8,13 @@ import {
 } from "@game/baduk-engine";
 
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "../src/baduk/puzzles";
-import { defenseFor, puzzleState, targetOf } from "../src/baduk/study";
+import {
+  defenseFor,
+  puzzleState,
+  spotMoveOf,
+  spotsOf,
+  targetOf,
+} from "../src/baduk/study";
 import { useTestSpeed } from "./fast";
 import { expect, type Page, ready, test } from "./test";
 
@@ -477,7 +484,7 @@ test(
     await page.getByRole("button", { name: /바둑 배우기/ }).click();
     await page.getByRole("button", { name: /수 배우기/ }).click();
 
-    // 단원: 설명 셋(둘째에서 팻감 그림) → 퀴즈 둘 → 끝
+    // 단원: 설명 넷(둘째에서 팻감 그림, 넷째에서 패 잇기 그림) → 퀴즈 셋 → 끝
     const lessons = page.getByRole("region", { name: "단원 읽기" });
     await lessons.getByRole("button", { name: "패로 버티기" }).click();
     await expect(
@@ -490,11 +497,20 @@ test(
     await page.screenshot({ path: info.outputPath("baduk-lesson-ko.png") });
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "패를 잇는 때" }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("baduk-lesson-ko-connect.png"),
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
     await page
       .getByRole("button", { name: /없다\. 먼저 다른 곳에 팻감을/ })
       .click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await page.getByRole("button", { name: /두 점을 살려 받는다/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "패를 이어 끝낸다" }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await expect(page.getByText("단원 완료!")).toBeVisible();
     await page.getByRole("button", { name: "단원 목록으로" }).click();
@@ -581,6 +597,158 @@ test(
     await placeAt19(page, "Q10", touch);
     await expect(status).toHaveText("수순을 끝까지 두었어요!");
     await page.screenshot({ path: info.outputPath("baduk-fuseki.png") });
+  },
+);
+
+/**
+ * 장문 문제에서 흑이 둘 수: 화면과 같은 백 응수(`defenseFor`)를 받으며, 남은 수 안에 따내는 첫 수를 고른다.
+ * 화면이 쓰는 자료와 판정을 그대로 읽으니, 자료가 바뀌어도 시험을 고칠 일이 없다
+ */
+function netLine(id: string): string[] {
+  const p = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles).find(
+    (q) => q.id === id,
+  ) as Extract<BadukPuzzle, { kind: "capture" }>;
+  const target = targetOf(p);
+  let state = puzzleState(p);
+  let move = pointAt(p.solution, SIZE);
+  const moves: string[] = [];
+  for (let i = 0; i < p.within; i++) {
+    moves.push(pointName(move, SIZE));
+    const mine = playStep(state, 0, { type: "place", at: move });
+    if (!mine.ok) throw new Error(mine.error);
+    state = mine.state;
+    if (state.board[target] === 0) return moves;
+    const theirs = playStep(state, 1, defenseFor(p, state, i));
+    if (!theirs.ok) throw new Error(theirs.error);
+    state = theirs.state;
+    const next = captureMoves(state.board, 1, target, p.within - i - 1)[0];
+    if (next === undefined) throw new Error("장문이 끊겼다");
+    move = next;
+  }
+  throw new Error("따내지 못했다");
+}
+
+/** 끝내기 문제의 A·B 자리(화면 그림과 같은 엔진 읽기): [정답, 다른 곳] */
+function endgameMoves(id: string): [string, string] {
+  const p = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles).find(
+    (q) => q.id === id,
+  ) as Extract<BadukPuzzle, { kind: "endgame" }>;
+  const { board } = puzzleState(p);
+  const marks = spotsOf(p).map((spot) =>
+    pointName(spotMoveOf(board, spot), SIZE),
+  );
+  const other = marks.find((m) => m !== p.solution) as string;
+  return [p.solution, other];
+}
+
+test(
+  "바둑 수 배우기: 끝내기 단원을 읽고, 패를 잇고, 축이 막히면 장문으로 잡고, 큰 끝내기·선수 끝내기를 고른다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baduk");
+    await page.getByRole("button", { name: /바둑 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const status = page.getByRole("status");
+
+    // 끝내기 단원: 설명 여섯 → 퀴즈 둘 → 끝
+    const lessons = page.getByRole("region", { name: "단원 읽기" });
+    await lessons.getByRole("button", { name: "끝내기 기초" }).click();
+    await expect(page.getByRole("heading", { name: "끝내기란" })).toBeVisible();
+    for (const title of [
+      "점수를 다시 세기",
+      "몇 점짜리일까",
+      "큰 곳부터",
+      "선수와 후수",
+      "어디부터 둘까",
+    ]) {
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+      await expect(page.getByRole("heading", { name: title })).toBeVisible();
+      if (title === "몇 점짜리일까" || title === "어디부터 둘까")
+        await page.screenshot({
+          path: info.outputPath(`baduk-lesson-endgame-${title}.png`),
+        });
+    }
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "2점짜리" }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: /^선수/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+    await page.getByRole("button", { name: "단원 목록으로" }).click();
+    await expect(
+      lessons.getByRole("button", { name: "끝내기 기초 (끝냄)" }),
+    ).toBeVisible();
+
+    // 패 잇기: 받지 않고 패를 잇는다
+    await page
+      .getByRole("region", { name: "패 잇기" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "백이 팻감을 썼어요. 받을지, 패를 이을지 골라 두세요.",
+    );
+    const connect = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles).find(
+      (q) => q.id === "ko-connect-1",
+    ) as BadukPuzzle;
+    await placeAt(page, connect.solution, touch);
+    await expect(status).toHaveText("패를 이었어요!");
+    await expect(page.getByText(/패를 지면 흑/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-ko-connect.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 축이 막히면 장문
+    await page
+      .getByRole("region", { name: "축이 막히면 장문" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "□ 축머리가 두 쪽에 있어요. 장문으로 △ 백 돌을 잡으세요.",
+    );
+    const net = netLine("blocked-net-1");
+    for (const [i, name] of net.entries()) {
+      await placeAt(page, name, touch);
+      if (i < net.length - 1)
+        await expect(status).toHaveText("계속 몰아 따내세요.", {
+          timeout: 10_000,
+        });
+    }
+    await expect(status).toHaveText("따냈어요!");
+    await page.screenshot({ path: info.outputPath("baduk-blocked-net.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 큰 끝내기부터: 작은 곳은 틀리고, 큰 곳은 푼다
+    await page
+      .getByRole("region", { name: "큰 끝내기부터" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "끝내기가 두 곳(A·B) 남았어요. 큰 곳에 두세요.",
+    );
+    const [big, small] = endgameMoves("endgame-bigger-1");
+    await placeAt(page, small, touch);
+    await expect(status).toHaveText("그곳은 작은 끝내기예요.");
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await placeAt(page, big, touch);
+    await expect(status).toHaveText("끝내기를 잘 골랐어요!");
+    await expect(page.getByText(/점짜리 후수 끝내기예요/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-endgame-big.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 선수 끝내기부터: 선수 → 백이 받는다 → 남은 곳
+    await page
+      .getByRole("region", { name: "선수 끝내기부터" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    const [sente, gote] = endgameMoves("endgame-sente-1");
+    await placeAt(page, sente, touch);
+    await expect(status).toHaveText("백이 받았어요. 남은 곳에 두세요.", {
+      timeout: 10_000,
+    });
+    await placeAt(page, gote, touch);
+    await expect(status).toHaveText("끝내기를 잘 골랐어요!");
+    await expect(page.getByText(/선수예요/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-endgame-sente.png") });
   },
 );
 

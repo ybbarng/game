@@ -4,14 +4,24 @@ import {
   pointAt,
   pointName,
   step,
+  tryPlace,
 } from "@game/baduk-engine";
 
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
-import { defenseFor, PUZZLE_SIZE, puzzleState } from "./study";
+import {
+  defenseFor,
+  endgameGain,
+  koLossStones,
+  PUZZLE_SIZE,
+  puzzleState,
+  spotMoveOf,
+  spotSizesOf,
+  spotsOf,
+} from "./study";
 import type { BadukLesson, BadukScene } from "./tutorial";
 
 /*
- * 바둑 수 배우기의 단원(docs/23 바둑): 패로 버티기, 긴 축과 축머리, 포석.
+ * 바둑 수 배우기의 단원(docs/23 바둑): 패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초.
  * 규칙 배우기(tutorial.ts)를 마친 사람이 읽는다. 그래서 거기서 뜻을 알린 말(활로·단수·따내기·패·팻감·귀·변·집 등)은 그냥 쓰고,
  * 새 말은 여기서 처음 쓸 때 뜻을 먼저 알린다(study-lessons-terms.test.ts가 두 글을 이어 읽어 본다).
  * 패·축 그림은 문제 자료에서 판을 만들고 글의 자리 이름도 자료에서 읽는다. 그래서 그림·글·문제가 어긋나지 않는다.
@@ -44,6 +54,12 @@ function sceneOf(
 
 /** 패 그림: 백이 방금 패를 따냈다(팻감 쓰기 첫 문제) */
 export const KO_LESSON_PUZZLE = puzzle("ko-threat-1", "kofight");
+/** 패 잇기 그림(패 잇기 첫 문제) */
+export const KO_CONNECT_LESSON_PUZZLE = puzzle("ko-connect-1", "kofight");
+/** 끝내기 크기 그림(큰 끝내기부터 첫 문제) */
+export const ENDGAME_SIZE_PUZZLE = puzzle("endgame-bigger-1", "endgame");
+/** 선수 그림(선수 끝내기부터 첫 문제) */
+export const ENDGAME_SENTE_PUZZLE = puzzle("endgame-sente-1", "endgame");
 /** 긴 축 그림(긴 축 첫 문제) */
 export const LADDER_LESSON_PUZZLE = puzzle("long-ladder-1", "capture");
 /** 축머리 그림(축머리 첫 문제) */
@@ -135,6 +151,135 @@ export const BREAKER_WRONG_PATH = ladderPath(
 /** 축머리 그림: A에서 몰 때 백이 뻗어 가는 길(축머리를 만나지 않는다) */
 export const BREAKER_RIGHT_PATH = ladderPath(BREAKER, BREAKER.solution);
 
+const KO_CONNECT = KO_CONNECT_LESSON_PUZZLE;
+const KO_CONNECT_THREAT = KO_CONNECT.setup[KO_CONNECT.setup.length - 1] ?? "";
+/** 패 잇기 그림: 패를 지면 잃는 흑 돌 자리 */
+export const KO_CONNECT_LOST = koLossStones(KO_CONNECT).map((p) =>
+  pointName(p, PUZZLE_SIZE),
+);
+/** 패 잇기 그림: 팻감이 노리는 흑 돌 수 */
+export const KO_CONNECT_THREATENED = groupOf(
+  puzzleState(KO_CONNECT).board,
+  pointAt(KO_CONNECT.target, PUZZLE_SIZE),
+).stones.length;
+
+const COUNT = ["", "한", "두", "세", "네", "다섯"];
+
+/** 끝내기 한 곳을 흑·백이 먼저 둘 때의 점수 변화와 점수 차 변화 */
+export function spotStory(
+  p: Extract<BadukPuzzle, { kind: "endgame" }>,
+  index: 0 | 1,
+) {
+  const { board } = puzzleState(p);
+  const spot = spotsOf(p)[index];
+  const move = pointName(spotMoveOf(board, spot), PUZZLE_SIZE);
+  const black = endgameGain(board, spot, 1);
+  const white = endgameGain(board, spot, 2);
+  return {
+    move,
+    black,
+    white,
+    /** 흑이 먼저 두면 점수 차(흑 − 백)가 늘어나는 만큼 */
+    up: black.black - black.white,
+    /** 백이 먼저 두면 점수 차가 줄어드는 만큼 */
+    down: white.white - white.black,
+    size: spotSizesOf(p)[index],
+  };
+}
+
+/** 「흑 점수는 2점 늘고, 백 점수는 1점 줄어요」처럼 점수 변화를 글로 */
+export function gainText(g: { black: number; white: number }): string {
+  const verb = (n: number, last: boolean) =>
+    n > 0 ? (last ? "늘어요" : "늘고") : last ? "줄어요" : "줄고";
+  const parts = [
+    ["흑", g.black],
+    ["백", g.white],
+  ].filter(([, n]) => n !== 0) as [string, number][];
+  if (parts.length === 0) return "두 편 점수가 그대로예요";
+  const particle = parts.length === 1 ? "가" : "는";
+  return parts
+    .map(
+      ([who, n], k) =>
+        `${who} 점수${particle} ${Math.abs(n)}점 ${verb(n, k === parts.length - 1)}`,
+    )
+    .join(", ");
+}
+
+export const SIZE_STORY = {
+  A: spotStory(ENDGAME_SIZE_PUZZLE, 0),
+  B: spotStory(ENDGAME_SIZE_PUZZLE, 1),
+};
+const SENTE = ENDGAME_SENTE_PUZZLE;
+const SENTE_INDEX = spotsOf(SENTE)[0].includes(
+  pointAt(SENTE.solution, PUZZLE_SIZE),
+)
+  ? 0
+  : 1;
+const SENTE_LABEL = SENTE_INDEX === 0 ? "A" : "B";
+const GOTE_LABEL = SENTE_INDEX === 0 ? "B" : "A";
+/** 선수 그림의 두 곳 크기 [선수, 후수] */
+export const SENTE_SIZES: readonly [number, number] = [
+  spotSizesOf(SENTE)[SENTE_INDEX],
+  spotSizesOf(SENTE)[SENTE_INDEX === 0 ? 1 : 0],
+];
+/** 선수 그림의 A·B 자리 */
+const endgameMarks = (p: Extract<BadukPuzzle, { kind: "endgame" }>) => {
+  const { board } = puzzleState(p);
+  const [a, b] = spotsOf(p);
+  return {
+    [pointName(spotMoveOf(board, a), PUZZLE_SIZE)]: "A",
+    [pointName(spotMoveOf(board, b), PUZZLE_SIZE)]: "B",
+  };
+};
+/**
+ * 크기 그림에서 두는 차례에 따른 점수 차 변화: 큰 A부터 두고 백이 B에 둘 때, 작은 B부터 두고 백이 A에 둘 때.
+ * 곳마다 따로 센 값(흑이 먼저 둘 때 느는 만큼 − 백이 먼저 둘 때 주는 만큼)이다
+ */
+export const ORDER_GAIN = {
+  bigFirst: SIZE_STORY.A.up - SIZE_STORY.B.down,
+  smallFirst: SIZE_STORY.B.up - SIZE_STORY.A.down,
+};
+
+/** 선수 그림: 흑이 선수를 둔 뒤 백이 받는 자리(문제 화면과 같은 수) */
+export const SENTE_REPLY = (() => {
+  const after = step(puzzleState(SENTE), 0, {
+    type: "place",
+    at: pointAt(SENTE.solution, PUZZLE_SIZE),
+  });
+  if (!after.ok) throw new Error("선수 그림: 둘 수 없다");
+  const reply = defenseFor(SENTE, after.state, 0);
+  if (reply.type !== "place") throw new Error("선수 그림: 백이 받지 않는다");
+  return pointName(reply.at, PUZZLE_SIZE);
+})();
+
+/** 선수 그림: 흑이 후수 곳에 두면 따내는 백 돌 수(0이면 따내지 않는다) */
+export const GOTE_CAPTURE = (() => {
+  const { board } = puzzleState(SENTE);
+  const solution = pointAt(SENTE.solution, PUZZLE_SIZE);
+  const gote = spotsOf(SENTE)
+    .map((spot) => spotMoveOf(board, spot))
+    .find((m) => m !== solution);
+  if (gote === undefined) throw new Error("선수 그림: 후수 곳이 없다");
+  const placed = tryPlace(board, gote, 1);
+  return placed.ok ? placed.captured.length : 0;
+})();
+
+/** 선수 그림: 흑이 선수를 두면 새로 단수가 되는 백 돌 수 */
+export const SENTE_THREATENED = (() => {
+  const { board } = puzzleState(SENTE);
+  const placed = tryPlace(board, pointAt(SENTE.solution, PUZZLE_SIZE), 1);
+  if (!placed.ok) throw new Error("선수 그림: 둘 수 없다");
+  let n = 0;
+  for (let q = 0; q < placed.board.length; q++)
+    if (
+      placed.board[q] === 2 &&
+      groupOf(placed.board, q).liberties.length === 1 &&
+      groupOf(board, q).liberties.length > 1
+    )
+      n++;
+  return n;
+})();
+
 /**
  * 귀·변·가운데에서 빈 자리 아홉 곳(3×3)을 둘러싼 흑 돌(19줄 판).
  * 귀는 판 끝 두 쪽이 벽이라 6개, 변은 한 쪽이 벽이라 9개, 가운데는 12개가 든다
@@ -166,7 +311,7 @@ export const SHIMARI_POINTS = { stone: "R16", shimari: "P17", extend: "R12" };
 
 /** 수 배우기 목록의 「단원 읽기」 소개 */
 export const BADUK_STUDY_LESSON_SUMMARY =
-  "패로 버티기, 긴 축과 축머리, 포석을 그림으로 읽고 퀴즈를 풀어요. 읽은 뒤 아래 문제와 따라 두기로 익혀요.";
+  "패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초를 그림으로 읽고 퀴즈를 풀어요. 읽은 뒤 아래 문제와 따라 두기로 익혀요.";
 
 export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
   {
@@ -180,7 +325,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         body: [
           "규칙 배우기에서 패를 따낸 바로 다음에는 상대가 되따낼 수 없다고 배웠어요. 다른 곳에 한 수 둔 뒤에야 되따낼 수 있었죠.",
           "이번에는 패를 두고 서로 버티는 법을 배워요. 먼저 패를 따인 쪽(흑)의 처지예요.",
-          `그림은 백이 방금 ${KO.setup[0]}에 두어 흑 한 점을 따낸 모양이에요. 흑이 ×에 바로 두면 백 ${KO.setup[0]}을 되따낼 것 같지만, 판 모양이 한 수 전으로 돌아가서 둘 수 없어요.`,
+          `그림은 백이 방금 ${KO.setup[0]}에 두어 ${KO.ko}의 흑 한 점을 따낸 모양이에요. 흑이 ×에 바로 두면 백 ${KO.setup[0]}을 되따낼 것 같지만, 판 모양이 한 수 전으로 돌아가서 둘 수 없어요.`,
         ],
         scene: sceneOf(KO, { [KO.ko]: "×" }),
       },
@@ -204,12 +349,27 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "받을까, 패를 이을까",
         body: [
           "이번엔 반대로, 내가 패를 따냈고 상대가 팻감을 쓴 때예요.",
-          "서로 따내고 되따내는 그 한 점을 **패에 걸린 돌**이라고 해요.",
+          "패에서 따이고 되따이는 돌 하나를 **패에 걸린 돌**이라고 해요.",
+          "상대가 패를 되따낸 뒤 내가 다시 되따내지 못한 채 패가 끝나는 것을 **패를 진다**고 해요. 패를 지면 패에 걸린 돌을 잃어요. 그때 둘레의 내 돌이 함께 단수가 되어 살릴 수 없으면 그 돌도 잃어요. 이 둘을 더한 수를 **패를 지면 잃는 돌**이라고 할게요.",
           "상대가 팻감을 쓰면 둘 중 하나를 골라요.",
-          "① **받기**: 팻감이 노리는 내 돌을 살려요. 그러면 상대가 패를 되따내요.",
+          "① **받기**: 팻감이 노리는 내 돌을 살려요. 그러면 상대가 패를 되따내고 패가 이어져요. 이번엔 내가 팻감을 써야 하고, 쓸 팻감이 없으면 패를 져요.",
           "② **패 잇기**: 상대가 되따낼 자리에 내 돌을 두어 막아요. 패는 끝나고, 팻감이 노린 내 돌은 잃어요.",
-          "고르는 법: 팻감이 노리는 내 돌 수와 패에 걸린 돌 수를 세요. 노리는 돌이 패에 걸린 돌보다 많으면 받고, 그렇지 않으면 패를 이어요. 이 단원의 패에 걸린 돌은 모두 한 점이에요.",
+          "고르는 법: 팻감이 노리는 내 돌 수와 패를 지면 잃는 돌 수를 세요. 노리는 돌이 더 많으면 받고, 같거나 적으면 패를 이어요. 같을 때도 잇는 까닭은, 이어 두면 패가 끝나 더 잃을 일이 없어서예요.",
         ],
+      },
+      {
+        kind: "explain",
+        title: "패를 잇는 때",
+        body: [
+          `그림은 흑 ${KO_CONNECT.setup[0]}이 ×(${KO_CONNECT.ko})의 백 한 점을 따내 패가 됐고, 백이 ${KO_CONNECT_THREAT}에 팻감을 둔 모양이에요. △ 흑 ${COUNT[KO_CONNECT_THREATENED]} 점이 단수예요.`,
+          `흑이 받으면 백이 ×에 되따내 패가 이어져요. 흑이 끝내 패를 지면 □ 흑 돌 ${COUNT[KO_CONNECT_LOST.length]} 점을 잃어요. 패에 걸린 한 점과, 백이 되따낼 때 함께 단수가 되어 달아날 곳이 없는 돌이에요.`,
+          `노리는 돌(${COUNT[KO_CONNECT_THREATENED]} 점)이 패를 지면 잃는 돌(${COUNT[KO_CONNECT_LOST.length]} 점)보다 적어요. 그래서 흑은 ×에 이어 패를 끝내고, △ 돌은 내줘요.`,
+        ],
+        scene: sceneOf(KO_CONNECT, {
+          [KO_CONNECT.target]: "△",
+          [KO_CONNECT.ko]: "×",
+          ...Object.fromEntries(KO_CONNECT_LOST.map((n) => [n, "□"])),
+        }),
       },
       {
         kind: "quiz",
@@ -226,7 +386,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
       {
         kind: "quiz",
         question:
-          "흑이 패를 따냈더니 백이 팻감을 두어 흑 두 점이 단수가 됐어요. 패에 걸린 돌은 한 점이에요. 흑은?",
+          "흑이 패를 따냈더니 백이 팻감을 두어 흑 두 점이 단수가 됐어요. 패를 지면 잃는 돌은 한 점이에요. 흑은?",
         options: [
           "두 점을 살려 받는다",
           "패를 이어 끝낸다",
@@ -234,7 +394,16 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         ],
         answer: 0,
         explain:
-          "노리는 돌(두 점)이 패에 걸린 돌(한 점)보다 많으니 받아요. 백이 패를 되따내면 이번엔 흑이 팻감을 쓸 차례예요.",
+          "노리는 돌(두 점)이 패를 지면 잃는 돌(한 점)보다 많으니 받아요. 백이 패를 되따내면 이번엔 흑이 팻감을 쓸 차례예요.",
+      },
+      {
+        kind: "quiz",
+        question:
+          "백이 팻감을 두어 흑 한 점이 단수가 됐어요. 패를 지면 흑 두 점을 잃어요. 흑은?",
+        options: ["패를 이어 끝낸다", "한 점을 살려 받는다"],
+        answer: 0,
+        explain:
+          "노리는 돌(한 점)이 패를 지면 잃는 돌(두 점)보다 적어요. 패를 이어 끝내고 한 점은 내줘요.",
       },
     ],
   },
@@ -411,6 +580,99 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         answer: 0,
         explain:
           "귀는 판 끝이 두 쪽을 막아 주어 적은 돌로 집을 지어요. 빈 귀가 있으면 먼저 차지해요.",
+      },
+    ],
+  },
+  {
+    id: "lesson-endgame",
+    title: "끝내기 기초",
+    summary: "집의 경계가 거의 다 정해졌을 때 남은 곳을 어디부터 둘지 배워요.",
+    steps: [
+      {
+        kind: "explain",
+        title: "끝내기란",
+        body: [
+          "규칙 배우기에서 판이 끝나면 내 돌 수와 내 집 수를 세어 이긴 쪽을 정한다고 배웠어요. 이번에는 판이 끝나 갈 즈음 남은 자리를 어디부터 둘지 배워요.",
+          "판이 끝나 갈 즈음에는 흑 돌과 백 돌이 맞닿아 집의 경계가 거의 다 정해지고, 몇 곳만 비어 있어요. 이 남은 곳을 마무리하는 수를 **끝내기**라고 해요.",
+          "그림은 왼쪽이 흑 집, 오른쪽이 백 집이에요. 끝내기가 A와 B 두 곳 남았어요. 지금은 흑 차례예요.",
+        ],
+        scene: sceneOf(ENDGAME_SIZE_PUZZLE, endgameMarks(ENDGAME_SIZE_PUZZLE)),
+      },
+      {
+        kind: "explain",
+        title: "점수를 다시 세기",
+        body: [
+          "판 위 내 돌 수와 내 집 수를 더해 세니, 내 돌 하나도 내 집 한 칸도 모두 1점이에요.",
+          "흑 점수에서 백 점수를 뺀 값을 **점수 차**라고 할게요. 흑은 점수 차를 크게, 백은 작게 만들려고 해요.",
+          "끝내기 한 곳을 누가 먼저 두느냐에 따라 점수 차가 달라져요. 그 달라지는 만큼을 세어 그곳이 **몇 점짜리**인지 말해요.",
+        ],
+      },
+      {
+        kind: "explain",
+        title: "몇 점짜리일까",
+        body: [
+          "세는 법이에요. 그곳에 아무도 두지 않고 판이 끝났다고 치고, 그때와 견줘요. ① 흑이 먼저 두면 점수 차가 몇 점 느는지 세요. ② 백이 먼저 두면 점수 차가 몇 점 줄어드는지 세요. ③ 두 수를 더하면 몇 점짜리인지 나와요.",
+          `B(${SIZE_STORY.B.move})는 흑 돌과도 백 돌과도 닿아 있어 누구 집도 아니에요. 흑이 먼저 두면 그 흑 돌만큼 ${gainText(SIZE_STORY.B.black)}. 점수 차가 ${SIZE_STORY.B.up}점 늘어요.`,
+          `백이 먼저 두면 그 백 돌만큼 ${gainText(SIZE_STORY.B.white)}. 점수 차가 ${SIZE_STORY.B.down}점 줄어요.`,
+          `${SIZE_STORY.B.up} + ${SIZE_STORY.B.down} = ${SIZE_STORY.B.size}, 그래서 B는 ${SIZE_STORY.B.size}점짜리예요.`,
+        ],
+        scene: sceneOf(ENDGAME_SIZE_PUZZLE, { [SIZE_STORY.B.move]: "B" }),
+      },
+      {
+        kind: "explain",
+        title: "큰 곳부터",
+        body: [
+          `A(${SIZE_STORY.A.move}) 옆의 백 한 점은 단수예요. 흑이 먼저 A에 두면 그 한 점을 따내요. A의 흑 돌 1점과 따낸 자리의 흑 집 1점이 생기고 백은 따인 돌 1점을 잃어서, ${gainText(SIZE_STORY.A.black)}. 점수 차가 ${SIZE_STORY.A.up}점 늘어요.`,
+          `백이 먼저 A에 두면 그 한 점을 이어 살려요. A의 백 돌만큼 ${gainText(SIZE_STORY.A.white)}. 점수 차가 ${SIZE_STORY.A.down}점 줄어요.`,
+          `${SIZE_STORY.A.up} + ${SIZE_STORY.A.down} = ${SIZE_STORY.A.size}, 그래서 A는 ${SIZE_STORY.A.size}점짜리예요.`,
+          `흑이 A부터 두면 백이 B에 두어 점수 차는 ${SIZE_STORY.A.up} − ${SIZE_STORY.B.down} = ${ORDER_GAIN.bigFirst}점 늘어요. B부터 두면 백이 A에 두어 ${SIZE_STORY.B.up} − ${SIZE_STORY.A.down} = ${ORDER_GAIN.smallFirst}점이에요. 큰 A부터 두는 편이 ${ORDER_GAIN.bigFirst - ORDER_GAIN.smallFirst}점 나아요.`,
+        ],
+        scene: sceneOf(ENDGAME_SIZE_PUZZLE, endgameMarks(ENDGAME_SIZE_PUZZLE)),
+      },
+      {
+        kind: "explain",
+        title: "선수와 후수",
+        body: [
+          "끝내기를 두면 보통 차례가 상대에게 넘어가요. 그런데 상대가 꼭 받아야 하는 수라면, 상대가 받은 뒤 다시 내 차례가 와요.",
+          "이렇게 두고 나서도 다시 내 차례가 오는 끝내기를 **선수**라고 해요. 상대가 받지 않아도 되어 차례가 넘어가는 끝내기는 **후수**라고 해요.",
+          "이 단원의 선수는 모두 상대 돌을 단수로 모는 수예요. 받지 않으면 따이니 상대가 받아요. 이 단원에서는 흑이 둘 때의 선수만 다뤄요.",
+          `그림에서 ${SENTE_LABEL}에 두면 백 ${COUNT[SENTE_THREATENED]} 점이 단수가 되고, 백은 ${SENTE_REPLY}에 이어 받아요. 그래서 선수예요. ${GOTE_LABEL}${GOTE_CAPTURE > 0 ? `에 두면 단수인 백 ${COUNT[GOTE_CAPTURE]} 점을 따내지만, 그 뒤로 백이 꼭 받아야 할 수가 없어 후수예요.` : "에 두면 새로 단수가 되는 백 돌이 없어 후수예요."}`,
+        ],
+        scene: sceneOf(SENTE, endgameMarks(SENTE)),
+      },
+      {
+        kind: "explain",
+        title: "어디부터 둘까",
+        body: [
+          "끝내기가 여러 곳 남으면 이 순서로 골라요.",
+          "① 선수가 있으면 선수부터 둬요. 선수가 여럿이면 그 가운데 큰 곳부터예요.",
+          "② 선수가 없으면 후수 가운데 큰 곳부터 둬요.",
+          "③ 크기가 같으면 어느 곳부터 둬도 괜찮아요.",
+          `이 판에서 세면 ${SENTE_LABEL}는 ${SENTE_SIZES[0]}점짜리, ${GOTE_LABEL}는 ${SENTE_SIZES[1]}점짜리예요. ${SENTE_LABEL}가 크지 않아도 선수라 먼저 둬요. 백이 받으면 다시 흑 차례라 ${GOTE_LABEL}도 흑이 둬요.`,
+        ],
+        scene: sceneOf(SENTE, endgameMarks(SENTE)),
+      },
+      {
+        kind: "quiz",
+        question: `한 곳에 흑이 먼저 두면 점수 차가 ${SIZE_STORY.B.up}점 늘고, 백이 먼저 두면 ${SIZE_STORY.B.down}점 줄어요. 몇 점짜리일까요?`,
+        options: [
+          `${SIZE_STORY.B.size}점짜리`,
+          `${SIZE_STORY.B.up}점짜리`,
+          "0점짜리",
+        ],
+        answer: 0,
+        explain: `흑이 먼저 둘 때 느는 ${SIZE_STORY.B.up}점과 백이 먼저 둘 때 줄어드는 ${SIZE_STORY.B.down}점을 더해 ${SIZE_STORY.B.size}점짜리예요.`,
+      },
+      {
+        kind: "quiz",
+        question: `선수 ${SENTE_SIZES[0]}점짜리와 후수 ${SENTE_SIZES[1]}점짜리가 남았어요. 어디부터 둘까요?`,
+        options: [
+          `선수 ${SENTE_SIZES[0]}점짜리`,
+          `후수 ${SENTE_SIZES[1]}점짜리`,
+        ],
+        answer: 0,
+        explain:
+          "선수를 두면 상대가 받아야 해서 다시 내 차례예요. 그다음 후수도 내가 둬요.",
       },
     ],
   },

@@ -1,17 +1,27 @@
 // @vitest-environment node
 // 수 배우기 단원 글의 판에 관한 말을 엔진으로 확인한다(study-lessons.ts).
 import {
+  areaOwners,
+  areaScore,
   type Cell,
   emptyBoard,
   groupOf,
   neighbors,
   pointAt,
   pointName,
+  solveEndgame,
   starPoints,
   tryPlace,
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
-import { PUZZLE_SIZE, puzzleState } from "./study";
+import {
+  koLossOf,
+  PUZZLE_SIZE,
+  puzzleState,
+  spotMoveOf,
+  spotSizesOf,
+  spotsOf,
+} from "./study";
 import {
   AREA_WALLS,
   BADUK_STUDY_LESSONS,
@@ -19,10 +29,21 @@ import {
   BREAKER_RIGHT_PATH,
   BREAKER_WRONG_PATH,
   CORNER_POINTS,
+  ENDGAME_SENTE_PUZZLE,
+  ENDGAME_SIZE_PUZZLE,
+  gainText,
+  KO_CONNECT_LESSON_PUZZLE,
+  KO_CONNECT_LOST,
+  KO_CONNECT_THREATENED,
   KO_LESSON_PUZZLE,
   LADDER_LESSON_PATH,
   LADDER_LESSON_PUZZLE,
+  ORDER_GAIN,
   otherSide,
+  SENTE_REPLY,
+  SENTE_SIZES,
+  SENTE_THREATENED,
+  spotStory,
 } from "./study-lessons";
 
 const SIZE = 19;
@@ -168,5 +189,145 @@ describe("단원 글", () => {
   it("초보자 글에 판단을 넘기는 말(될 때까지, 알아서, 잘 보고)을 쓰지 않는다", () => {
     const text = JSON.stringify(BADUK_STUDY_LESSONS);
     expect(text).not.toMatch(/될 때까지|알아서|잘 보고/);
+  });
+});
+
+describe("패로 버티기 단원: 패를 잇는 때 그림", () => {
+  const p = KO_CONNECT_LESSON_PUZZLE;
+
+  it("□ 돌은 패에 걸린 흑 한 점과 함께 잡히는 돌이고, 노리는 돌보다 많다", () => {
+    expect(KO_CONNECT_LOST).toContain(p.setup[0]);
+    expect(KO_CONNECT_LOST).toHaveLength(koLossOf(p));
+    expect(KO_CONNECT_LOST.length).toBeGreaterThan(KO_CONNECT_THREATENED);
+    expect(KO_CONNECT_THREATENED).toBe(1);
+  });
+});
+
+describe("끝내기 단원", () => {
+  const p = ENDGAME_SIZE_PUZZLE;
+  const { board } = puzzleState(p);
+  const A = spotStory(p, 0);
+  const B = spotStory(p, 1);
+
+  it("곳마다 「점수 차가 느는 만큼 + 주는 만큼」이 엔진이 센 크기다", () => {
+    expect(A.up + A.down).toBe(spotSizesOf(p)[0]);
+    expect(B.up + B.down).toBe(spotSizesOf(p)[1]);
+  });
+
+  it("그림은 왼쪽이 흑 집, 오른쪽이 백 집이다", () => {
+    const owners = areaOwners(board);
+    expect(owners[pointAt("A5", PUZZLE_SIZE)]).toBe(1);
+    expect(owners[pointAt("J5", PUZZLE_SIZE)]).toBe(2);
+  });
+
+  it("B는 빈 점 하나로 흑·백 돌 모두에 닿고, 어느 편이 두어도 상대 돌이 새로 단수가 되지 않는다", () => {
+    const b = pointAt(B.move, PUZZLE_SIZE);
+    expect(spotsOf(p)[1]).toEqual([b]);
+    const touching = new Set(
+      [pointAt(B.move, PUZZLE_SIZE)].flatMap((q) =>
+        [q - 9, q + 9, q - 1, q + 1]
+          .filter((n) => n >= 0 && n < 81)
+          .map((n) => board[n]),
+      ),
+    );
+    expect(touching.has(1) && touching.has(2)).toBe(true);
+    for (const c of [1, 2] as const) {
+      const placed = tryPlace(board, b, c);
+      if (!placed.ok) throw new Error("둘 수 없다");
+      const foe = c === 1 ? 2 : 1;
+      const fresh = placed.board.some(
+        (x, q) =>
+          x === foe &&
+          groupOf(placed.board, q).liberties.length === 1 &&
+          groupOf(board, q).liberties.length > 1,
+      );
+      expect(fresh).toBe(false);
+    }
+  });
+
+  it("A는 흑이 따내면 흑 2점이 늘고 백 1점이 줄며, 백이 이으면 백 1점이 는다", () => {
+    expect(A.black).toEqual({ black: 2, white: -1 });
+    expect(A.white).toEqual({ black: 0, white: 1 });
+  });
+
+  it("두는 차례에 따른 점수 차 변화는 두 곳을 함께 끝까지 읽은 값과 같다", () => {
+    const base = areaScore(board);
+    const diff0 = base.black - base.white;
+    const all = [...spotsOf(p)[0], ...spotsOf(p)[1]];
+    expect(solveEndgame(board, all, 1).score - diff0).toBe(ORDER_GAIN.bigFirst);
+    const small = tryPlace(board, pointAt(B.move, PUZZLE_SIZE), 1);
+    if (!small.ok) throw new Error("둘 수 없다");
+    const rest = all.filter((q) => small.board[q] === 0);
+    expect(solveEndgame(small.board, rest, 2).score - diff0).toBe(
+      ORDER_GAIN.smallFirst,
+    );
+  });
+
+  it("B는 흑이 두면 흑이 1점, 백이 두면 백이 1점 느는 2점짜리다", () => {
+    expect(B.black).toEqual({ black: 1, white: 0 });
+    expect(B.white).toEqual({ black: 0, white: 1 });
+    expect(B.size).toBe(2);
+  });
+
+  it("A 옆의 백 한 점은 단수라 흑이 두면 따내고, 백이 두면 이어 살린다. A가 B보다 크다", () => {
+    const a = pointAt(A.move, PUZZLE_SIZE);
+    const taken = tryPlace(board, a, 1);
+    expect(taken.ok && taken.captured.length).toBe(1);
+    const saved = tryPlace(board, a, 2);
+    if (!saved.ok) throw new Error("백이 둘 수 없다");
+    const libs = groupOf(saved.board, a).liberties.length;
+    expect(libs).toBeGreaterThan(1);
+    expect(A.size).toBeGreaterThan(B.size);
+  });
+
+  it("점수 변화 글", () => {
+    expect(gainText({ black: 2, white: -1 })).toBe(
+      "흑 점수는 2점 늘고, 백 점수는 1점 줄어요",
+    );
+    expect(gainText({ black: 0, white: 1 })).toBe("백 점수가 1점 늘어요");
+  });
+
+  it("선수 그림: 선수 곳에 두면 백 돌이 새로 단수가 되고, 후수 곳에 두면 새로 단수가 되는 백 돌이 없다. 선수가 크지 않다", () => {
+    const s = ENDGAME_SENTE_PUZZLE;
+    const start = puzzleState(s).board;
+    expect(SENTE_THREATENED).toBeGreaterThan(0);
+    const solution = pointAt(s.solution, PUZZLE_SIZE);
+    const gote = spotsOf(s)
+      .map((spot) => spotMoveOf(start, spot))
+      .find((m) => m !== solution) as number;
+    const placed = tryPlace(start, gote, 1);
+    if (!placed.ok) throw new Error("둘 수 없다");
+    const fresh = placed.board.some(
+      (c, q) =>
+        c === 2 &&
+        groupOf(placed.board, q).liberties.length === 1 &&
+        groupOf(start, q).liberties.length > 1,
+    );
+    expect(fresh).toBe(false);
+    expect(SENTE_SIZES[0]).toBeLessThanOrEqual(SENTE_SIZES[1]);
+    // 처음 판에 단수인 흑 돌이 없다(백이 받는 수가 흑 돌을 따내지 않는다)
+    for (let q = 0; q < start.length; q++)
+      if (start[q] === 1)
+        expect(groupOf(start, q).liberties.length).toBeGreaterThan(1);
+
+    // 백이 받는 자리는 새로 단수가 된 백 무리의 활로다
+    const atari = tryPlace(start, solution, 1);
+    if (!atari.ok) throw new Error("둘 수 없다");
+    const reply = pointAt(SENTE_REPLY, PUZZLE_SIZE);
+    expect(
+      atari.board.some(
+        (c, q) =>
+          c === 2 &&
+          groupOf(atari.board, q).liberties.length === 1 &&
+          groupOf(atari.board, q).liberties[0] === reply,
+      ),
+    ).toBe(true);
+  });
+
+  it("퀴즈 보기는 서로 다르다", () => {
+    const lesson = BADUK_STUDY_LESSONS.find((l) => l.id === "lesson-endgame");
+    for (const step of lesson?.steps ?? [])
+      if (step.kind === "quiz")
+        expect(new Set(step.options).size).toBe(step.options.length);
   });
 });
