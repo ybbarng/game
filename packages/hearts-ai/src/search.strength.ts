@@ -16,6 +16,7 @@ import { simulateHearts } from "./simulate";
  * 도전자를 0·2번 자리와 1·3번 자리에 한 번씩 앉혀 패 운을 줄인다.
  *
  * 돌리기: pnpm --filter @game/hearts-ai bench -- search
+ * 새 고수는 제품의 혼자 하기처럼 실제 시계로 시간 상한을 켠다.
  * 게임 수: HEARTS_BENCH_GAMES(기본 12, 자리 바꿔 두 번이라 실제로는 24게임)
  * 고를 비교: HEARTS_BENCH_ONLY=old,standing,moon,block,time,normal (쉼표로, 없으면 전부)
  * 추측 판 수: HEARTS_BENCH_WORLDS=카드 내기,넘기기(예: 12,8). 두 쪽 모두 같게 줄여 게임을 더 많이 돌린다
@@ -44,7 +45,6 @@ const OLD: HeartsSearchOptions = {
   standing: false,
   moon: false,
   block: false,
-  timeLimitMs: Number.POSITIVE_INFINITY,
 };
 
 interface Timing {
@@ -151,7 +151,7 @@ function stats(xs: number[]) {
 }
 
 const VARIANTS: [string, HeartsSearchOptions, "old" | "normal" | "late"][] = [
-  ["새 고수(전부) vs 옛 고수", {}, "old"],
+  ["새 고수(전부) vs 옛 고수", { clock: performance }, "old"],
   [
     "점수 판만 vs 옛 고수(55~90점에서 시작)",
     { ...OLD, standing: true },
@@ -161,10 +161,10 @@ const VARIANTS: [string, HeartsSearchOptions, "old" | "normal" | "late"][] = [
   ["문 슛 막기만 vs 옛 고수", { ...OLD, moon: false, block: true }, "old"],
   [
     "시간 상한만 vs 옛 고수",
-    { ...OLD, timeLimitMs: HEARTS_SEARCH_TIME_LIMIT_MS },
+    { ...OLD, clock: performance, timeLimitMs: HEARTS_SEARCH_TIME_LIMIT_MS },
     "old",
   ],
-  ["새 고수(전부) vs 중수", {}, "normal"],
+  ["새 고수(전부) vs 중수", { clock: performance }, "normal"],
 ];
 
 const KEYS: Record<string, string> = {

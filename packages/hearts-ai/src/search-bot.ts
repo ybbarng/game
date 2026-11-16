@@ -368,8 +368,6 @@ export interface SearchBudget {
   now: () => number;
 }
 
-const realNow = () => Date.now();
-
 /** 추측 판을 하나씩 돌린다. 돌린 판 수를 돌려준다 */
 function runWorlds(budget: SearchBudget, world: () => void): number {
   const start = budget.now();
@@ -735,12 +733,15 @@ export interface HeartsSearchOptions {
   passWorlds?: number;
   /** 성향. 없으면 자리마다 정해진 성향 */
   persona?: HeartsPersona;
-  /** 한 번 정하는 데 쓸 시간 상한(ms). 기본 300 */
+  /**
+   * 시간 상한을 잴 시계(fair-play `Clock`과 같은 모양). 없으면 시간 상한 없이 판 수만 본다(기본).
+   * 결과가 기기 속도에 따라 달라지므로 다시 계산해 맞춰 보는 곳(온라인 방 검증)이나 시험에서는 넣지 않는다
+   */
+  clock?: { now(): number };
+  /** 시계가 있을 때 한 번 정하는 데 쓸 시간 상한(ms). 기본 300 */
   timeLimitMs?: number;
   /** 시간이 넘어도 돌릴 추측 판 수. 기본 4 */
   minWorlds?: number;
-  /** 시계(ms). 기본은 `Date.now` */
-  now?: () => number;
   /** 게임 끝이 가까우면 순위를 본다. 기본 끔(재 보니 1등 몫이 나아지지 않았다, docs/hearts/02 3절) */
   standing?: boolean;
   /** 문 슛 노리기. 기본 켬 */
@@ -755,12 +756,21 @@ export const HEARTS_SEARCH_TIME_LIMIT_MS = 300;
 export function createHeartsSearchBot(
   options: HeartsSearchOptions = {},
 ): HeartsBot {
-  const budgetOf = (worlds: number): SearchBudget => ({
-    worlds,
-    timeLimitMs: options.timeLimitMs ?? HEARTS_SEARCH_TIME_LIMIT_MS,
-    minWorlds: Math.min(worlds, options.minWorlds ?? 4),
-    now: options.now ?? realNow,
-  });
+  const clock = options.clock;
+  const budgetOf = (worlds: number): SearchBudget =>
+    clock
+      ? {
+          worlds,
+          timeLimitMs: options.timeLimitMs ?? HEARTS_SEARCH_TIME_LIMIT_MS,
+          minWorlds: Math.min(worlds, options.minWorlds ?? 4),
+          now: () => clock.now(),
+        }
+      : {
+          worlds,
+          timeLimitMs: Number.POSITIVE_INFINITY,
+          minWorlds: worlds,
+          now: () => 0,
+        };
   const worlds = options.worlds ?? 30;
   const passWorlds = options.passWorlds ?? 24;
   const standing = options.standing ?? false;
@@ -807,5 +817,5 @@ export function createHeartsSearchBot(
   };
 }
 
-/** 고수 */
+/** 고수(시간 상한 없음, 같은 씨앗이면 어느 기기에서나 같은 수) */
 export const heartsSearchBot: HeartsBot = createHeartsSearchBot();

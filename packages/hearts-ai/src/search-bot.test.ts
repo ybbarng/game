@@ -167,7 +167,6 @@ describe("하트 고수: 점수 판", () => {
         worlds: 12,
         persona: EXACT,
         standing,
-        now: () => 0,
       }).decide(view, createRng(1));
       return action.type === "play" ? action.card : null;
     };
@@ -181,7 +180,6 @@ describe("하트 고수: 점수 판", () => {
       worlds: 12,
       persona: EXACT,
       standing: true,
-      now: () => 0,
     }).decide(lateView([20, 99, 38, 50]), createRng(1));
     expect(action).toMatchObject({ type: "play", card: "H2" });
   });
@@ -227,7 +225,6 @@ describe("하트 고수: 문 슛", () => {
     const action = createHeartsSearchBot({
       worlds: 12,
       persona: EXACT,
-      now: () => 0,
     }).decide(view, createRng(2));
     expect(action).toMatchObject({ type: "play", card: "DA" });
     // 문 슛을 노리지 않으면 ◆2로 피한다.
@@ -235,7 +232,6 @@ describe("하트 고수: 문 슛", () => {
       worlds: 12,
       persona: EXACT,
       moon: false,
-      now: () => 0,
     }).decide(view, createRng(2));
     expect(plain).toMatchObject({ type: "play", card: "D2" });
   });
@@ -289,7 +285,6 @@ describe("하트 고수: 문 슛", () => {
     const action = createHeartsSearchBot({
       worlds: 8,
       persona: EXACT,
-      now: () => 0,
     }).decide(view, createRng(3));
     expect(action).toMatchObject({ type: "play", card: "HJ" });
   });
@@ -345,10 +340,24 @@ describe("하트 고수: 계산 시간 상한", () => {
     expect(cut?.worlds).toBe(4);
   });
 
+  it("시계를 넣은 봇만 시간 상한을 쓴다: 시계가 크게 흐르면 최소 판 수에서 멈춘다", () => {
+    const view = lateView([10, 30, 5, 20]);
+    let calls = 0;
+    const clock = {
+      now: () => {
+        calls++;
+        return calls * 10_000;
+      },
+    };
+    createHeartsSearchBot({ persona: EXACT, clock }).decide(view, createRng(1));
+    // 시작할 때 한 번, 최소 4판을 채운 뒤 한 번 보고 멈춘다(30판을 다 돌면 28번 본다).
+    expect(calls).toBe(2);
+  });
+
   it("같은 씨앗이면 같은 카드를 넘긴다", () => {
     const { state } = createMatch({ rules, seed: 4 });
     const view = viewOf(state, 0);
-    const bot = createHeartsSearchBot({ passWorlds: 8, now: () => 0 });
+    const bot = createHeartsSearchBot({ passWorlds: 8 });
     expect(bot.decide(view, createRng(7))).toEqual(
       bot.decide(view, createRng(7)),
     );
