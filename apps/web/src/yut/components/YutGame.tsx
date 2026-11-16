@@ -41,7 +41,7 @@ import {
   sideLabel,
 } from "./parts";
 import { ThrowPad, TOO_LOW_NOTICE } from "./ThrowPad";
-import { TossMat } from "./TossMat";
+import { resultLabel, TossMat } from "./TossMat";
 import { YutBoard } from "./YutBoard";
 import "@/yut/components/yut.css";
 
@@ -196,6 +196,7 @@ export function YutGame({
   const canUndo = useYut((s) => s.canUndo());
   const clearNotice = useYut((s) => s.clearNotice);
   const tossing = useYut((s) => s.tossing);
+  const landed = useYut((s) => s.landed);
   const split = useSplit();
   const chatMessages = useChat((s) => s.messages);
   // 말풍선이 4초 뒤 사라지도록 다시 그린다
@@ -282,7 +283,7 @@ export function YutGame({
       if ((e.key === "Enter" || e.key === " ") && !target?.closest("button")) {
         if (decision?.kind === "throw") {
           e.preventDefault();
-          throwGesture(STEADY_GESTURE);
+          if (!tossing) throwGesture(STEADY_GESTURE);
         } else if (armed !== null) {
           e.preventDefault();
           move(armed);
@@ -315,13 +316,18 @@ export function YutGame({
 
   let status: string;
   if (gameOver) status = resultText(result, view, name);
+  // 던진 윷이 구르거나 결과를 보이는 동안은 다음 단계(윷·모 뒤 다시 던지기, 차례 넘김 등)보다 먼저 그 윷을 알린다
+  else if (tossing)
+    status =
+      landed && view.lastThrow
+        ? `${view.lastThrow.seat === me ? "내" : `${name(view.lastThrow.seat)}의`} 윷: ${resultLabel(view.lastThrow)}`
+        : "윷이 구르는 중…";
   else if (view.phase === "commit")
     status = "모두의 기기가 던지기 사슬을 약속하는 중…";
   else if (view.phase === "throw")
     status = myTurn ? "내 차례 — 윷을 던지세요" : `${turnName}의 차례`;
   else if (view.phase === "reveal" || view.phase === "open")
     status = "모두의 기기가 함께 던지는 중…";
-  else if (tossing) status = "윷이 구르는 중…";
   else if (decision?.kind === "move")
     status =
       options.length > 0
@@ -476,7 +482,8 @@ export function YutGame({
             {value !== null ? ` (${throwName(value)})` : ""}
           </button>
         )}
-        {decision?.kind === "throw" && !moving && (
+        {/* 앞 윷이 구르거나 결과를 보이는 동안(윷·모 뒤)에는 손의 윷을 내밀지 않는다 */}
+        {decision?.kind === "throw" && !moving && !tossing && (
           <ThrowPad
             onThrow={throwGesture}
             onTooLow={() => setNotice(TOO_LOW_NOTICE)}

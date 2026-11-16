@@ -66,7 +66,7 @@ export function planFor(
 }
 
 /** 결과 글: 도·개·걸, 「윷! 한 번 더」, 낙, 무효 */
-function resultLabel(thrown: LastThrow): string {
+export function resultLabel(thrown: LastThrow): string {
   if (thrown.nak === "unopened") return "무효";
   if (thrown.nak) return "낙";
   const v = thrown.value;
@@ -196,6 +196,7 @@ export function TossMat({
             plays: (window.__yutToss?.plays ?? 0) + 1,
           };
           setShown(index);
+          useYut.getState().landToss();
           setPlaying(false);
           // 멈춘 윷과 결과 글을 읽을 틈을 두고 다음 화면(말 옮기는 장면 등)으로 간다
           if (holdTimer.current) clearTimeout(holdTimer.current);

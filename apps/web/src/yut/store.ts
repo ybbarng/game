@@ -107,6 +107,10 @@ interface YutStore {
   seeds: SeedBook;
   /** 던진 윷이 3D 멍석에서 굴러가는 중(다음 화면을 보이지 않고 기다린다) */
   tossing: boolean;
+  /** 굴러가던 윷이 다 멈춰 결과를 보이는 중(`tossing`은 아직 참) */
+  landed: boolean;
+  /** 3D 윷이 다 멈췄다: 결과를 보이는 동안 상태 줄도 결과로 */
+  landToss(): void;
   /** 3D 연출이 끝났다: 기다리던 화면을 이어 보인다 */
   finishToss(): void;
   newGame(options: { rules: YutRules; level: number; seed?: number }): void;
@@ -263,6 +267,7 @@ export const useYut = create<YutStore>((set, get) => {
         view: next.view,
         events: next.events,
         tossing: tossed,
+        landed: false,
       });
       if (tossed)
         tossTimer = setTimeout(() => get().finishToss(), TOSS_SAFETY_MS);
@@ -319,6 +324,7 @@ export const useYut = create<YutStore>((set, get) => {
       practice,
       seeds: options.seeds,
       tossing: false,
+      landed: false,
     });
     persist();
     for (const snapshot of first) {
@@ -391,12 +397,17 @@ export const useYut = create<YutStore>((set, get) => {
     practice: false,
     seeds: {},
     tossing: false,
+    landed: false,
+
+    landToss() {
+      if (get().tossing) set({ landed: true });
+    },
 
     finishToss() {
       if (tossTimer !== null) clearTimeout(tossTimer);
       tossTimer = null;
       if (!get().tossing) return;
-      set({ tossing: false });
+      set({ tossing: false, landed: false });
       advance();
     },
 
@@ -525,6 +536,7 @@ export const useYut = create<YutStore>((set, get) => {
         practice: false,
         seeds: {},
         tossing: false,
+        landed: false,
       });
     },
 

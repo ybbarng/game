@@ -472,7 +472,9 @@ export function createTossScene(canvas: HTMLCanvasElement): TossScene {
       renderer.setPixelRatio(pixelRatio);
       const size = renderer.getSize(new THREE.Vector2());
       renderer.setSize(size.x, size.y, false);
-      dirty = true;
+      // 크기를 다시 정하면 캔버스가 지워진다: 멈춘 윷을 바로 다시 그린다(다음 장 요청을 기다리면 결과를 보이는 동안 멍석이 빈다)
+      dirty = false;
+      render();
     }
   };
 
@@ -526,8 +528,14 @@ export function createTossScene(canvas: HTMLCanvasElement): TossScene {
       camera.lookAt(0, 0, 0.08);
       camera.updateProjectionMatrix();
       if (rest && !playing) place(rest, rest.duration + 1);
-      dirty = true;
-      kick();
+      // 크기를 바꾸면 캔버스가 지워지므로 보이는 중이면 바로 다시 그린다(굴리는 중이면 다음 장이 그린다)
+      if (active && !playing) {
+        dirty = false;
+        render();
+      } else {
+        dirty = true;
+        kick();
+      }
     },
     stats() {
       const sorted = [...times].sort((a, b) => a - b);

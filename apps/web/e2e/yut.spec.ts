@@ -464,6 +464,35 @@ async function tossNow(page: Page): Promise<string | null> {
   return mat(page).getAttribute("data-toss");
 }
 
+/**
+ * 3D 캔버스에 실제로 그려진 짚 멍석 빛 화소의 몫(0~1). WebGL 캔버스는 그린 뒤 버퍼를 읽을 수 없어,
+ * 화면에 보이는 그대로 요소 스크린샷을 찍어 페이지 안에서 풀어 센다(빈 캔버스면 0에 가깝다)
+ */
+async function strawShare(page: Page): Promise<number> {
+  const png = await page.locator("[data-toss-3d]").screenshot();
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext("2d") as CanvasRenderingContext2D;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let straw = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const [r, gr, b] = [
+        d[i] as number,
+        d[i + 1] as number,
+        d[i + 2] as number,
+      ];
+      if (r > 150 && gr > 105 && b < 120 && r > b + 60) straw++;
+    }
+    return straw / (d.length / 4);
+  }, png.toString("base64"));
+}
+
 test(
   "윷놀이 3D: 던진 윷이 멍석에서 구르다 하나씩 멈춘 뒤 말 옮기는 장면으로 바뀌고, 컴퓨터 윷은 그 자리에서 날아온다",
   { tag: "@no-phone-landscape" },
@@ -513,8 +542,17 @@ test(
       .locator("[data-throw-result]")
       .getAttribute("data-throw-result");
     expect(result).toMatch(/^(-1|[1-5]|nak)$/);
-    // 멈춘 윷과 결과 글을 읽을 틈: 아직 던지는 장면이다
+    // 멈춘 윷과 결과 글을 읽을 틈: 아직 던지는 장면이고, 결과 글은 멈춘 멍석·윷가락 위에 겹쳐 보인다
     expect(await sceneNow(page)).toBe("throw");
+    await expect(page.locator("[data-toss-3d]")).toBeVisible();
+    expect(
+      await page
+        .locator("[data-mat]")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    ).toBe("1");
+    // 빈 캔버스면 약 0.07, 멍석이 그려져 있으면 0.29~0.36(2026-11-17)
+    expect(await strawShare(page)).toBeGreaterThan(0.15);
+    await expect(status(page)).not.toHaveText("윷이 구르는 중…");
     await page.screenshot({ path: info.outputPath("yut-3d-done.png") });
 
     // 연출 한 번이 여러 장을 그렸다(그리기 시간은 시계를 잡아 여기서는 재지 않는다, docs/37 14-5)
