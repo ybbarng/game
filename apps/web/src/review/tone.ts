@@ -24,7 +24,9 @@ export function lineProblems(line: string): string[] {
   const out: string[] = [];
   for (const piece of text.split(/\s·\s/)) {
     const body = stripTrailingParens(piece);
-    if (/(다|요|죠)$/.test(body)) out.push(`마침표 없는 문장: ${text}`);
+    // 「묶음마다」의 「마다」는 토씨라 서술어가 아니다
+    if (/(다|요|죠)$/.test(body) && !/마다$/.test(body))
+      out.push(`마침표 없는 문장: ${text}`);
     else if (/(라면|보면|으면|하면)\s/.test(body))
       out.push(`꼬리표 속 문장 조각: ${text}`);
   }
