@@ -70,6 +70,18 @@ export interface CubeGroups {
  * 묶음은 스티커 색(맞춘 상태의 면)으로 정해진다.
  */
 export function cubeGroups(n: number, crossFace: number = U): CubeGroups {
+  // 크기·면마다 정해진다(목표 판정마다 부르므로 한 번만 만든다. 값은 읽기 전용)
+  const key = n * 8 + crossFace;
+  const hit = groupsCache.get(key);
+  if (hit) return hit;
+  const made = buildGroups(n, crossFace);
+  groupsCache.set(key, made);
+  return made;
+}
+
+const groupsCache = new Map<number, CubeGroups>();
+
+function buildGroups(n: number, crossFace: number): CubeGroups {
   const top = OPPOSITE_FACE[crossFace as 0] as number;
   const topo = cubeTopology(n);
   const cross: number[] = [];

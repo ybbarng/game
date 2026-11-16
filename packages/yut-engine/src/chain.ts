@@ -1,3 +1,4 @@
+import { type Gesture, gestureText, isSweep, nakPermille } from "./gesture";
 import type { ThrowValue, YutRules } from "./rules";
 import { sha256Hex } from "./sha256";
 
@@ -55,6 +56,35 @@ export function sticksFrom(
   for (let i = 0; i < 4; i++)
     sticks.push(Number.parseInt(h.slice(i * 4, i * 4 + 4), 16) < limit);
   return sticks as Sticks;
+}
+
+/**
+ * 규칙 판 2(docs/37 13절): 「몸짓 + 모두의 값」으로 가락 넷과 낙을 정한다.
+ * 해시 하나에 던지기 번호·연 몸짓·모든 자리 고리를 넣는다. 앞 16자로 가락 넷(`sticksFrom`과 같은 방식),
+ * 다음 8자로 낙 주사위(0~999). `nak`이 켜졌고 주사위가 몸짓의 낙 확률(천분율)보다 작으면 낙이다.
+ * 몸짓이 하나라도 다르면 해시가 달라 결과가 바뀐다(결과는 실제로 몸짓에 달렸다). 몸짓은 봉인 뒤 고리가 공개되므로
+ * 던지는 사람은 남의 고리를 모른 채 몸짓을 정한다(겨냥할 수 없다)
+ */
+export function gestureThrow(
+  throwIndex: number,
+  gesture: Gesture,
+  links: readonly string[],
+  rules: Pick<YutRules, "flatPercent" | "nak">,
+): { sticks: Sticks; nak: "chance" | "sweep" | null } {
+  const h = sha256Hex(
+    `yut-throw2|${throwIndex}|${gestureText(gesture)}|${links.join("|")}`,
+  );
+  const limit = Math.round((rules.flatPercent / 100) * 65536);
+  const sticks: boolean[] = [];
+  for (let i = 0; i < 4; i++)
+    sticks.push(Number.parseInt(h.slice(i * 4, i * 4 + 4), 16) < limit);
+  let nak: "chance" | "sweep" | null = null;
+  if (rules.nak === true) {
+    if (isSweep(gesture)) nak = "sweep";
+    else if (Number.parseInt(h.slice(16, 24), 16) % 1000 < nakPermille(gesture))
+      nak = "chance";
+  }
+  return { sticks: sticks as Sticks, nak };
 }
 
 /** 가락 넷의 결과. 평평한 개수 1 도(빽도 규칙이 있고 0번 가락 하나만이면 빽도), 2 개, 3 걸, 4 윷, 0 모 */

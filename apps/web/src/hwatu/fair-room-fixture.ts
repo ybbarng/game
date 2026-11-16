@@ -6,7 +6,8 @@ import { expect } from "vitest";
 import type { GameKit, KitBot } from "@/game/kit";
 import type { AuditResult, FairSaved, GuestRoom } from "@/net/guest-room";
 import type { HostRoom, IncidentNotice } from "@/net/host-room";
-import { memoryHostStore } from "@/net/host-store";
+import { type HostStore, memoryHostStore } from "@/net/host-store";
+import { reloadTab } from "@/net/reload-tab";
 import { MemoryNetwork } from "@/net/transport";
 
 await prepareGroup("r255");
@@ -51,7 +52,7 @@ export function hwatuHostOptions(options: {
   bot: KitBot<any, any>;
   botLevel: number;
   clock: ManualClock;
-  store?: ReturnType<typeof memoryHostStore>;
+  store?: HostStore;
 }) {
   return {
     kit: options.kit,
@@ -81,9 +82,15 @@ export async function setupHwatu(options: {
   const net = new MemoryNetwork();
   const clock = new ManualClock();
   const store = options.hostStore ? memoryHostStore() : undefined;
+  // 방장 새로고침을 흉내 내는 시험은 `tab.reload(옛 방장)` 뒤 `reloadTab(store)`로 새 방장을 연다(reload-tab.ts)
+  const tab = store ? reloadTab(store) : undefined;
   const host = new options.HostRoom({
     transport: net.join("host"),
-    ...hwatuHostOptions({ ...options, clock, ...(store ? { store } : {}) }),
+    ...hwatuHostOptions({
+      ...options,
+      clock,
+      ...(tab ? { store: tab.store } : {}),
+    }),
   } as never);
   const guests: AnyGuest[] = [];
   for (let i = 0; i < options.guests; i++) {
@@ -111,7 +118,7 @@ export async function setupHwatu(options: {
   for (const g of guests) g.on("audit", (r) => audits.push(r));
   const verified: number[] = [];
   for (const g of guests) g.on("roundVerified", (r) => verified.push(r));
-  return { net, clock, host, guests, incidents, audits, verified, store };
+  return { net, clock, host, guests, incidents, audits, verified, store, tab };
 }
 
 /** 방장 엔진 상태에 이 자리들의 진짜 카드가 없는지(자리 표뿐인지) */

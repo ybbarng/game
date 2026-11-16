@@ -5,6 +5,7 @@ import {
   HOME,
   type MoveOption,
   pendingSeats,
+  STEADY_GESTURE,
   sideCount,
   sideOf,
   type ThrowValue,
@@ -37,6 +38,7 @@ import {
   sideLabel,
   YutSticks,
 } from "./parts";
+import { ThrowPad, TOO_LOW_NOTICE } from "./ThrowPad";
 import { YutBoard } from "./YutBoard";
 import "@/yut/components/yut.css";
 
@@ -114,6 +116,8 @@ export function YutGame({
     offlineSeats,
   } = useYut();
   const submit = useYut((s) => s.submit);
+  const throwGesture = useYut((s) => s.throwGesture);
+  const setNotice = useYut((s) => s.setNotice);
   const undo = useYut((s) => s.undo);
   const canUndo = useYut((s) => s.canUndo());
   const clearNotice = useYut((s) => s.clearNotice);
@@ -190,7 +194,7 @@ export function YutGame({
       if ((e.key === "Enter" || e.key === " ") && !target?.closest("button")) {
         if (decision?.kind === "throw") {
           e.preventDefault();
-          submit({ type: "throw" });
+          throwGesture(STEADY_GESTURE);
         } else if (armed !== null) {
           e.preventDefault();
           move(armed);
@@ -210,7 +214,7 @@ export function YutGame({
   const levelName = YUT_LEVELS.find((l) => l.value === level)?.label ?? "";
   const result = view.result;
   const gameOver = view.phase === "gameOver";
-  const tossing = view.phase === "reveal";
+  const tossing = view.phase === "reveal" || view.phase === "open";
   const myTurn = view.turn === me;
   const turnName = name(view.turn);
 
@@ -220,7 +224,8 @@ export function YutGame({
     status = "모두의 기기가 던지기 사슬을 약속하는 중…";
   else if (view.phase === "throw")
     status = myTurn ? "내 차례 — 윷을 던지세요" : `${turnName}의 차례`;
-  else if (view.phase === "reveal") status = "모두의 기기가 함께 던지는 중…";
+  else if (view.phase === "reveal" || view.phase === "open")
+    status = "모두의 기기가 함께 던지는 중…";
   else if (decision?.kind === "move")
     status =
       options.length > 0
@@ -325,6 +330,7 @@ export function YutGame({
         <YutSticks
           sticks={view.lastThrow?.sticks ?? null}
           value={view.lastThrow?.value ?? null}
+          nak={view.lastThrow?.nak ?? null}
           throwKey={view.lastThrow ? view.lastThrow.index + 1 : 0}
           tossing={tossing}
         />
@@ -358,14 +364,10 @@ export function YutGame({
           </button>
         )}
         {decision?.kind === "throw" && (
-          <button
-            type="button"
-            data-throw
-            onClick={() => submit({ type: "throw" })}
-            className="yut-pop w-full max-w-xs rounded-2xl bg-amber-300 py-3 font-black text-black text-lg shadow-lg active:scale-95"
-          >
-            윷 던지기
-          </button>
+          <ThrowPad
+            onThrow={throwGesture}
+            onTooLow={() => setNotice(TOO_LOW_NOTICE)}
+          />
         )}
       </div>
 

@@ -186,6 +186,11 @@ export interface PartyOutcome {
   items?: ItemsOutcome;
   /** 이보다 이른 일은 확실히 판정했다(판 끝이면 Infinity) */
   until: number;
+  /**
+   * 아직 판정하지 못한 첫 일의 시각(없으면 Infinity). 받은 기록이 그대로면 판정은 막는 시각(`until`)이
+   * 이 시각을 넘을 때에만 바뀐다(그 사이 시각에 다시 판정해도 같다)
+   */
+  next: number;
   /** 판이 정해졌다(체력바만. 아이템만인 판은 순위를 대결 틀이 매긴다) */
   decided?: { at: number; winner: string | null; end: PartyEnd };
   /** 정해졌을 때만: 앞선 차례(기권·순위 없음은 뒤)와 등수(1부터, 같으면 같은 등수) */
@@ -340,6 +345,7 @@ export function judgeParty(input: PartyInput): PartyOutcome {
   const hits: PartyHit[] = [];
   let decided: PartyOutcome["decided"];
   let until = Number.POSITIVE_INFINITY;
+  let next = Number.POSITIVE_INFINITY;
   const limit = () => {
     let at = Number.POSITIVE_INFINITY;
     for (const p of active) at = Math.min(at, wall.get(p) ?? at);
@@ -395,6 +401,7 @@ export function judgeParty(input: PartyInput): PartyOutcome {
     const cap = limit();
     if (!(at < cap)) {
       until = cap;
+      next = at;
       break;
     }
     const now: Event[] = [];
@@ -606,8 +613,10 @@ export function judgeParty(input: PartyInput): PartyOutcome {
       end: "time",
     };
   }
-  if (decided || final) until = Number.POSITIVE_INFINITY;
-  else if (until === Number.POSITIVE_INFINITY) until = limit();
+  if (decided || final) {
+    until = Number.POSITIVE_INFINITY;
+    next = Number.POSITIVE_INFINITY;
+  } else if (until === Number.POSITIVE_INFINITY) until = limit();
   if (items)
     for (const [key, o] of owed) {
       if (o.done || !active.has(o.to)) continue;
@@ -633,6 +642,7 @@ export function judgeParty(input: PartyInput): PartyOutcome {
     hits,
     ...(items ? { items } : {}),
     until,
+    next,
     ranking: [],
     places: {},
   };

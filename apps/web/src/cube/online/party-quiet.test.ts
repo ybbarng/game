@@ -187,6 +187,7 @@ describe("확정 조건(quietEnd)", () => {
     unranked: [],
     hits: [],
     until: 0,
+    next: Number.POSITIVE_INFINITY,
     ranking: [],
     places: {},
   };
