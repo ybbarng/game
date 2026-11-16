@@ -72,13 +72,13 @@ export const chessStats: KitStats<ChessView, GameEvent> = {
     anyRound<ChessRound>(
       "checkmate",
       "체크메이트",
-      "체크메이트로 이깁니다.",
+      "체크메이트로 이겨요.",
       (r) => r.outcome === "win" && r.by === "checkmate",
     ),
     anyRound<ChessRound>(
       "black-win",
       "흑의 승리",
-      "흑(나중)으로 이깁니다.",
+      "흑(나중)으로 이겨요.",
       (r) => r.outcome === "win" && r.side === "black",
     ),
   ],

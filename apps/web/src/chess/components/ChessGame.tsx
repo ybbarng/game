@@ -32,6 +32,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
+import { subj } from "@/lib/josa";
 
 import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
@@ -241,33 +242,33 @@ export function ChessGame({
   if (view.phase === "play")
     status = myMove
       ? view.check === mySide
-        ? "체크! 킹을 지키세요"
+        ? "체크! 킹을 지키세요."
         : selected !== null
           ? hint && selected === hint.from
-            ? "힌트: 초록 고리 칸으로 옮기면 고수가 고른 수예요"
-            : "갈 칸을 누르세요"
+            ? "힌트: 초록 고리 칸으로 옮기면 고수가 고른 수예요."
+            : "갈 칸을 누르세요."
           : danger.length > 0
-            ? "내 차례 — 잡힐 수 있는 기물이 있어요(주황 점선)"
-            : "내 차례 — 옮길 기물을 누르세요"
+            ? "내 차례 — 잡힐 수 있는 기물이 있어요(주황 점선)."
+            : "내 차례 — 옮길 기물을 누르세요."
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
   else if (result?.kind === "draw")
-    status = result.reason === "agreed" ? "합의해 비겼어요" : "비겼어요";
+    status = result.reason === "agreed" ? "합의해 비겼어요." : "비겼어요.";
   else if (result?.seat === me)
     status =
       result.kind === "checkmate"
         ? "체크메이트로 이겼어요!"
         : result.kind === "resign"
-          ? "상대가 기권했어요"
+          ? "상대가 기권했어요."
           : "상대 시간이 다 돼 이겼어요!";
   else
     status =
       result?.kind === "checkmate"
-        ? "체크메이트당해 졌어요"
+        ? "체크메이트당해 졌어요."
         : result?.kind === "resign"
-          ? "기권했어요"
-          : "시간이 다 돼 졌어요";
+          ? "기권했어요."
+          : "시간이 다 돼 졌어요.";
 
   // 판이 막 끝난 장면이면 모든 게임처럼 가운데에 크게 띄운다(미션은 결과 창이 따로 있다).
   const ended = events.find((e) => e.type === "roundEnded");
@@ -292,7 +293,7 @@ export function ChessGame({
   const myOffer = view.phase === "play" && view.drawOffer === me;
   const theirOffer = view.phase === "play" && view.drawOffer === 1 - me;
   if (myOffer && !notice)
-    status = `무승부를 제안했어요 — ${opponent}의 답을 기다려요`;
+    status = `무승부를 제안했어요 — ${opponent}의 답을 기다려요.`;
 
   /** 판에서 고른 수: 승급이면 고르는 창을 띄운다 */
   const onMove = (m: Move) => {
@@ -334,8 +335,8 @@ export function ChessGame({
             className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
           >
             {hostLeft
-              ? "방장이 방을 나갔습니다"
-              : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+              ? "방장이 방을 나갔어요."
+              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
           </p>
         )
       }
@@ -383,7 +384,7 @@ export function ChessGame({
               role="alert"
               className="flex w-full flex-wrap items-center justify-center gap-2 rounded-xl bg-sky-900/70 px-3 py-2 text-sm"
             >
-              <span>{opponent}이(가) 무승부를 제안했어요.</span>
+              <span>{subj(opponent)} 무승부를 제안했어요.</span>
               <button
                 type="button"
                 onClick={() => submit({ type: "acceptDraw" })}
@@ -399,7 +400,7 @@ export function ChessGame({
                 거절
               </button>
               <span className="text-white/60 text-xs">
-                그냥 두어도 거절이에요
+                그냥 두어도 거절이에요.
               </span>
             </div>
           )}

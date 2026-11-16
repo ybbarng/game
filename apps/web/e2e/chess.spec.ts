@@ -136,7 +136,7 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   await expect(page.getByRole("status")).toContainText("내 차례");
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();
-  await expect(page.getByRole("status")).toHaveText("기권했어요");
+  await expect(page.getByRole("status")).toHaveText("기권했어요.");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("chess-end.png") });
   expect(errors).toEqual([]);
@@ -318,7 +318,7 @@ test(
     });
     await white.getByRole("button", { name: "기권" }).click();
     await white.getByRole("button", { name: "기권하기" }).click();
-    await expect(black.getByRole("status")).toHaveText("상대가 기권했어요");
+    await expect(black.getByRole("status")).toHaveText("상대가 기권했어요.");
     await black.screenshot({ path: info.outputPath("chess-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
@@ -370,8 +370,8 @@ test(
       timeout: 15_000,
     });
     await black.getByRole("button", { name: "받기" }).click();
-    await expect(black.getByRole("status")).toHaveText("합의해 비겼어요");
-    await expect(white.getByRole("status")).toHaveText("합의해 비겼어요");
+    await expect(black.getByRole("status")).toHaveText("합의해 비겼어요.");
+    await expect(white.getByRole("status")).toHaveText("합의해 비겼어요.");
     await white.screenshot({ path: info.outputPath("chess-draw.png") });
 
     await host.getByRole("button", { name: "← 체스" }).click();
@@ -395,7 +395,7 @@ test(
     });
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(page.getByRole("status")).toHaveText("기권했어요");
+    await expect(page.getByRole("status")).toHaveText("기권했어요.");
     // 복기 기록이 실제로 쓰인 뒤에 떠난다.
     await expect
       .poll(() =>
@@ -544,7 +544,7 @@ test(
       "3:00",
     );
     await page.clock.runFor(270_001);
-    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
+    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요.");
     await page.screenshot({ path: info.outputPath("chess-time.png") });
   },
 );
