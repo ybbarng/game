@@ -10,6 +10,8 @@ import {
   type PuzzleRecord,
   recordMiss,
   recordSolve,
+  reviewNext,
+  reviewQueueFrom,
   utcDay,
 } from "./review";
 
@@ -123,5 +125,45 @@ describe("이 기기의 날짜", () => {
     expect(localDay(night)).toBe(localDay(morning));
     expect(localDay(next)).toBe(localDay(morning) + 1);
     expect(dayLabel(localDay(night))).toBe("11월 17일");
+  });
+});
+
+describe("복습 줄 이어 가기", () => {
+  const due = ["a", "b", "c", "d"];
+  const all = () => true;
+
+  it("「복습 시작」은 오늘 복습 차례 그대로 잇는다", () => {
+    expect(reviewQueueFrom(due, "a")).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("가운데 문제를 누르면 그 문제부터 끝까지, 앞의 것은 뒤에 붙인다", () => {
+    expect(reviewQueueFrom(due, "c")).toEqual(["c", "d", "a", "b"]);
+  });
+
+  it("오늘 복습에 없는 문제를 누르면 그 문제 하나뿐인 줄이다", () => {
+    expect(reviewQueueFrom(due, "z")).toEqual(["z"]);
+  });
+
+  it("다음 문제는 묶음 차례가 아니라 복습 줄의 다음 문제다", () => {
+    const queue = ["mate3-4", "fork-2", "line-italian"];
+    expect(reviewNext(queue, "mate3-4", all)).toBe("fork-2");
+    expect(reviewNext(queue, "fork-2", all)).toBe("line-italian");
+  });
+
+  it("줄 끝이면 null(복습 끝)", () => {
+    expect(reviewNext(due, "d", all)).toBeNull();
+  });
+
+  it("그사이 이미 풀어 오늘 낼 것이 아닌 문제는 건너뛴다", () => {
+    const solved = new Set(["b", "c"]);
+    expect(reviewNext(due, "a", (id) => !solved.has(id))).toBe("d");
+  });
+
+  it("앞으로 돌아가지 않는다: 정답을 보고 풀어 아직 남은 앞 문제가 있어도 끝난다", () => {
+    expect(reviewNext(due, "d", (id) => id === "a")).toBeNull();
+  });
+
+  it("줄에 없는 문제에서는 이어 갈 곳이 없다", () => {
+    expect(reviewNext(due, "z", all)).toBeNull();
   });
 });
