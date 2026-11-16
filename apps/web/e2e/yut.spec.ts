@@ -1,5 +1,13 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import {
+  animationsDone,
+  expect,
+  fastForwardUntil,
+  type Page,
+  ready,
+  speedUpAnimations,
+  test,
+} from "./test";
 
 const status = (page: Page) => page.getByRole("status").first();
 const over = (page: Page) => page.getByRole("button", { name: "다시 하기" });
@@ -442,3 +450,282 @@ test(
     await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
   },
 );
+
+/** 아래로 당겼다가 옆으로 쓸어 놓는다(튕긴 쪽이 60도를 넘어 반드시 낙, docs/37 13-3) */
+async function sweepSticks(page: Page): Promise<void> {
+  const box = await throwButton(page).boundingBox();
+  if (!box) throw new Error("윷가락이 보이지 않는다");
+  const x = box.x + box.width / 2;
+  const y = box.y + 40;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 120, { steps: 6 });
+  await page.mouse.move(x + 120, y + 100, { steps: 10 });
+  await page.mouse.up();
+}
+
+test(
+  "윷놀이 배우기: 공정한 던지기 단원에서 직접 던지고, 쓸어 던지면 낙이라 다시 한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 앞 단원 다섯을 마친 사람(공정한 던지기는 여섯째 단원이라 그 전에는 잠겨 있다)
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "yut-tutorial",
+        JSON.stringify({
+          state: {
+            completed: ["goal", "shortcut", "capture", "bonus", "home"],
+          },
+          version: 0,
+        }),
+      );
+    });
+    await page.goto("/yut");
+    await page.getByRole("button", { name: /윷놀이 배우기/ }).click();
+    await page.getByRole("button", { name: /공정한 던지기/ }).click();
+    await expect(page.getByText("윷 던지는 법")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("yut-fair-lesson.png") });
+    // 설명 둘(던지는 법, 낙) → 던지기 미션
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    await expect(throwButton(page)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("yut-fair-mission.png") });
+
+    await sweepSticks(page);
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await expect(throwButton(page)).toBeVisible();
+    await throwSticks(page);
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+
+    // 설명 둘(모두가 함께 정함, 겨냥할 수 없음) → 퀴즈 셋
+    await expect(page.getByText("모두가 함께 정해요")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("yut-fair-seal.png") });
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    for (const answer of [
+      "아무도 없다",
+      "낙이 날지 말지",
+      "그 던지기는 없던 일이 되고 더 던지지 못한다",
+    ]) {
+      await page.getByRole("button", { name: answer }).click();
+      await expect(page.getByText("정답이에요!")).toBeVisible();
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    }
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+  },
+);
+
+const stage = (page: Page) => page.locator(".yut-stage");
+const mat = (page: Page) => page.locator("[data-toss]");
+
+/** 지금 장면(throw 던지는 장면, move 말 옮기는 장면) */
+async function sceneNow(page: Page): Promise<string | null> {
+  return stage(page).getAttribute("data-scene");
+}
+
+/** 멍석 연출 상태(playing 구르는 중, done 멈춤, 2d 3D 없음) */
+async function tossNow(page: Page): Promise<string | null> {
+  return mat(page).getAttribute("data-toss");
+}
+
+/**
+ * 3D 캔버스에 실제로 그려진 짚 멍석 빛 화소의 몫(0~1). WebGL 캔버스는 그린 뒤 버퍼를 읽을 수 없어,
+ * 화면에 보이는 그대로 요소 스크린샷을 찍어 페이지 안에서 풀어 센다(빈 캔버스면 0에 가깝다)
+ */
+async function strawShare(page: Page): Promise<number> {
+  const png = await page.locator("[data-toss-3d]").screenshot();
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext("2d") as CanvasRenderingContext2D;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let straw = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const [r, gr, b] = [
+        d[i] as number,
+        d[i + 1] as number,
+        d[i + 2] as number,
+      ];
+      if (r > 150 && gr > 105 && b < 120 && r > b + 60) straw++;
+    }
+    return straw / (d.length / 4);
+  }, png.toString("base64"));
+}
+
+test(
+  "윷놀이 3D: 던진 윷이 멍석에서 구르다 하나씩 멈춘 뒤 말 옮기는 장면으로 바뀌고, 컴퓨터 윷은 그 자리에서 날아온다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 연출을 켜고 시계를 잡는다: 연출은 실제 시간으로 기다리지 않고 조건까지 시계를 감는다
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.install();
+    await page.goto("/yut");
+    await speedUpAnimations(page);
+    await startSolo(page);
+    await expect(page.locator('[data-toss-3d="ready"]')).toBeVisible();
+    expect(await sceneNow(page)).toBe("throw");
+    await page.screenshot({ path: info.outputPath("yut-3d-ready.png") });
+
+    // 컴퓨터가 먼저 던졌을 수 있다: 그 연출이 끝나 내 차례가 될 때까지 감는다
+    await fastForwardUntil(page, () => throwButton(page).isVisible(), {
+      step: 200,
+    });
+    const plays = () =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __yutToss?: { plays: number } }).__yutToss
+            ?.plays ?? 0,
+      );
+    const playsBefore = await plays();
+    await throwSticks(page);
+    await fastForwardUntil(
+      page,
+      async () => (await tossNow(page)) === "playing",
+      {
+        step: 50,
+      },
+    );
+    // 굴러가는 동안은 결과가 나왔어도 던지는 장면에 머물고 말을 고를 수 없다
+    expect(await sceneNow(page)).toBe("throw");
+    await expect(movableStacks(page)).toHaveCount(0);
+    await page.clock.fastForward(350);
+    await page.screenshot({ path: info.outputPath("yut-3d-flight.png") });
+    await page.clock.fastForward(900);
+    await page.screenshot({ path: info.outputPath("yut-3d-land.png") });
+    // 내 윷이 다 멈출 때까지. 차례가 넘어가면 컴퓨터가 곧(약 70ms) 이어 던지므로 그보다 짧게 감는다
+    await fastForwardUntil(page, async () => (await plays()) > playsBefore, {
+      step: 50,
+    });
+    await expect(mat(page)).toHaveAttribute("data-toss", "done");
+    const result = await page
+      .locator("[data-throw-result]")
+      .getAttribute("data-throw-result");
+    expect(result).toMatch(/^(-1|[1-5]|nak)$/);
+    // 멈춘 윷과 결과 글을 읽을 틈: 아직 던지는 장면이고, 결과 글은 멈춘 멍석·윷가락 위에 겹쳐 보인다
+    expect(await sceneNow(page)).toBe("throw");
+    await expect(page.locator("[data-toss-3d]")).toBeVisible();
+    expect(
+      await page
+        .locator("[data-mat]")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    ).toBe("1");
+    // 빈 캔버스면 약 0.07, 멍석이 그려져 있으면 0.29~0.36(2026-11-17)
+    expect(await strawShare(page)).toBeGreaterThan(0.15);
+    await expect(status(page)).not.toHaveText("윷이 구르는 중…");
+    await page.screenshot({ path: info.outputPath("yut-3d-done.png") });
+
+    // 연출 한 번이 여러 장을 그렸다(그리기 시간은 시계를 잡아 여기서는 재지 않는다, docs/37 14-5)
+    const stats = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __yutToss?: { plays: number; frames: number };
+          }
+        ).__yutToss,
+    );
+    expect(stats?.plays).toBe(playsBefore + 1);
+    expect(stats?.frames).toBeGreaterThan(10);
+
+    if (result === "4" || result === "5") {
+      // 윷·모: 한 번 더 던지므로 던지는 장면에 그대로 머문다
+      await fastForwardUntil(page, () => throwButton(page).isVisible(), {
+        step: 100,
+      });
+      expect(await sceneNow(page)).toBe("throw");
+      return;
+    }
+    // 낙이 아니면 모은 결과로 말을 옮긴다: 말 옮기는 장면으로 한 번 바뀐다.
+    // 빽도인데 판에 내 말이 없으면 그 결과는 버려지고 차례가 넘어간다(장면도 그대로)
+    const discarded =
+      result === "-1" &&
+      (await page.locator('[data-stack][data-side="0"]').count()) === 0;
+    if (result !== "nak" && !discarded) {
+      await fastForwardUntil(
+        page,
+        async () => (await sceneNow(page)) === "move",
+        {
+          step: 100,
+        },
+      );
+      await animationsDone(stage(page));
+      await page.screenshot({ path: info.outputPath("yut-3d-move.png") });
+      await pickTarget(page, info.project.name.startsWith("phone"));
+    }
+    // 컴퓨터 차례: 그 자리(건너편)에서 윷이 날아온다. 그동안 던지는 장면이다.
+    // 내 말이 컴퓨터 말을 잡았으면 내가 한 번 더 던진다(던지는 장면으로 돌아간다)
+    await fastForwardUntil(
+      page,
+      async () =>
+        (await tossNow(page)) === "playing" ||
+        (await throwButton(page).isVisible()),
+      { step: 100 },
+    );
+    expect(await sceneNow(page)).toBe("throw");
+    if (await throwButton(page).isVisible()) return;
+    await page.clock.fastForward(450);
+    await page.screenshot({ path: info.outputPath("yut-3d-other.png") });
+    await fastForwardUntil(page, async () => (await tossNow(page)) === "done", {
+      step: 200,
+    });
+  },
+);
+
+test("윷놀이: WebGL이 없으면 멍석에 2D 윷가락으로 결과를 보인다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      kind: string,
+      ...rest: unknown[]
+    ) {
+      if (kind.startsWith("webgl")) return null;
+      return (original as (...a: unknown[]) => unknown).call(
+        this,
+        kind,
+        ...rest,
+      );
+    } as typeof original;
+  });
+  await page.goto("/yut");
+  await startSolo(page);
+  await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+  await throwSticks(page);
+  await expect(
+    page.locator("[data-throw-result]:not([data-throw-result=''])"),
+  ).toBeVisible();
+  await expect(page.locator("[data-toss-3d]")).toHaveCount(0);
+});
+
+test("윷놀이: 움직임 줄이기면 3D 없이 결과만 보이고 장면이 바로 바뀐다", {
+  // 장면이 바뀌는 것은 휴대폰 세로뿐(PC·가로는 나란히 둔다)
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  await page.goto("/yut");
+  await startSolo(page);
+  await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+  // 장면 전환에 시간을 쓰지 않는다
+  const duration = await page
+    .locator(".yut-board-layer")
+    .evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(duration).toBe("0s");
+  await throwSticks(page);
+  await expect(
+    page.locator("[data-throw-result]:not([data-throw-result=''])"),
+  ).toBeVisible();
+  await expect(page.locator("[data-toss-3d]")).toHaveCount(0);
+});

@@ -35,8 +35,6 @@ import { GROUP_1024, GROUP_2048, modInverse, type SraGroup } from "./sra";
  * 기기는 거기에 맞춰서만 남의 자리 열쇠를 내준다.
  */
 
-declare function setTimeout(callback: () => void, ms: number): unknown;
-
 /** 내 카드가 이만큼 안 열리면 섞기 증명을 그냥 만든다(scheduleShuffleProof). 남이 기다리는 시간(proofTimeoutMs)보다 짧아야 한다 */
 export const PROOF_DEFER_MS = 10_000;
 
@@ -337,6 +335,8 @@ export class FairDevice {
       })
       .finally(() => {
         this.queued--;
+        // 섞기 증명 상태는 작업 줄 안에서 바뀐다. 끝나기를 기다리는 범인 찾기를 깨운다.
+        this.wakeProofWaiters();
       });
     return this.work;
   }
@@ -1192,7 +1192,7 @@ export class FairDevice {
         null,
         true,
       );
-      void this.chainCulprit(ctx).then((chain) =>
+      this.chainCulprit(ctx, (chain) =>
         this.emit(
           "problem",
           ctx.id,
@@ -1400,6 +1400,7 @@ export class FairDevice {
         // 응답이 늦은 것만으로는 탓하지 않는다(다른 앱으로 넘어가 탭이 느려진 정직한 사람일 수 있다).
         // 조작이 드러나면 그때 증명을 끝내지 않은 기기를 범인으로 본다(chainCulprit).
         state.timedOut = true;
+        this.wakeProofWaiters();
       });
     }
     const bits = state.bits;
@@ -1508,7 +1509,10 @@ export class FairDevice {
           (device === undefined || d === device),
       );
       // 늦은 것만으로는 탓하지 않고, 조작이 드러날 때 범인을 찾는 데 쓴다(chainCulprit).
-      if (missing.length > 0) state.timedOut = true;
+      if (missing.length > 0) {
+        state.timedOut = true;
+        this.wakeProofWaiters();
+      }
     });
   }
 
@@ -1562,23 +1566,65 @@ export class FairDevice {
   }
 
   /**
-   * 섞는 단계의 범인: 섞기·바꾸기 증명이 틀린 기기, 없으면 증명을 내지 않은 기기가 하나뿐일 때 그 기기.
-   * 정직한 기기는 증명을 낸다(새로고침 등으로 빠질 수는 있다)
+   * 섞기 증명 주고받기가 끝나기를 기다리는 일(`whenProofsDone`). 조건이 바뀌는 곳(작업 줄 일 하나가 끝날 때,
+   * 증명 기다리기 시간이 지날 때)에서 다시 본다
    */
-  private async chainCulprit(
-    ctx: DealCtx,
-  ): Promise<{ device: number; reason: string } | null> {
-    // 섞기 증명을 주고받는 중이면 끝날 때까지(응답 기다리는 시간까지) 기다린다.
-    const settled = () =>
+  private readonly proofWaiters = new Set<() => void>();
+  private wakeProofWaiters(): void {
+    for (const check of [...this.proofWaiters]) check();
+  }
+
+  /**
+   * 그 판의 섞기 증명 주고받기가 모두 끝나면(응답을 기다리는 시간이 지난 것까지) `run`을 부른다. 오래 걸려도
+   * `proofTimeoutMs`의 두 배가 지나면 부른다. 시간은 `clock`으로 재고(시험은 ManualClock), 실제 시간으로
+   * 되묻지 않는다. 증명 상태(`bits`·`checked`)는 작업 줄 안에서, `timedOut`은 시계 일에서만 바뀌므로 그때마다
+   * 본다. 조건이 맞은 그 자리에서 `run`을 불러, 그 안에서 `track`한 일을 `idle()`이 놓치지 않게 한다
+   */
+  private whenProofsDone(ctx: DealCtx, run: () => void): void {
+    const done = () =>
       [...ctx.shuffles.values()].every(
         (state) =>
           state.timedOut ||
           (state.bits !== null &&
             ctx.devices.every((d) => d === this.id || state.checked.has(d))),
       );
-    const started = this.clock.now();
-    while (!settled() && this.clock.now() - started < this.proofTimeoutMs * 2)
-      await new Promise<void>((r) => setTimeout(r, 100));
+    if (done()) {
+      run();
+      return;
+    }
+    let cancel = () => {};
+    const finish = () => {
+      this.proofWaiters.delete(check);
+      cancel();
+      run();
+    };
+    const check = () => {
+      if (done()) finish();
+    };
+    this.proofWaiters.add(check);
+    cancel = this.clock.after(this.proofTimeoutMs * 2, finish);
+  }
+
+  /**
+   * 섞는 단계의 범인을 찾아 `use`에 넘긴다. 섞기 증명을 주고받는 중이면 끝날 때까지(응답 기다리는 시간까지)
+   * 기다린다. 찾는 계산과 `use`까지 `track`해 `idle()`이 함께 기다린다
+   */
+  private chainCulprit(
+    ctx: DealCtx,
+    use: (culprit: { device: number; reason: string } | null) => void,
+  ): void {
+    this.whenProofsDone(ctx, () =>
+      this.track(this.findChainCulprit(ctx).then(use)),
+    );
+  }
+
+  /**
+   * 섞는 단계의 범인: 섞기·바꾸기 증명이 틀린 기기, 없으면 증명을 내지 않은 기기가 하나뿐일 때 그 기기.
+   * 정직한 기기는 증명을 낸다(새로고침 등으로 빠질 수는 있다). 증명 주고받기가 끝난 뒤에 부른다
+   */
+  private async findChainCulprit(
+    ctx: DealCtx,
+  ): Promise<{ device: number; reason: string } | null> {
     for (const state of ctx.shuffles.values())
       for (const [d, check] of state.checked)
         if (!(await check))
@@ -1624,12 +1670,16 @@ export class FairDevice {
     return null;
   }
 
-  /** 판 끝에 같은 카드가 두 번 나오는 등 섞기 조작이 드러났을 때: 증명으로 누군지 찾는다 */
-  async shuffleCulprit(
+  /**
+   * 판 끝에 같은 카드가 두 번 나오는 등 섞기 조작이 드러났을 때: 증명으로 누군지 찾는다. 찾은 결과를 넘기는 일은
+   * `idle()`이 기다리는 일 안에서 일어나, 이 약속에 바로 붙인 `then`도 `idle()`이 끝나기 전에 불린다
+   */
+  shuffleCulprit(
     deal: number,
   ): Promise<{ device: number; reason: string } | null> {
     const ctx = this.deals.get(deal);
-    return ctx ? this.chainCulprit(ctx) : null;
+    if (!ctx) return Promise.resolve(null);
+    return new Promise((resolve) => this.chainCulprit(ctx, resolve));
   }
 
   /** 재연결용 */

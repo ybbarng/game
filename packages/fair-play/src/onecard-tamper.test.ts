@@ -1,12 +1,10 @@
 import type { Card } from "@game/mighty-engine";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { Incident } from "./coordinator";
+import { passWaits } from "./device-fixture";
 import { type OnecardNet, onecardNet } from "./onecard-fixture";
 import { type Party, Party as PartyClass } from "./protocol";
-
-/** 기기가 기다리는 시간(증명 미루기 10초, 응답 30초의 두 배)을 넉넉히 넘긴다 */
-const PROOF_WAIT_MS = 120_000;
 
 /** 더미 석 장을 1번이 뽑아 내고, 버린 더미(맨 위 빼고) 석 장을 다시 섞을 준비를 한다 */
 async function emptyDeck(net: OnecardNet): Promise<Card[]> {
@@ -17,16 +15,6 @@ async function emptyDeck(net: OnecardNet): Promise<Card[]> {
   await net.settle();
   const pub = net.decks[0]?.publicCards(1) as Map<number, Card>;
   return [4, 5, 6, 7].map((g) => pub.get(g) as Card);
-}
-
-/** 할 일을 다 마치고 기다리는 시간(미룬 증명·응답 기다리기)이 다 지나게 한다 */
-async function finish(net: OnecardNet): Promise<void> {
-  await net.settle();
-  for (let i = 0; net.clock.pending() > 0; i++) {
-    if (i > 10) throw new Error("기다림이 끝나지 않는다");
-    net.clock.advance(PROOF_WAIT_MS);
-    await net.settle();
-  }
 }
 
 /** 확정된(누군지 확인하는 중이 아닌) 마지막 알림 */
@@ -52,7 +40,7 @@ describe("다시 섞은 사슬을 조작하면 드러난다", () => {
       net.reshuffle(1, [a, b, c]);
       net.draw(0, 3);
       for (const d of net.decks) d.revealAll(1);
-      await finish(net);
+      await passWaits(net);
     } finally {
       PartyClass.prototype.lockAndShuffle = real;
     }
@@ -61,9 +49,7 @@ describe("다시 섞은 사슬을 조작하면 드러난다", () => {
     const seg1 = net.decks[0]?.dealsOf(1)[1] as number;
     const culprit = await net.devices[0]?.shuffleCulprit(seg1);
     expect(culprit?.device).toBe(1);
-    await vi.waitFor(() =>
-      expect(settled(net.incidents[0])).toMatchObject({ seat: 1 }),
-    );
+    expect(settled(net.incidents[0])).toMatchObject({ seat: 1 });
     expect(net.decks[0]?.roundDeal(1)).toBeNull();
   });
 
@@ -75,7 +61,7 @@ describe("다시 섞은 사슬을 조작하면 드러난다", () => {
     net.decks[1]?.reshuffle(1, 1, [a, b, c]);
     net.draw(1, 3);
     for (const d of net.decks) d.revealAll(1);
-    await finish(net);
+    await passWaits(net);
     expect(settled(net.incidents[1])).toMatchObject({ seat: 0 });
     expect(net.decks[1]?.roundDeal(1)).toBeNull();
   });

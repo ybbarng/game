@@ -166,6 +166,10 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     cues: [
       { cue: "yutThrow", when: "던지기를 누름(나·상대 모두)" },
       { cue: "yutLand", when: "윷가락이 떨어져 도·개·걸·빽도가 나옴" },
+      {
+        cue: "yutHit",
+        when: "3D로 던진 가락 하나가 멍석에 닿음(튀고 구를 때마다)",
+      },
       { cue: "yutBonus", when: "윷·모가 나와 한 번 더" },
       { cue: "yutPiece", when: "말을 움직임·업음" },
       { cue: "yutCapture", when: "상대 말을 잡음(한 번 더)" },

@@ -21,6 +21,8 @@ interface YutSettings {
   /** 개인 시간(docs/24·docs/37 4절). 기본은 없음 */
   time: TimePreset;
   level: YutLevel;
+  /** 진동(`navigator.vibrate`가 있는 기기만, docs/37 14절). 기본 켬 */
+  vibrate: boolean;
   set(patch: Partial<Omit<YutSettings, "set">>): void;
 }
 
@@ -35,6 +37,7 @@ export const useYutSettings = create<YutSettings>()(
       nak: true,
       time: "none",
       level: 0,
+      vibrate: true,
       set: (patch) => set(patch),
     }),
     {
