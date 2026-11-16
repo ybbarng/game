@@ -2,7 +2,7 @@
 
 import { type CubeMove, formatMove, type StickerMask } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
@@ -147,6 +147,11 @@ export interface CubePlayProps {
    * 저장하지 않는다(다른 화면의 접기 설정과 따로). 휴대폰은 키보드 그림 대신 늘 단추 줄로 친다
    */
   hideKeys?: boolean;
+  /**
+   * 큐브 그림 왼쪽 아래 구석에 얹을 것(혼자 맞추기 「상황 알림」). 오른쪽 아래는 「처음 각도로」 단추 자리라 왼쪽에 둔다.
+   * 그림 밖(키 그림 위)에 겹치지 않게 무대 안에 그린다
+   */
+  stageCorner?: ReactNode;
 }
 
 export function CubePlay({
@@ -172,6 +177,7 @@ export function CubePlay({
   look = null,
   glow = null,
   hideKeys = false,
+  stageCorner,
 }: CubePlayProps) {
   const swap = !!look?.swap;
   const gray = !!look?.gray;
@@ -597,6 +603,11 @@ export function CubePlay({
               <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
                 다음 수 깊이 {depth}
               </span>
+            )}
+            {stageCorner && (
+              <div className="pointer-events-none absolute bottom-2 left-2 z-10">
+                {stageCorner}
+              </div>
             )}
           </div>
         }

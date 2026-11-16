@@ -48,15 +48,15 @@ describe("추천 후보 공식", () => {
       }
   });
 
-  it("묶음별 후보 수(PLL·2단계·OLL·F2L은 대부분의 상황에 있다)", () => {
-    const count = (set: string) =>
-      ALG_SETS.find((s) => s.set === set)?.cases.filter(
-        (c) => candidatesOf(c).length > 0,
-      ).length ?? 0;
-    expect(count("pll")).toBeGreaterThanOrEqual(20);
-    expect(count("oll")).toBeGreaterThanOrEqual(40);
-    expect(count("f2l")).toBeGreaterThanOrEqual(29);
-    expect(count("2look-pll")).toBe(6);
+  it("후보가 없는 상황: 마지막 층·오르테가 OLL은 없고, F2L은 정해 둔 셋뿐이다", () => {
+    const empty = (set: string) =>
+      ALG_SETS.find((s) => s.set === set)
+        ?.cases.filter((c) => candidatesOf(c).length === 0)
+        .map((c) => c.id) ?? ["(묶음 없음)"];
+    for (const set of ["pll", "oll", "2look-oll", "2look-pll", "ortega-oll"])
+      expect(empty(set), set).toEqual([]);
+    // R U R' 세 수 기본 넣기와, 자료 공식을 돌려 쥐기만 한 것 말고는 찾지 못한 둘(candidates-more.ts)
+    expect(empty("f2l")).toEqual(["f2l-4", "f2l-17", "f2l-18"]);
   });
 
   it("2단계 OLL 코너는 같은 번호의 OLL 후보를 함께 쓴다", () => {

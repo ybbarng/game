@@ -25,6 +25,7 @@ import {
   readCross,
   solveCrossKey,
 } from "./solver";
+import { solveXCross } from "./xcross";
 
 /**
  * 십자 훈련의 섞기(docs/47 8절). 어려움은 고른 색들 가운데 가장 짧은 십자의 최적 수로 정한다.
@@ -240,6 +241,17 @@ export interface CrossRound {
   best: number[];
   /** 가장 짧은 색의 최적 해 몇 개(쥔 방향 기준) */
   solutions: CrossSolution[];
+  /** X십자(십자 + F2L 짝 하나)의 최적(고른 색 가운데 가장 짧은 것, `xcross.ts`) */
+  xcross: XCrossRound;
+}
+
+export interface XCrossRound {
+  /** 고른 색마다 X십자 최적 수 */
+  depths: Partial<Record<number, number>>;
+  /** 그 가운데 가장 짧은 수 */
+  optimal: number;
+  /** 가장 짧은 색의 최적 해 몇 개: 십자 색, 짝의 두 옆 면 색, 수 */
+  solutions: { color: number; pair: [number, number]; moves: string }[];
 }
 
 /** 섞기 글 + 쥐기 → 시작 상태 */
@@ -295,7 +307,30 @@ export function analyzeRound(
     optimal,
     best,
     solutions: solutions.slice(0, solutionLimit),
+    xcross: analyzeXCross(start, colors, solutionLimit),
   };
+}
+
+function analyzeXCross(
+  start: PuzzleState,
+  colors: readonly number[],
+  limit: number,
+): XCrossRound {
+  const depths: Partial<Record<number, number>> = {};
+  const all = colors.map((c) => solveXCross(start, c, { limit }));
+  for (const r of all) depths[r.color] = r.depth;
+  const optimal = Math.min(...all.map((r) => r.depth));
+  const solutions = all
+    .filter((r) => r.depth === optimal)
+    .flatMap((r) =>
+      r.solutions.map((s) => ({
+        color: r.color,
+        pair: s.pair,
+        moves: s.moves.join(" "),
+      })),
+    )
+    .slice(0, limit);
+  return { depths, optimal, solutions };
 }
 
 /** 새 판(워커에서 부른다) */
