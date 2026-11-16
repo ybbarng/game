@@ -6,9 +6,10 @@
 //! - `hero/present.ts`: 보여 주기 변환(첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 이미 맞은 조각 확인, 쉬는 자리)
 //! - `hero/loop.ts`: 시간(`heroTiming`), 무작위 섞기(`randomScramble`), 쥐는 방향(`orientForSolve`), 연출 걸음
 //!   (`scrambleSteps`·`orientSteps`·`solveSteps`, 강조 「잠깐」), 회전 시간(`heroMoveMs`)
-//! - `hero/methods.ts`: 꼬리표(`heroStageLabel`)와 해법 표 가운데 3×3 「초보자 해법」(`3-beginner`)·「프리드리히」(`3-cfop`)
+//! - `hero/methods.ts`: 꼬리표(`heroStageLabel`)와 해법 표 전부(`HERO_METHODS`: 2×2 초보자·공식, 3×3 초보자·프리드리히·
+//!   루·ZZ, 4×4~7×7 축소법 초보자·프리드리히)와 첫 면 색 고르기(`solveWithFirst`)
 //!
-//! 사이트와 같은지는 공통 시험 자료 `fixtures/hero-show.json`으로 본다. 루·ZZ·2×2·큰 큐브 시연은 아직 없다(docs/52 5-6).
+//! 사이트와 같은지는 공통 시험 자료 `fixtures/hero-show.json`(2×2·3×3)·`hero-show-big.json`(4×4~7×7)으로 본다(docs/52 5-10).
 
 use std::collections::HashSet;
 

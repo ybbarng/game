@@ -78,7 +78,7 @@ fn guard(count: usize, limit: usize, what: &'static str) -> R<()> {
 
 // ── 흰 면 위로·흰 십자 ─────────────────────────────────
 
-fn white_up(s: &mut Solve) -> R<()> {
+pub(crate) fn white_up(s: &mut Solve) -> R<()> {
     for r in ["", "x2", "x", "x'", "z", "z'"] {
         if probe_with(s, r).f[4] == 0 {
             s.apply(r);
@@ -194,7 +194,7 @@ fn next_cross_edge(s: &Solve) -> R<Option<String>> {
     Err(SolveError("십자 엣지를 넣을 수를 찾지 못했다"))
 }
 
-fn cross_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn cross_taught(s: &mut Solve) -> R<()> {
     for i in 0.. {
         guard(i, 4, "십자 단계가 끝나지 않는다")?;
         let Some(alg) = next_cross_edge(s)? else {
@@ -498,7 +498,7 @@ fn corner_shortcut_step(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-fn corners_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn corners_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 20, "첫 층 꼭짓점 단계가 끝나지 않는다")?;
         let c = s.cubie()?;
@@ -513,7 +513,7 @@ fn corners_taught(s: &mut Solve) -> R<()> {
 
 // ── 둘째 층(흰 면 아래, 늘 앞-오른쪽 칸) ──────────────────
 
-fn middle_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn middle_taught(s: &mut Solve) -> R<()> {
     let ok = |ep: &[u8], eo: &[u8], i: usize| ep[i] as usize == i && eo[i] == 0;
     for iter in 0.. {
         guard(iter, 20, "둘째 층 단계가 끝나지 않는다")?;
@@ -561,7 +561,7 @@ fn middle_taught(s: &mut Solve) -> R<()> {
 
 // ── 마지막 층 ───────────────────────────────────────────
 
-fn yellow_cross_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn yellow_cross_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 2, "노란 십자 단계가 끝나지 않는다")?;
         let r0 = s.rel();
@@ -591,7 +591,7 @@ fn edge_sides_matched(rel: &[u8]) -> [bool; 4] {
     CROSS_SIDE.map(|i| rel[i] == face_of(i))
 }
 
-fn ll_edges_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn ll_edges_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 2, "옆면 맞추기 단계가 끝나지 않는다")?;
         if let Some(all) = (0..4).find(|&a| {
@@ -648,7 +648,7 @@ fn cycle_around(s: &mut Solve, back: bool) -> R<()> {
     Ok(())
 }
 
-fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 2, "꼭짓점 자리 단계가 끝나지 않는다")?;
         let placed = placed_top(s)?;
@@ -668,7 +668,7 @@ fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-fn ll_corner_twist_taught(s: &mut Solve, back: bool) -> R<()> {
+pub(crate) fn ll_corner_twist_taught(s: &mut Solve, back: bool) -> R<()> {
     for iter in 0.. {
         guard(iter, 4, "꼭짓점 방향 단계가 끝나지 않는다")?;
         let c = s.cubie()?;

@@ -283,7 +283,7 @@ impl Solve {
         }
     }
 
-    fn result(&self) -> HumanSolve {
+    pub(crate) fn result(&self) -> HumanSolve {
         let mut moves = Vec::new();
         let mut stages = Vec::new();
         let mut looks = Vec::new();

@@ -1,5 +1,6 @@
-//! Cubie 홈 시연 한 판(`fixtures/hero-show.json`, 사이트 `apps/web/src/cube/native/core-fixtures-hero.ts` `buildHeroShow`):
-//! 씨앗 → 섞기·쥐는 방향, 배우는 방식 초보자·프리드리히 풀이의 보여 주기 변환, 연출 걸음. 어긋난 사례는 모두 모아 찍는다.
+//! Cubie 홈 시연 한 판(`fixtures/hero-show.json`·`hero-show-big.json`, 사이트
+//! `apps/web/src/cube/native/core-fixtures-hero.ts` `buildHeroShow`·`buildHeroShowBig`): 해법(사이트 `HERO_METHODS` 전부)
+//! × 씨앗 → 섞기·쥐는 방향, 풀이의 보여 주기 변환, 연출 걸음. 어긋난 사례는 모두 모아 찍는다.
 
 mod json;
 
@@ -19,6 +20,36 @@ fn nums(j: &Json) -> Vec<f64> {
 #[test]
 fn hero_show_matches_site() {
     check(include_str!("../fixtures/hero-show.json"));
+}
+
+#[test]
+fn hero_show_big_matches_site() {
+    check(include_str!("../fixtures/hero-show-big.json"));
+}
+
+/// 해법마다 한 판 계산 시간(앱이 시연 풀이를 만드는 데 드는 시간). 평소 시험에서는 건너뛴다:
+/// `cargo test --release --test hero_show -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn hero_show_timing() {
+    use cube_core::hero_show::hero_show;
+    for (k, method) in HeroMethod::all().into_iter().enumerate() {
+        let mut times = vec![];
+        // 해법마다 다른 씨앗(축소법 기억이 앞 해법의 판을 재사용하지 않게)
+        for seed in (1..=5u32).map(|s| s + 100 * k as u32) {
+            let mut rng = Rng::new(seed);
+            let t0 = std::time::Instant::now();
+            hero_show(method, &mut || rng.next_float()).expect("한 판");
+            times.push(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        println!(
+            "{} 가운데 {:.1}ms · 가장 오래 {:.1}ms",
+            method.id(),
+            times[2],
+            times[4]
+        );
+    }
 }
 
 fn check(text: &str) {
