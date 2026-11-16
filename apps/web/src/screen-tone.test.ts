@@ -28,13 +28,12 @@ const files: Record<string, string> = import.meta.glob(
     "!./*/opening-lessons.ts",
     "!./*/matchup*.ts",
     "!./*/components/*-scenes.tsx",
-    "!./chess/mate3-suite.ts",
+    "!./*/*-suite.ts", // 시험 틀(시험 이름은 화면 글이 아님)
     "!./chess/endgame*.ts",
     "!./galaxy/star-facts.ts", // 별 이야기(별 따기의 별 한 줄 이야기와 같은 말투, docs/48 「더 보기」)
     "!./galaxy/components/Sources.tsx", // 출처 목록(서지 표기)
     "!./galaxy/star-quiz.ts",
     "!./galaxy/components/GalaxyStarQuiz.tsx",
-    "!./review/commentary-tone-suite.ts", // 시험 틀
     "!./hwatu/card-table-sim.ts", // 시험·시연용 흉내
     "!./*/fair-room-fixture.ts",
     "!./*/*-fixture.ts", // 시험 자료
