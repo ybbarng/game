@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
 import {
   TimePresetPicker,
@@ -363,9 +364,12 @@ type Screen =
   | { kind: "rules" }
   | { kind: "tutorial" }
   | { kind: "lesson"; lessonId: string }
-  | { kind: "study" }
-  | { kind: "puzzle"; puzzleId: string }
-  | { kind: "line"; lineId: string };
+  | { kind: "study"; reviewDone?: boolean | undefined }
+  | { kind: "puzzle"; puzzleId: string; review?: Review }
+  | { kind: "line"; lineId: string; review?: Review };
+
+/** 「오늘 복습」으로 연 문제의 복습 줄(없으면 보통으로 연 문제) */
+type Review = readonly string[] | undefined;
 
 /** 수 배우기 목록에 보일 문제 묶음 */
 const STUDY_SETS = BADUK_PUZZLE_SETS.map((s) => ({
@@ -385,10 +389,10 @@ const JOSEKI_SET = {
 };
 
 /** 목록에서 고른 것이 수순이면 수순 화면, 아니면 문제 화면 */
-const studyScreen = (id: string): Screen =>
+const studyScreen = (id: string, review?: Review): Screen =>
   id.startsWith("line-")
-    ? { kind: "line", lineId: id }
-    : { kind: "puzzle", puzzleId: id };
+    ? { kind: "line", lineId: id, review }
+    : { kind: "puzzle", puzzleId: id, review };
 
 /** 바둑(/baduk): 첫 화면, 옵션, 규칙, 배우기, 다함께 바둑 방, 대국 화면 */
 export function BadukApp() {
@@ -433,6 +437,15 @@ export function BadukApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
+  const reviewOf = (queue: Review, current: string) =>
+    reviewRunFor({
+      queue,
+      current,
+      progress: useBadukStudyProgress,
+      open: (id, q) => setScreen(studyScreen(id, q)),
+      done: () => setScreen({ kind: "study", reviewDone: true }),
+    });
 
   if (screen.kind === "online")
     return (
@@ -471,8 +484,9 @@ export function BadukApp() {
         background={BG}
         sets={[...STUDY_SETS, JOSEKI_SET]}
         progress={useBadukStudyProgress}
-        onOpen={(id) => setScreen(studyScreen(id))}
+        onOpen={(id, review) => setScreen(studyScreen(id, review))}
         onBack={() => setScreen({ kind: "tutorial" })}
+        reviewDone={screen.reviewDone ?? false}
       />
     );
   if (screen.kind === "line")
@@ -482,6 +496,7 @@ export function BadukApp() {
         lineId={screen.lineId}
         onExit={() => setScreen({ kind: "study" })}
         onOpen={(id) => setScreen(studyScreen(id))}
+        review={reviewOf(screen.review, screen.lineId)}
       />
     );
   if (screen.kind === "puzzle")
@@ -491,6 +506,7 @@ export function BadukApp() {
         puzzleId={screen.puzzleId}
         onExit={() => setScreen({ kind: "study" })}
         onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+        review={reviewOf(screen.review, screen.puzzleId)}
       />
     );
   if (screen.kind === "lesson")

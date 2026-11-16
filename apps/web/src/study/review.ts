@@ -149,3 +149,31 @@ export function dayLabel(day: number): string {
   const d = new Date(day * 86_400_000);
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
 }
+
+/**
+ * 복습 줄: 「오늘 복습」에서 누른 문제부터 오늘 복습할 문제를 차례로 잇는다. 누른 문제 앞의 것은 뒤에 붙인다.
+ * 「복습 시작」은 맨 앞 문제를 누른 것과 같다. 누른 문제가 오늘 복습에 없으면 그 문제 하나만
+ */
+export function reviewQueueFrom(
+  due: readonly string[],
+  start: string,
+): string[] {
+  const at = due.indexOf(start);
+  if (at < 0) return [start];
+  return [...due.slice(at), ...due.slice(0, at)];
+}
+
+/**
+ * 복습 줄에서 지금 문제 다음으로 풀 문제: 지금 문제 뒤에 있으면서 아직 오늘 낼 문제(`stillDue`) 가운데 첫 문제.
+ * 앞으로 돌아가지 않는다(정답을 보고 푼 문제가 둘 있어도 서로 번갈아 나오지 않게). 없으면 null(복습 끝)
+ */
+export function reviewNext(
+  queue: readonly string[],
+  current: string,
+  stillDue: (id: string) => boolean,
+): string | null {
+  const at = queue.indexOf(current);
+  if (at < 0) return null;
+  for (const id of queue.slice(at + 1)) if (stillDue(id)) return id;
+  return null;
+}

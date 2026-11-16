@@ -10,6 +10,7 @@ import {
   localDay,
   nextReviewDay,
   type PuzzleRecord,
+  reviewQueueFrom,
 } from "@/study/review";
 
 export interface StudySetSummary {
@@ -32,13 +33,17 @@ export function StudyHome({
   progress,
   onOpen,
   onBack,
+  reviewDone = false,
 }: {
   title: string;
   background: string;
   sets: readonly StudySetSummary[];
   progress: StudyProgressStore;
-  onOpen: (puzzleId: string) => void;
+  /** 문제를 연다. 「오늘 복습」에서 열었으면 복습 줄(`review`)을 함께 넘긴다 */
+  onOpen: (puzzleId: string, review?: readonly string[]) => void;
   onBack: () => void;
+  /** 복습 줄을 끝내고 돌아왔나(「오늘 복습을 다 했어요.」) */
+  reviewDone?: boolean;
 }) {
   const records = progress((s) => s.records);
   // 저장값을 읽기 전(미리 그린 HTML)에는 기록이 비어 복습 칸이 없으니 이때 때를 읽어도 첫 화면이 같다.
@@ -67,6 +72,7 @@ export function StudyHome({
           records={records}
           now={now}
           onOpen={onOpen}
+          reviewDone={reviewDone}
         />
         {sets.map((set) => {
           const solved = set.puzzleIds.filter(
@@ -182,11 +188,13 @@ function ReviewSection({
   records,
   now,
   onOpen,
+  reviewDone,
 }: {
   sets: readonly StudySetSummary[];
   records: Readonly<Record<string, PuzzleRecord>>;
   now: number;
-  onOpen: (puzzleId: string) => void;
+  onOpen: (puzzleId: string, review?: readonly string[]) => void;
+  reviewDone: boolean;
 }) {
   const names = new Map<string, string>();
   for (const set of sets)
@@ -222,7 +230,7 @@ function ReviewSection({
               <button
                 key={id}
                 type="button"
-                onClick={() => onOpen(id)}
+                onClick={() => onOpen(id, reviewQueueFrom(due, id))}
                 className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
               >
                 {names.get(id)}
@@ -231,7 +239,7 @@ function ReviewSection({
           </div>
           <button
             type="button"
-            onClick={() => onOpen(first)}
+            onClick={() => onOpen(first, due)}
             className="rounded-xl bg-amber-400 py-2 font-semibold text-black"
           >
             복습 시작
@@ -239,7 +247,7 @@ function ReviewSection({
         </>
       ) : (
         <p className="text-sm opacity-70">
-          {`오늘은 복습할 문제가 없어요. 다음 복습은 ${dayLabel(next as number)}이에요.`}
+          {`${reviewDone ? "오늘 복습을 다 했어요." : "오늘은 복습할 문제가 없어요."} 다음 복습은 ${dayLabel(next as number)}이에요.`}
         </p>
       )}
     </section>

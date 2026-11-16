@@ -13,6 +13,7 @@ import {
   PuzzleScreen,
   usePuzzleRun,
 } from "@/components/study/PuzzleScreen";
+import type { ReviewRun } from "@/components/study/review-run";
 
 import { useBadukStudyProgress } from "../progress";
 import {
@@ -67,10 +68,13 @@ export function BadukPuzzleScreen({
   puzzleId,
   onExit,
   onOpen,
+  review,
 }: {
   puzzleId: string;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const found = findInSets<BadukPuzzle>(BADUK_PUZZLE_SETS, puzzleId);
   if (!found) return null;
@@ -81,6 +85,7 @@ export function BadukPuzzleScreen({
       puzzle={found.puzzle}
       onExit={onExit}
       onOpen={onOpen}
+      review={review}
     />
   );
 }
@@ -91,12 +96,15 @@ function BadukPuzzleRun({
   puzzle,
   onExit,
   onOpen,
+  review,
 }: {
   set: BadukPuzzleSet;
   index: number;
   puzzle: BadukPuzzle;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const solve = useBadukStudyProgress((s) => s.solve);
   const miss = useBadukStudyProgress((s) => s.miss);
@@ -211,6 +219,7 @@ function BadukPuzzleRun({
         setAim(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
+      review={review}
       onExit={onExit}
     />
   );

@@ -820,6 +820,40 @@ test.describe("체스 수 배우기: 날짜 간격 복습", () => {
   );
 
   test(
+    "복습 줄을 따라 다음 문제로 가고, 줄 끝이면 목록에서 끝을 알린다",
+    { tag: "@only-desktop" },
+    async ({ page }, info) => {
+      // 한 수 메이트 1·3번을 어제 틀렸다. 묶음 차례라면 1번 다음은 2번이지만 복습 줄은 3번이다
+      await openWith(page, {
+        "mate1-1": { misses: 1, streak: 0, missedAt: kst(16) },
+        "mate1-3": { misses: 1, streak: 0, missedAt: kst(16) },
+      });
+      const review = page.getByRole("region", { name: "오늘 복습" });
+      await review.getByRole("button", { name: "복습 시작" }).click();
+      await expect(page.getByText("오늘 복습 1/2")).toBeVisible();
+      await tapSquare(page, "b5", false);
+      await tapSquare(page, "b8", false);
+      await expect(page.getByRole("status")).toHaveText("체크메이트!");
+      await page.getByRole("button", { name: "다음 문제" }).click();
+      await expect(page.getByText("오늘 복습 2/2")).toBeVisible();
+      // 3번 문제: 룩 c1 → c8
+      await tapSquare(page, "c1", false);
+      await tapSquare(page, "c8", false);
+      await expect(page.getByRole("status")).toHaveText("체크메이트!");
+      await page.screenshot({
+        path: info.outputPath("chess-review-last.png"),
+      });
+      await page.getByRole("button", { name: "복습 마치기" }).click();
+      await expect(
+        review.getByText("오늘 복습을 다 했어요. 다음 복습은 11월 18일이에요."),
+      ).toBeVisible();
+      await page.screenshot({
+        path: info.outputPath("chess-review-done.png"),
+      });
+    },
+  );
+
+  test(
     "오늘 낼 문제가 없으면 다음 복습 날을 알린다",
     { tag: "@only-desktop" },
     async ({ page }, info) => {
