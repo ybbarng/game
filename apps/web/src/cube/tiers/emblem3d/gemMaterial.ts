@@ -19,7 +19,7 @@ import type { FacetCut, GemStyleLook } from "./gemStyle";
  * 보석 재질(docs/47 14-7). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이 그리고(몸 색은 검정이라 난반사
  * 없음, 투과 없음), 보석 안의 빛은 조각마다 빛길을 따라가 자체 발광(emissive) 자리에 더한다. 계산은 `gem.ts`의
  * `traceGem`과 같다. WebGL은 GLSL을 끼워 넣고(`onBeforeCompile`), WebGPU(HDR 길)는 같은 계산을 TSL 노드로 짓는다
- * (`gemNodeEmissive`, 넷째 시안 생김새. 확정한 티어별 생김새는 아직 옮기지 않았다).
+ * (`gemNodeEmissive`, 티어별 생김새까지 모두. 반사 지도도 WebGL로 구운 것을 받아 SDR 길과 같은 화소가 나온다).
  *
  * 나가는 빛은 어디를 보는지에 따라 둘 중 하나를 읽는다(`gem.ts` `throughWeight`): 보석을 꿰뚫어 뒤로 나가는 빛은 뒤
  * 배경판(장면의 그 그림, 돌지 않는 평면)을 직접 읽고, 안에서 되튀어 옆·앞으로 나가는 빛은 스튜디오 반사 지도를 읽는다.
@@ -33,7 +33,11 @@ type Three = typeof THREE_NS;
 
 /**
  * 겉 반사 세기(반사 지도). 1이면 물리 그대로: 정면 반사율이 굴절률대로 에메랄드 5.0%, 사파이어 7.6%, 루비 7.7%,
- * 다이아몬드 17%. 예전 1.5는 정면에서도 반사가 커서 금속처럼 보이는 데 한몫했다
+ * 다이아몬드 17%. 예전 1.5는 정면에서도 반사가 커서 금속처럼 보이는 데 한몫했다.
+ *
+ * 장면 반사 지도(`scene.environment`)를 쓰면 three는 WebGL·WebGPU 모두 재질의 `envMapIntensity`를 읽지 않고 장면의
+ * `environmentIntensity`를 모든 재질에 쓴다(r169). 그래서 이 값은 장면에 건다(`scene.ts` `applyEnvironment`). 재질마다
+ * 세기를 따로 두던 값(보석 티어 틀 0.7, 금속 조각 1.3, 그랜드마스터 `frontEnv` 1.8)은 효과가 없어 지웠다(2026-11-16)
  */
 export const GEM_FRONT_ENV = 1;
 
@@ -384,7 +388,6 @@ function frontParams(g: GemPhysics) {
     ior: Math.min(2.333, g.ior),
     specularIntensity: 1,
     specularColor: 0xffffff,
-    envMapIntensity: GEM_FRONT_ENV,
   };
 }
 
@@ -481,16 +484,22 @@ interface Tsl {
     p: object,
   ) => THREE_NS.Material & {
     emissiveNode: N;
+    normalNode: N;
   };
   positionLocal: N;
   normalLocal: N;
   cameraPosition: N;
+  cameraViewMatrix: N;
   modelWorldMatrix: N;
   modelWorldMatrixInverse: N;
+  Fn: (f: () => N) => () => N;
+  Loop: (p: N, body: (a: Record<string, N>) => void) => void;
+  If: (c: N, body: () => void) => { Else: (body: () => void) => void };
+  int: (a: N) => N;
+  float: (a: N) => N;
   vec2: (...a: N[]) => N;
   vec3: (...a: N[]) => N;
   vec4: (...a: N[]) => N;
-  float: (a: number) => N;
   normalize: (a: N) => N;
   refract: (i: N, n: N, eta: N) => N;
   reflect: (i: N, n: N) => N;
@@ -501,12 +510,17 @@ interface Tsl {
   abs: (a: N) => N;
   sqrt: (a: N) => N;
   sign: (a: N) => N;
+  floor: (a: N) => N;
+  fract: (a: N) => N;
+  cos: (a: N) => N;
+  sin: (a: N) => N;
   dot: (a: N, b: N) => N;
   clamp: (a: N, lo: N, hi: N) => N;
   mix: (a: N, b: N, t: N) => N;
   smoothstep: (lo: N, hi: N, x: N) => N;
   texture: (t: THREE_NS.Texture, uv: N) => N;
   uniform: (v: unknown) => N;
+  uniformArray: (v: unknown[], type: string) => N;
   pmremTexture: (t: THREE_NS.Texture, uv: N, level: N) => N;
 }
 
@@ -521,9 +535,87 @@ export function gemMaterialNode(T: object, g: GemPhysics): THREE_NS.Material {
   return new W.MeshPhysicalNodeMaterial(frontParams(g));
 }
 
+/** 생김새 가운데 이 보석 재질이 쓰는 것(GLSL `gemMaterialGL`과 같은 고르기) */
+function styleParts(
+  g: GemPhysics,
+  shape: GemShape,
+  inCube: boolean,
+  style?: GemStyleLook,
+) {
+  const fire = style?.fire && inCube ? style.fire : 0;
+  const cut = style && shape === "box" ? style.cut : NO_CUT;
+  return {
+    fire,
+    disperse: disperses(g) && !fire,
+    cut,
+    facet: cut.kind !== 0,
+    fill: style?.cubeFill ?? GEM_CUBE_FILL,
+    steps: style?.steps ?? GEM_BOUNCES,
+    voro: style?.voro && inCube ? style.voro : null,
+  };
+}
+
+/** 겉면 얕은 계단의 법선(GLSL `gemFacet`, `gemStyle.ts` `facetNormal`과 같은 계산) */
+function facetNode(W: Tsl, cut: FacetCut, p: N, n: N): N {
+  const { float, vec3, select, abs, max, dot, normalize, cos, sin } = W;
+  const a = abs(n);
+  const xMax = a.x.greaterThanEqual(a.y).and(a.x.greaterThanEqual(a.z));
+  const yMax = a.y.greaterThanEqual(a.z);
+  const sgn = (c: N) => select(c.lessThan(0), float(-1), float(1));
+  const axisN = select(
+    xMax,
+    vec3(sgn(n.x), 0, 0),
+    select(yMax, vec3(0, sgn(n.y), 0), vec3(0, 0, sgn(n.z))),
+  );
+  const U = select(xMax, vec3(0, 1, 0), vec3(1, 0, 0));
+  const V = select(xMax.or(yMax), vec3(0, 0, 1), vec3(0, 1, 0));
+  const u = dot(p, U).div(GEM_BOX_HALF);
+  const v = dot(p, V).div(GEM_BOX_HALF);
+  const r = max(abs(u), abs(v));
+  let tilt: N = float(0);
+  for (const ring of cut.rings)
+    tilt = select(
+      r.greaterThanEqual(ring.from),
+      float((ring.tilt * Math.PI) / 180),
+      tilt,
+    );
+  // 가까운 변 쪽으로 기운다(꼭짓점에서 45° 맞붙는 선이 생긴다)
+  const e = select(
+    abs(u).greaterThanEqual(abs(v)),
+    U.mul(sgn(u)),
+    V.mul(sgn(v)),
+  );
+  return select(
+    tilt.lessThanEqual(0),
+    axisN,
+    normalize(axisN.mul(cos(tilt)).add(e.mul(sin(tilt)))),
+  );
+}
+
 /**
- * GLSL `gemLight`와 같은 계산(깎은 면·결정 구조·분산 흉내 없는 기본 빛길)을 TSL 노드로 짓는다. 벽에 닿는 횟수만큼 JS에서
- * 펼친다(분기는 `select`). 여러 번 쓰는 노드는 TSL이 임시 변수로 한 번만 계산한다.
+ * 깎은 면이면 겉 반사(프레넬·점 조명 반짝 점)도 그 면의 기울기로 그린다(GLSL `FACET_NORMAL`). 보기 좌표 법선을 준다.
+ * 깎지 않는 재질은 null
+ */
+export function gemNodeNormal(
+  T: object,
+  g: GemPhysics,
+  shape: GemShape,
+  inCube: boolean,
+  style?: GemStyleLook,
+): N | null {
+  const s = styleParts(g, shape, inCube, style);
+  if (!s.facet) return null;
+  const W = T as unknown as Tsl;
+  const fo = facetNode(W, s.cut, W.positionLocal, W.normalize(W.normalLocal));
+  const world = W.normalize(W.modelWorldMatrix.mul(W.vec4(fo, 0)).xyz);
+  return W.normalize(W.cameraViewMatrix.mul(W.vec4(world, 0)).xyz);
+}
+
+/**
+ * GLSL `gemLight`와 같은 계산을 TSL 노드로 짓는다(HDR 길, docs/47 14-7). 티어별 생김새를 모두 따른다: 겉면 얕은 계단,
+ * 계단 컷 다면체, 조각 안 결정 구조, 분산 세 번 추적과 분산 흉내, 벽에 닿는 횟수, 큐브 전체 두께 흡수 몫. 벽에 닿는
+ * 되풀이는 셰이더 반복문(`Loop`)으로, 조건은 `If`로 GLSL과 같은 차례로 쓴다. 생김새가 SDR 길과 같은지는 찍기 스크립트의
+ * 견주기(`ONLY=hdr`)로 화소를 견준다.
  */
 export function gemNodeEmissive(
   T: object,
@@ -532,14 +624,15 @@ export function gemNodeEmissive(
   shape: GemShape,
   see: GemSee,
   inCube: boolean,
+  style?: GemStyleLook,
 ): N {
   const W = T as unknown as Tsl;
-  const { vec2, vec3, vec4, float, normalize, refract, reflect, select } = W;
-  const { exp, max, min, abs, sqrt, sign, clamp, dot, mix, smoothstep } = W;
+  const { Fn, Loop, If, int, float, vec2, vec3, vec4 } = W;
+  const { normalize, refract, reflect, select, exp, max, min, abs } = W;
+  const { sqrt, sign, floor, fract, clamp, dot, mix, smoothstep } = W;
+  const s = styleParts(g, shape, inCube, style);
   const camObj = W.modelWorldMatrixInverse.mul(vec4(W.cameraPosition, 1)).xyz;
   const p0 = W.positionLocal;
-  const n0 = normalize(W.normalLocal);
-  const v = normalize(p0.sub(camObj));
   const absorb = vec3(...absorbOf(g, shape).map((x) => float(x)));
   const cubeInv = W.uniform(see.cubeInv);
   const envAt = (w: N) => W.pmremTexture(env, w, float(0));
@@ -578,15 +671,13 @@ export function gemNodeEmissive(
     if (inCube) {
       const pc = cubeInv.mul(vec4(pw, 1)).xyz;
       const dc = normalize(cubeInv.mul(vec4(ow, 0)).xyz);
-      back = back.mul(
-        exp(absorb.mul(boxPath(pc, dc)).mul(GEM_CUBE_FILL).negate()),
-      );
+      back = back.mul(exp(absorb.mul(boxPath(pc, dc)).mul(s.fill).negate()));
     }
     return mix(envC, back, w);
   };
   const fres = (cosI: N, n1: number, n2: number) => {
-    const s = sqrt(max(float(0), float(1).sub(cosI.mul(cosI)))).mul(n1 / n2);
-    const cosT = sqrt(max(float(0), float(1).sub(s.mul(s))));
+    const sn = sqrt(max(float(0), float(1).sub(cosI.mul(cosI)))).mul(n1 / n2);
+    const cosT = sqrt(max(float(0), float(1).sub(sn.mul(sn))));
     const a = cosI.mul(n1);
     const b = cosT.mul(n2);
     const c = cosT.mul(n1);
@@ -594,15 +685,15 @@ export function gemNodeEmissive(
     const rs = a.sub(b).div(a.add(b).add(1e-6));
     const rp = c.sub(e).div(c.add(e).add(1e-6));
     return select(
-      s.greaterThanEqual(1),
+      sn.greaterThanEqual(1),
       float(1),
       rs.mul(rs).add(rp.mul(rp)).mul(0.5),
     );
   };
   const exitBox = (p: N, d: N) => {
-    const s = sign(d);
+    const sd = sign(d);
     const t = vec3(GEM_BOX_HALF)
-      .sub(p.mul(s))
+      .sub(p.mul(sd))
       .div(max(abs(d), vec3(1e-5)));
     const xMin = t.x.lessThan(t.y).and(t.x.lessThan(t.z));
     const yMin = t.y.lessThan(t.z);
@@ -610,32 +701,43 @@ export function gemNodeEmissive(
       t: max(select(xMin, t.x, select(yMin, t.y, t.z)), float(0)),
       m: select(
         xMin,
-        vec3(s.x, 0, 0),
-        select(yMin, vec3(0, s.y, 0), vec3(0, 0, s.z)),
+        vec3(sd.x, 0, 0),
+        select(yMin, vec3(0, sd.y, 0), vec3(0, 0, sd.z)),
       ),
     };
   };
-  const exitOcta = (p: N, d: N) => {
-    let t: N = float(1e9);
-    let m: N = vec3(0, 0, 1);
-    const k = 1 / Math.sqrt(3);
-    for (const x of [-k, k])
-      for (const y of [-k, k])
-        for (const z of [-k, k]) {
-          const n = vec3(x, y, z);
-          const dn = dot(n, d);
-          const tk = select(
-            dn.greaterThan(1e-6),
-            float(GEM_OCTA_R * k)
-              .sub(dot(n, p))
-              .div(max(dn, float(1e-6))),
-            float(1e9),
-          );
-          m = select(tk.lessThan(t), n, m);
-          t = min(t, tk);
-        }
-    return { t: max(t, float(0)), m };
-  };
+  /**
+   * 평면 여럿의 교집합에서 빛이 향하는 평면 가운데 가장 가까운 것(팔면체, 계단 컷 다면체). 평면마다 평평한 `If`로
+   * 고른다(`select`를 이어 붙이면 WGSL의 문장 중첩 한도 127을 넘었다, 계단 컷 평면 수)
+   */
+  const exitPlanes =
+    (planes: readonly { n: readonly number[]; h: number }[]) =>
+    (p: N, d: N) => {
+      const t = float(1e9).toVar();
+      const m = vec3(0, 0, 1).toVar();
+      for (const pl of planes) {
+        const n = vec3(...pl.n);
+        const dn = dot(n, d);
+        const tk = select(
+          dn.greaterThan(1e-6),
+          float(pl.h)
+            .sub(dot(n, p))
+            .div(max(dn, float(1e-6))),
+          float(1e9),
+        );
+        If(tk.lessThan(t), () => {
+          t.assign(tk);
+          m.assign(n);
+        });
+      }
+      return { t: max(t, float(0)), m };
+    };
+  const k = 1 / Math.sqrt(3);
+  const octaPlanes = [-k, k].flatMap((x) =>
+    [-k, k].flatMap((y) =>
+      [-k, k].map((z) => ({ n: [x, y, z], h: GEM_OCTA_R * k })),
+    ),
+  );
   const exitSlab = (p: N, d: N) => {
     const sz = select(d.z.lessThan(0), float(-1), float(1));
     return {
@@ -649,28 +751,146 @@ export function gemNodeEmissive(
     };
   };
   const exit =
-    shape === "octa" ? exitOcta : shape === "slab" ? exitSlab : exitBox;
-  const trace = (ior: number) => {
-    const cosI = clamp(dot(v.negate(), n0), float(0), float(1));
-    let d: N = refract(v, n0, float(1 / ior));
-    let p: N = p0.sub(n0.mul(1e-4));
-    let thr: N = vec3(float(1).sub(fres(cosI, 1, ior)));
-    let acc: N = vec3(0, 0, 0);
-    for (let i = 0; i < GEM_BOUNCES; i++) {
-      const { t, m } = exit(p, d);
-      p = p.add(d.mul(t));
-      thr = thr.mul(exp(absorb.mul(t).negate()));
-      const F = fres(dot(d, m), ior, 1);
-      const o = select(F.lessThan(1), refract(d, m.negate(), float(ior)), d);
-      acc = acc.add(thr.mul(float(1).sub(F)).mul(seeAt(p, o)));
-      thr = thr.mul(F);
-      d = reflect(d, m);
-      p = p.sub(m.mul(1e-4));
-    }
-    return acc.add(thr.mul(seeAt(p, d)));
+    shape === "octa"
+      ? exitPlanes(octaPlanes)
+      : shape === "poly"
+        ? exitPlanes(POLY_PLANES)
+        : shape === "slab"
+          ? exitSlab
+          : exitBox;
+  // 분산 흉내(다이아몬드): 나가는 방향과 되튄 횟수로 스펙트럼 색을 골라 곱한다(GLSL gemFire)
+  const fireOf = (o: N, i: N) => {
+    const h = fract(
+      dot(o, vec3(2.1, 3.3, 1.7))
+        .mul(1.6)
+        .add(float(i).mul(0.37)),
+    );
+    const sp = clamp(
+      abs(
+        fract(h.add(vec3(0, 2 / 3, 1 / 3)))
+          .mul(6)
+          .sub(3),
+      ).sub(1),
+      float(0),
+      float(1),
+    );
+    return mix(
+      vec3(1),
+      sp.mul(2),
+      select(i.greaterThan(0), float(s.fire), float(s.fire * 0.3)),
+    );
   };
+  // 조각 안 결정 구조 씨앗: 조각마다 한 묶음씩 27묶음(GLSL과 같은 씨앗)
+  const voro = s.voro;
+  const seeds = voro
+    ? W.uniformArray(
+        Array.from({ length: 27 }, (_, c) =>
+          voronoiSeeds(voro.count, GEM_BOX_HALF, 101 + c),
+        )
+          .flat()
+          .map((x) => new (T as unknown as Three).Vector3(...x)),
+        "vec3",
+      )
+    : null;
+
+  const trace = (ior: number) =>
+    Fn(() => {
+      let n: N = normalize(W.normalLocal);
+      if (s.facet) n = facetNode(W, s.cut, p0, n);
+      const v = normalize(p0.sub(camObj));
+      const cosI = clamp(dot(v.negate(), n), float(0), float(1));
+      const d = refract(v, n, float(1 / ior)).toVar();
+      const p = p0.sub(n.mul(1e-4)).toVar();
+      const thr = vec3(float(1).sub(fres(cosI, 1, ior))).toVar();
+      const acc = vec3(0, 0, 0).toVar();
+      let vbase: N = null;
+      let vcur: N = null;
+      if (voro && seeds) {
+        const cell = floor(
+          cubeInv
+            .mul(vec4(W.modelWorldMatrix.mul(vec4(0, 0, 0, 1)).xyz, 1))
+            .xyz.add(0.5),
+        ).add(1);
+        vbase = int(cell.x)
+          .mul(9)
+          .add(int(cell.y).mul(3))
+          .add(int(cell.z))
+          .mul(voro.count)
+          .toVar();
+        vcur = int(0).toVar();
+        const bd = float(1e9).toVar();
+        Loop({ start: 0, end: voro.count, type: "int", name: "k" }, ({ k }) => {
+          const sk = seeds.element(vbase.add(k));
+          const dd = dot(sk.sub(p), sk.sub(p));
+          If(dd.lessThan(bd), () => {
+            bd.assign(dd);
+            vcur.assign(k);
+          });
+        });
+      }
+      Loop({ start: 0, end: s.steps, type: "int", name: "i" }, ({ i }) => {
+        const ex = exit(p, d);
+        const t = ex.t.toVar();
+        const m = ex.m.toVar();
+        /** 벽에 닿아 일부는 나가고 나머지는 되튄다 */
+        const wall = () => {
+          p.assign(p.add(d.mul(t)));
+          if (s.facet) {
+            const mf = facetNode(W, s.cut, p, m);
+            m.assign(select(dot(d, mf).greaterThan(0.05), mf, m));
+          }
+          thr.assign(thr.mul(exp(absorb.mul(t).negate())));
+          // 벽을 등지는 빛(깎은 면에서 드물게)은 나가지 않고 되튄다고 본다
+          const cd = dot(d, m);
+          const F = select(cd.greaterThan(1e-4), fres(cd, ior, 1), float(1));
+          If(F.lessThan(1), () => {
+            const go = refract(d, m.negate(), float(ior));
+            let out: N = thr.mul(float(1).sub(F)).mul(seeAt(p, go));
+            if (s.fire) out = out.mul(fireOf(go, i));
+            acc.assign(acc.add(out));
+          });
+          thr.assign(thr.mul(F));
+          d.assign(reflect(d, m));
+          p.assign(p.sub(m.mul(1e-4)));
+        };
+        if (!(voro && seeds)) {
+          wall();
+          return;
+        }
+        // 결정 구조: 지금 칸과 이웃 칸 사이 이등분 면에 벽보다 먼저 닿으면 일부를 되비추고 꺾여 이웃 칸으로(GLSL VORO_STEP)
+        const si = seeds.element(vbase.add(vcur));
+        const tb = t.toVar();
+        const nj = int(-1).toVar();
+        const bn = vec3(0, 0, 0).toVar();
+        Loop({ start: 0, end: voro.count, type: "int", name: "j" }, ({ j }) => {
+          If(j.notEqual(vcur), () => {
+            const sj = seeds.element(vbase.add(j));
+            const nn = sj.sub(si);
+            const dn = dot(d, nn);
+            If(dn.greaterThan(1e-6), () => {
+              const tj = dot(si.add(sj).mul(0.5).sub(p), nn).div(dn);
+              If(tj.greaterThan(1e-4).and(tj.lessThan(tb)), () => {
+                tb.assign(tj);
+                nj.assign(j);
+                bn.assign(nn);
+              });
+            });
+          });
+        });
+        If(nj.greaterThanEqual(0), () => {
+          const bu = normalize(bn);
+          p.assign(p.add(d.mul(tb)));
+          thr.assign(thr.mul(exp(absorb.mul(tb).negate())));
+          acc.assign(
+            acc.add(thr.mul(voro.reflect).mul(seeAt(p, reflect(d, bu)))),
+          );
+          thr.assign(thr.mul(1 - voro.reflect));
+          d.assign(normalize(d.add(bu.mul(voro.bend))));
+          vcur.assign(nj);
+        }).Else(wall);
+      });
+      return acc.add(thr.mul(seeAt(p, d)));
+    })();
   const [r, gIor, b] = channelIor(g);
-  return disperses(g)
-    ? vec3(trace(r).x, trace(gIor).y, trace(b).z)
-    : trace(gIor);
+  return s.disperse ? vec3(trace(r).x, trace(gIor).y, trace(b).z) : trace(gIor);
 }

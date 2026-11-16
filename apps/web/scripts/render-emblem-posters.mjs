@@ -2,11 +2,14 @@
  * 3D 엠블럼을 미리 찍은 그림을 만들고 밝기 사다리를 잰다(docs/47 14-7). 3D 모양·재질·빛·바탕색이 바뀌면 다시 찍는다.
  * CI에서는 돌리지 않는다(GPU 없는 브라우저는 그림이 다르게 나온다).
  *
- * 0) 밝기 사다리 `src/cube/tiers/emblem3d/ladder-measure.json`(emblem3d/ladder.ts): 보석 다섯과 플래티넘의 3D 장을 어두운·
+ * 0) 밝기 사다리 `src/cube/tiers/emblem3d/ladder-measure.json`(emblem3d/ladder.ts): 열 티어의 3D 장을 어두운·
  *    밝은 바탕, 정면·돌린 각에서 재서 엠블럼 전체·큐브·장식의 밝기(L*)와 반짝임을 표로 내고 남긴다. 위 티어일수록 크거나
  *    같아야 한다는 규칙을 어기면 그림을 찍지 않고 실패한다(값을 바꿔 순서가 뒤집히면 여기서 잡힌다).
  * 1) 대기 그림 `public/cube/tiers/emblem3d/<티어>-dark.webp`(emblem3d/poster.ts): 티어 화면의 내 티어 3D 칸이 그리는 첫
  *    장(정면) 그대로. 그래서 대기 그림과 3D 첫 장은 같은 카메라·같은 크기·같은 바탕이다(고정 규칙 2-1절).
+ * 1-1) HDR 대기 그림 `public/cube/tiers/emblem3d/<보석 티어>-dark-hdr.avif`(`ONLY=hdr`): HDR 화면에서 보석 3D가 쓰는
+ *    HDR 길의 첫 장(반짝임이 흰색보다 밝다)을 BT.2020 PQ로. 먼저 HDR 길 생김새가 SDR 길과 같은지 화소로 견주고, 다르면
+ *    실패한다. 헤드리스 Chrome의 WebGPU를 쓴다(이 맥 화면이 SDR이어도 찍힌다).
  * 2) 진열 칸 그림 `public/cube/tiers/emblem3d/sprite/<티어>.webp`: 진열 칸 3D가 그리는 장을 좌우 각마다 한 장씩 가로로
  *    이어 붙인 그림. 칸은 이 그림을 넘겨 도는 것처럼 보인다(3D 문맥을 여럿 띄우지 않는다).
  * 3) 정지 그림 `public/cube/tiers/emblem3d/still/<티어>-<s|m|l>.webp`(emblem3d/still.ts): 정면 한 장, 투명 바탕. 작은
@@ -16,17 +19,26 @@
  *
  * 쓰는 법(apps/web에서):
  *   pnpm build                                        # out/ 이 있어야 한다
- *   E2E_PORT=5892 node scripts/render-emblem-posters.mjs   # ONLY=ladder|posters|sprites|stills|cubie|readme, TIER=gold
+ *   E2E_PORT=5892 node scripts/render-emblem-posters.mjs   # ONLY=ladder|posters|hdr|sprites|stills|cubie|readme, TIER=gold
  *   BASE=http://localhost:3456 …                      # 띄워 둔 서버를 쓴다(빌드 없이 잴 때)
  *
  * - 목록은 `poster.ts`·`still.ts`와 같아야 한다(.ts를 그대로 불러올 수 없어 여기 다시 적는다). 어긋나면 단위 시험
  *   `emblem3d/poster.test.ts`가 빠진 파일·남은 파일을 잡는다.
  * - 브라우저는 화면 시험과 같이 시스템 Chrome(`e2e/browser.ts`), 헤드리스. 찍는 고리는 티어 화면의 `?emblemCapture=1`.
  */
-import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { crc32, deflateSync } from "node:zlib";
 
 import { chromium } from "@playwright/test";
 
@@ -82,14 +94,7 @@ const SPRITE_YAWS = Array.from(
   (_, i) => -SPRITE_AMP + (2 * SPRITE_AMP * i) / (SPRITE_FRAMES - 1),
 );
 // ladder.ts MEASURE_*와 같게
-const MEASURE_TIERS = [
-  "platinum",
-  "emerald",
-  "diamond",
-  "master",
-  "grandmaster",
-  "challenger",
-];
+const MEASURE_TIERS = ALL_TIERS;
 const MEASURE_SIZE = 300;
 const MEASURE_YAWS = [0, 0.6];
 // still.ts STILL_CSS와 같게(파일은 두 배 화소). 작은 단계는 칸을 더 채우고 조금 밝히고 얇은 어두운 테두리를 두른다
@@ -247,12 +252,6 @@ async function ladder(page) {
     (x) => window.__emblemCapture.violations(x),
     m,
   );
-  const flip = await page.evaluate(
-    (x) => window.__emblemCapture.platinumFlip(x),
-    m,
-  );
-  if (flip.length)
-    console.log(`\n플래티넘 > 에메랄드(보고만): ${flip.join(" / ")}`);
   if (bad.length) {
     console.error(`\n사다리 규칙을 어김:\n${bad.join("\n")}`);
     if (process.env.LADDER_SAVE_ANYWAY !== "1") return false;
@@ -276,6 +275,179 @@ async function posters(page) {
       await toWebp(page, fromDataUrl(url)),
     );
   }
+}
+
+// poster.ts HDR_POSTERS와 같게
+const HDR_TIERS = ["emerald", "diamond", "master", "grandmaster", "challenger"];
+/** HDR 길(키우기 1배)과 SDR 길의 정면 장 평균 화소 차(0~255) 상한. 넘으면 HDR 길 생김새가 어긋난 것 */
+const HDR_PARITY_MAX = 3;
+/** HDR 대기 그림의 보통 흰색 밝기(nit, ITU-R BT.2408) */
+const SDR_WHITE_NITS = 203;
+
+/** SMPTE ST 2084(PQ): 밝기(nit) → 0~1 신호 */
+function pq(nits) {
+  const m1 = 2610 / 16384;
+  const m2 = (2523 / 4096) * 128;
+  const c1 = 3424 / 4096;
+  const c2 = (2413 / 4096) * 32;
+  const c3 = (2392 / 4096) * 32;
+  const p = (Math.max(0, nits) / 10000) ** m1;
+  return ((c1 + c2 * p) / (1 + c3 * p)) ** m2;
+}
+const srgbToLinear = (c) =>
+  c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+/** 선형 sRGB(BT.709) → 선형 BT.2020 */
+const TO_2020 = [
+  [0.6274, 0.3293, 0.0433],
+  [0.0691, 0.9195, 0.0114],
+  [0.0164, 0.088, 0.8956],
+];
+
+function pngChunk(type, body) {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(body.length);
+  const tb = Buffer.from(type, "ascii");
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([tb, body])));
+  return Buffer.concat([len, tb, body, crc]);
+}
+
+/** 16비트 RGB PNG(값을 바꾸지 않는다. avifenc가 --cicp로 「BT.2020 PQ」라고 표시만 한다) */
+function png16rgb(w, h, rgb16) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 16;
+  ihdr[9] = 2;
+  const raw = Buffer.alloc(h * (1 + w * 6));
+  for (let y = 0; y < h; y++) {
+    const row = y * (1 + w * 6);
+    raw[row] = 0;
+    for (let x = 0; x < w * 3; x++)
+      raw.writeUInt16BE(rgb16[y * w * 3 + x], row + 1 + x * 2);
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", ihdr),
+    pngChunk("IDAT", deflateSync(raw, { level: 9 })),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+/** PNG data URL들을 RGBA 바이트로(브라우저 안에서) */
+async function rgbaOf(page, urls) {
+  const out = await page.evaluate(async (list) => {
+    const res = [];
+    for (const u of list) {
+      const bmp = await createImageBitmap(await (await fetch(u)).blob());
+      const c = new OffscreenCanvas(bmp.width, bmp.height);
+      const x = c.getContext("2d");
+      x.drawImage(bmp, 0, 0);
+      const d = x.getImageData(0, 0, bmp.width, bmp.height).data;
+      let s = "";
+      for (let i = 0; i < d.length; i += 8192)
+        s += String.fromCharCode(...d.subarray(i, i + 8192));
+      res.push({ w: bmp.width, h: bmp.height, b64: btoa(s) });
+    }
+    return res;
+  }, urls);
+  return out.map((o) => ({ ...o, data: Buffer.from(o.b64, "base64") }));
+}
+
+/**
+ * HDR 대기 그림(docs/47 14-7 「HDR 길」). 보석 티어마다
+ * 1) HDR 길을 키우기 1배(SDR 화면 값만)로 그린 정면 장이 SDR 길 대기 그림과 같은지 본다(평균 화소 차 `HDR_PARITY_MAX`
+ *    넘으면 실패, 생김새를 옮기며 어긋난 것을 잡는다).
+ * 2) HDR 길 정면 장을 그대로(흰색까지)와 1/`HDR_HEADROOM`로 줄여(흰색보다 밝은 곳까지) 두 번 찍어 합친 선형 값을
+ *    BT.2020 PQ 10비트 AVIF로 남긴다(보통 흰색 203 nit). SDR 화면 값 범위는 첫 그림의 값을 그대로 쓴다.
+ */
+async function hdrPosters(page) {
+  const room = await page.evaluate(() => window.__emblemCapture.hdrHeadroom);
+  let ok = true;
+  for (const tier of HDR_TIERS.filter((t) => TIERS.includes(t))) {
+    const job = { tier, size: HERO_SIZE, yaws: [0], pageColor: PAGE.dark };
+    const shot = async (extra) =>
+      (
+        await page.evaluate((j) => window.__emblemCapture.frames(j), {
+          ...job,
+          ...extra,
+        })
+      )[0];
+    const [sdr, flat, full, third] = await rgbaOf(page, [
+      await shot({}),
+      await shot({ path: "hdr", headroom: 1 }),
+      await shot({ path: "hdr" }),
+      await shot({ path: "hdr", view: 1 / room }),
+    ]);
+    let sum = 0;
+    let over = 0;
+    const n = sdr.w * sdr.h;
+    const out = new Uint16Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const lin = [0, 1, 2].map((k) => {
+        sum += Math.abs(sdr.data[i * 4 + k] - flat.data[i * 4 + k]);
+        const a = full.data[i * 4 + k];
+        // 흰색 근처까지는 그대로 찍은 값, 그 위는 줄여 찍은 값을 되돌린 것
+        return a < 250
+          ? srgbToLinear(a / 255)
+          : srgbToLinear(third.data[i * 4 + k] / 255) * room;
+      });
+      if (Math.max(...lin) > 1.05) over++;
+      for (let r = 0; r < 3; r++) {
+        const v =
+          TO_2020[r][0] * lin[0] +
+          TO_2020[r][1] * lin[1] +
+          TO_2020[r][2] * lin[2];
+        out[i * 3 + r] = Math.round(pq(v * SDR_WHITE_NITS) * 65535);
+      }
+    }
+    const mean = sum / (n * 3);
+    console.log(
+      `HDR ${LABEL[tier]}: SDR 길과 평균 화소 차 ${mean.toFixed(2)} · 흰색(1.05)보다 밝은 화소 ${((over / n) * 100).toFixed(2)}%`,
+    );
+    if (mean > HDR_PARITY_MAX) {
+      console.error(
+        `  HDR 길 생김새가 SDR 길과 다르다(상한 ${HDR_PARITY_MAX})`,
+      );
+      ok = false;
+      continue;
+    }
+    const dir = mkdtempSync(join(tmpdir(), "emblem-hdr-"));
+    try {
+      const png = join(dir, "poster.png");
+      writeFileSync(png, png16rgb(sdr.w, sdr.h, out));
+      const file = join(posterDir, `${tier}-dark-hdr.avif`);
+      execFileSync(
+        "avifenc",
+        [
+          "--cicp",
+          "9/16/9", // BT.2020 · PQ · BT.2020 비상수 휘도
+          "--range",
+          "full",
+          "--depth",
+          "10",
+          "--yuv",
+          "444",
+          "--qcolor",
+          "80",
+          "--speed",
+          "4",
+          "--jobs",
+          "1",
+          "--ignore-icc",
+          png,
+          file,
+        ],
+        { stdio: "ignore" },
+      );
+      console.log(
+        `${file.slice(web.length + 1)} ${(readFileSync(file).length / 1024).toFixed(1)}KB`,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  return ok;
 }
 
 /** 각도별 장을 가로로 이어 붙인 진열 칸 그림 */
@@ -417,6 +589,12 @@ try {
     }
   }
   if (want("posters")) await posters(page);
+  if (want("hdr") && !(await hdrPosters(page))) {
+    failed = true;
+    throw new Error(
+      "HDR 길 생김새가 SDR 길과 달라 HDR 대기 그림을 찍지 않았다",
+    );
+  }
   if (want("sprites")) await sprites(page);
   const jobs = [];
   if (want("stills")) {

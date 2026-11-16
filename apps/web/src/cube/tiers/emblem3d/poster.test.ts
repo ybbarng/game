@@ -3,7 +3,9 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { GEM_TIERS } from "./gemStyle";
 import {
+  HDR_POSTERS,
   HERO_SIZE,
   LADDER_SIZE,
   POSTER_DIR,
@@ -11,6 +13,8 @@ import {
   POSTER_PAGE,
   POSTERS,
   posterFile,
+  posterHdrFile,
+  posterHdrSrc,
   posterSrc,
   SPRITE_AMP,
   SPRITE_DIR,
@@ -98,6 +102,45 @@ describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7)", () =>
     expect(posterSrc("ruby" as never, HERO_SIZE, undefined)).toBeNull();
     expect(posterSrc("diamond", LADDER_SIZE, undefined)).toBeNull();
     expect(posterSrc("diamond", HERO_SIZE, "#f5f5f5")).toBeNull();
+  });
+});
+
+/** AVIF의 색 표시(colr nclx): 원색·전송 함수·행렬 번호 */
+function avifCicp(b: Buffer): [number, number, number] | null {
+  expect(b.toString("ascii", 4, 8)).toBe("ftyp");
+  const at = b.indexOf("colrnclx", 0, "ascii");
+  if (at < 0) return null;
+  return [
+    b.readUInt16BE(at + 8),
+    b.readUInt16BE(at + 10),
+    b.readUInt16BE(at + 12),
+  ];
+}
+
+describe("HDR 대기 그림(docs/47 14-7 「HDR 길」)", () => {
+  it("보석 다섯 티어만 있고, BT.2020 PQ(9/16/9) AVIF다", () => {
+    expect([...HDR_POSTERS]).toEqual([...GEM_TIERS]);
+    for (const t of HDR_POSTERS) {
+      const b = readFileSync(join(PUBLIC, POSTER_DIR, posterHdrFile(t)));
+      expect(avifCicp(b), posterHdrFile(t)).toEqual([9, 16, 9]);
+    }
+  });
+
+  it("남은 HDR 그림은 목록에 있는 것뿐", () => {
+    const want = new Set(HDR_POSTERS.map(posterHdrFile));
+    const have = readdirSync(join(PUBLIC, POSTER_DIR)).filter((f) =>
+      f.endsWith(".avif"),
+    );
+    expect(have.filter((f) => !want.has(f))).toEqual([]);
+  });
+
+  it("보석 티어의 찍은 크기·바탕에만 HDR 그림을 고른다", () => {
+    expect(posterHdrSrc("master", HERO_SIZE, undefined)).toBe(
+      `${POSTER_DIR}/master-dark-hdr.avif`,
+    );
+    expect(posterHdrSrc("gold", HERO_SIZE, undefined)).toBeNull();
+    expect(posterHdrSrc("master", LADDER_SIZE, undefined)).toBeNull();
+    expect(posterHdrSrc("master", HERO_SIZE, "#f5f5f5")).toBeNull();
   });
 });
 

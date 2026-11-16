@@ -23,6 +23,7 @@ import {
   type EmblemScene,
   isGem,
   LOOK,
+  studioFor,
   type Three,
 } from "./scene";
 import {
@@ -42,7 +43,7 @@ import {
   swayYaw,
   wrapYaw,
 } from "./spin";
-import type { DrawPath } from "./support";
+import { canHdrCanvas, type DrawPath, hdrScreen } from "./support";
 
 /** 화면 시험이 고정한 한 장 예산(ms, `window.__emblem3dBudget`). 제품에서는 없다 */
 /**
@@ -67,7 +68,8 @@ function fixedBudget(): number | null {
  *
  * - 움직일 때만 그린다: 끄는 중, 놓은 뒤 짧은 미끄러짐, 「처음 각도로」 돌아가는 중. 가만히 있으면 한 장도 그리지
  *   않는다(`data-emblem3d-frames`가 늘지 않는다). 화면 밖이면 그리기를 미뤘다가 다시 보일 때 한 장 그린다.
- * - 보석은 HDR 캔버스(WebGPU)를 먼저 시도하고, 안 되면 WebGL에 번짐(bloom)으로 그린다. 금속은 WebGL에 번짐 없이.
+ * - 보석은 HDR 화면이면 HDR 캔버스(WebGPU, 생김새는 SDR 길과 같고 반짝임만 흰색보다 밝게), 그 밖은 WebGL에 번짐(bloom)
+ *   으로 그린다. 금속은 WebGL에 번짐 없이.
  * - `onViewTurn`·`resetView`는 큐브 화면의 「처음 각도로」 단추(`ViewHome`)가 그대로 붙는 꼴이다.
  */
 
@@ -86,6 +88,8 @@ interface Painter {
    * 몸 본: 검은 바탕에 몸(`body`) 또는 큐브만(`core`)을 흰색으로 그린다(밝기를 잴 영역, `lookStats.ts`). WebGL 길만
    */
   mask?(part: "body" | "core"): void;
+  /** 마지막 값에 곱할 배율(HDR 길 찍기용, 1/HDR_HEADROOM이면 흰색보다 밝은 곳까지 0~1 안에 든다) */
+  setView?(k: number): void;
   dispose(): void;
 }
 
@@ -114,7 +118,6 @@ async function webglPainter(
   const built = buildEmblemScene(THREE, tier, {
     backdrop: true,
     pageColor,
-    hdr: false,
   });
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(built.studio, 0.02).texture;
@@ -233,15 +236,70 @@ interface GpuCtx {
 }
 
 /**
+ * HDR 길의 밝기(docs/47 14-7 「HDR 길」). SDR 길과 같은 장면·번짐·노출·톤 매핑으로 SDR 화면 값(0~1)을 만든 뒤, 톤 매핑
+ * 전 값이 `HDR_KNEE`를 넘는 곳(점 조명 반짝 점, 번짐의 가운데)만 그 값을 최대 `HDR_HEADROOM`배까지 키운다. 그래서
+ * 반짝임이 아닌 곳은 SDR 길과 같은 화소이고, 반짝임만 흰색(1.0)보다 밝게 나간다. 화면이 낼 수 있는 밝기보다 크면 화면이
+ * 알아서 줄인다.
+ */
+export const HDR_HEADROOM = 3;
+/** 키우기 시작·다 키우는 톤 매핑 전 밝기(선형, 노출 곱한 뒤 가장 큰 채널). 번짐 문턱(3~3.5)과 같은 자리부터 */
+export const HDR_KNEE: readonly [number, number] = [1.5, 8];
+/** SDR 길과 같은 노출(`webglPainter`) */
+const EXPOSURE = 1.05;
+
+/** 반사 지도(PMREM) 화소: 반 정밀도 RGBA, cubeUV 배치 */
+interface EnvPixels {
+  data: Uint16Array<ArrayBuffer>;
+  width: number;
+  height: number;
+}
+
+/**
+ * 스튜디오 반사 지도를 WebGL로 굽고 화소를 읽는다. HDR 길(WebGPU)도 이것을 받아 쓴다: r169 WebGPU의 PMREM 굽기는 같은
+ * 스튜디오에서도 면 방향이 WebGL과 달라(앞 반구의 반짝 점 자리가 좌우로 뒤집히는 등, 2026-11-16 잰 값) 보석 속 반사가
+ * SDR 길과 달랐다. 무대를 만들 때 한 번만 굽는다(짧게 WebGL 문맥 하나를 쓰고 바로 버린다)
+ */
+function glEnvironment(tier: DraftTier): EnvPixels {
+  const renderer = new THREE.WebGLRenderer({
+    canvas: document.createElement("canvas"),
+    antialias: false,
+  });
+  const studio = studioFor(THREE, tier);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  try {
+    const rt = pmrem.fromScene(studio, 0.02);
+    const data = new Uint16Array(rt.width * rt.height * 4);
+    renderer.readRenderTargetPixels(rt, 0, 0, rt.width, rt.height, data);
+    const out = { data, width: rt.width, height: rt.height };
+    rt.dispose();
+    return out;
+  } finally {
+    pmrem.dispose();
+    studio.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+      }
+    });
+    renderer.dispose();
+    renderer.forceContextLoss();
+  }
+}
+
+/**
  * HDR 캔버스: three WebGPURenderer(이 판의 webgpu 묶음)를 쓰되 캔버스 형식을 rgba16float로, 톤 매핑을 extended로
- * 바꿔 설정한다(r169는 이 설정을 열어 두지 않아 백엔드의 캔버스 형식 함수와 context.configure를 감싼다). 톤 매핑을
- * 끄면 1.0을 넘는 빛(점 조명 반사, 우물 빛)이 그대로 HDR 화면에 나간다. WebGPU가 아니면(WebGL 대신 길) 실패로 본다.
+ * 바꿔 설정한다(r169는 이 설정을 열어 두지 않아 백엔드의 캔버스 형식 함수와 context.configure를 감싼다). 그리기는
+ * SDR 길(`webglPainter`)과 같은 흐름이다: 장면 → 번짐(같은 세기·반지름·문턱) → 노출 → Neutral 톤 매핑 → sRGB. 그
+ * 뒤 반짝임만 `HDR_HEADROOM`배까지 키운다. `view`는 찍기용으로 마지막 값에 곱한다(1/HDR_HEADROOM이면 흰색보다 밝은
+ * 곳까지 0~1 안에 들어와 SDR 그림으로 읽을 수 있다). WebGPU가 아니면(WebGL 대신 길) 실패로 본다.
  */
 async function hdrPainter(
   canvas: HTMLCanvasElement,
   tier: DraftTier,
   px: number,
   pageColor: string,
+  headroom = HDR_HEADROOM,
 ): Promise<Painter> {
   const W = await import("three/webgpu");
   const ctx = canvas.getContext("webgpu" as "2d") as unknown as GpuCtx | null;
@@ -272,25 +330,66 @@ async function hdrPainter(
   }
   renderer.setPixelRatio(1);
   renderer.setSize(px, px, false);
+  // 톤 매핑은 아래 후처리에서 직접 한다(캔버스로 나갈 때는 sRGB로만 바꾼다)
   renderer.toneMapping = W.NoToneMapping;
   renderer.setClearColor(new W.Color(pageColor), 1);
   const T = W as unknown as Three;
-  const built = buildEmblemScene(T, tier, {
-    backdrop: true,
-    pageColor,
-    hdr: true,
-  });
-  const pmrem = new W.PMREMGenerator(renderer);
-  const env = pmrem.fromScene(built.studio as never, 0.02).texture;
+  const built = buildEmblemScene(T, tier, { backdrop: true, pageColor });
+  // 반사 지도는 SDR 길과 같은 WebGL 굽기를 그대로 받는다(`glEnvironment`). WebGPU에서 데이터 텍스처는 v가 위에서
+  // 내려가므로, 아래 줄부터 읽은 WebGL 화소를 뒤집지 않고 올리면 WebGL과 같은 자리를 읽는다
+  const px0 = glEnvironment(tier);
+  const env = new W.DataTexture(
+    px0.data,
+    px0.width,
+    px0.height,
+    W.RGBAFormat,
+    W.HalfFloatType,
+  );
+  env.mapping = W.CubeUVReflectionMapping;
+  env.minFilter = W.LinearFilter;
+  env.magFilter = W.LinearFilter;
+  env.generateMipmaps = false;
+  env.flipY = false;
+  (env as unknown as { isPMREMTexture: boolean }).isPMREMTexture = true;
+  env.needsUpdate = true;
   built.applyEnvironment(env as unknown as THREE.Texture);
   built.update();
+  const { float, vec4, max, mix, smoothstep, uniform } = W;
+  const post = new W.PostProcessing(renderer);
+  const scenePass = W.pass(
+    built.scene as never,
+    built.camera as never,
+    {
+      samples: 4,
+    } as never,
+  );
+  const color = scenePass.getTextureNode("output");
+  const b = built.bloom;
+  // WebGL `UnrealBloomPass`는 번짐을 AdditiveBlending(원본 알파를 곱해 더하기)으로 얹는다. 그래서 더해지는 것은
+  // 번짐 색 × 번짐 알파다(밝은 가운데는 세지고 옅은 둘레는 빨리 사라진다). 같은 식으로 더해야 그랜드마스터처럼 넓게
+  // 번지는 티어에서 SDR 길과 같은 빛무리가 된다
+  const glow = W.bloom(color, b.strength, b.radius, b.threshold);
+  const lin = color.rgb.add(glow.rgb.mul(glow.a)).mul(EXPOSURE);
+  const sdr = W.neutralToneMapping(lin.rgb, float(1));
+  const peak = max(max(lin.r, lin.g), lin.b);
+  const room = uniform(headroom);
+  const view = uniform(1);
+  const boost = mix(
+    float(1),
+    room,
+    smoothstep(float(HDR_KNEE[0]), float(HDR_KNEE[1]), peak),
+  );
+  post.outputNode = vec4(sdr.mul(boost).mul(view), float(1));
   // r169 WebGPURenderer의 compileAsync는 이 장면에서 끝나지 않아(헤드리스 크롬, 2026-11-12) 쓰지 않는다
   return {
     path: "hdr",
     built,
     draw() {
       built.update();
-      renderer.render(built.scene as never, built.camera as never);
+      post.render();
+    },
+    setView(k) {
+      view.value = k;
     },
     setScale(s) {
       renderer.setPixelRatio(s);
@@ -305,7 +404,8 @@ async function hdrPainter(
       return device ? device.queue.onSubmittedWorkDone() : Promise.resolve();
     },
     dispose() {
-      (pmrem as unknown as { dispose?: () => void }).dispose?.();
+      (post as unknown as { dispose?: () => void }).dispose?.();
+      scenePass.dispose?.();
       env.dispose();
       built.dispose();
       renderer.dispose();
@@ -429,9 +529,13 @@ export class EmblemStage implements ViewTurnTarget {
     const page = opt.pageColor ?? PAGE_COLOR;
     const gem = isGem(opt.tier);
     let painter: Painter | null = null;
-    // 티어별 생김새(깎은 면·결정 구조·분산 흉내)는 아직 WebGL 길에만 있다. HDR 길(WebGPU)은 넷째 시안 생김새라 대기
-    // 그림(SDR 번짐 길로 찍음)과 달라, 옮기기 전에는 `?emblem3d=hdr`로 강제할 때만 쓴다(docs/47 14-7 남은 일)
-    if (gem && opt.force === "hdr") {
+    // 보석은 HDR 화면이면 HDR 길(WebGPU)로: 생김새는 SDR 길과 같고 반짝임만 흰색보다 밝다(docs/47 14-7 「HDR 길」).
+    // `?emblem3d=hdr`는 SDR 화면에서도 HDR 길을 켜고(시험·찍기), `?emblem3d=bloom`은 HDR 화면에서도 SDR 길로 둔다
+    const wantHdr =
+      gem &&
+      opt.force !== "bloom" &&
+      (opt.force === "hdr" || (hdrScreen() && (await canHdrCanvas())));
+    if (wantHdr) {
       try {
         painter = await hdrPainter(fresh(), opt.tier, px, page);
       } catch {
@@ -749,24 +853,31 @@ export interface FrameJob {
   dpr?: number;
   /** 해상도 배율(기본 1). 낮춘 해상도로 그린 모습을 견줄 때(비교 그림) */
   scale?: number;
+  /** HDR 길로 찍는다(보석만). 그림은 0~1로 잘려 나오니 흰색보다 밝은 곳은 `view`를 줄여 읽는다 */
+  path?: "hdr";
+  /** HDR 길 마지막 값에 곱할 배율(기본 1, `HDR_HEADROOM` 참고) */
+  view?: number;
+  /** HDR 길이 반짝임을 키우는 배율(기본 `HDR_HEADROOM`, 1이면 SDR 화면 값만) */
+  headroom?: number;
 }
 
 /** 3D 칸과 같은 그리기(번짐까지)로 그린다. `fn`이 끝나면 버린다 */
 async function withPainter<R>(
-  job: Pick<FrameJob, "tier" | "size" | "pageColor" | "dpr">,
+  job: Pick<
+    FrameJob,
+    "tier" | "size" | "pageColor" | "dpr" | "path" | "headroom"
+  >,
   fn: (p: Painter, canvas: HTMLCanvasElement, px: number) => R,
 ): Promise<R> {
   const px = Math.round(job.size * (job.dpr ?? 2));
   const canvas = document.createElement("canvas");
   canvas.width = px;
   canvas.height = px;
-  const painter = await webglPainter(
-    canvas,
-    job.tier,
-    px,
-    isGem(job.tier),
-    job.pageColor ?? PAGE_COLOR,
-  );
+  const page = job.pageColor ?? PAGE_COLOR;
+  const painter =
+    job.path === "hdr" && isGem(job.tier)
+      ? await hdrPainter(canvas, job.tier, px, page, job.headroom)
+      : await webglPainter(canvas, job.tier, px, isGem(job.tier), page);
   try {
     return fn(painter, canvas, px);
   } finally {
@@ -784,6 +895,7 @@ const turnTo = (p: Painter, yaw: number) =>
 export async function captureFrames(job: FrameJob): Promise<string[]> {
   return withPainter(job, (p, canvas) => {
     if (job.scale && job.scale !== 1) p.setScale(job.scale);
+    if (job.view !== undefined) p.setView?.(job.view);
     return job.yaws.map((yaw) => {
       turnTo(p, yaw);
       p.draw();
@@ -805,7 +917,7 @@ function pixels(canvas: HTMLCanvasElement, px: number): Uint8ClampedArray {
 
 /**
  * 그 각의 3D 장 밝기·반짝임을 엠블럼 전체·큐브·장식으로 나눠 잰다(docs/47 14-7 「밝기 사다리」, `lookStats.ts`).
- * 찍기 스크립트가 다섯 보석 티어(와 비교로 플래티넘)를 어두운·밝은 바탕, 정면·돌린 각에서 재 순서를 확인한다
+ * 찍기 스크립트가 열 티어를 어두운·밝은 바탕, 정면·돌린 각에서 재 순서를 확인한다
  */
 export async function measureEmblem(
   job: Omit<FrameJob, "yaws"> & { yaw: number },
@@ -870,7 +982,6 @@ export async function captureShots(
       const built = buildEmblemScene(THREE, tier, {
         backdrop: true,
         pageColor: PAGE_COLOR,
-        hdr: false,
         backGlow: 0.5,
       });
       // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다

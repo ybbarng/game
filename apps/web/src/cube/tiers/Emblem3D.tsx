@@ -6,11 +6,12 @@ import { ViewHome } from "@/cube/components/ViewHome";
 import { cn } from "@/lib/cn";
 import { EmblemStill } from "./EmblemStill";
 import { styleOfTier } from "./emblem3d/gemStyle";
-import { posterSrc } from "./emblem3d/poster";
+import { posterHdrSrc, posterSrc } from "./emblem3d/poster";
 import type { DraftTier } from "./emblem3d/scene";
 import type { EmblemStage } from "./emblem3d/stage";
 import { canDraw3d, type DrawPath, pathOverride } from "./emblem3d/support";
 import { TIER_LABEL } from "./table";
+import "./emblem3d.css";
 
 type State = "loading" | "3d" | "svg";
 
@@ -77,10 +78,14 @@ export function Emblem3D({
   }, [shown]);
   const [posterBroken, setPosterBroken] = useState(false);
   const poster = posterSrc(tier, size, pageColor);
+  // HDR 화면이면 보석 티어는 HDR 길과 같은 밝기의 대기 그림(emblem3d.css가 고른다). 못 받으면 SDR 그림으로
+  const [hdrBroken, setHdrBroken] = useState(false);
+  const posterHdr = hdrBroken ? null : posterHdrSrc(tier, size, pageColor);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 대기 그림 주소가 바뀌면 다시 불러 본다
   useEffect(() => {
     setPosterBroken(false);
+    setHdrBroken(false);
   }, [poster]);
 
   useEffect(() => {
@@ -159,6 +164,8 @@ export function Emblem3D({
       data-emblem3d-path={state === "3d" ? (path ?? "loading") : state}
       data-emblem3d-shown={state === "3d" && shown ? "" : undefined}
       data-emblem3d-style={styleOfTier(tier) ?? undefined}
+      data-emblem3d-has-hdr={posterHdr ? "" : undefined}
+      data-emblem3d-sdr={state === "3d" && path !== "hdr" ? "" : undefined}
       role="img"
       aria-label={label ?? `${TIER_LABEL[tier]} 엠블럼`}
       className={cn(
@@ -186,10 +193,26 @@ export function Emblem3D({
             width={size}
             height={size}
             draggable={false}
+            loading={posterHdr ? "lazy" : undefined}
             onError={() => setPosterBroken(true)}
-            className="block rounded-2xl"
+            className="emblem3d-sdr-poster block rounded-2xl"
             style={{ width: size, height: size }}
           />
+          {posterHdr && (
+            // biome-ignore lint/performance/noImgElement: HDR 그림(PQ AVIF)을 화소 크기 그대로 보인다
+            <img
+              data-emblem3d-poster-hdr
+              src={posterHdr}
+              alt=""
+              width={size}
+              height={size}
+              draggable={false}
+              loading="lazy"
+              onError={() => setHdrBroken(true)}
+              className="emblem3d-hdr-poster rounded-2xl"
+              style={{ width: size, height: size }}
+            />
+          )}
         </div>
       )}
       {covered && !usePoster && (

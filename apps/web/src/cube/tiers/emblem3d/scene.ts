@@ -15,10 +15,12 @@ import { TIER_IDS, type TierId } from "../table";
 import { polyFromPlanes, stepCutPlanes } from "./cutGeometry";
 import type { GemPhysics, GemShape } from "./gem";
 import {
+  GEM_FRONT_ENV,
   type GemSee,
   gemMaterialGL,
   gemMaterialNode,
   gemNodeEmissive,
+  gemNodeNormal,
   hasTsl,
 } from "./gemMaterial";
 import {
@@ -46,6 +48,28 @@ import {
  */
 
 export type Three = typeof THREE_NS;
+
+/**
+ * 재질 종류. WebGPU 묶음(`three/webgpu`)이면 노드 재질을 직접 쓴다: WebGPURenderer가 일반 재질을 노드 재질로 바꾸는
+ * 등록이 빌드(묶음 정리) 뒤에는 빠져 「not compatible」로 틀·배경판·후광이 그려지지 않았다(개발 서버에서는 됐다,
+ * 2026-11-16). 값(색·거칠기·지도)은 같은 이름이라 그대로 넘긴다
+ */
+function kinds(T: Three): {
+  Standard: typeof THREE_NS.MeshStandardMaterial;
+  Basic: typeof THREE_NS.MeshBasicMaterial;
+  Sprite: typeof THREE_NS.SpriteMaterial;
+} {
+  const N = T as unknown as {
+    MeshStandardNodeMaterial?: typeof THREE_NS.MeshStandardMaterial;
+    MeshBasicNodeMaterial?: typeof THREE_NS.MeshBasicMaterial;
+    SpriteNodeMaterial?: typeof THREE_NS.SpriteMaterial;
+  };
+  return {
+    Standard: N.MeshStandardNodeMaterial ?? T.MeshStandardMaterial,
+    Basic: N.MeshBasicNodeMaterial ?? T.MeshBasicMaterial,
+    Sprite: N.SpriteNodeMaterial ?? T.SpriteMaterial,
+  };
+}
 
 /** 시안 티어: 열 티어 모두 */
 export const DRAFT_TIERS = TIER_IDS;
@@ -76,8 +100,6 @@ export interface BuildOptions {
   backdrop: boolean;
   /** 배경판 가장자리 색(페이지 바탕과 같게) */
   pageColor: string;
-  /** 빛 세기 배수(HDR 길은 흰색보다 밝은 값을 그대로 보낸다) */
-  hdr: boolean;
   /** 뒤 조명 세기 배수(찍은 그림은 작게 보여 대비가 커야 해서 줄인다). 기본 1 */
   backGlow?: number;
 }
@@ -108,8 +130,6 @@ type Rgb = readonly [number, number, number];
 interface MetalLook {
   color: Rgb;
   roughness: number;
-  /** 반사 지도 세기(없으면 보석 티어 틀 0.7, 그 밖 1) */
-  env?: number;
 }
 
 interface TierLook {
@@ -177,33 +197,37 @@ function backdropCenter(center: string, page: string): string {
 
 /** 티어마다 재질(시안에서 고른 값, 보고·문서에 그대로 적는다) */
 export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
+  // 금속 다섯은 색 기운은 그대로 두고 밝기만 낮췄다(예전 값의 아이언 0.575·브론즈 0.486·실버 0.465·골드 0.6·플래티넘
+  // 0.665배). 보석 티어 틀을 어둡게 한 뒤 금속이 에메랄드보다 밝아 사다리가 뒤집혔고(플래티넘 장식 L* 56.0 > 에메랄드
+  // 48.1), 실버가 골드·플래티넘보다 밝았다. 아이언 < 브론즈 < 실버 < 골드 < 플래티넘 < 에메랄드(2026-11-16, docs/47 14-7
+  // 「밝기 사다리」, ladder.ts)
   iron: {
-    frame: { color: [0.3, 0.31, 0.33], roughness: 0.55 },
-    block: { color: [0.36, 0.37, 0.39], roughness: 0.5 },
+    frame: { color: [0.172, 0.178, 0.19], roughness: 0.55 },
+    block: { color: [0.207, 0.213, 0.224], roughness: 0.5 },
     tint: "#9aa3ad",
     backdrop: "#2c2f33",
   },
   bronze: {
-    frame: { color: [0.8, 0.4, 0.22], roughness: 0.36 },
-    block: { color: [0.86, 0.46, 0.26], roughness: 0.34 },
+    frame: { color: [0.389, 0.194, 0.107], roughness: 0.36 },
+    block: { color: [0.418, 0.224, 0.126], roughness: 0.34 },
     tint: "#e9a070",
     backdrop: "#3a2a22",
   },
   silver: {
-    frame: { color: [0.86, 0.88, 0.9], roughness: 0.24 },
-    block: { color: [0.9, 0.91, 0.93], roughness: 0.26 },
+    frame: { color: [0.4, 0.409, 0.419], roughness: 0.24 },
+    block: { color: [0.419, 0.423, 0.432], roughness: 0.26 },
     tint: "#dfe7f0",
     backdrop: "#2e333a",
   },
   gold: {
-    frame: { color: [1.0, 0.72, 0.29], roughness: 0.2 },
-    block: { color: [1.0, 0.72, 0.29], roughness: 0.32 },
+    frame: { color: [0.6, 0.432, 0.174], roughness: 0.2 },
+    block: { color: [0.6, 0.432, 0.174], roughness: 0.32 },
     tint: "#ffd27a",
     backdrop: "#3a3426",
   },
   platinum: {
-    frame: { color: [0.84, 0.93, 0.92], roughness: 0.18 },
-    block: { color: [0.8, 0.93, 0.91], roughness: 0.24 },
+    frame: { color: [0.559, 0.618, 0.612], roughness: 0.18 },
+    block: { color: [0.532, 0.618, 0.605], roughness: 0.24 },
     // 청록 보석(파라이바 토르말린 굴절률 약 1.62)
     accent: { ior: 1.62, spread: 0, absorb: absorbFor([0.35, 0.86, 0.78]) },
     tint: "#9ff0e2",
@@ -480,17 +504,15 @@ function backdropTexture(
  */
 function studioScene(
   T: Three,
-  hdr: boolean,
   tint: string,
   gem: boolean,
   kind: GemStyleLook["studio"] = "now",
 ): THREE_NS.Scene {
   const s = new T.Scene();
-  const k = hdr ? 1.4 : 1;
   const tc = new T.Color(tint);
   const room = new T.Mesh(
     new T.BoxGeometry(24, 24, 24),
-    new T.MeshBasicMaterial({
+    new (kinds(T).Basic)({
       color: gem ? 0x050608 : 0x0e1014,
       side: T.BackSide,
     }),
@@ -507,11 +529,11 @@ function studioScene(
     if (power <= 0) return;
     const m = new T.Mesh(
       new T.PlaneGeometry(w, h),
-      new T.MeshBasicMaterial({
+      new (kinds(T).Basic)({
         color: new T.Color(
-          tintRgb[0] * power * k,
-          tintRgb[1] * power * k,
-          tintRgb[2] * power * k,
+          tintRgb[0] * power,
+          tintRgb[1] * power,
+          tintRgb[2] * power,
         ),
         side: T.DoubleSide,
       }),
@@ -584,6 +606,20 @@ function studioScene(
   return s;
 }
 
+/**
+ * 티어의 스튜디오 방만 짓는다(`buildEmblemScene`의 `studio`와 같은 것). HDR 길은 반사 지도를 WebGL로 구워 넘겨받는다
+ * (`stage.ts` `glEnvironment`)
+ */
+export function studioFor(T: Three, tier: DraftTier): THREE_NS.Scene {
+  const styleId = styleOfTier(tier);
+  return studioScene(
+    T,
+    LOOK[tier].tint,
+    isGem(tier),
+    styleId ? GEM_STYLE_LOOK[styleId].studio : undefined,
+  );
+}
+
 function linear(T: Three, rgb: Rgb): THREE_NS.Color {
   return new T.Color().setRGB(rgb[0], rgb[1], rgb[2], T.LinearSRGBColorSpace);
 }
@@ -642,12 +678,10 @@ export function buildEmblemScene(
 
   // ---- 재질
   const metal = mat(
-    new T.MeshStandardMaterial({
+    new (kinds(T).Standard)({
       color: linear(T, look.frame.color),
       metalness: 1,
       roughness: look.frame.roughness,
-      // 보석 티어는 틀이 보석보다 튀지 않게(밝은 반사가 번짐으로 퍼졌다)
-      envMapIntensity: look.frame.env ?? (gem ? 0.7 : 1),
     }),
   );
   // 배경판 그림: 장면 뒤에 깔고(opt.backdrop), 보석이 꿰뚫어 볼 때도 같은 그림을 읽는다
@@ -688,23 +722,25 @@ export function buildEmblemScene(
           ),
     );
     gems.push({ mat: m, g, shape, inCube });
+    // 깎은 면은 겉 반사도 그 기울기로(WebGL은 셰이더가 법선을 바꾼다)
+    const nrm = node
+      ? gemNodeNormal(T, g, shape, inCube, sl ?? undefined)
+      : null;
+    if (nrm)
+      (m as THREE_NS.Material & { normalNode: unknown }).normalNode = nrm;
     return m;
   };
   const metalBlock = mat(
-    new T.MeshStandardMaterial({
+    new (kinds(T).Standard)({
       color: linear(T, (look.block ?? look.frame).color),
       metalness: 1,
       roughness: (look.block ?? look.frame).roughness,
-      envMapIntensity: 1.3,
     }),
   );
   /** 큐브 조각(상자 보석, 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수된다) */
   const blockMat = look.gem
     ? gemMat(look.gem, sl?.shape ?? "box", true)
     : metalBlock;
-  // 겉 반사 세기(그랜드마스터 계단 컷: 깎은 면에 조명이 흰 쐐기로 비치게)
-  if (sl?.frontEnv)
-    (blockMat as THREE_NS.MeshStandardMaterial).envMapIntensity = sl.frontEnv;
   /** 왕관 상자(홀로 놓인 상자 보석) */
   const crownMat = look.gem ? gemMat(look.gem, "box") : metalBlock;
   /** 날개 조각(얇은 판 보석) */
@@ -750,7 +786,7 @@ export function buildEmblemScene(
     const core = new T.Mesh(
       keep(new T.BoxGeometry(2.9, 2.9, 2.9)),
       mat(
-        new T.MeshStandardMaterial({
+        new (kinds(T).Standard)({
           color: 0x0c0a08,
           roughness: 0.7,
           metalness: 0.2,
@@ -907,7 +943,7 @@ export function buildEmblemScene(
     texs.push(haloTex);
     const halo = new T.Sprite(
       mat(
-        new T.SpriteMaterial({
+        new (kinds(T).Sprite)({
           map: haloTex,
           transparent: true,
           depthWrite: false,
@@ -923,7 +959,7 @@ export function buildEmblemScene(
   if (opt.backdrop) {
     const bg = new T.Mesh(
       keep(new T.PlaneGeometry(BACKDROP_SIZE, BACKDROP_SIZE)),
-      mat(new T.MeshBasicMaterial({ map: bgTex, toneMapped: false })),
+      mat(new (kinds(T).Basic)({ map: bgTex, toneMapped: false })),
     );
     bg.position.z = BACKDROP_Z;
     scene.add(bg);
@@ -937,7 +973,7 @@ export function buildEmblemScene(
     const shadow = new T.Mesh(
       keep(new T.PlaneGeometry(1, 1)),
       mat(
-        new T.MeshBasicMaterial({
+        new (kinds(T).Basic)({
           map: shadowTex,
           transparent: true,
           depthWrite: false,
@@ -972,7 +1008,7 @@ export function buildEmblemScene(
     ] as const) {
       const l = new T.PointLight(
         0xffffff,
-        p * 0.6 * (opt.hdr ? 1.6 : 1) * (sl?.frontLights ?? 1),
+        p * 0.6 * (sl?.frontLights ?? 1),
         0,
         2,
       );
@@ -986,7 +1022,7 @@ export function buildEmblemScene(
   camera.position.set(0, 0, (CAMERA_Z * u) / U_REF);
   camera.lookAt(0, 0, 0);
 
-  const studio = studioScene(T, opt.hdr, look.tint, gem, sl?.studio);
+  const studio = studioScene(T, look.tint, gem, sl?.studio);
 
   return {
     scene,
@@ -1003,12 +1039,22 @@ export function buildEmblemScene(
     },
     applyEnvironment(env) {
       scene.environment = env;
+      // 반사 세기는 재질이 아니라 장면 값을 쓴다(gemMaterial.ts `GEM_FRONT_ENV`)
+      scene.environmentIntensity = GEM_FRONT_ENV;
       // WebGPU: 보석 빛길 노드는 반사 지도를 직접 읽으므로 지도가 생긴 뒤 붙인다(WebGL은 셰이더가 envMap을 읽는다)
       if (node)
         for (const x of gems) {
           (
             x.mat as THREE_NS.Material & { emissiveNode: unknown }
-          ).emissiveNode = gemNodeEmissive(T, env, x.g, x.shape, see, x.inCube);
+          ).emissiveNode = gemNodeEmissive(
+            T,
+            env,
+            x.g,
+            x.shape,
+            see,
+            x.inCube,
+            sl ?? undefined,
+          );
           x.mat.needsUpdate = true;
         }
     },
