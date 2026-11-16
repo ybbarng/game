@@ -134,6 +134,8 @@ describe("체력 판정", () => {
     expect(wait.hp.a).toBe(50);
     expect(wait.decided).toBeUndefined();
     expect(wait.until).toBe(5_500);
+    // 아직 판정하지 못한 첫 일: 6초 몫(a의 수를 6초 넘게 받아야 판정한다)
+    expect(wait.next).toBe(6_000);
   });
 
   it("그 1초 안에 맞는 쪽이 그 이정표를 지나면 남은 몫은 깎지 않는다", () => {

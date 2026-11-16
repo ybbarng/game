@@ -2,9 +2,11 @@
 import { Party } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
+import { closeWhenDone } from "@/net/close-when-done";
 import type { AuditResult } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { memoryHostStore } from "@/net/host-store";
+import { reloadTab } from "@/net/reload-tab";
 
 import { hostOptions, playUntil, setup, until } from "./fair-room-fixture";
 
@@ -12,7 +14,8 @@ import { hostOptions, playUntil, setup, until } from "./fair-room-fixture";
 describe("하트 멘탈 포커 온라인 대전: 새로고침·끊김·부정", () => {
   it("방장이 카드 넘기기와 첫 판 중간에 새로고침해도 이어 가고, 모두의 검증을 통과한다", async () => {
     const store = memoryHostStore();
-    const { net, host, guests, incidents, clock } = await setup(2, store);
+    let tab = reloadTab(store);
+    const { net, host, guests, incidents, clock } = await setup(2, tab.store);
     const audits: AuditResult[] = [];
     for (const g of guests) g.on("audit", (r) => audits.push(r));
     await host.start();
@@ -34,15 +37,19 @@ describe("하트 멘탈 포커 온라인 대전: 새로고침·끊김·부정", 
         incidents,
       );
       net.disconnect(k === 0 ? "host" : `host${k}`);
+      // 옛 탭은 사라진다: 더 남기지 못하고 계산도 멈춘다(reload-tab.ts)
+      tab.reload(current);
+      tab = reloadTab(store);
       // 메모리 네트워크는 끊김 알림을 마이크로태스크로 보내므로, 다음 차례 하나만 양보하면 모두에게 닿는다
       await new Promise((resolve) => setTimeout(resolve, 0));
       const restore = store.load();
       current = new HostRoom({
         transport: net.join(`host${k + 1}`),
-        ...hostOptions(clock, store),
+        ...hostOptions(clock, tab.store),
         ...(restore ? { restore } : {}),
       }) as never;
       current.onIncident((n) => incidents.push(n));
+      closeWhenDone(current);
       await until(() => current.lobby().seats.every((s) => s.connected));
     }
     await playUntil(

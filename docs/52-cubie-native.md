@@ -825,7 +825,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 크기마다 시간(`heroTiming(n)`: 2×2 섞기 11수·수 280ms, 큰 큐브 섞기 30~44수·수 100~120ms 등)도 `hero_show.rs` `hero_timing(n)`으로 옮겼다.
 - 축소법은 사이트 `solveReductionColors`의 앞 네 단계(흰·노랑 센터, 나머지 센터, 엣지 짝, 마지막 두 엣지)만 계산한다. 홈 시연은 그 뒤를 3×3 사람 해법으로 두고, 사이트도 패리티·3×3 단계의 수는 버린다. 막히면 돌려 쥐고 다시 풀기(`REGRIPS`)와 같은 섞기를 첫 면 색마다 여섯 번 풀 때 축소를 한 번만 하는 기억(최근 8개)도 같다.
 
-**공통 시험 자료**: `fixtures/hero-show.json`(2×2·3×3 해법 여섯 × 씨앗 8개 = 48판)과 `fixtures/hero-show-big.json`(4×4~7×7 둘씩, 4×4는 씨앗 둘 = 10판. OLL·PLL 패리티가 나오는 4×4 판과 PLL 패리티가 나오는 6×6 판이 든다). 씨앗 → 섞기·쥐는 방향, 첫 면 색, 보여 주기 변환 뒤 수·단계·꼬리표·살피는 자리·찾는 돌리기·쉬는 자리·강조, 연출 걸음 전부를 견주어 **어긋남 0**. 사이트 쪽 자료는 비동기 해법 표 대신 같은 해법을 바로 부르는 표(`HERO_SYNC`)로 만들고, 그 표가 해법 표와 id가 같고 `solveForHero`와 같은 첫 면 색·수를 내는지 시험이 본다(`core-fixtures-hero.test.ts`·`core-fixtures-hero-big.test.ts`. 큰 큐브는 사이트 엔진으로 6×6·7×7이 무거워 파일을 나눴다).
+**공통 시험 자료**: `fixtures/hero-show.json`(2×2·3×3 해법 여섯 × 씨앗 8개 = 48판)과 `fixtures/hero-show-big.json`(4×4~7×7 둘씩, 4×4는 씨앗 둘 = 10판. OLL·PLL 패리티가 나오는 4×4 판과 PLL 패리티가 나오는 6×6 판이 든다). 씨앗 → 섞기·쥐는 방향, 첫 면 색, 보여 주기 변환 뒤 수·단계·꼬리표·살피는 자리·찾는 돌리기·쉬는 자리·강조, 연출 걸음 전부를 견주어 **어긋남 0**. 사이트 쪽 자료는 비동기 해법 표 대신 같은 해법을 바로 부르는 표(`HERO_SYNC`)로 만들고, 그 표가 해법 표와 id가 같고 `solveForHero`와 같은 첫 면 색·수를 내는지 시험이 본다(`core-fixtures-hero.test.ts`·`core-fixtures-hero-big.test.ts`. 큰 큐브는 사이트 엔진으로 6×6·7×7이 무거워 파일을 나눴고, 크기마다도 `core-fixtures-hero-big-56`·`-7`로 나눠 판마다 줄을 견준다. 머리·판 차례는 `-big`이 본다).
 
 **계산 시간**(코어 `cargo test --release --test hero_show -- --ignored --nocapture`, 이 맥 M 시리즈, 해법마다 씨앗 5개, 축소 기억을 쓰지 않게 해법마다 다른 씨앗, 가운데 값 · 가장 오래)
 
@@ -930,6 +930,26 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 4. 시스템 설정 「손쉬운 사용 → 디스플레이 → 동작 줄이기」를 켜면 큰 칸·사다리·메뉴 칸이 멈추는지, 큰 칸을 끈 뒤 「처음 각도로」 단추.
 5. 메뉴 막대 메뉴를 열면 프로필 칸 엠블럼이 천천히 흔들리고 닫으면 멈추는지(밝은·어두운 메뉴).
 6. 크기를 바꾸거나 기록이 없는 크기(어두운 아이언과 문장).
+
+### 5-12. 홈 시연 4×4 야우(2026-11-17)
+
+> 지도 남은 일: 「야우 첫 화면 연출(야우 단계 함수를 Cubie 코어로 옮겨야 함)」. 작업 트리 브랜치, 커밋만.
+
+사이트 첫 화면 해법 표에 「야우」(`4-yau`, docs/47 0절 「4×4 야우」)를 더하면서 앱 홈 시연도 같은 수로 돌게 했다. 해법 표 전부는 이제 2×2 둘·3×3 넷·4×4~7×7 축소법 둘·4×4 야우다.
+
+| 해법(id) | 사이트 원본 | 코어 | 첫 면 색 |
+|---|---|---|---|
+| 4×4 야우(`4-yau`) | `learn/yau-hero.ts` `solveYauHuman`, `learn/yau-solve.ts` `solveYau`와 단원 길(`beginner-path.ts`·`big-path.ts`·`big-solve.ts`·`yau-path.ts`) | `yau.rs` `solve_yau_human` | 십자 셋이 가장 싼 색(고른 색을 흰색으로 읽게 스티커 색을 바꿔 흰색 차례로) |
+
+- 야우는 탐색하지 않고 단원의 경우별 정해진 길만 따라, 옮긴 코드도 경우 고르기와 수 잇기뿐이다. 축소법(`reduction.rs`)·3×3 사람 해법(`taught.rs`)과는 다른 길이라 3×3 처음 맞추기의 다음 한 걸음(흰 십자 ~ 코너 방향)도 `beginner-path.ts`에서 따로 옮겼다.
+- 앱은 설정 해법 목록(`CubeSettings.heroMethods`)에 `4-yau`를 더했다. C ABI(`cubie_hero_steps`·`cubie_hero_scramble`)는 해법 id로 고르므로 그대로다. 계산은 디버그 빌드에서 첫 면 색 여섯을 다 풀어도 한 판 약 5ms라 축소법보다 가볍다.
+- 앱 크기: 이 맥 칩용(arm64) 실행 파일 2,407,072 → 2,525,104바이트(+115KB, 약 +4.9%, `build.sh`로 바꾸기 전 커밋과 견줌).
+
+**공통 시험 자료**: `fixtures/hero-show-yau.json`(씨앗 1~4, 첫 면 색 빨강·초록·주황·흰, OLL 패리티 셋·PLL 패리티 하나가 든다). 씨앗 → 섞기·쥐는 방향, 첫 면 색, 보여 주기 변환 뒤 수·단계·꼬리표·살피는 자리·강조, 연출 걸음 전부 **어긋남 0**(`cargo test --test hero_show hero_show_yau`). 사이트는 `core-fixtures-hero-yau.test.ts` 한 파일(판이 가벼워 나누지 않음). 코어 단위 시험은 시연 섞기 열두 판 × 첫 면 색 여섯이 끝까지 맞고 십자 셋 끝에 그 색 센터가 아랫면인지 본다(사이트 `yau-hero.test.ts`와 같은 확인).
+
+**비교 그림** `docs/cubie-native/compare-hero-yau.webp`: 4×4 야우 씨앗 5, 멈춤 자리마다 웹(이 브랜치로 빌드한 사이트 미니, WebKit)과 네이티브(화면 밖 스크린샷)를 나란히, 어두운 회색·#000 바탕. 다시 만들기는 5-10과 같고 해법만 `CUBIE_NATIVE_N=4 CUBIE_NATIVE_SHOT_HERO=4-yau:5`, 배포 전에는 사이트 주소에 로컬 서버를 준다.
+
+**남은 것**: 컴퓨터 대결에 야우 넣기와 내 해법 고르기의 큰 큐브 야우(docs/47 8-2 「컴퓨터」).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

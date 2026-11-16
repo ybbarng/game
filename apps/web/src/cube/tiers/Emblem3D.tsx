@@ -82,11 +82,15 @@ export function Emblem3D({
   const [hdrBroken, setHdrBroken] = useState(false);
   const posterHdr = hdrBroken ? null : posterHdrSrc(tier, size, pageColor);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 대기 그림 주소가 바뀌면 다시 불러 본다
-  useEffect(() => {
+  // 대기 그림 주소가 바뀌면 다시 불러 본다. 되돌리기는 그리는 중에 해서, 새 주소의 <img>가 DOM에 들어가기 전에 끝낸다.
+  // effect로 되돌리면 새 주소의 실패(onError)가 effect보다 먼저 올 때 그 실패를 지워, 대기 그림도 로딩 표시도 없는 빈
+  // 칸으로 남았다(2026-11-17 화면 시험이 부하 아래 가끔 실패)
+  const [posterFor, setPosterFor] = useState(poster);
+  if (posterFor !== poster) {
+    setPosterFor(poster);
     setPosterBroken(false);
     setHdrBroken(false);
-  }, [poster]);
+  }
 
   useEffect(() => {
     const el = box.current;

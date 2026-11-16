@@ -46,6 +46,10 @@ export type StageName =
   | "oll-parity"
   | "pll-parity"
   | "three"
+  // 4×4 야우(첫 화면 연출만, 웹 `cube/learn/yau-hero.ts`). 축소 단계 이름(나머지 센터·엣지 짝)과 3×3 초보자 단계 이름을 함께 쓴다
+  | "yau-centers"
+  | "yau-cross3"
+  | "yau-last-cross"
   // 루(Roux)
   | "fb"
   | "sb"
@@ -86,6 +90,9 @@ export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   "oll-parity": "패리티(엣지 뒤집기)",
   "pll-parity": "패리티(엣지 맞바꾸기)",
   three: "3×3 맞추기",
+  "yau-centers": "흰·노랑 센터",
+  "yau-cross3": "흰 십자 셋",
+  "yau-last-cross": "마지막 십자 엣지",
   fb: "첫 블록",
   sb: "둘째 블록",
   cmll: "위 코너(CMLL)",

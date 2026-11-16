@@ -102,21 +102,53 @@ function faceColorMaps(n: number): Uint8Array[] {
  * 모든 스티커가 그 방향의 면 색과 같은 조각을 센다. 움직이지 않는 정가운데는 세지 않는다.
  */
 export function solvedPieceRatio(n: number, state: PuzzleState): number {
-  const topo = cubeTopology(n);
+  const { start, sticker, face } = countedPieces(n);
+  const pieces = start.length - 1;
   const colors = faceColors(n, state);
-  const counted = topo.pieces.filter((p) => p.kind !== "center");
   let best = 0;
   for (const map of faceColorMaps(n)) {
     let ok = 0;
-    for (const p of counted) {
-      if (
-        p.stickers.every(
-          (s) => colors[s] === map[topo.stickers[s]?.face as number],
-        )
-      )
-        ok++;
+    for (let i = 0; i < pieces; i++) {
+      const end = start[i + 1] as number;
+      let k = start[i] as number;
+      while (k < end && colors[sticker[k] as number] === map[face[k] as number])
+        k++;
+      if (k === end) ok++;
     }
     if (ok > best) best = ok;
   }
-  return best / counted.length;
+  return best / pieces;
+}
+
+interface CountedPieces {
+  /** 조각 i의 스티커는 `sticker[start[i]]`부터 `start[i + 1]` 앞까지, 그 자리 면은 `face` 같은 칸 */
+  start: Int32Array;
+  sticker: Int32Array;
+  face: Uint8Array;
+}
+
+const countedCache = new Map<number, CountedPieces>();
+
+/** `solvedPieceRatio`가 세는 조각(움직이지 않는 정가운데 빼고)의 스티커 자리와 그 면. 크기마다 한 번 만든다 */
+function countedPieces(n: number): CountedPieces {
+  let hit = countedCache.get(n);
+  if (!hit) {
+    const topo = cubeTopology(n);
+    const counted = topo.pieces.filter((p) => p.kind !== "center");
+    const stickers = counted.flatMap((p) => [...p.stickers]);
+    const start = new Int32Array(counted.length + 1);
+    counted.forEach((p, i) => {
+      start[i + 1] = (start[i] as number) + p.stickers.length;
+    });
+    hit = {
+      start,
+      sticker: Int32Array.from(stickers),
+      face: Uint8Array.from(
+        stickers,
+        (st) => topo.stickers[st]?.face as number,
+      ),
+    };
+    countedCache.set(n, hit);
+  }
+  return hit;
 }

@@ -16,8 +16,8 @@ export function TrickTable({
   tricks: readonly TrickRow[];
   seats: readonly number[];
   name: (seat: number) => string;
-  /** 칸에 덧붙일 표시(마이티·조커 등) */
-  mark?: (card: string) => string | null;
+  /** 칸에 덧붙일 표시(마이티·조커콜 등). `trick`은 0부터 센 턴 */
+  mark?: (card: string, seat: number, trick: number) => string | null;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -42,7 +42,7 @@ export function TrickTable({
               <td className="px-1 py-1 text-left text-white/60">{i + 1}</td>
               {seats.map((s) => {
                 const play = t.plays.find((p) => p.seat === s);
-                const extra = play && mark?.(play.card);
+                const extra = play && mark?.(play.card, s, i);
                 return (
                   <td key={s} className="px-1 py-1">
                     {play ? (
@@ -55,7 +55,7 @@ export function TrickTable({
                       >
                         <CardChip card={play.card} strong={s === t.winner} />
                         {extra && (
-                          <span className="text-[9px] text-amber-200">
+                          <span className="whitespace-pre-line text-[9px] text-amber-200 leading-tight">
                             {extra}
                           </span>
                         )}

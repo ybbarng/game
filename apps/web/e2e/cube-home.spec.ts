@@ -305,10 +305,13 @@ test(
       hero.locator("[data-hero-method='alternate']"),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
+    // 4×4에는 야우도 있다(4×4만)
+    await expect(hero.locator("[data-hero-method='4-yau']")).toHaveText("야우");
     // 6×6·7×7도 고를 수 있다(Cubie 홈 시연과 같은 해법 표)
     await hero.locator("[data-hero-size='7']").click();
     await expect(hero.locator("[data-hero-method='7-beginner']")).toBeVisible();
     await expect(hero.locator("[data-hero-method='7-cfop']")).toBeVisible();
+    await expect(hero.locator("[data-hero-method='4-yau']")).toHaveCount(0);
     await hero.locator("[data-hero-size='4']").click();
     // 조각 강조: 기본은 「잠깐」, 고르면 남는다
     await expect(hero.locator("[data-hero-highlight='brief']")).toHaveAttribute(
@@ -357,6 +360,7 @@ test(
     const cases = [
       { size: 3, method: "3-beginner", label: /초보자 해법 · 흰 십자/ },
       { size: 4, method: "4-cfop", label: /축소법\(프리드리히\) · \S+ 십자/ },
+      { size: 4, method: "4-yau", label: /야우 · \S+ 십자 셋/ },
       { size: 5, method: "5-beginner", label: /축소법\(초보자\) · 흰 십자/ },
       {
         size: 7,

@@ -37,12 +37,14 @@ import {
 } from "./macros";
 import {
   applyMovesColors,
+  applySource,
   type Colors,
   FACE_LETTERS,
   format,
   moves,
   outerSequences,
   simplify,
+  sourceMap,
 } from "./sim";
 import { threeParity, toThreeFacelets } from "./three";
 
@@ -113,6 +115,15 @@ export interface ReductionLimits {
   edgeSteps?: number;
 }
 
+/** 푸는 법 고르기. `ReductionLimits`는 시험이 막힘을 일으킬 때만 넣는다 */
+export interface ReductionOptions extends ReductionLimits {
+  /**
+   * 가운데·엣지 짝 네 단계까지만 풀고 패리티·3×3 단계는 두지 않는다. 사람 흉내(cube-ai `solveBigHuman`)는
+   * 축소 뒤 3×3을 사람 해법으로 따로 풀어 그 두 단계를 쓰지 않는다. 앞 네 단계의 수는 끝까지 푼 해와 같다
+   */
+  pairsOnly?: boolean;
+}
+
 const CENTER_STEPS = 500;
 const EDGE_STEPS = 100;
 
@@ -137,6 +148,8 @@ interface FaceSetup {
   /** 면마다 돌린 횟수를 4진수로 묶은 번호(같은 준비 수는 같은 번호) */
   code: number;
   moves: CubeMove[];
+  /** 준비 수를 한 번에 돌리는 자리 표(`sourceMap`) */
+  src: Int32Array;
 }
 
 const faceSetupCache = new Map<string, FaceSetup[]>();
@@ -158,7 +171,7 @@ function faceSetups(n: number, faces: readonly number[]): FaceSetup[] {
       code += t * 4 ** f;
       list.push(...moves(n, `${FACE_LETTERS[f]}${FACE_TURN_SUFFIX[t]}`));
     }
-    out.push({ code, moves: list });
+    out.push({ code, moves: list, src: sourceMap(n, list) });
   }
   faceSetupCache.set(key, out);
   return out;
@@ -195,6 +208,25 @@ function solveCenterPhase(
   /** 자리 p(무게 있음)에 색 c가 놓이면 맞은편 면의 색인가 */
   const opposite = (p: number, c: number) =>
     (w[p] as number) > 0 && faceOfColor[c] === (faceOfSticker(n, p) + 3) % 6;
+  /**
+   * 공식마다 무게 있는 가운데 자리(`at`)와 돌린 뒤 그 자리에 오는 스티커의 원래 자리(`from`). 무게 0인 자리는
+   * 이득에도 맞은편 셈에도 들지 않아 단계 동안 미리 뺀다. 무게 있는 자리가 없는 공식은 목록에서 뺀다(차례는 그대로)
+   */
+  const weighted = (macros: readonly Macro[]) =>
+    macros.flatMap((macro) => {
+      const at = macro.centers.filter((p) => (w[p] as number) > 0);
+      if (!at.length) return [];
+      return [
+        {
+          macro,
+          setups: faceSetups(n, macro.centerFaces),
+          at: Int32Array.from(at),
+          from: Int32Array.from(at, (p) => macro.src[p] as number),
+        },
+      ];
+    });
+  const insertList = weighted(inserts);
+  const cycleList = weighted(cycles);
   let cur = colors;
   for (let guard = 0; guard < maxSteps; guard++) {
     if (g.centers.every((p) => w[p] === 0 || cur[p] === want[p])) return cur;
@@ -205,33 +237,34 @@ function solveCenterPhase(
      * 맞은편 면끼리 바뀐 조각은 세 조각 돌리기 하나로 닿지 않아, 먼저 옆면으로 옮겨 두는 걸음이다
      */
     const consider = (
-      macros: readonly Macro[],
+      list: ReturnType<typeof weighted>,
       prev: Pick | undefined,
       sideways = false,
     ) => {
       let best = prev;
-      for (const macro of macros) {
-        if (!macro.centers.some((p) => (w[p] as number) > 0)) continue;
-        for (const s of faceSetups(n, macro.centerFaces)) {
+      for (const { macro, setups, at, from } of list) {
+        for (const s of setups) {
           let ca = setupColors[s.code];
           if (!ca) {
-            ca = applyMovesColors(n, cur, s.moves);
+            ca = applySource(cur, s.src);
             setupColors[s.code] = ca;
           }
           let gain = 0;
-          for (const p of macro.centers) {
+          for (let i = 0; i < at.length; i++) {
+            const p = at[i] as number;
             const t = want[p];
             const wp = w[p] as number;
-            if (ca[macro.src[p] as number] === t) gain += wp;
+            if (ca[from[i] as number] === t) gain += wp;
             if (ca[p] === t) gain -= wp;
           }
           let score = gain;
           if (sideways) {
             if (gain !== 0) continue;
             score = 0;
-            for (const p of macro.centers) {
+            for (let i = 0; i < at.length; i++) {
+              const p = at[i] as number;
               if (opposite(p, ca[p] as number)) score++;
-              if (opposite(p, ca[macro.src[p] as number] as number)) score--;
+              if (opposite(p, ca[from[i] as number] as number)) score--;
             }
           }
           if (score <= 0) continue;
@@ -243,10 +276,10 @@ function solveCenterPhase(
       return best;
     };
     // 넣기 공식으로 수 셋에 하나 넘게 맞추면 그것으로, 아니면 세 조각 돌리기까지 본다
-    let best = consider(inserts, undefined);
-    if (!best || best.ratio > 3) best = consider(cycles, best);
+    let best = consider(insertList, undefined);
+    if (!best || best.ratio > 3) best = consider(cycleList, best);
     // 6×6·7×7은 맞은편 면끼리 바뀐 조각이 세 조각 돌리기 하나로 닿지 않아 남는다: 먼저 옆면으로 옮겨 둔다
-    if (!best && n >= 6) best = consider(cycles, best, true);
+    if (!best && n >= 6) best = consider(cycleList, best, true);
     if (!best) {
       const wrong = g.centers.filter((p) => w[p] !== 0 && cur[p] !== want[p]);
       throw new ReductionStuckError(
@@ -274,13 +307,23 @@ function pairedCount(n: number, colors: Colors): number {
   return count;
 }
 
-const setupCache = new Map<string, CubeMove[][]>();
+interface EdgeSetup {
+  moves: CubeMove[];
+  /** 준비 수를 돌린 뒤 자리 p의 색은 돌리기 전 `src[p]`의 색(`sourceMap`) */
+  src: Int32Array;
+}
 
-function setupsOf(n: number, depth: number): CubeMove[][] {
+const setupCache = new Map<string, EdgeSetup[]>();
+
+/** 바깥층 준비 수(길이 `depth`까지)와 그 수열을 한 번에 돌리는 자리 표. 크기·길이마다 한 번 만든다 */
+function setupsOf(n: number, depth: number): EdgeSetup[] {
   const key = `${n}:${depth}`;
   let hit = setupCache.get(key);
   if (!hit) {
-    hit = outerSequences(n, depth);
+    hit = outerSequences(n, depth).map((moves) => ({
+      moves,
+      src: sourceMap(n, moves),
+    }));
     setupCache.set(key, hit);
   }
   return hit;
@@ -327,29 +370,158 @@ function slotTable(n: number): SlotTable {
   return t;
 }
 
-/** 칸 점수(`slotScore`와 같다). `src`가 있으면 그 공식을 돌린 뒤의 색으로 센다 */
-function fastSlotScore(
-  t: SlotTable,
-  slot: number,
-  ca: Colors,
-  src: Int32Array | null,
-): number {
+/** 칸 점수(`slotScore`와 같다) */
+function fastSlotScore(t: SlotTable, slot: number, ca: Colors): number {
   const st = t.stickers;
   let k = t.start[slot] as number;
   const end = k + 2 * (t.count[slot] as number);
-  const at = (p: number) =>
-    src ? (ca[src[p] as number] as number) : (ca[p] as number);
-  const a = at(st[k] as number);
-  const b = at(st[k + 1] as number);
+  const a = ca[st[k] as number];
+  const b = ca[st[k + 1] as number];
   k += 2;
   let score = 0;
   if (t.anchors === 2) {
-    if (at(st[k] as number) !== a || at(st[k + 1] as number) !== b) return 0;
+    if (ca[st[k] as number] !== a || ca[st[k + 1] as number] !== b) return 0;
     score = 1;
     k += 2;
   }
   for (; k < end; k += 2)
-    if (at(st[k] as number) === a && at(st[k + 1] as number) === b) score++;
+    if (ca[st[k] as number] === a && ca[st[k + 1] as number] === b) score++;
+  return score;
+}
+
+/**
+ * 공식마다 「돌린 뒤 그 공식이 건드리는 칸의 스티커가 원래 있던 자리」를 칸 점수 차례대로 펼친 표.
+ * 공식 `mi`의 칸은 `slot[slotStart[mi]]`부터 `slotStart[mi + 1]` 앞까지, 칸 항목 `e`의 읽을 자리는
+ * `reads[readStart[e]]`부터 `readStart[e + 1]` 앞까지(`fastSlotScore`의 스티커 차례에 `src`를 씌운 것)
+ */
+interface MacroReads {
+  slotStart: Int32Array;
+  slot: Int32Array;
+  readStart: Int32Array;
+  reads: Int32Array;
+  /**
+   * 칸 항목 `e`의 점수 상한 재료. 공식이 그 칸의 기준 조각을 다른 칸 하나(`from[e]`, 같은 칸일 수도 있다)의
+   * 기준 조각에서 모두 같은 방향(또는 모두 뒤집혀) 옮겨 오면, 나머지 조각 가운데 그 칸의 조각을 같은 방향으로
+   * 옮겨 온 것은 짝 맞음이 그대로다. 그래서 돌린 뒤 점수 ≤ `from` 칸의 지금 점수 + 새로 들어온 조각 수
+   * (`extra[e]`, 기준이 둘인 짝수 크기는 기준이 안 맞으면 0 그대로). 그렇게 옮기지 않으면 `from[e]`은 -1(상한은 다 맞은 점수)
+   */
+  from: Int32Array;
+  extra: Int32Array;
+}
+
+const readsCache = new WeakMap<readonly Macro[], MacroReads>();
+
+function macroReads(
+  t: SlotTable,
+  slotOf: Int8Array,
+  macros: readonly Macro[],
+): MacroReads {
+  const hit = readsCache.get(macros);
+  if (hit) return hit;
+  const st = t.stickers;
+  const anchors = t.anchors;
+  /** 칸 s의 조각(스티커 둘, 칸 차례 그대로) → 기준 조각이면 1, 나머지면 2 */
+  const pieceKind = Array.from({ length: t.start.length }, (_, si) => {
+    const kind = new Map<number, number>();
+    const k0 = t.start[si] as number;
+    for (let j = 0; j < (t.count[si] as number); j++) {
+      const key =
+        (st[k0 + 2 * j] as number) * 4096 + (st[k0 + 2 * j + 1] as number);
+      kind.set(key, j < anchors ? 1 : 2);
+    }
+    return kind;
+  });
+  /** 조각 (q1, q2)가 칸 s'에서 어떤 조각인지: [s', 종류, 뒤집힘(0·1)], 칸의 조각이 아니면 null */
+  const pieceAt = (q1: number, q2: number): [number, number, number] | null => {
+    const s1 = slotOf[q1] as number;
+    if (s1 < 0 || slotOf[q2] !== s1) return null;
+    const kinds = pieceKind[s1] as Map<number, number>;
+    const straight = kinds.get(q1 * 4096 + q2);
+    if (straight) return [s1, straight, 0];
+    const flipped = kinds.get(q2 * 4096 + q1);
+    return flipped ? [s1, flipped, 1] : null;
+  };
+  const slotStart = new Int32Array(macros.length + 1);
+  const slot: number[] = [];
+  const readStart: number[] = [];
+  const reads: number[] = [];
+  const from: number[] = [];
+  const extra: number[] = [];
+  macros.forEach((m, i) => {
+    slotStart[i] = slot.length;
+    for (const si of m.slots) {
+      slot.push(si);
+      readStart.push(reads.length);
+      const k0 = t.start[si] as number;
+      const count = t.count[si] as number;
+      const end = k0 + 2 * count;
+      for (let k = k0; k < end; k++)
+        reads.push(m.src[st[k] as number] as number);
+      // 기준 조각이 모두 한 칸의 기준 조각에서 같은 뒤집힘으로 왔는가
+      let source = -1;
+      let flip = -1;
+      for (let j = 0; j < anchors && flip !== -2; j++) {
+        const at = pieceAt(
+          m.src[st[k0 + 2 * j] as number] as number,
+          m.src[st[k0 + 2 * j + 1] as number] as number,
+        );
+        const [s1, kind, f1] = at ?? [-1, 0, -1];
+        if (kind !== 1 || (j > 0 && (s1 !== source || f1 !== flip))) flip = -2;
+        else [source, flip] = [s1, f1];
+      }
+      if (flip === -2) {
+        from.push(-1);
+        extra.push(0);
+        continue;
+      }
+      let added = 0;
+      for (let j = anchors; j < count; j++) {
+        const at = pieceAt(
+          m.src[st[k0 + 2 * j] as number] as number,
+          m.src[st[k0 + 2 * j + 1] as number] as number,
+        );
+        if (!at || at[0] !== source || at[1] !== 2 || at[2] !== flip) added++;
+      }
+      from.push(source);
+      extra.push(added);
+    }
+  });
+  slotStart[macros.length] = slot.length;
+  readStart.push(reads.length);
+  const out = {
+    slotStart,
+    slot: Int32Array.from(slot),
+    readStart: Int32Array.from(readStart),
+    reads: Int32Array.from(reads),
+    from: Int32Array.from(from),
+    extra: Int32Array.from(extra),
+  };
+  readsCache.set(macros, out);
+  return out;
+}
+
+/** 공식을 돌린 뒤의 칸 점수(`fastSlotScore`와 같은 셈, 읽을 자리는 `reads[k..end)`) */
+function readsScore(
+  ca: Colors,
+  reads: Int32Array,
+  k0: number,
+  end: number,
+  anchors: number,
+): number {
+  let k = k0;
+  const a = ca[reads[k] as number];
+  const b = ca[reads[k + 1] as number];
+  k += 2;
+  let score = 0;
+  if (anchors === 2) {
+    if (ca[reads[k] as number] !== a || ca[reads[k + 1] as number] !== b)
+      return 0;
+    score = 1;
+    k += 2;
+  }
+  for (; k < end; k += 2)
+    if (ca[reads[k] as number] === a && ca[reads[k + 1] as number] === b)
+      score++;
   return score;
 }
 
@@ -365,14 +537,16 @@ function parityDepths(n: number, colors: Colors): number[] {
   return depths.filter((d) => d !== inner && wingParity(n, colors, d) !== want);
 }
 
-const bySlotCache = new WeakMap<readonly Macro[], Macro[][]>();
+const bySlotCache = new WeakMap<readonly Macro[], number[][]>();
 
-/** 칸마다 그 칸을 건드리는 공식 목록 */
-function macrosBySlot(macros: readonly Macro[], slotCount: number): Macro[][] {
+/** 칸마다 그 칸을 건드리는 공식 번호(`macros` 안 차례) */
+function macrosBySlot(macros: readonly Macro[], slotCount: number): number[][] {
   const hit = bySlotCache.get(macros);
   if (hit) return hit;
-  const out: Macro[][] = Array.from({ length: slotCount }, () => []);
-  for (const m of macros) for (const s of m.slots) out[s]?.push(m);
+  const out: number[][] = Array.from({ length: slotCount }, () => []);
+  macros.forEach((m, i) => {
+    for (const s of m.slots) out[s]?.push(i);
+  });
   bySlotCache.set(macros, out);
   return out;
 }
@@ -392,6 +566,8 @@ function solveEdgePhase(
   const both = [...pairs, ...cycles];
   let cur = colors;
   const before = new Int32Array(g.slots.length);
+  /** 준비 수를 돌린 색(준비 수마다 새로 쓴다) */
+  const ca: Colors = new Uint8Array(cur.length);
   /** 짝이 다 맞은 칸의 점수 */
   const full = (t.anchors === 2 ? 1 : 0) + (t.count[0] as number) - t.anchors;
   const search = (
@@ -401,31 +577,60 @@ function solveEdgePhase(
   ) => {
     let best = prev;
     const bySlot = macrosBySlot(macros, g.slots.length);
+    const R = macroReads(t, g.slotOf, macros);
+    /** 공식마다 마지막으로 본 준비 수 번호(한 준비 수에서 공식을 한 번만 본다) */
+    const seenAt = new Int32Array(macros.length).fill(-1);
     const openSlots: number[] = [];
-    for (const setup of setupsOf(n, depth)) {
-      if (depth === 3 && setup.length < 3) continue;
-      const ca = applyMovesColors(n, cur, setup);
+    const setups = setupsOf(n, depth);
+    for (let si0 = 0; si0 < setups.length; si0++) {
+      const setup = setups[si0] as EdgeSetup;
+      if (depth === 3 && setup.moves.length < 3) continue;
+      applySource(cur, setup.src, ca);
       openSlots.length = 0;
       for (let i = 0; i < before.length; i++) {
-        before[i] = fastSlotScore(t, i, ca, null);
+        before[i] = fastSlotScore(t, i, ca);
         if ((before[i] as number) < full) openSlots.push(i);
       }
-      // 아직 안 맞은 칸을 건드리는 공식만 본다(다 맞은 칸만 건드리면 나아질 수 없다)
+      // 아직 안 맞은 칸을 건드리는 공식만 본다(다 맞은 칸만 건드리면 나아질 수 없다).
+      // 공식은 그것이 건드리는 열린 칸 가운데 첫 칸에서 한 번만 본다
       for (let k = 0; k < openSlots.length; k++) {
-        for (const macro of bySlot[openSlots[k] as number] ?? []) {
-          let seen = false;
-          for (let j = 0; j < k; j++) {
-            if (macro.slots.includes(openSlots[j] as number)) seen = true;
+        for (const mi of bySlot[openSlots[k] as number] ?? []) {
+          if (seenAt[mi] === si0) continue;
+          seenAt[mi] = si0;
+          const macro = macros[mi] as Macro;
+          const length = setup.moves.length + macro.moves.length;
+          const e0 = R.slotStart[mi] as number;
+          const e1 = R.slotStart[mi + 1] as number;
+          // 이득 상한(`MacroReads.from`·`extra`). 상한으로도 나아지지 않거나 지금 고른 것보다 좋을 수 없으면 세지 않는다
+          // (이득 ≤ 상한이고 나눗셈은 단조라 실제 비율도 그 이상이다: 고르는 답은 같다)
+          let most = 0;
+          for (let e = e0; e < e1; e++) {
+            const src = R.from[e] as number;
+            const b = src < 0 ? 0 : (before[src] as number);
+            const cap =
+              src < 0
+                ? full
+                : t.anchors === 2 && b === 0
+                  ? 0
+                  : Math.min(full, b + (R.extra[e] as number));
+            most += cap - (before[R.slot[e] as number] as number);
           }
-          if (seen) continue;
+          if (most <= 0 || (best && length / most >= best.ratio)) continue;
           let gain = 0;
-          for (const si of macro.slots) {
+          for (let e = e0; e < e1; e++) {
             gain +=
-              fastSlotScore(t, si, ca, macro.src) - (before[si] as number);
+              readsScore(
+                ca,
+                R.reads,
+                R.readStart[e] as number,
+                R.readStart[e + 1] as number,
+                t.anchors,
+              ) - (before[R.slot[e] as number] as number);
           }
           if (gain <= 0) continue;
-          const ratio = (setup.length + macro.moves.length) / gain;
-          if (!best || ratio < best.ratio) best = { setup, macro, ratio };
+          const ratio = length / gain;
+          if (!best || ratio < best.ratio)
+            best = { setup: setup.moves, macro, ratio };
         }
       }
     }
@@ -441,13 +646,13 @@ function solveEdgePhase(
       // 날개 순열의 홀짝이 맞지 않으면 짝 지은 모양에 닿을 수 없다(짝 지은 모양은 묶음마다 늘 짝,
       // 짝수 크기는 묶음끼리 같다). 아직 안 맞은 칸 하나에서 그 묶음의 두 날개를 맞바꿔 홀짝을 바꾼다(모서리 패리티).
       outer: for (const setup of setupsOf(n, 2)) {
-        const ca = applyMovesColors(n, cur, setup);
+        applySource(cur, setup.src, ca);
         for (const macro of edgeParityMacros(n, fix[0])) {
           const unpaired = macro.slots.some(
-            (si) => fastSlotScore(t, si, ca, null) < full,
+            (si) => fastSlotScore(t, si, ca) < full,
           );
           if (unpaired) {
-            best = { setup, macro, ratio: 0 };
+            best = { setup: setup.moves, macro, ratio: 0 };
             break outer;
           }
         }
@@ -498,7 +703,7 @@ export function solveReduction(facelets: string): ReductionSolution {
 export function solveReductionState(
   n: number,
   state: PuzzleState,
-  limits: ReductionLimits = {},
+  limits: ReductionOptions = {},
 ): ReductionSolution {
   return solveReductionColors(n, faceColors(n, state), limits);
 }
@@ -506,7 +711,7 @@ export function solveReductionState(
 export function solveReductionColors(
   n: number,
   colors: Colors,
-  limits: ReductionLimits = {},
+  limits: ReductionOptions = {},
 ): ReductionSolution {
   if (!REDUCTION_SIZES.includes(n)) {
     throw new RangeError(`축소법은 4×4~7×7만 푼다: ${n}×${n}`);
@@ -569,6 +774,7 @@ export function solveReductionColors(
   run("last-edges", (out) =>
     solveEdgePhase("last-edges", n, cur, 12, out, edgeSteps),
   );
+  if (limits.pairsOnly) return { moves: format(n, all), stages };
 
   if (n % 2 === 0) {
     run("oll-parity", (out) => {

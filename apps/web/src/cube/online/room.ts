@@ -70,6 +70,7 @@ import {
 import { attachPracticeBot } from "./practice-bot";
 import { createPracticeRaceGame } from "./practice-race";
 import {
+  BOT_HOST_RELOAD,
   type CubeAct,
   type CubeRaceGame,
   createCubeRaceGame,
@@ -80,6 +81,7 @@ import {
   pageWallClock,
   readJson,
   readSeat,
+  type SavedBots,
   type SavedMatch,
   type SavedRace,
   type SavedSeat,
@@ -315,6 +317,12 @@ type RoomMessage =
  */
 export const REJOIN_GRACE_MS = 30_000;
 
+/**
+ * 방장 연결이 끊기면 손님이 방장이 새로 고쳐 돌아오기를 이만큼 기다린다(ms, docs/47 9-11 「방장 되찾기」).
+ * 넘으면 방이 끝났다고 알린다(`hostLeft`)
+ */
+export const HOST_REJOIN_GRACE_MS = 30_000;
+
 export interface CubeRoomInit {
   /** 없으면 혼자(컴퓨터와 대결) */
   transport?: Transport;
@@ -477,16 +485,29 @@ export class CubeRoom {
   reclaiming: number | null = null;
   state: RoomState | null = null;
   rounds: RoundRecord[] = [];
-  /** 방장이 나갔다(손님) */
+  /** 방장이 나갔다(손님). 방장 연결이 끊긴 뒤 `HOST_REJOIN_GRACE_MS` 안에 돌아오지 않았다 */
   hostLeft = false;
+  /** 방장 연결이 끊겨 돌아오기를 기다리는 중(손님) */
+  hostAway = false;
   private readonly init: CubeRoomInit;
   private readonly hub: RaceHub;
   private readonly connected = new Set<string>();
   /**
    * 방장 연결 아이디. 방장은 나, 손님은 초대 링크에 실린 아이디(`CubeRoomInit.hostId`)로 처음부터 정한다.
-   * 링크에 없으면(옛 링크) 처음 받은 방 상태의 방장으로 고정한다. 그 뒤로는 이 방장이 보낸 방 상태만 받는다
+   * 링크에 없으면(옛 링크) 처음 받은 방 상태의 방장으로 고정한다. 그 뒤로는 이 방장이 보낸 방 상태만 받는다.
+   * 방장이 새로 고치면 이 기기가 그 되찾기를 확인한 새 연결로만 바뀐다(docs/47 9-11 「방장 되찾기」)
    */
   private hostId?: string;
+  /** 방장 참가자 아이디(방장이 새로 고쳐도 그대로). 손님은 처음 받은 방 상태에서 정한다 */
+  private hostPeer?: string;
+  /** 손님: 들어올 때 쓴 초대 링크의 방장 아이디(탭에 남겨 새로고침 뒤 같은 링크인지 견준다) */
+  private linkHost?: string;
+  /** 손님: 방장을 기다리는 예약을 거둔다 */
+  private hostWait?: () => void;
+  /** 방장 새로고침: 남겨 둔 컴퓨터 몫(이 세션 시계로 옮긴 것). 그 판을 열 때 쓴다 */
+  private resumeBots?: { race: string; bots: Map<string, RaceResume> };
+  /** 저장한 컴퓨터 몫의 요약(같으면 다시 적지 않는다) */
+  private savedBotsKey = "";
   private current?: {
     race: string;
     round: number;
@@ -539,16 +560,23 @@ export class CubeRoom {
     this.isHost = init.isHost;
     this.device = init.transport?.selfId ?? "me";
     this.me = this.device;
-    const saved = !init.isHost
-      ? readSeat(init.seat?.get("seat") ?? null)
-      : null;
-    const hostOk = init.hostId === undefined || init.hostId === saved?.host;
-    if (saved && init.transport && saved.me !== this.device && hostOk) {
+    const saved = readSeat(init.seat?.get("seat") ?? null);
+    // 방장 자리는 방장 탭이 남긴 것만(손님 자리를 방장으로 되살리지 않는다), 손님 자리는 같은 초대 링크의 것만
+    const seatOk = init.isHost
+      ? saved?.host === saved?.me
+      : init.hostId === undefined || init.hostId === saved?.host;
+    if (saved && init.transport && saved.me !== this.device && seatOk) {
       this.me = saved.me;
       this.reclaiming = saved.n + 1;
-      this.hostId = saved.host;
+      if (!init.isHost) {
+        this.hostId = saved.hostAt ?? saved.host;
+        this.linkHost = saved.host;
+        if (saved.hostPeer !== undefined) this.hostPeer = saved.hostPeer;
+      }
       for (const [id, t] of Object.entries(saved.given)) this.given.set(id, t);
       for (const [id, t] of Object.entries(saved.got)) this.got.set(id, t);
+      for (const [id, c] of Object.entries(saved.claims ?? {}))
+        this.claims.set(id, { device: c.device, n: c.n });
     }
     this.hub = new RaceHub({
       ...(init.transport ? { transport: init.transport } : {}),
@@ -560,12 +588,26 @@ export class CubeRoom {
           .filter(([, device]) => device === d)
           .map(([id]) => id),
     });
-    if (!init.isHost && init.hostId && this.reclaiming === null)
+    if (!init.isHost && init.hostId && this.reclaiming === null) {
       this.hostId = init.hostId;
-    if (this.reclaiming !== null) this.restoreMatch();
-    this.saveSeat();
+      this.linkHost = init.hostId;
+    }
     if (init.isHost) {
-      this.hostId = this.me;
+      this.hostId = this.device;
+      this.hostPeer = this.me;
+    }
+    if (this.reclaiming !== null && init.isHost && !this.restoreHost()) {
+      // 남겨 둔 방이 없으면 새 방(예전 자리는 버린다)
+      this.reclaiming = null;
+      this.me = this.device;
+      this.hostPeer = this.me;
+      this.given.clear();
+      this.got.clear();
+      this.claims.clear();
+    }
+    if (this.reclaiming !== null && !init.isHost) this.restoreMatch();
+    this.saveSeat();
+    if (init.isHost && !this.state) {
       this.state = {
         v: 1,
         host: this.me,
@@ -592,8 +634,11 @@ export class CubeRoom {
         this.connected.add(id);
         this.dropTimers.get(id)?.();
         this.dropTimers.delete(id);
-        if (this.isHost) this.publish();
-        else this.hello();
+        if (this.isHost) {
+          // 새로 고친 방장: 방장 자리 증명을 먼저 보낸다(손님은 그 증명을 확인한 연결의 방 상태만 받는다)
+          if (this.reclaiming !== null) this.hello();
+          this.publish();
+        } else this.hello();
         this.giveTokens();
         this.emit();
       });
@@ -601,14 +646,23 @@ export class CubeRoom {
         if (this.disposed) return;
         this.connected.delete(id);
         this.sentTo.delete(id);
-        if (!this.isHost && id === this.state?.host) this.hostLeft = true;
+        if (!this.isHost && id === this.hostId) this.waitForHost();
         if (this.isHost && this.state?.status !== "racing") this.dropLater(id);
         this.emit();
       });
-      if (!this.isHost) this.hello();
+      if (!this.isHost || this.reclaiming !== null) this.hello();
     }
-    // 남겨 둔 판이 있으면 방장 방 상태를 기다리지 않고 바로 연다(돌아오는 동안 온 대결 메시지를 놓치지 않게)
-    if (this.state && !this.isHost) this.applyState();
+    // 새로 고친 방장: 돌아오지 않는 손님은 판 사이 예약대로 뺀다(판 도중이면 그 판이 끝날 때까지 남는다)
+    if (this.isHost && this.reclaiming !== null && this.state) {
+      if (this.state.status !== "racing")
+        for (const p of this.state.players)
+          if (p.bot === undefined && p.device !== this.device)
+            this.dropLater(p.device);
+    }
+    // 남겨 둔 판이 있으면 방장 방 상태를 기다리지 않고 바로 연다(돌아오는 동안 온 대결 메시지를 놓치지 않게).
+    // 새로 고친 방장도 남겨 둔 판을 바로 연다(손님이 다시 보내 주는 메시지를 받으려고)
+    if (this.state && (!this.isHost || this.reclaiming !== null))
+      this.applyState();
   }
 
   // ---- 모두 ----
@@ -863,6 +917,8 @@ export class CubeRoom {
     this.listeners.clear();
     for (const cancel of this.dropTimers.values()) cancel();
     this.dropTimers.clear();
+    this.hostWait?.();
+    delete this.hostWait;
   }
 
   // ---- 방장 ----
@@ -1184,13 +1240,30 @@ export class CubeRoom {
     if (last && (c.n < last.n || (c.n === last.n && last.device !== from)))
       return false;
     const fresh = last?.device !== from;
+    // 방장 자리 되찾기(방장이 새로 고침): 방장 기기가 맡은 컴퓨터도 새 연결로 옮긴다(컴퓨터는 늘 방장 기기가 맡는다)
+    const hostMove = !this.isHost && c.id === this.hostPeer;
+    const before = hostMove ? this.hostId : undefined;
     this.claims.set(c.id, { device: from, n: c.n });
     this.connected.add(from);
     const owners = this.current?.owners;
-    if (owners?.has(c.id) && owners.get(c.id) !== from) {
-      owners.set(c.id, from);
-      this.hub.joined(c.id);
+    if (owners) {
+      const old = owners.get(c.id) ?? before;
+      for (const [id, device] of [...owners]) {
+        const follows =
+          id === c.id || (hostMove && BOT_ID.test(id) && device === old);
+        if (!follows || device === from) continue;
+        owners.set(id, from);
+        this.hub.joined(id);
+      }
     }
+    if (hostMove) {
+      this.hostId = from;
+      this.hostAway = false;
+      this.hostLeft = false;
+      this.hostWait?.();
+      delete this.hostWait;
+    }
+    if (fresh || hostMove) this.saveSeat();
     if (fresh)
       this.init.transport?.send(
         { type: "cube-seat-ok", id: c.id } satisfies RoomMessage,
@@ -1202,7 +1275,24 @@ export class CubeRoom {
       this.takeState(pending.state, pending.from);
     }
     this.giveTokens();
+    if (hostMove) this.emit();
     return true;
+  }
+
+  /**
+   * 손님: 방장 연결이 끊겼다. 방장이 새로 고쳐 돌아오기를 `HOST_REJOIN_GRACE_MS` 기다리고, 넘으면 방이 끝났다고 알린다.
+   * 판 도중이면 대결은 남은 사람끼리 그대로 이어 간다(방장 기기의 참가자는 끊긴 사람과 같다)
+   */
+  private waitForHost(): void {
+    if (this.hostLeft || this.hostWait) return;
+    this.hostAway = true;
+    this.hostWait = this.init.clock.after(HOST_REJOIN_GRACE_MS, () => {
+      delete this.hostWait;
+      if (this.disposed || !this.hostAway) return;
+      this.hostAway = false;
+      this.hostLeft = true;
+      this.emit();
+    });
   }
 
   /** 방장이 내 되찾기를 확인하지 못했다: 예전 자리를 버리고 새 손님으로 들어간다 */
@@ -1239,17 +1329,22 @@ export class CubeRoom {
     const seat: SavedSeat = {
       v: 1,
       me: this.me,
-      host: this.hostId ?? (this.isHost ? this.device : ""),
+      host: this.isHost ? this.me : (this.linkHost ?? this.hostId ?? ""),
+      ...(this.hostId !== undefined ? { hostAt: this.hostId } : {}),
+      ...(this.hostPeer !== undefined ? { hostPeer: this.hostPeer } : {}),
       n: this.reclaiming ?? 0,
       given: Object.fromEntries(this.given),
       got: Object.fromEntries(this.got),
+      ...(this.claims.size > 0
+        ? { claims: Object.fromEntries(this.claims) }
+        : {}),
     };
     store.set("seat", JSON.stringify(seat));
   }
 
   private saveMatch(): void {
     const store = this.init.seat;
-    if (!store || this.isHost || this.disposed) return;
+    if (!store || this.disposed) return;
     const match: SavedMatch = {
       v: 1,
       ...(this.state ? { state: this.state } : {}),
@@ -1264,20 +1359,10 @@ export class CubeRoom {
     session: RaceSession<CubeAct, PuzzleState>,
   ): void {
     const store = this.init.seat;
-    if (!store || this.isHost || this.disposed) return;
+    if (!store || this.disposed) return;
     const resume = session.resumeData();
     if (!resume) return;
-    const key = JSON.stringify([
-      race,
-      resume.attempt,
-      resume.out.length,
-      resume.commits.length,
-      resume.revealedAt ?? null,
-      resume.seed ?? null,
-      resume.moves.length,
-      resume.done ?? null,
-      resume.retired ?? null,
-    ]);
+    const key = resumeKey(race, resume);
     if (key === this.savedRaceKey) return;
     this.savedRaceKey = key;
     const saved: SavedRace = {
@@ -1287,6 +1372,90 @@ export class CubeRoom {
       resume,
     };
     store.set("race", JSON.stringify(saved));
+  }
+
+  /** 방장: 이 기기 컴퓨터의 지금 판 몫을 남긴다(바뀌었을 때만, 방장이 새로 고쳐도 같은 약속으로 이어 가게) */
+  private saveBots(race: string): void {
+    const store = this.init.seat;
+    const c = this.current;
+    if (!store || !this.isHost || this.disposed || !c || c.race !== race)
+      return;
+    const bots: Record<string, RaceResume> = {};
+    for (const [id, session] of c.sessions) {
+      if (!BOT_ID.test(id)) continue;
+      const resume = session.resumeData();
+      if (resume) bots[id] = resume;
+    }
+    const key = JSON.stringify(
+      Object.entries(bots).map(([id, r]) => [id, resumeKey(race, r)]),
+    );
+    if (key === this.savedBotsKey) return;
+    this.savedBotsKey = key;
+    const saved: SavedBots = {
+      v: 1,
+      race,
+      at: (this.init.wall ?? pageWallClock)() - this.init.clock.now(),
+      bots,
+    };
+    store.set("bots", JSON.stringify(saved));
+  }
+
+  /**
+   * 새로 고친 방장: 남겨 둔 방 상태·판 기록·내 몫·컴퓨터 몫을 되살린다. 방장 자리와 컴퓨터는 이 새 연결이 맡는다
+   * (손님은 저마다 방장 자리 증명을 확인한 뒤에야 이 연결의 방 상태를 받는다). 남겨 둔 방이 없으면 false
+   */
+  private restoreHost(): boolean {
+    const store = this.init.seat;
+    const match = readJson<SavedMatch>(store?.get("match") ?? null);
+    const state = match?.state as RoomState | undefined;
+    if (
+      !state ||
+      typeof state !== "object" ||
+      !Array.isArray(state.players) ||
+      !state.players.some((p) => p?.id === this.me && p.bot === undefined)
+    )
+      return false;
+    const fixed: RoomState = {
+      ...state,
+      host: this.device,
+      players: state.players.map((p) =>
+        p.id === this.me || p.bot !== undefined
+          ? { ...p, device: this.device }
+          : p,
+      ),
+    };
+    if (!isRoomState(fixed, () => true)) return false;
+    this.rounds = Array.isArray(match?.rounds)
+      ? (match.rounds as RoundRecord[])
+      : [];
+    // 판이 끝난 뒤 방 상태를 알리기 전에 새로 고쳤으면 판 끝으로 둔다
+    if (
+      fixed.status === "racing" &&
+      this.rounds.some((r) => r.race === fixed.race?.id)
+    )
+      fixed.status = matchOver(matchRules(fixed.settings), this.rounds)
+        ? "over"
+        : "between";
+    this.state = fixed;
+    const now = (this.init.wall ?? pageWallClock)() - this.init.clock.now();
+    const race = readJson<SavedRace>(store?.get("race") ?? null);
+    if (race && typeof race.race === "string" && race.resume)
+      this.resumeRace = {
+        race: race.race,
+        resume: shiftResume(race.resume, race.at - now),
+      };
+    const bots = readJson<SavedBots>(store?.get("bots") ?? null);
+    if (bots && typeof bots.race === "string" && bots.bots)
+      this.resumeBots = {
+        race: bots.race,
+        bots: new Map(
+          Object.entries(bots.bots).map(([id, r]) => [
+            id,
+            shiftResume(r, bots.at - now),
+          ]),
+        ),
+      };
+    return true;
   }
 
   /** 되찾는 손님: 남겨 둔 방 상태·판 기록·내 대결 몫을 되살린다 */
@@ -1332,6 +1501,8 @@ export class CubeRoom {
     } satisfies RoomMessage);
     this.applyState();
     this.giveTokens();
+    // 방장이 새로 고쳐도 같은 방을 이어 가도록 남긴다
+    this.saveMatch();
     this.emit();
   }
 
@@ -1345,7 +1516,18 @@ export class CubeRoom {
     }
     if (msg.type === "cube-seat-ok") {
       // 그 기기가 내 되찾기를 확인했다: 그 기기에 이 판에 보냈던 대결 메시지를 다시 보낸다
-      if (this.reclaiming !== null && msg.id === this.me) this.hub.rejoin(from);
+      if (this.reclaiming === null || msg.id !== this.me) return;
+      this.hub.rejoin(from);
+      // 새로 고친 방장: 방 안 손님이 방장 자리를 확인했으니 이제 이 연결의 방 상태를 받는다. 지금 방 상태를 알린다
+      if (
+        this.isHost &&
+        this.state?.players.some((p) => p.device === from && !p.bot)
+      ) {
+        this.connected.add(from);
+        this.dropTimers.get(from)?.();
+        this.dropTimers.delete(from);
+        this.publish();
+      }
       return;
     }
     if (msg.type === "cube-seat-no") {
@@ -1430,6 +1612,15 @@ export class CubeRoom {
     if (this.hostId !== undefined && from !== this.hostId) return;
     if (!isRoomState(next, () => true) || next.host !== from) return;
     if (this.state && next.v <= this.state.v) return;
+    // 방장 참가자는 바뀌지 않는다(방장이 새로 고쳐도 같은 참가자가 새 연결로 맡는다)
+    const hostPeer = next.players.find(
+      (p) => p.bot === undefined && p.device === from,
+    )?.id;
+    if (
+      !hostPeer ||
+      (this.hostPeer !== undefined && hostPeer !== this.hostPeer)
+    )
+      return;
     if (!next.players.every((p) => p.bot !== undefined || this.deviceOk(p))) {
       if (!this.pendingState || this.pendingState.state.v < next.v)
         this.pendingState = { state: next, from };
@@ -1437,13 +1628,18 @@ export class CubeRoom {
     }
     if (this.pendingState && this.pendingState.state.v <= next.v)
       delete this.pendingState;
-    const firstHost = this.hostId === undefined;
+    const firstHost = this.hostId === undefined || this.hostPeer === undefined;
     this.hostId = from;
+    this.hostPeer = hostPeer;
+    this.linkHost ??= from;
     if (firstHost) this.saveSeat();
     if (next.round === 0) this.rounds = [];
     this.state = next;
     this.connected.add(from);
     this.hostLeft = false;
+    this.hostAway = false;
+    this.hostWait?.();
+    delete this.hostWait;
     for (const [device, token] of [...this.pendingTokens])
       this.takeToken(token, device);
     this.applyState();
@@ -1519,8 +1715,21 @@ export class CubeRoom {
     const resume =
       this.resumeRace?.race === race.id ? this.resumeRace.resume : undefined;
     delete this.resumeRace;
+    const savedBots =
+      this.resumeBots?.race === race.id ? this.resumeBots.bots : undefined;
+    delete this.resumeBots;
     for (const p of local) {
       const mine = p.id === this.me && p.bot === undefined;
+      const botResume = p.bot !== undefined ? savedBots?.get(p.id) : undefined;
+      // 컴퓨터가 이미 풀린 판(맞추기가 시작됨)에서 아직 끝나지 않았으면 이어 두지 않고 그만둔다: 비운 동안의 수를 몰아 보내게
+      // 되고, 계획이 늦게 와 미룬 시간도 남지 않아 계획대로 이어 둘 수 없다. 풀리기 전이면 같은 약속으로 그대로 이어 간다
+      const forfeit =
+        botResume !== undefined &&
+        botResume.seed !== undefined &&
+        botResume.releaseAt !== undefined &&
+        botResume.releaseAt <= this.init.clock.now() &&
+        botResume.done === undefined &&
+        botResume.retired === undefined;
       const session = new RaceSession({
         game,
         transport: this.hub.local(p.id),
@@ -1531,12 +1740,25 @@ export class CubeRoom {
         witness,
         ...(this.init.random ? { random: this.init.random } : {}),
         ...(mine && resume ? { resume } : {}),
+        ...(botResume ? { resume: botResume } : {}),
       });
-      // 새로고침해도 이 판을 이어 가도록 내 몫을 남긴다
+      // 새로고침해도 이 판을 이어 가도록 내 몫(방장은 컴퓨터 몫도)을 남긴다
       if (mine)
         off.push(session.onChange(() => this.saveRace(race.id, session)));
+      else if (p.bot !== undefined)
+        off.push(session.onChange(() => this.saveBots(race.id)));
       sessions.set(p.id, session);
-      if (p.bot && practice) {
+      if (p.bot && forfeit) {
+        // 판이 풀린 뒤 방장이 새로 고쳤다: 같은 약속으로 씨앗을 다시 정한 뒤 그 판을 그만둔다(docs/47 9-11 「방장 되찾기」)
+        let done = false;
+        off.push(
+          session.onChange((snap) => {
+            if (done || snap.seed === undefined) return;
+            done = true;
+            session.retire(BOT_HOST_RELOAD);
+          }),
+        );
+      } else if (p.bot && practice) {
         const handle = attachPracticeBot({
           session,
           id: p.id,
@@ -1746,11 +1968,15 @@ export class CubeRoom {
       return;
     }
     if (outcome.items) this.itemStep(c, id, session, outcome.items);
-    // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 그때 다시 본다. 메시지가 없어도 시간은 흐른다
+    // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 메시지가 없어도 시간이 흘러 풀린다.
+    // 판정이 바뀌는 것은 내 시각이 아직 판정하지 못한 첫 일(`next`)을 지날 때라 그때 다시 본다
+    // (예전에는 막는 시각 + 1ms마다 다시 보아, 판 도중 1ms마다 판 전체를 다시 판정했다)
     const elapsed = session.snapshot().elapsed ?? 0;
     let wake =
-      Number.isFinite(outcome.until) && outcome.until >= elapsed
-        ? outcome.until - elapsed + 1
+      Number.isFinite(outcome.until) &&
+      outcome.until >= elapsed &&
+      Number.isFinite(outcome.next)
+        ? outcome.next - elapsed + 1
         : Number.POSITIVE_INFINITY;
     // 컴퓨터가 아이템을 쓸 때를 기다린다
     const held = c.seen.get(`held|${id}`);
@@ -1866,6 +2092,21 @@ export class CubeRoom {
 }
 
 const BOT_ID = /^bot\d+$/;
+
+/** 남겨 둔 대결 몫의 요약(같으면 다시 적지 않는다) */
+function resumeKey(race: string, r: RaceResume): string {
+  return JSON.stringify([
+    race,
+    r.attempt,
+    r.out.length,
+    r.commits.length,
+    r.revealedAt ?? null,
+    r.seed ?? null,
+    r.moves.length,
+    r.done ?? null,
+    r.retired ?? null,
+  ]);
+}
 
 /** 점수제면 판 수·점수가 정한 목록 안이어야 한다(끝나지 않는 경기 막기). 다른 방식은 예전처럼 보지 않는다 */
 function pointsSettingsOk(s: RoomSettings): boolean {

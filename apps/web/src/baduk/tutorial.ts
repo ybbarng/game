@@ -150,7 +150,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "goal",
     title: "바둑은 어떤 게임?",
-    summary: "흑이 먼저, 번갈아 돌을 놓고, 활로를 모두 막으면 따낸다",
+    summary: "흑이 먼저, 번갈아 돌을 놓고, 활로를 모두 막으면 따내요.",
     steps: [
       {
         kind: "explain",
@@ -201,7 +201,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "atari",
     title: "단수에서 달아나기",
-    summary: "활로가 하나 남으면 활로 쪽으로 뻗거나 이어서 활로를 늘린다",
+    summary: "활로가 하나 남으면 활로 쪽으로 뻗거나 이어서 활로를 늘려요.",
     steps: [
       {
         kind: "explain",
@@ -251,7 +251,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "suicide",
     title: "둘 수 없는 자리",
-    summary: "활로가 없는 자리에는 둘 수 없다. 따내면서 두면 된다",
+    summary: "활로가 없는 자리에는 둘 수 없어요. 따내면서 두면 돼요.",
     steps: [
       {
         kind: "explain",
@@ -300,7 +300,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "ko",
     title: "패",
-    summary: "한 점을 따낸 바로 다음에 되따내 같은 모양을 만들 수는 없다",
+    summary: "한 점을 따낸 바로 다음에 되따내 같은 모양을 만들 수는 없어요.",
     steps: [
       {
         kind: "explain",
@@ -351,7 +351,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "area",
     title: "집과 세기",
-    summary: "판이 끝나면 내 돌 + 내 돌로만 둘러싼 빈 점을 센다",
+    summary: "판이 끝나면 내 돌 + 내 돌로만 둘러싼 빈 점을 세요.",
     steps: [
       {
         kind: "explain",
@@ -391,7 +391,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "eyes",
     title: "두 눈으로 살기",
-    summary: "따로 떨어진 눈이 둘이면 그 무리는 결코 따낼 수 없다",
+    summary: "따로 떨어진 눈이 둘이면 그 무리는 결코 따낼 수 없어요.",
     steps: [
       {
         kind: "explain",
@@ -439,7 +439,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "cleanup",
     title: "끝내기 전에 따내기",
-    summary: "판 위 그대로 세니, 쉬기 전에 내 집 안의 죽은 돌은 따낸다",
+    summary: "판 위 그대로 세니, 쉬기 전에 내 집 안의 죽은 돌은 따내요.",
     steps: [
       {
         kind: "explain",
@@ -481,7 +481,7 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
   {
     id: "real",
     title: "실전",
-    summary: "가로세로 9줄 작은 판에서 입문 컴퓨터와 한 판",
+    summary: "가로세로 9줄 작은 판에서 입문 컴퓨터와 한 판 둬요.",
     steps: [
       {
         kind: "explain",
