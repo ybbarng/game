@@ -806,7 +806,8 @@ test.describe("체스 수 배우기: 날짜 간격 복습", () => {
       });
 
       await review.getByRole("button", { name: "한 수 메이트 1번" }).click();
-      await expect(page.getByText("한 수 메이트 1/12")).toBeVisible();
+      // 복습 칸에서 연 문제는 머리줄이 복습 줄 차례다(누른 문제부터: 한 수 메이트 1번 → 포크 1번)
+      await expect(page.getByText("오늘 복습 1/2")).toBeVisible();
       await tapSquare(page, "b5", false);
       await tapSquare(page, "b8", false);
       await expect(page.getByRole("status")).toHaveText("체크메이트!");
@@ -816,6 +817,40 @@ test.describe("체스 수 배우기: 날짜 간격 복습", () => {
         "포크 1번",
         "복습 시작",
       ]);
+    },
+  );
+
+  test(
+    "복습 줄을 따라 다음 문제로 가고, 줄 끝이면 목록에서 끝을 알린다",
+    { tag: "@only-desktop" },
+    async ({ page }, info) => {
+      // 한 수 메이트 1·3번을 어제 틀렸다. 묶음 차례라면 1번 다음은 2번이지만 복습 줄은 3번이다
+      await openWith(page, {
+        "mate1-1": { misses: 1, streak: 0, missedAt: kst(16) },
+        "mate1-3": { misses: 1, streak: 0, missedAt: kst(16) },
+      });
+      const review = page.getByRole("region", { name: "오늘 복습" });
+      await review.getByRole("button", { name: "복습 시작" }).click();
+      await expect(page.getByText("오늘 복습 1/2")).toBeVisible();
+      await tapSquare(page, "b5", false);
+      await tapSquare(page, "b8", false);
+      await expect(page.getByRole("status")).toHaveText("체크메이트!");
+      await page.getByRole("button", { name: "다음 문제" }).click();
+      await expect(page.getByText("오늘 복습 2/2")).toBeVisible();
+      // 3번 문제: 룩 c1 → c8
+      await tapSquare(page, "c1", false);
+      await tapSquare(page, "c8", false);
+      await expect(page.getByRole("status")).toHaveText("체크메이트!");
+      await page.screenshot({
+        path: info.outputPath("chess-review-last.png"),
+      });
+      await page.getByRole("button", { name: "복습 마치기" }).click();
+      await expect(
+        review.getByText("오늘 복습을 다 했어요. 다음 복습은 11월 18일이에요."),
+      ).toBeVisible();
+      await page.screenshot({
+        path: info.outputPath("chess-review-done.png"),
+      });
     },
   );
 
@@ -859,5 +894,70 @@ test(
       "메이트까지 두 수: 다음 수를 두세요",
     );
     await page.screenshot({ path: info.outputPath("chess-mate3.png") });
+  },
+);
+
+test(
+  "체스 수 배우기: 퀸 엔드게임은 방법을 먼저 읽고, 방법대로 두면 흑이 버텨도 정해진 수 안에 메이트한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 흑이 받기 전 잠깐 기다리는 시간(600ms)을 시계로 건너뛴다
+    await page.clock.install();
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const queen = page.getByRole("region", { name: "퀸으로 메이트" });
+    await expect(queen.getByText("0/3")).toBeVisible();
+    await queen.getByRole("button", { name: "풀기 시작" }).click();
+
+    // 처음 여는 연습은 단원부터: 맥락 → 낱말 → 늘 지킬 것 → 방법 → 그림
+    const lesson = page.getByRole("region", { name: "방법" });
+    await expect(lesson.getByRole("heading")).toHaveText("퀸 하나로 끝내기");
+    await expect(page.getByText("퀸으로 메이트 방법 1/9")).toBeVisible();
+    await page.getByRole("button", { name: "다음" }).click();
+    await page.getByRole("button", { name: "다음" }).click();
+    await expect(lesson.getByRole("heading")).toHaveText("마주 보기");
+    // 그림에서 방법이 고르는 수(b6 → b7)를 초록 고리로 보인다
+    await expect(page.locator("[data-hint]")).toHaveCount(2);
+    await page.screenshot({
+      path: info.outputPath("chess-endgame-lesson.png"),
+    });
+    for (let i = 3; i < 9; i++)
+      await page.getByRole("button", { name: "다음" }).click();
+    await page.getByRole("button", { name: "연습 시작" }).click();
+
+    const status = page.getByRole("status");
+    await expect(status).toHaveText(
+      "흑 킹을 25수 안에 메이트하세요. 지금 1수째예요.",
+    );
+    // 「수 보기」가 보이는 방법의 수를 그대로 둔다. 흑은 메이트 거리 표로 가장 오래 버틴다
+    let shot = false;
+    for (let move = 1; move <= 25; move++) {
+      await page.getByRole("button", { name: "수 보기" }).click();
+      await expect(page.getByTestId("endgame-step")).toBeVisible();
+      if (!shot) {
+        await page.screenshot({
+          path: info.outputPath("chess-endgame-show.png"),
+        });
+        shot = true;
+      }
+      const hint = page.locator("[data-hint]");
+      // 「수 보기」는 옮길 기물을 이미 골라 둔다. 갈 칸만 누른다
+      const to = (await hint.nth(1).getAttribute("data-hint")) as string;
+      await tapSquare(page, to, false);
+      await expect(status).toHaveText(/흑 킹이 받는 중…|체크메이트!/);
+      if ((await status.textContent()) === "체크메이트!") break;
+      await page.clock.fastForward(700);
+      await expect(status).toHaveText(
+        `흑 킹을 25수 안에 메이트하세요. 지금 ${move + 1}수째예요.`,
+      );
+    }
+    await expect(status).toHaveText("체크메이트!");
+    // 수를 보며 끝냈으니 푼 것으로 치지 않는다
+    await expect(
+      page.getByText("정답을 본 뒤 풀었어요. 다음에 다시 풀어 보세요"),
+    ).toBeVisible();
+    await expect(page.getByText(/수 만에 메이트했어요\./)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("chess-endgame-mate.png") });
   },
 );

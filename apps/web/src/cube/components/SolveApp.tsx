@@ -59,7 +59,13 @@ import type { AlgCase } from "../learn/types";
 import { FIT_CHOICE } from "../online/bot-choices";
 import { recentAverage } from "../online/handicap";
 import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";
-import { bestSegments, goldSplits, isPersonalBest } from "../progress/gold";
+import { goldSplits, isPersonalBest } from "../progress/gold";
+import {
+  methodBests,
+  methodSplits,
+  type SolveMethod,
+  theoryBest,
+} from "../progress/methods";
 import { groupSplits } from "../progress/splits";
 import {
   addRecord,
@@ -104,6 +110,7 @@ import {
 } from "./ChallengeParts";
 import { CubePlay, playCubeSound } from "./CubePlay";
 import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
+import { MethodSelect, TheoryBestLine, useSolveMethod } from "./MethodSelect";
 import { useMoveKeys } from "./MoveChip";
 import { RivalPanel, RivalSelect } from "./RivalPanel";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
@@ -240,7 +247,14 @@ export function SolveApp({
    * 견주지 않게 섞을 때 떠 둔다
    */
   const [prior, setPrior] = useState<SolveRecord[]>([]);
-  const bests = useMemo(() => bestSegments(prior), [prior]);
+  // 내 해법(docs/51 1-2): 칩·구간 골드·이론 최고를 그 해법의 단계로 본다. 기록에는 모든 이정표를 그대로 남긴다
+  const { method, pick: pickMethod } = useSolveMethod(n);
+  const methodRef = useRef<SolveMethod>(method);
+  methodRef.current = method;
+  const bests = useMemo(
+    () => methodBests(n, method, prior),
+    [n, method, prior],
+  );
   /** 이번 판을 섞은 때의 티어(혼자 맞추기, 결과 상자가 티어가 올랐는지 견준다) */
   const [priorTier, setPriorTier] = useState<MyTier | null>(null);
   // 세션 소리(골드·개인 최고)가 지금 판의 옛 기록을 읽는다
@@ -300,14 +314,17 @@ export function SolveApp({
     // 소리 고르기는 game-sounds.ts(docs/51 5절): 골드 칩이면 띵 대신 반짝임, 개인 최고면 맞춤 대신 팡파르
     const onCue = (cue: SessionCue) => {
       const r = made.result;
-      const last = made.splits.at(-1);
+      const shown = methodSplits(n, methodRef.current, made.splits);
+      const last = shown.at(-1);
+      // 고른 해법의 단계가 아닌 이정표만 켜졌으면(칩이 생기지 않으면) 띵도 내지 않는다
+      if (cue === "milestone" && last?.ms !== made.splits.at(-1)?.ms) return;
       playCubeSound(
         settingsRef.current,
         soloSound(cue, {
           gold:
             cue === "milestone" &&
             last !== undefined &&
-            goldSplits(made.splits, bestsRef.current).has(last.ms),
+            goldSplits(shown, bestsRef.current).has(last.ms),
           best:
             cue === "solved" &&
             !challenge &&
@@ -774,6 +791,10 @@ export function SolveApp({
     tierNow && (!priorTier || tierNow.place.step > priorTier.place.step)
       ? tierNow
       : null;
+  // 칩·결과 상자 구간은 고른 해법의 단계만
+  const shownSplits = methodSplits(n, method, session.splits);
+  const shownGold = goldSplits(shownSplits, bests);
+  const theory = mode === "solo" ? theoryBest(n, method, records) : null;
   const best = records.reduce<number | null>((b, r) => {
     const t = resultMs(r);
     return t !== null && (b === null || t < b) ? t : b;
@@ -851,8 +872,13 @@ export function SolveApp({
               />
             </div>
           )}
+          {mode === "solo" && n !== 2 && (
+            <div className={challenge || daily ? "" : "ml-auto"}>
+              <MethodSelect n={n} value={method} onChange={pickMethod} />
+            </div>
+          )}
           <label
-            className={`${challenge || daily ? "" : "ml-auto "}flex items-center gap-1 text-sm`}
+            className={`${challenge || daily || (mode === "solo" && n !== 2) ? "" : "ml-auto "}flex items-center gap-1 text-sm`}
           >
             크기
             <select
@@ -1013,10 +1039,7 @@ export function SolveApp({
                   near={phase === "solving" ? near : null}
                 />
                 {phase !== "done" && (
-                  <MilestoneChips
-                    splits={session.splits}
-                    gold={goldSplits(session.splits, bests)}
-                  />
+                  <MilestoneChips splits={shownSplits} gold={shownGold} />
                 )}
               </>
             )}
@@ -1027,16 +1050,16 @@ export function SolveApp({
                   lastEntry.score > 0 &&
                   (run?.priorBest == null || lastEntry.score > run.priorBest)
                 }
-                splits={session.splits}
-                gold={goldSplits(session.splits, bests)}
+                splits={shownSplits}
+                gold={shownGold}
               />
             )}
             {phase === "done" && result && !challenge && (
               <ResultBox
                 mode={mode}
                 result={result}
-                splits={session.splits}
-                gold={goldSplits(session.splits, bests)}
+                splits={shownSplits}
+                gold={shownGold}
                 best={isPersonalBest(
                   result.ms === null ? null : result.ms + result.penalty,
                   prior,
@@ -1140,6 +1163,7 @@ export function SolveApp({
                   value={formatMs(averageOf(records, 12))}
                 />
               </dl>
+              {theory && <TheoryBestLine theory={theory} />}
               {tierNow && (
                 <p className="text-xs" data-cube-records-tier>
                   <span className="text-white/50">티어 </span>
@@ -1159,7 +1183,7 @@ export function SolveApp({
                   {records.slice(0, 30).map((r, i) => (
                     <li
                       key={`${r.at}-${r.scramble}`}
-                      title={splitTitle(r)}
+                      title={splitTitle(n, method, r)}
                       className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
                     >
                       <span className="w-6 text-right text-white/40 text-xs">
@@ -1250,9 +1274,13 @@ const MEMO_BLOCKED =
 const TEMP_SCRAMBLE =
   "임시 섞기: 대회 방식(무작위 상태) 대신 무작위 수로 섞었어요.";
 
-/** 기록 줄에 대면 보이는 구간 기록 */
-function splitTitle(r: SolveRecord): string | undefined {
-  const groups = groupSplits(parseSplits(r.splits));
+/** 기록 줄에 대면 보이는 구간 기록(고른 해법의 단계만) */
+function splitTitle(
+  n: number,
+  method: SolveMethod,
+  r: SolveRecord,
+): string | undefined {
+  const groups = groupSplits(methodSplits(n, method, parseSplits(r.splits)));
   if (groups.length === 0) return undefined;
   return groups.map((g) => `${g.label} ${formatMs(g.ms)}`).join(" · ");
 }

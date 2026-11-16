@@ -13,13 +13,15 @@ import {
 import { useState } from "react";
 
 import { LineScreen, useLineRun } from "@/components/study/LineScreen";
+import type { ReviewRun } from "@/components/study/review-run";
 import type { StudyLine } from "@/study/line";
 
+import { BADUK_FUSEKI_SET } from "../fuseki";
 import { BADUK_JOSEKI_SET, parseJosekiStart } from "../joseki";
 import { useBadukStudyProgress } from "../progress";
 import { BadukBoard } from "./BadukBoard";
 
-/** 정석은 19줄 판에서 둔다 */
+/** 정석·포석은 19줄 판에서 둔다 */
 const SIZE = 19;
 const JOSEKI_RULES = { ...STANDARD_RULES, size: SIZE } as const;
 
@@ -41,46 +43,61 @@ function lineState(line: StudyLine): BadukState {
   return { ...state, toPlay: start.toPlay };
 }
 
-/** 바둑 정석 수순 하나를 따라 둔다 */
+/** 수순 묶음: 정석, 포석 */
+const LINE_SETS = [BADUK_JOSEKI_SET, BADUK_FUSEKI_SET];
+
+/** 바둑 정석·포석 수순 하나를 따라 둔다 */
 export function BadukLineScreen({
   lineId,
   onExit,
   onOpen,
+  review,
 }: {
   lineId: string;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
-  const lines = BADUK_JOSEKI_SET.lines;
+  const set = LINE_SETS.find((s) => s.lines.some((l) => l.id === lineId));
+  if (!set) return null;
+  const lines = set.lines;
   const index = lines.findIndex((l) => l.id === lineId);
   const line = lines[index];
   if (!line) return null;
   return (
     <BadukLineRun
+      setTitle={set.title}
       line={line}
       index={index}
       total={lines.length}
       nextId={lines[index + 1]?.id ?? null}
       onExit={onExit}
       onOpen={onOpen}
+      review={review}
     />
   );
 }
 
 function BadukLineRun({
+  setTitle,
   line,
   index,
   total,
   nextId,
   onExit,
   onOpen,
+  review,
 }: {
+  setTitle: string;
   line: StudyLine;
   index: number;
   total: number;
   nextId: string | null;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const solve = useBadukStudyProgress((s) => s.solve);
   const miss = useBadukStudyProgress((s) => s.miss);
@@ -117,7 +134,7 @@ function BadukLineRun({
   return (
     <LineScreen
       game="baduk"
-      setTitle={BADUK_JOSEKI_SET.title}
+      setTitle={setTitle}
       line={line}
       index={index}
       total={total}
@@ -160,6 +177,7 @@ function BadukLineRun({
         setAim(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
+      review={review}
       onExit={onExit}
     />
   );
