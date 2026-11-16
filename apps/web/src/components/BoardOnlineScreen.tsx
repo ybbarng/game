@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
 import { recordAudit } from "@/net/audit-history";
 import { auditChatText, auditNotice } from "@/net/audit-text";
 import { useChat } from "@/net/chat";
-import { GuestRoom } from "@/net/guest-room";
+import { GuestRoom, OTHER_GAME_ROOM } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import {
   type HostRestore,
@@ -285,7 +285,7 @@ export function BoardOnlineScreen<
         );
         guest.on("rejected", (e) => {
           useStore.setState({ notice: e });
-          if (e === "다른 게임의 방이에요.") {
+          if (e === OTHER_GAME_ROOM) {
             setError(e);
             setPhase("error");
           }
