@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.6.0</title>
+      <pubDate>Mon, 16 Nov 2026 11:08:08 +0000</pubDate>
+      <sparkle:version>0.6.0</sparkle:version>
+      <sparkle:shortVersionString>0.6.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;티어표 창이 사이트 티어 페이지와 같은 모습이 됩니다. 내 티어 엠블럼이 크게 천천히 흔들리고, 다음 티어까지 줄일 시간이 보이며, 아래 사다리 칸을 누르면 그 티어 엠블럼을 크게 볼 수 있습니다. 메뉴 프로필 칸의 엠블럼도 메뉴를 연 동안 흔들립니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.6.0/Cubie.zip" length="9844861" type="application/octet-stream" sparkle:edSignature="kMDXZ0fuWcO10UDjL4kABryFXIg0HW49BkR6ChzvOL6QIPXnRdupGH+Tqots+bp+WJ6y691YZyjuYkisOQ39BA=="/>
+    </item>
+    <item>
       <title>Cubie 0.5.0</title>
       <pubDate>Mon, 16 Nov 2026 08:19:20 +0000</pubDate>
       <sparkle:version>0.5.0</sparkle:version>
