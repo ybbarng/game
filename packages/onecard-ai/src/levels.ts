@@ -45,7 +45,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
     level: 0,
     name: "입문",
     description:
-      "낼 수 있는 카드를 대충 내고, 공격 카드를 아끼지 않는다. 가끔 헛외침도 한다.",
+      "낼 수 있는 카드를 대충 내고, 공격 카드를 아끼지 않아요. 가끔 헛외침도 해요.",
     shout: {
       shout: 0.6,
       selfMs: [300, 900],
@@ -61,7 +61,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
     level: 1,
     name: "중수",
     description:
-      "공격 카드는 받아칠 때 쓰려고 아끼고, 7·J·Q·K도 쓸 때를 골라 낸다. 다음 사람 손에 카드가 적으면 막는다.",
+      "공격 카드는 받아칠 때 쓰려고 아끼고, 7·J·Q·K도 쓸 때를 골라 내요. 다음 사람 손에 카드가 적으면 막아요.",
     shout: {
       shout: 0.9,
       selfMs: [200, 800],
@@ -77,7 +77,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
     level: 2,
     name: "고수",
     description:
-      "나온 카드를 세고 남에게 없는 무늬를 기억해, 몇 수 앞을 짐작해 본다.",
+      "나온 카드를 세고 남에게 없는 무늬를 기억해, 몇 수 앞을 짐작해 봐요.",
     shout: {
       shout: 1,
       selfMs: [100, 500],
