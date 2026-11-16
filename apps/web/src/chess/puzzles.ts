@@ -19,7 +19,7 @@ export type ChessPuzzle = {
   /** 첫 정답 수(SAN) */
   solution: string;
 } & (
-  | { kind: "mate"; mateIn: 1 | 2 }
+  | { kind: "mate"; mateIn: 1 | 2 | 3 }
   | { kind: "tactic"; tactic: Tactic }
   | { kind: "endgame" }
 );
@@ -74,6 +74,32 @@ const MATE_IN_TWO: readonly Raw[] = [
   { fen: "4N1k1/6pp/8/8/4Q3/4N2P/K3P3/8 w - - 0 30", solution: "Qe7" },
   { fen: "k7/pp5n/8/8/1Q4B1/4P3/7P/1K6 w - - 0 30", solution: "Bf3" },
   { fen: "1k6/p3p3/1pR5/1Q6/1P3P2/8/2K5/8 w - - 0 30", solution: "Qa6" },
+];
+
+/*
+ * 세 수 메이트(2026-11-17): 기물을 무작위로 놓은 판에서 엔진으로 "한 수·두 수 메이트는 없고, 세 수 메이트의
+ * 첫 수가 하나뿐인" 판을 찾아 골랐다(`mateInThreeMoves`). 남의 문제집에서 옮긴 것은 없다.
+ * mate3.test.ts가 흑의 모든 응수에 대해 정말 세 수 안에 메이트가 되는지 다시 확인한다.
+ * 둘째 수부터는 남은 수 안에 메이트가 되면 어느 수든 정답이다.
+ */
+const MATE_IN_THREE: readonly Raw[] = [
+  // 조용한 첫 수: 체크 없이 킹이 갈 곳을 먼저 줄인다
+  { fen: "3k4/2p5/2p5/8/6R1/6Q1/8/4K3 w - - 0 30", solution: "Rg7" },
+  { fen: "5k2/2P3R1/8/8/1n6/8/5K2/4N3 w - - 0 30", solution: "Rd7" },
+  { fen: "3k4/B1p5/2P5/5B2/1R6/K7/8/8 w - - 0 30", solution: "Bc5" },
+  { fen: "k6B/8/1P6/8/2R5/2R5/8/2K5 w - - 0 30", solution: "Rc7" },
+  { fen: "k7/8/8/8/8/3P4/2b2K2/4R2R w - - 0 30", solution: "Re7" },
+  { fen: "3Bk3/5p2/3p4/2B5/1P6/5Q2/8/6K1 w - - 0 30", solution: "Qf6" },
+  { fen: "2k5/2pp4/3p4/2N5/8/3Q4/K7/8 w - - 0 30", solution: "Qd5" },
+  { fen: "8/5Nk1/6pp/6p1/8/1N6/3P4/2K2Q2 w - - 0 30", solution: "Ne5" },
+  { fen: "5k2/8/1R2pp2/8/1P6/1R5K/1P6/8 w - - 0 30", solution: "Rb7" },
+  // 체크로 시작한다
+  { fen: "2k5/2p5/2p5/8/8/3RB1P1/3R4/7K w - - 0 30", solution: "Rd8+" },
+  { fen: "4R2N/7k/8/8/8/1R4P1/2K5/8 w - - 0 30", solution: "Rb7+" },
+  { fen: "8/k7/1p1B4/2N3R1/8/8/2K5/8 w - - 0 30", solution: "Rg7+" },
+  { fen: "2B4k/7p/6pp/8/8/8/8/4K1Q1 w - - 0 30", solution: "Qd4+" },
+  // 흑 퀸을 잡으며 시작한다
+  { fen: "k7/1p6/3q4/8/1Q2R3/8/2K5/8 w - - 0 30", solution: "Qxd6" },
 ];
 
 /*
@@ -183,6 +209,18 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
       id: `mate2-${i + 1}`,
       kind: "mate",
       mateIn: 2,
+      ...p,
+    })),
+  },
+  {
+    id: "mate3",
+    title: "세 수 메이트",
+    summary:
+      "상대가 어떻게 받아도 세 수 안에 메이트가 되는 첫 수를 찾는다. 둘째 수부터는 메이트로 가는 수면 무엇이든 된다.",
+    puzzles: MATE_IN_THREE.map((p, i) => ({
+      id: `mate3-${i + 1}`,
+      kind: "mate",
+      mateIn: 3,
       ...p,
     })),
   },

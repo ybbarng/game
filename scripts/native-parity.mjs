@@ -55,6 +55,17 @@ export const WATCHED = [
   { path: `${WEB}cube/learn/alg-sets.ts`, why: "공식 연습 자료" },
   { path: `${WEB}cube/algs/spot.ts`, why: "힌트 상황 찾기" },
   { path: `${WEB}cube/algs/store.ts`, why: "공식 고르기" },
+  // 공식 연습은 자료 + 후보 가운데 키 비용이 가장 싼 공식을 고른다(pick-alg.ts choicesOf → 코어 practice_data.rs choices).
+  // 2026-11-17 후보를 채울 때 감시 목록에 없어 앱 공식 연습이 바뀌는 것을 CI가 알리지 못했다
+  { path: `${WEB}cube/algs/candidates.ts`, why: "공식 연습 고를 공식(후보)" },
+  {
+    path: `${WEB}cube/algs/candidates-ll.ts`,
+    why: "공식 연습 고를 공식(마지막 층 후보)",
+  },
+  {
+    path: `${WEB}cube/algs/candidates-more.ts`,
+    why: "공식 연습 고를 공식(F2L·오르테가 후보)",
+  },
   { path: `${WEB}cube/game-sounds.ts`, why: "큐브 소리" },
   {
     path: `${WEB}game/sound.ts`,

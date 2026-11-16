@@ -39,6 +39,8 @@ export function network(
   options: {
     /** 보내지 않을 메시지(고친 프로그램이 일부러 빼먹는 것) */
     drop?: (message: FairWire, from: number) => boolean;
+    /** 보내기 전에 바꿀 메시지(고친 프로그램이 증명 값을 꾸미는 것). 받는 기기 모두가 바꾼 것을 받는다 */
+    rewrite?: (message: FairWire, from: number) => FairWire;
   } = {},
 ): TestNetwork {
   const clock = new ManualClock();
@@ -50,8 +52,9 @@ export function network(
         id,
         group: "r255",
         clock,
-        send: (m: FairWire) => {
-          if (options.drop?.(m, id)) return;
+        send: (sent: FairWire) => {
+          if (options.drop?.(sent, id)) return;
+          const m = options.rewrite ? options.rewrite(sent, id) : sent;
           for (const d of devices)
             if (d.id !== id) {
               inFlight++;

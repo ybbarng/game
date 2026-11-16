@@ -22,7 +22,14 @@ import {
   topOriented,
 } from "./ll";
 import { coordsOf, heuristic, idaSearch, type Tracked } from "./search";
-import { type HumanSolve, Solve, type StageName, uTurn, yTurn } from "./solve";
+import {
+  type HumanSolve,
+  Solve,
+  type StageName,
+  solveUntil,
+  uTurn,
+  yTurn,
+} from "./solve";
 import {
   cornerPlace2Taught,
   cornersTaught,
@@ -329,9 +336,19 @@ function insertBySearch(
             hs.push(
               heuristic(tracked, [tracked.length - 2, tracked.length - 1]),
             );
+            // 짝 + 십자 엣지 하나(24³칸). 어림 표는 모두 실제 남은 수보다 크지 않아, 표를 더해도 잘리는 가지는
+            // 답이 없는 가지뿐이고 같은 수 차례로 찾는 첫 답은 그대로다. 짝만 보는 표는 십자를 흐트러뜨렸다 되돌리는
+            // 수를 세지 못해 탐색이 몇 배 넓었다(CFOP 30판 F2L CPU 약 3분의 1로)
+            for (let e = 0; e < 4; e++)
+              hs.push(
+                heuristic(tracked, [e, tracked.length - 2, tracked.length - 1]),
+              );
           } else {
             tracked.push({ kind: "c", piece: 4 + q });
             hs.push(heuristic(tracked, [tracked.length - 1]));
+            // 코너 + 십자 엣지 하나(24²칸), 위 짝과 같은 까닭
+            for (let e = 0; e < 4; e++)
+              hs.push(heuristic(tracked, [e, tracked.length - 1]));
           }
         }
         const path = idaSearch(
@@ -545,11 +562,13 @@ export const CFOP_STEPS: readonly Step[] = [
 function run3(
   steps: readonly Step[],
   state: PuzzleState,
-  first = 0,
+  opts: HumanOptions,
 ): HumanSolve {
-  const s = start3(state, first);
-  for (const step of steps) if (typeof step === "function") step(s);
-  return finish(s);
+  const s = start3(state, opts.first);
+  return solveUntil(s, opts.until, () => {
+    for (const step of steps) if (typeof step === "function") step(s);
+    return finish(s);
+  });
 }
 
 /**
@@ -564,6 +583,11 @@ export interface HumanOptions {
    * (색 중립, 첫 화면 연출). 2×2는 첫 층 색, 4×4 이상은 축소가 끝난 뒤 3×3 단계의 첫 면 색이다
    */
   first?: number;
+  /**
+   * 이 단계까지만 풀고 멈춘다(그때까지의 판, 다 맞추지 않은 채). 첫 면 색을 견줄 때 그 단계 수만 보려고 쓴다.
+   * 수 합치기는 단계 안에서만 하므로 그 단계까지의 수는 끝까지 푼 판과 같다
+   */
+  until?: StageName | undefined;
 }
 
 /** 3×3 입문: 층별 맞추기(초보자 공식만) */
@@ -574,7 +598,7 @@ export function solveBeginner3(
   return run3(
     opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS,
     state,
-    opts.first,
+    opts,
   );
 }
 
@@ -583,7 +607,7 @@ export function solveIntermediate3(
   state: PuzzleState,
   opts: HumanOptions = {},
 ): HumanSolve {
-  return run3(INTERMEDIATE3_STEPS, state, opts.first);
+  return run3(INTERMEDIATE3_STEPS, state, opts);
 }
 
 /** 3×3 고수: CFOP(십자, F2L 네 쌍, OLL 57, PLL 21) */
@@ -591,7 +615,7 @@ export function solveCfop(
   state: PuzzleState,
   opts: HumanOptions = {},
 ): HumanSolve {
-  return run3(CFOP_STEPS, state, opts.first);
+  return run3(CFOP_STEPS, state, opts);
 }
 
 /** 3×3 초고수: 2단계 해법(사람을 넘는 짧은 해) */
@@ -690,10 +714,12 @@ export function solveIntermediate2(
   opts: HumanOptions = {},
 ): HumanSolve {
   const s = start2(state, opts.first);
-  firstLayerCorners(s);
-  s.stage("first-layer");
-  lastLayer2(s);
-  return finish(s);
+  return solveUntil(s, opts.until, () => {
+    firstLayerCorners(s);
+    s.stage("first-layer");
+    lastLayer2(s);
+    return finish(s);
+  });
 }
 
 /** 2×2 고수: 가장 짧은 첫 층 → 윗면 공식 7개 → 윗층 공식 2개 */
@@ -702,10 +728,12 @@ export function solveAdvanced2(
   opts: HumanOptions = {},
 ): HumanSolve {
   const s = start2(state, opts.first);
-  firstLayerOptimal(s);
-  s.stage("first-layer");
-  lastLayer2(s);
-  return finish(s);
+  return solveUntil(s, opts.until, () => {
+    firstLayerOptimal(s);
+    s.stage("first-layer");
+    lastLayer2(s);
+    return finish(s);
+  });
 }
 
 /** 2×2 초고수: 최적 해(11수 안) */
@@ -736,7 +764,7 @@ export function solveHuman(
   if (size === 3) {
     if (level === "beginner") return solveBeginner3(state, opts);
     if (level === "intermediate") return solveIntermediate3(state, opts);
-    if (level === "fourlook") return run3(FOURLOOK3_STEPS, state, first);
+    if (level === "fourlook") return run3(FOURLOOK3_STEPS, state, opts);
     if (level === "advanced") return solveCfop(state, opts);
     return solveExpert3(state);
   }
@@ -750,7 +778,7 @@ export function solveHuman(
   }
   if (size >= 4 && size <= 7) {
     const big = (steps: readonly Step[]) =>
-      solveBigHuman(steps, size, state, limits, first);
+      solveBigHuman(steps, size, state, limits, first, opts.until);
     if (level === "beginner")
       return big(opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS);
     if (level === "intermediate") return big(INTERMEDIATE3_STEPS);

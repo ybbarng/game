@@ -28,6 +28,7 @@ import type {
   LessonStep,
   QuizSpec,
 } from "./types";
+import { solveYau, type YauStageId } from "./yau-solve";
 import { solveZzByRules } from "./zz-path";
 
 /** ZZ 지도 시연: 단원 규칙으로 푼 수를 EO라인 / 블록 / 마지막 층으로 나눈다(docs/47 16-17) */
@@ -113,6 +114,25 @@ function bigDemoMoves(n: 4 | 5, scramble: string): string[] {
         : (edges.steps as Edge5Step[]).map(stepMoves5),
     ),
     joinAll(rest.stages.map((x) => x.moves)),
+  ];
+}
+
+/** 4×4 야우 지도 시연: 야우 풀이 함수(단원 규칙)로 푼 수. 「엣지 묶기」 단원은 마지막 십자 엣지와 엣지 여덟을 함께 가르친다 */
+function yauDemoMoves(scramble: string): string[] {
+  const by = new Map(
+    solveYau(playN(4, solvedCube(4), scramble)).stages.map((st) => [
+      st.id,
+      st.moves,
+    ]),
+  );
+  const get = (id: YauStageId) => by.get(id) ?? "";
+  const joinAll = (xs: string[]) => xs.filter(Boolean).join(" ");
+  return [
+    get("centers-ud"),
+    get("cross3"),
+    get("centers-rest"),
+    joinAll([get("last-cross"), get("edges")]),
+    get("three"),
   ];
 }
 
@@ -352,12 +372,21 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
   },
   "444-yau": {
     stages: [
-      { title: "흰·노랑 센터", lessons: ["yau-ud-centers"] },
-      { title: "흰 십자 셋", lessons: ["yau-cross3"] },
-      { title: "옆 센터", lessons: ["yau-side-centers"] },
-      { title: "엣지 묶기", lessons: ["yau-edges"] },
-      { title: "3×3처럼", lessons: ["yau-finish"] },
+      {
+        title: "흰·노랑 센터",
+        lessons: ["yau-ud-centers"],
+        goal: "yau-ud-centers",
+      },
+      { title: "흰 십자 셋", lessons: ["yau-cross3"], goal: "yau-cross3" },
+      { title: "옆 센터", lessons: ["yau-side-centers"], goal: "yau-centers" },
+      { title: "엣지 묶기", lessons: ["yau-edges"], goal: "edges-paired" },
+      { title: "3×3처럼", lessons: ["yau-finish"], goal: "solved" },
     ],
+    demo: {
+      scramble: SCRAMBLE_444,
+      moves: yauDemoMoves(SCRAMBLE_444),
+      source: "야우 풀이 함수(solveYau: 단원 규칙)",
+    },
   },
   "bld-op": {
     stages: [
