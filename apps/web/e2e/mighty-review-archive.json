@@ -1,0 +1,1159 @@
+{
+  "version": 1,
+  "games": [
+    {
+      "id": "solo:137",
+      "game": "mighty",
+      "mode": "solo",
+      "startedAt": 1794884400000,
+      "updatedAt": 1794885000000,
+      "rules": {
+        "playerCount": 5,
+        "minGoal": 13,
+        "mighty": "SA",
+        "alterMighty": "DA",
+        "jokerCall": "C3",
+        "alterJokerCall": "S3",
+        "hideScoredCards": false,
+        "friend": true,
+        "jokerFriend": true,
+        "revealFriendOnScore": false,
+        "discardedPointsToOpposition": false,
+        "friendLeadsNextRound": false,
+        "randomSeat": false,
+        "highGoal": false,
+        "firstBidderMayPass": true,
+        "raise2ForKirudaChange": true,
+        "passAgain": false,
+        "noKirudaAdvantage": false,
+        "noKirudaAlways": false,
+        "mightyInFirstTrick": true,
+        "mightyEffectInFirstTrick": true,
+        "mightyInLastTrick": true,
+        "mightyEffectInLastTrick": true,
+        "mightyOverridesJokerCall": false,
+        "jokerInFirstTrick": false,
+        "jokerEffectInFirstTrick": false,
+        "jokerInLastTrick": false,
+        "jokerEffectInLastTrick": true,
+        "kirudaInFirstTrick": true,
+        "leaderKirudaInFirstTrick": false,
+        "jokerCallEffectInFirstTrick": true,
+        "calledJokerKeepsEffect": false,
+        "dealMiss": {
+          "noPoint": true,
+          "oneOrLess": false,
+          "allPoint": false,
+          "jokerCountsMinusOne": false,
+          "mightyCountsZero": false,
+          "only10": true,
+          "oneEyedJack": false,
+          "duplicate": false
+        },
+        "winScoring": "risk20",
+        "loseScoring": "eyeForEye",
+        "doubleForRun": true,
+        "doubleForDeclaredRunOnly": false,
+        "staticRun": false,
+        "doubleForReverseRun": false,
+        "reverseRunCondition": "goal",
+        "doubleForNoKiruda": true,
+        "doubleForNoFriend": false
+      },
+      "seed": 137,
+      "log": [
+        {
+          "seat": 0,
+          "action": {
+            "type": "pass"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "bid",
+            "goal": {
+              "kiruda": "S",
+              "score": 13
+            }
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "exchange",
+            "goal": {
+              "kiruda": "S",
+              "score": 13
+            },
+            "discard": ["H5", "HQ", "H8"]
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "friend",
+            "friend": {
+              "kind": "card",
+              "card": "JK"
+            }
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "C3",
+            "jokerCall": true,
+            "slot": 6
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "C7"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "CA",
+            "slot": 4
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "C4",
+            "slot": 8
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "JK",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "D3",
+            "slot": 8
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "DJ",
+            "slot": 8
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "DK",
+            "slot": 6
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "D2",
+            "slot": 8
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "S3"
+          }
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "HA"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "H2",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "HK",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "H6",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S2",
+            "slot": 5
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "SQ",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "SK"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "SJ",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "S5",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "S9",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "C2"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "D5",
+            "slot": 5
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "C5",
+            "slot": 5
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "C8",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "D4",
+            "slot": 5
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "D7",
+            "slot": 4
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "D8",
+            "slot": 4
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "H3"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "D9",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H4",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "D6",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "C6",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "D10",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "DA",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "H10"
+          }
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S8",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "CJ"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "S6",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "SA",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "S10",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "C9",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "C10",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S4",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "CQ"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "H7",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S7",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "HJ"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "DQ",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H9",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "CK",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "continue"
+          }
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "pass"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "bid",
+            "goal": {
+              "kiruda": "H",
+              "score": 13
+            }
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "exchange",
+            "goal": {
+              "kiruda": "H",
+              "score": 13
+            },
+            "discard": ["S2", "C2", "C4"]
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "friend",
+            "friend": {
+              "kind": "card",
+              "card": "JK"
+            }
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "DA",
+            "slot": 7
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "D8",
+            "slot": 9
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "D10",
+            "slot": 7
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "DK",
+            "slot": 9
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "D3"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "HK",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H2",
+            "slot": 4
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "H4",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "HA",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "H6"
+          }
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "C3",
+            "jokerCall": true,
+            "slot": 7
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "CK"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "C8",
+            "slot": 5
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "C6",
+            "slot": 7
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "JK",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "S5"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "SK",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "S9",
+            "slot": 5
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "S4",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S3",
+            "slot": 4
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "HJ",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H3",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "CQ",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "HQ",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "H9"
+          }
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S6",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "S10"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "SA",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "SQ",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "DQ",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "D4",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H5",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "D2",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "C5",
+            "slot": 3
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "DJ"
+          }
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "C10",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "CA",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "C7",
+            "slot": 2
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "D6"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "CJ",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "D9",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S7",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "D7"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "D5",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H7",
+            "slot": 1
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "play",
+            "card": "H8",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "play",
+            "card": "C9",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "play",
+            "card": "S8",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "play",
+            "card": "SJ"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "play",
+            "card": "H10",
+            "slot": 0
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "continue"
+          },
+          "bot": true
+        },
+        {
+          "seat": 0,
+          "action": {
+            "type": "continue"
+          }
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "dealMiss"
+          },
+          "bot": true
+        },
+        {
+          "seat": 1,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 2,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 3,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        },
+        {
+          "seat": 4,
+          "action": {
+            "type": "pass"
+          },
+          "bot": true
+        }
+      ],
+      "seat": 0,
+      "seatNames": null,
+      "rounds": 2,
+      "over": false
+    }
+  ]
+}

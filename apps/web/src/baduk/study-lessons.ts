@@ -164,11 +164,15 @@ export const CORNER_POINTS = { star: "D16", komoku: "C16", sansan: "C17" };
 /** 굳힘·벌림 그림(오른쪽 위 귀): 소목 흑 돌, 굳힘 자리, 벌림 자리(소목에서 변을 따라 세 칸 건너) */
 export const SHIMARI_POINTS = { stone: "R16", shimari: "P17", extend: "R12" };
 
+/** 수 배우기 목록의 「단원 읽기」 소개 */
+export const BADUK_STUDY_LESSON_SUMMARY =
+  "패로 버티기, 긴 축과 축머리, 포석을 그림으로 읽고 퀴즈를 풀어요. 읽은 뒤 아래 문제와 따라 두기로 익혀요.";
+
 export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
   {
     id: "lesson-ko-fight",
     title: "패로 버티기",
-    summary: "바로 되따낼 수 없는 패를 팻감으로 버틴다",
+    summary: "바로 되따낼 수 없는 패를 팻감으로 버텨요.",
     steps: [
       {
         kind: "explain",
@@ -237,7 +241,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
   {
     id: "lesson-ladder",
     title: "긴 축과 축머리",
-    summary: "단수를 이어 쳐 판 끝까지 모는 축, 그리고 축을 깨는 돌",
+    summary: "단수를 이어 쳐 판 끝까지 모는 축과, 축을 깨는 돌을 배워요.",
     steps: [
       {
         kind: "explain",
@@ -319,7 +323,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
   {
     id: "lesson-fuseki",
     title: "포석: 귀, 변, 가운데",
-    summary: "빈 판에서 첫 몇 수를 어디에 두는지",
+    summary: "빈 판에서 첫 몇 수를 어디에 두는지 배워요.",
     steps: [
       {
         kind: "explain",
