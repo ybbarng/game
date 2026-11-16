@@ -14,10 +14,10 @@ export function GostopStats({ book }: { book: StatsBook }) {
   const s = summarizeGostop(book.rounds);
   if (s.rounds === 0)
     return (
-      <Card title="아직 기록이 없습니다">
+      <Card title="아직 기록이 없어요">
         <p className="text-sm text-white/70">
-          고스톱을 한 판 끝까지 치면 여기에 쌓입니다. 혼자 하기와 친구와 하기를
-          모두 기록하고, 배우기는 기록하지 않습니다.
+          고스톱을 한 판 끝까지 치면 여기에 쌓여요. 혼자 하기와 친구와 하기를
+          모두 기록하고, 배우기는 기록하지 않아요.
         </p>
       </Card>
     );
