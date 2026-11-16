@@ -115,6 +115,15 @@ export interface ReductionLimits {
   edgeSteps?: number;
 }
 
+/** 푸는 법 고르기. `ReductionLimits`는 시험이 막힘을 일으킬 때만 넣는다 */
+export interface ReductionOptions extends ReductionLimits {
+  /**
+   * 가운데·엣지 짝 네 단계까지만 풀고 패리티·3×3 단계는 두지 않는다. 사람 흉내(cube-ai `solveBigHuman`)는
+   * 축소 뒤 3×3을 사람 해법으로 따로 풀어 그 두 단계를 쓰지 않는다. 앞 네 단계의 수는 끝까지 푼 해와 같다
+   */
+  pairsOnly?: boolean;
+}
+
 const CENTER_STEPS = 500;
 const EDGE_STEPS = 100;
 
@@ -694,7 +703,7 @@ export function solveReduction(facelets: string): ReductionSolution {
 export function solveReductionState(
   n: number,
   state: PuzzleState,
-  limits: ReductionLimits = {},
+  limits: ReductionOptions = {},
 ): ReductionSolution {
   return solveReductionColors(n, faceColors(n, state), limits);
 }
@@ -702,7 +711,7 @@ export function solveReductionState(
 export function solveReductionColors(
   n: number,
   colors: Colors,
-  limits: ReductionLimits = {},
+  limits: ReductionOptions = {},
 ): ReductionSolution {
   if (!REDUCTION_SIZES.includes(n)) {
     throw new RangeError(`축소법은 4×4~7×7만 푼다: ${n}×${n}`);
@@ -765,6 +774,7 @@ export function solveReductionColors(
   run("last-edges", (out) =>
     solveEdgePhase("last-edges", n, cur, 12, out, edgeSteps),
   );
+  if (limits.pairsOnly) return { moves: format(n, all), stages };
 
   if (n % 2 === 0) {
     run("oll-parity", (out) => {

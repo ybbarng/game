@@ -16,6 +16,7 @@ export {
   colorsFromFacelets,
   REDUCTION_SIZES,
   type ReductionLimits,
+  type ReductionOptions,
   type ReductionSolution,
   type ReductionStage,
   type ReductionStageId,
