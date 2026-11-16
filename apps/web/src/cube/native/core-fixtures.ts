@@ -55,6 +55,7 @@ import {
   buildHero,
   buildHeroShow,
   buildHeroShowBig,
+  buildHeroShowYau,
 } from "./core-fixtures-hero";
 import {
   buildHint,
@@ -771,6 +772,7 @@ export const BUILDERS = {
   "fixtures/hero.json": buildHero,
   "fixtures/hero-show.json": buildHeroShow,
   "fixtures/hero-show-big.json": buildHeroShowBig,
+  "fixtures/hero-show-yau.json": buildHeroShowYau,
   "fixtures/keymap-editor.json": buildKeymapEditor,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
