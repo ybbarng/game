@@ -705,6 +705,9 @@ function CubeRaceView({
             <div
               data-cube-peer={room.me}
               data-cube-peer-status={me?.status}
+              data-cube-my-log={(mine?.moveLog(room.me) ?? [])
+                .map((x) => x.m)
+                .join(" ")}
               className="relative flex w-full flex-col items-center gap-1"
             >
               <div className="flex flex-wrap items-baseline justify-center gap-x-5 gap-y-1">

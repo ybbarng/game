@@ -3,11 +3,12 @@ import type { CubeMove } from "@game/cube-engine";
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
-import { RaceSession } from "@/net/race/race-session";
+import { RaceSession, shiftResume } from "@/net/race/race-session";
 import type {
   PlayResult,
   RaceOptions,
   RaceResult,
+  RaceResume,
   SuspicionRules,
 } from "@/net/race/types";
 import { randomId, type Transport } from "@/net/transport";
@@ -75,6 +76,17 @@ import {
   type RaceShape,
   type Scrambler,
 } from "./race-game";
+import {
+  pageWallClock,
+  readJson,
+  readSeat,
+  type SavedMatch,
+  type SavedRace,
+  type SavedSeat,
+  SEAT_TOKEN_MAX,
+  type SeatStore,
+  seatProof,
+} from "./seat";
 import {
   decidedRounds,
   type MatchFormat,
@@ -273,10 +285,35 @@ const PEER_HIT_MS: Partial<Record<ItemKind, number>> = {
 
 export type { PartySummary };
 
+/** 자리 되찾기 증명(docs/47 9-11): 받는 참가자 → sha256(그 사람이 준 토큰 | 새 연결 아이디 | n) */
+export interface SeatClaim {
+  id: string;
+  n: number;
+  proofs: Record<string, string>;
+}
+
 type RoomMessage =
-  | { type: "cube-hello"; name: string; avgs?: Record<string, number> }
+  | {
+      type: "cube-hello";
+      name: string;
+      avgs?: Record<string, number>;
+      /** 새로고침 뒤 예전 자리를 되찾을 때 */
+      seat?: SeatClaim;
+    }
   | { type: "cube-room"; state: RoomState }
-  | { type: "cube-chat"; id: string; name: string; text: string };
+  | { type: "cube-chat"; id: string; name: string; text: string }
+  /** 이 연결에만: 되찾기를 확인할 때 쓰라고 주는 내 토큰 */
+  | { type: "cube-seat"; token: string }
+  /** 되찾기를 확인했다(받은 기기가 대결 메시지를 다시 보낸다) */
+  | { type: "cube-seat-ok"; id: string }
+  /** 방장이 되찾기를 확인하지 못했다(새 손님으로 들어간다) */
+  | { type: "cube-seat-no"; id: string };
+
+/**
+ * 손님이 판 사이(대기실·판 끝)에 나가면 이만큼 자리를 남겨 둔다(ms). 새로고침·탭 다시 열기로 돌아올 시간.
+ * 판 도중에 나간 사람은 예전처럼 그 판이 끝날 때까지 표에 남는다
+ */
+export const REJOIN_GRACE_MS = 30_000;
 
 export interface CubeRoomInit {
   /** 없으면 혼자(컴퓨터와 대결) */
@@ -303,6 +340,13 @@ export interface CubeRoomInit {
     text: string;
     mine: boolean;
   }) => void;
+  /**
+   * 자리 정보를 남기는 곳(docs/47 9-11). 있으면 남에게 줄 토큰·받은 토큰·판 기록·내 대결 몫을 남기고, 손님은 남겨 둔 자리가
+   * 이 방의 것이면 그 자리를 되찾는다
+   */
+  seat?: SeatStore;
+  /** 페이지가 바뀌어도 이어지는 시계(ms). 남겨 둔 대결 시각을 새 세션 시계로 옮긴다. 기본은 `performance.timeOrigin + now` */
+  wall?: () => number;
 }
 
 /**
@@ -424,8 +468,13 @@ export function cleanName(name: string): string {
 }
 
 export class CubeRoom {
-  readonly me: string;
+  /** 내 참가자 아이디. 처음 들어온 연결 아이디이고, 자리를 되찾으면 예전 그 아이디다 */
+  me: string;
+  /** 이 기기의 지금 연결 아이디 */
+  readonly device: string;
   readonly isHost: boolean;
+  /** 남겨 둔 자리를 되찾는 중이면 그 번호(방장이 확인하지 못하면 지운다) */
+  reclaiming: number | null = null;
   state: RoomState | null = null;
   rounds: RoundRecord[] = [];
   /** 방장이 나갔다(손님) */
@@ -467,11 +516,40 @@ export class CubeRoom {
   };
   private readonly listeners = new Set<() => void>();
   private disposed = false;
+  /** 내가 남에게 준 토큰(받은 참가자 → 토큰)과 남이 준 토큰(준 참가자 → 토큰, 처음 받은 것으로 고정) */
+  private readonly given = new Map<string, string>();
+  private readonly got = new Map<string, string>();
+  /** 이 기기가 확인한 되찾기: 참가자 → 새 연결·번호 */
+  private readonly claims = new Map<string, { device: string; n: number }>();
+  /** 토큰을 보낸 연결 */
+  private readonly sentTo = new Set<string>();
+  /** 누구 것인지 아직 모르는 연결이 보낸 토큰(방 상태를 받으면 정한다) */
+  private readonly pendingTokens = new Map<string, string>();
+  /** 이 기기가 아직 확인하지 못한 기기 칸이 든 방 상태(그 되찾기를 확인하면 다시 본다) */
+  private pendingState?: { state: RoomState; from: string };
+  /** 남겨 둔 지금 판의 내 몫(이 세션 시계로 옮긴 것). 그 판을 열 때 쓴다 */
+  private resumeRace?: { race: string; resume: RaceResume };
+  /** 저장한 대결 몫의 요약(같으면 다시 적지 않는다) */
+  private savedRaceKey = "";
+  /** 방장: 판 사이에 나간 손님을 뺄 예약 */
+  private readonly dropTimers = new Map<string, () => void>();
 
   constructor(init: CubeRoomInit) {
     this.init = init;
     this.isHost = init.isHost;
-    this.me = init.transport?.selfId ?? "me";
+    this.device = init.transport?.selfId ?? "me";
+    this.me = this.device;
+    const saved = !init.isHost
+      ? readSeat(init.seat?.get("seat") ?? null)
+      : null;
+    const hostOk = init.hostId === undefined || init.hostId === saved?.host;
+    if (saved && init.transport && saved.me !== this.device && hostOk) {
+      this.me = saved.me;
+      this.reclaiming = saved.n + 1;
+      this.hostId = saved.host;
+      for (const [id, t] of Object.entries(saved.given)) this.given.set(id, t);
+      for (const [id, t] of Object.entries(saved.got)) this.got.set(id, t);
+    }
     this.hub = new RaceHub({
       ...(init.transport ? { transport: init.transport } : {}),
       clock: init.clock,
@@ -482,7 +560,10 @@ export class CubeRoom {
           .filter(([, device]) => device === d)
           .map(([id]) => id),
     });
-    if (!init.isHost && init.hostId) this.hostId = init.hostId;
+    if (!init.isHost && init.hostId && this.reclaiming === null)
+      this.hostId = init.hostId;
+    if (this.reclaiming !== null) this.restoreMatch();
+    this.saveSeat();
     if (init.isHost) {
       this.hostId = this.me;
       this.state = {
@@ -509,19 +590,25 @@ export class CubeRoom {
       t.onPeerJoin((id) => {
         if (this.disposed) return;
         this.connected.add(id);
+        this.dropTimers.get(id)?.();
+        this.dropTimers.delete(id);
         if (this.isHost) this.publish();
         else this.hello();
+        this.giveTokens();
         this.emit();
       });
       t.onPeerLeave((id) => {
         if (this.disposed) return;
         this.connected.delete(id);
+        this.sentTo.delete(id);
         if (!this.isHost && id === this.state?.host) this.hostLeft = true;
-        if (this.isHost && this.state?.status !== "racing") this.dropDevice(id);
+        if (this.isHost && this.state?.status !== "racing") this.dropLater(id);
         this.emit();
       });
       if (!this.isHost) this.hello();
     }
+    // 남겨 둔 판이 있으면 방장 방 상태를 기다리지 않고 바로 연다(돌아오는 동안 온 대결 메시지를 놓치지 않게)
+    if (this.state && !this.isHost) this.applyState();
   }
 
   // ---- 모두 ----
@@ -742,7 +829,7 @@ export class CubeRoom {
   }
 
   isConnected(device: string): boolean {
-    return device === this.me || this.connected.has(device);
+    return device === this.device || this.connected.has(device);
   }
 
   /** 보이는 이름. 같은 이름이 앞에 있으면 「이름 (2)」처럼 차례를 붙인다(남의 이름을 흉내 내도 구분되게) */
@@ -774,6 +861,8 @@ export class CubeRoom {
     this.endRace();
     this.hub.close();
     this.listeners.clear();
+    for (const cancel of this.dropTimers.values()) cancel();
+    this.dropTimers.clear();
   }
 
   // ---- 방장 ----
@@ -869,7 +958,7 @@ export class CubeRoom {
     s.players.push({
       id: `bot${k}`,
       name: `컴퓨터 ${k}`,
-      device: this.me,
+      device: this.device,
       bot: text,
     });
     this.publish();
@@ -898,11 +987,15 @@ export class CubeRoom {
     const s = this.state;
     if (!this.isHost || !s || s.status === "racing" || s.status === "over")
       return false;
-    if (s.players.length < 2) return false;
+    // 자리를 남겨 둔 채 끊긴 손님은 이 판에 넣지 않는다(돌아오면 다음 판부터)
+    const ready = s.players.filter(
+      (p) => p.bot !== undefined || this.isConnected(p.device),
+    );
+    if (ready.length < 2) return false;
     s.round += 1;
     s.race = {
       id: `${s.round}-${this.init.raceTag?.() ?? randomId(8)}`,
-      players: s.players.map((p) => p.id),
+      players: ready.map((p) => p.id),
     };
     s.status = "racing";
     this.publish();
@@ -987,10 +1080,25 @@ export class CubeRoom {
   }
 
   private hello(): void {
+    const n = this.reclaiming;
     this.init.transport?.send({
       type: "cube-hello",
       name: cleanName(this.init.name),
       ...(this.init.avgs ? { avgs: this.init.avgs } : {}),
+      ...(n !== null
+        ? {
+            seat: {
+              id: this.me,
+              n,
+              proofs: Object.fromEntries(
+                [...this.given].map(([id, token]) => [
+                  id,
+                  seatProof(token, this.device, n),
+                ]),
+              ),
+            },
+          }
+        : {}),
     } satisfies RoomMessage);
   }
 
@@ -1002,6 +1110,218 @@ export class CubeRoom {
     if (s.players.length !== before) this.publish();
   }
 
+  /** 판 사이에 나간 손님은 `REJOIN_GRACE_MS` 뒤에도 돌아오지 않았으면 뺀다(그사이 새로고침해 돌아오면 그 자리) */
+  private dropLater(device: string): void {
+    if (!this.state?.players.some((p) => p.device === device)) return;
+    this.dropTimers.get(device)?.();
+    this.dropTimers.set(
+      device,
+      this.init.clock.after(REJOIN_GRACE_MS, () => {
+        this.dropTimers.delete(device);
+        if (this.disposed || this.connected.has(device)) return;
+        if (this.state?.status === "racing") return;
+        this.dropDevice(device);
+        this.emit();
+      }),
+    );
+  }
+
+  // ---- 자리 되찾기(docs/47 9-11) ----
+
+  /** 방 안 사람마다 내 토큰을 그 연결에만 한 번 준다 */
+  private giveTokens(): void {
+    const t = this.init.transport;
+    const s = this.state;
+    if (!t || !s || this.disposed) return;
+    let changed = false;
+    for (const p of s.players) {
+      if (p.bot !== undefined || p.id === this.me) continue;
+      if (p.device === this.device || this.sentTo.has(p.device)) continue;
+      let token = this.given.get(p.id);
+      if (!token) {
+        token = randomId(24);
+        this.given.set(p.id, token);
+        changed = true;
+      }
+      this.sentTo.add(p.device);
+      t.send({ type: "cube-seat", token } satisfies RoomMessage, p.device);
+    }
+    if (changed) this.saveSeat();
+  }
+
+  /** 받은 토큰을 보낸 사람 몫으로 고정한다. 누구인지 모르면(방 상태 전) 맡아 둔다 */
+  private takeToken(token: string, from: string): void {
+    const who = this.state?.players.find(
+      (p) => p.device === from && p.bot === undefined,
+    );
+    if (!who) {
+      if (this.pendingTokens.size < MAX_PLAYERS * 2)
+        this.pendingTokens.set(from, token);
+      return;
+    }
+    this.pendingTokens.delete(from);
+    if (who.id === this.me || this.got.has(who.id)) return;
+    this.got.set(who.id, token);
+    this.saveSeat();
+  }
+
+  /**
+   * 남의 되찾기 증명을 이 기기가 받은 토큰으로 확인한다. 맞으면 그 사람의 대결 메시지를 새 연결에서 받고(지금 판 참가자 표를
+   * 이 기기가 고친다) 다시 들어온 것으로 알린다. 번호가 더 작거나, 같은 번호로 다른 연결이면 받지 않는다
+   */
+  private checkClaim(claim: unknown, from: string): boolean {
+    if (typeof claim !== "object" || claim === null) return false;
+    const c = claim as SeatClaim;
+    if (typeof c.id !== "string" || !Number.isInteger(c.n) || c.n < 1)
+      return false;
+    if (c.id === this.me || c.id === from || BOT_ID.test(c.id)) return false;
+    const token = this.got.get(c.id);
+    const proofs = c.proofs as Record<string, unknown> | undefined;
+    const proof = typeof proofs === "object" ? proofs?.[this.me] : undefined;
+    if (!token || typeof proof !== "string") return false;
+    if (proof !== seatProof(token, from, c.n)) return false;
+    const last = this.claims.get(c.id);
+    if (last && (c.n < last.n || (c.n === last.n && last.device !== from)))
+      return false;
+    const fresh = last?.device !== from;
+    this.claims.set(c.id, { device: from, n: c.n });
+    this.connected.add(from);
+    const owners = this.current?.owners;
+    if (owners?.has(c.id) && owners.get(c.id) !== from) {
+      owners.set(c.id, from);
+      this.hub.joined(c.id);
+    }
+    if (fresh)
+      this.init.transport?.send(
+        { type: "cube-seat-ok", id: c.id } satisfies RoomMessage,
+        from,
+      );
+    const pending = this.pendingState;
+    if (pending) {
+      delete this.pendingState;
+      this.takeState(pending.state, pending.from);
+    }
+    this.giveTokens();
+    return true;
+  }
+
+  /** 방장이 내 되찾기를 확인하지 못했다: 예전 자리를 버리고 새 손님으로 들어간다 */
+  private abandonSeat(): void {
+    if (this.reclaiming === null) return;
+    this.reclaiming = null;
+    this.endRace();
+    delete this.resumeRace;
+    this.me = this.device;
+    this.state = null;
+    this.rounds = [];
+    this.given.clear();
+    this.got.clear();
+    this.sentTo.clear();
+    this.saveSeat();
+    this.saveMatch();
+    this.hello();
+    this.emit();
+  }
+
+  /** 사람 칸의 기기를 이 기기가 믿을 수 있나 */
+  private deviceOk(p: RoomPlayer): boolean {
+    if (p.id === this.me) return p.device === this.device;
+    const claim = this.claims.get(p.id);
+    if (claim) return claim.device === p.device;
+    if (p.device === p.id) return true;
+    // 그 사람 토큰을 받기 전에 들어온 기기(그 사람이 이미 자리를 옮긴 뒤 들어옴): 방장 말을 믿는다(못 막는 것)
+    return !this.got.has(p.id);
+  }
+
+  private saveSeat(): void {
+    const store = this.init.seat;
+    if (!store || this.disposed) return;
+    const seat: SavedSeat = {
+      v: 1,
+      me: this.me,
+      host: this.hostId ?? (this.isHost ? this.device : ""),
+      n: this.reclaiming ?? 0,
+      given: Object.fromEntries(this.given),
+      got: Object.fromEntries(this.got),
+    };
+    store.set("seat", JSON.stringify(seat));
+  }
+
+  private saveMatch(): void {
+    const store = this.init.seat;
+    if (!store || this.isHost || this.disposed) return;
+    const match: SavedMatch = {
+      v: 1,
+      ...(this.state ? { state: this.state } : {}),
+      rounds: this.rounds,
+    };
+    store.set("match", JSON.stringify(match));
+  }
+
+  /** 지금 판의 내 몫을 남긴다(바뀌었을 때만) */
+  private saveRace(
+    race: string,
+    session: RaceSession<CubeAct, PuzzleState>,
+  ): void {
+    const store = this.init.seat;
+    if (!store || this.isHost || this.disposed) return;
+    const resume = session.resumeData();
+    if (!resume) return;
+    const key = JSON.stringify([
+      race,
+      resume.attempt,
+      resume.out.length,
+      resume.commits.length,
+      resume.revealedAt ?? null,
+      resume.seed ?? null,
+      resume.moves.length,
+      resume.done ?? null,
+      resume.retired ?? null,
+    ]);
+    if (key === this.savedRaceKey) return;
+    this.savedRaceKey = key;
+    const saved: SavedRace = {
+      v: 1,
+      race,
+      at: (this.init.wall ?? pageWallClock)() - this.init.clock.now(),
+      resume,
+    };
+    store.set("race", JSON.stringify(saved));
+  }
+
+  /** 되찾는 손님: 남겨 둔 방 상태·판 기록·내 대결 몫을 되살린다 */
+  private restoreMatch(): void {
+    const store = this.init.seat;
+    const match = readJson<SavedMatch>(store?.get("match") ?? null);
+    if (!match) return;
+    if (Array.isArray(match.rounds))
+      this.rounds = match.rounds as RoundRecord[];
+    const state = match.state as RoomState | undefined;
+    const fixed =
+      state && typeof state === "object" && Array.isArray(state.players)
+        ? {
+            ...state,
+            players: state.players.map((p) =>
+              p.id === this.me ? { ...p, device: this.device } : p,
+            ),
+          }
+        : undefined;
+    if (
+      fixed &&
+      fixed.host === this.hostId &&
+      isRoomState(fixed, (p) => this.deviceOk(p))
+    )
+      this.state = fixed;
+    const race = readJson<SavedRace>(store?.get("race") ?? null);
+    if (race && typeof race.race === "string" && race.resume) {
+      const now = (this.init.wall ?? pageWallClock)() - this.init.clock.now();
+      this.resumeRace = {
+        race: race.race,
+        resume: shiftResume(race.resume, race.at - now),
+      };
+    }
+  }
+
   private publish(): void {
     const s = this.state;
     if (!s) return;
@@ -1011,12 +1331,55 @@ export class CubeRoom {
       state: s,
     } satisfies RoomMessage);
     this.applyState();
+    this.giveTokens();
     this.emit();
   }
 
   private onMessage(raw: unknown, from: string): void {
     if (typeof raw !== "object" || raw === null) return;
     const msg = raw as RoomMessage;
+    if (msg.type === "cube-seat") {
+      if (typeof msg.token === "string" && msg.token.length <= SEAT_TOKEN_MAX)
+        this.takeToken(msg.token, from);
+      return;
+    }
+    if (msg.type === "cube-seat-ok") {
+      // 그 기기가 내 되찾기를 확인했다: 그 기기에 이 판에 보냈던 대결 메시지를 다시 보낸다
+      if (this.reclaiming !== null && msg.id === this.me) this.hub.rejoin(from);
+      return;
+    }
+    if (msg.type === "cube-seat-no") {
+      if (from === this.hostId && msg.id === this.me) this.abandonSeat();
+      return;
+    }
+    if (msg.type === "cube-hello" && msg.seat !== undefined) {
+      // 되찾기는 모든 기기가 저마다 받은 토큰으로 확인한다(방장 말만 믿지 않는다)
+      const ok = this.checkClaim(msg.seat, from);
+      const s = this.state;
+      if (!this.isHost || !s || typeof msg.name !== "string") return;
+      const id = typeof msg.seat?.id === "string" ? msg.seat.id : "";
+      if (!ok) {
+        // 이미 이 연결로 확인한 되찾기(다시 보낸 인사)는 그대로 둔다
+        if (this.claims.get(id)?.device === from) return;
+        this.init.transport?.send(
+          { type: "cube-seat-no", id: id.slice(0, 32) } satisfies RoomMessage,
+          from,
+        );
+        return;
+      }
+      const name = cleanName(msg.name) || "손님";
+      const avgs = cleanAverages(msg.avgs);
+      const known = s.players.find((p) => p.id === id);
+      if (known) {
+        known.device = from;
+        known.name = name;
+        if (avgs) known.avgs = avgs;
+        else delete known.avgs;
+      } else if (s.players.length < MAX_PLAYERS)
+        s.players.push({ id, name, device: from, ...(avgs ? { avgs } : {}) });
+      this.publish();
+      return;
+    }
     if (msg.type === "cube-hello" && this.isHost) {
       const s = this.state;
       if (!s || typeof msg.name !== "string") return;
@@ -1025,7 +1388,8 @@ export class CubeRoom {
       this.connected.add(from);
       const name = cleanName(msg.name) || "손님";
       const avgs = cleanAverages(msg.avgs);
-      const known = s.players.find((p) => p.id === from);
+      // 자리를 되찾은 사람의 새 연결은 그 참가자 칸으로 본다(새 사람으로 더하지 않는다)
+      const known = s.players.find((p) => p.id === from || p.device === from);
       if (known) {
         known.name = name;
         if (avgs) known.avgs = avgs;
@@ -1041,18 +1405,7 @@ export class CubeRoom {
       return;
     }
     if (msg.type === "cube-room" && !this.isHost) {
-      const next = msg.state;
-      // 방 상태(참가자 표·판 번호·진행)는 고정한 방장에게서 온 것만. 그물이라 손님끼리도 직접 보낼 수 있다
-      if (this.hostId !== undefined && from !== this.hostId) return;
-      if (!isRoomState(next) || next.host !== from) return;
-      if (this.state && next.v <= this.state.v) return;
-      this.hostId = from;
-      if (next.round === 0) this.rounds = [];
-      this.state = next;
-      this.connected.add(from);
-      this.hostLeft = false;
-      this.applyState();
-      this.emit();
+      this.takeState(msg.state, from);
       return;
     }
     if (msg.type === "cube-chat") {
@@ -1069,6 +1422,34 @@ export class CubeRoom {
         mine: false,
       });
     }
+  }
+
+  /** 방장이 알린 방 상태. 이 기기가 확인하지 못한 기기 칸이 있으면 맡아 두고, 그 되찾기를 확인하면 다시 본다 */
+  private takeState(next: RoomState, from: string): void {
+    // 방 상태(참가자 표·판 번호·진행)는 고정한 방장에게서 온 것만. 그물이라 손님끼리도 직접 보낼 수 있다
+    if (this.hostId !== undefined && from !== this.hostId) return;
+    if (!isRoomState(next, () => true) || next.host !== from) return;
+    if (this.state && next.v <= this.state.v) return;
+    if (!next.players.every((p) => p.bot !== undefined || this.deviceOk(p))) {
+      if (!this.pendingState || this.pendingState.state.v < next.v)
+        this.pendingState = { state: next, from };
+      return;
+    }
+    if (this.pendingState && this.pendingState.state.v <= next.v)
+      delete this.pendingState;
+    const firstHost = this.hostId === undefined;
+    this.hostId = from;
+    if (firstHost) this.saveSeat();
+    if (next.round === 0) this.rounds = [];
+    this.state = next;
+    this.connected.add(from);
+    this.hostLeft = false;
+    for (const [device, token] of [...this.pendingTokens])
+      this.takeToken(token, device);
+    this.applyState();
+    this.giveTokens();
+    this.saveMatch();
+    this.emit();
   }
 
   /** 방 상태에 맞춰 판을 열거나 닫는다 */
@@ -1089,7 +1470,7 @@ export class CubeRoom {
       if (race.players.includes(p.id)) owners.set(p.id, p.device);
     if (race.players.some((id) => !owners.has(id))) return;
     const local = s.players.filter(
-      (p) => race.players.includes(p.id) && p.device === this.me,
+      (p) => race.players.includes(p.id) && p.device === this.device,
     );
     const bots = new Set(
       s.players.filter((p) => p.bot !== undefined).map((p) => p.id),
@@ -1135,7 +1516,11 @@ export class CubeRoom {
     const off: (() => void)[] = [];
     const round = s.round;
     const planned = new Map<string, number>();
+    const resume =
+      this.resumeRace?.race === race.id ? this.resumeRace.resume : undefined;
+    delete this.resumeRace;
     for (const p of local) {
+      const mine = p.id === this.me && p.bot === undefined;
       const session = new RaceSession({
         game,
         transport: this.hub.local(p.id),
@@ -1145,7 +1530,11 @@ export class CubeRoom {
         options,
         witness,
         ...(this.init.random ? { random: this.init.random } : {}),
+        ...(mine && resume ? { resume } : {}),
       });
+      // 새로고침해도 이 판을 이어 가도록 내 몫을 남긴다
+      if (mine)
+        off.push(session.onChange(() => this.saveRace(race.id, session)));
       sessions.set(p.id, session);
       if (p.bot && practice) {
         const handle = attachPracticeBot({
@@ -1280,6 +1669,7 @@ export class CubeRoom {
       record.baseline = scored.baseline;
     }
     this.rounds.push({ ...record, result: final, ...(score ? { score } : {}) });
+    this.saveMatch();
     const s = this.state;
     if (this.isHost && s && s.race?.id === race) {
       s.status = matchOver(matchRules(s.settings), this.rounds)
@@ -1605,10 +1995,14 @@ export function summarizeItems(
 
 /**
  * 받은 방 상태의 모양과 참가자 표를 확인한다. 방장도 남의 기기를 바꿀 수 없게:
- * - 사람은 자기 기기에서만 자기 수를 낸다(`device === id`).
+ * - 사람은 자기 기기에서만 자기 수를 낸다(`device === id`). 새로고침으로 기기가 바뀐 사람은 이 기기가 그 되찾기를 직접
+ *   확인한 새 연결만(`deviceOk`, docs/47 9-11).
  * - 컴퓨터는 아이디가 `bot숫자`이고 방장 기기가 맡는다.
  */
-function isRoomState(v: unknown): v is RoomState {
+function isRoomState(
+  v: unknown,
+  deviceOk: (p: RoomPlayer) => boolean,
+): v is RoomState {
   if (typeof v !== "object" || v === null) return false;
   const s = v as RoomState;
   if (
@@ -1644,7 +2038,7 @@ function isRoomState(v: unknown): v is RoomState {
         p.device === s.host &&
         typeof p.bot === "string" &&
         p.bot.length <= 32
-      : !BOT_ID.test(p.id) && p.device === p.id,
+      : !BOT_ID.test(p.id) && !BOT_ID.test(p.device) && deviceOk(p),
   );
   if (!rosterOk) return false;
   const race = s.race;

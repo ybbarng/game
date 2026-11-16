@@ -45,6 +45,7 @@ import type {
   RaceGame,
   RaceOptions,
   RaceResult,
+  RaceResume,
   RaceSnapshot,
 } from "./types";
 
@@ -123,6 +124,11 @@ export interface RaceSessionInit<Move, State> {
    * 모든 기기가 같은 답을 내야 한다(판을 열 때 고정한 표로)
    */
   witness?: (observer: string, of: string) => boolean;
+  /**
+   * 새로고침 전에 남겨 둔 내 몫(`resumeData`). 있으면 `start`가 새 약속을 만들지 않고 그 시도를 이어 간다(docs/47 9-11).
+   * 풀림 시각을 그대로 두므로 살펴보기·제한 시간은 새로고침하는 동안에도 흐른다
+   */
+  resume?: RaceResume;
 }
 
 interface Record_<State> {
@@ -231,6 +237,10 @@ export class RaceSession<Move, State> {
   private result?: RaceResult;
   private disposed = false;
   private readonly listeners = new Set<(s: RaceSnapshot) => void>();
+  /** 시작할 때 이어 갈 내 몫(`RaceSessionInit.resume`) */
+  private readonly resumeFrom?: RaceResume;
+  /** 지금 시도가 이어 가는 내 몫. 씨앗을 정하면 내 수를 되살리고 지운다 */
+  private resumed?: RaceResume;
 
   constructor(init: RaceSessionInit<Move, State>) {
     this.game = init.game;
@@ -281,6 +291,7 @@ export class RaceSession<Move, State> {
     ]);
     this.connected = new Set(this.roster.filter((id) => id !== this.self));
     this.a = this.emptyAttempt([]);
+    if (init.resume) this.resumeFrom = init.resume;
 
     this.transport.onMessage((raw, from) => {
       if (this.disposed) return;
@@ -310,8 +321,42 @@ export class RaceSession<Move, State> {
 
   /** 판을 시작한다(약속을 보낸다) */
   start(): void {
-    if (this.attemptNo < 0) this.startAttempt(0);
+    if (this.attemptNo < 0) {
+      const r = this.resumeFrom;
+      if (r && Number.isInteger(r.attempt) && r.attempt >= 0)
+        this.resumeAttempt(r);
+      else this.startAttempt(0);
+    }
     this.emit();
+  }
+
+  /**
+   * 새로고침 뒤 같은 판을 이어 가려고 남겨 둘 내 몫. 보기만 하거나 판을 시작하지 않았으면 없다.
+   * 남이 보낸 것은 넣지 않는다(돌아오면 다른 기기가 다시 보낸다)
+   */
+  resumeData(): RaceResume | undefined {
+    const a = this.a;
+    if (this.attemptNo < 0 || a.spectator) return undefined;
+    if (a.nonce === undefined || a.salt === undefined) return undefined;
+    const rec = a.records.get(this.self);
+    return {
+      attempt: this.attemptNo,
+      out: [...this.out],
+      nonce: a.nonce,
+      salt: a.salt,
+      commits: [...a.commits],
+      ...(a.revealedAt !== undefined ? { revealedAt: a.revealedAt } : {}),
+      ...(a.seed !== undefined && a.releaseAt !== undefined
+        ? { seed: a.seed, releaseAt: a.releaseAt }
+        : {}),
+      moves: rec ? rec.log.map((x) => ({ m: x.m, t: x.t })) : [],
+      ...(rec?.status === "done" && rec.done
+        ? { done: { n: rec.done.n, t: rec.done.t } }
+        : {}),
+      ...(rec?.status === "dnf" && rec.reason !== undefined
+        ? { retired: rec.reason }
+        : {}),
+    };
   }
 
   /**
@@ -508,6 +553,7 @@ export class RaceSession<Move, State> {
   private startAttempt(k: number): void {
     this.clearTimers();
     this.attemptNo = k;
+    delete this.resumed;
     const members = this.roster.filter((id) => !this.out.has(id));
     this.a = this.emptyAttempt(members);
     if (members.length < 2) {
@@ -515,37 +561,98 @@ export class RaceSession<Move, State> {
       return;
     }
     if (!this.a.spectator) {
-      const nonce = this.random();
-      const salt = this.random();
-      const commit = raceCommitment(this.race, k, this.self, nonce, salt);
-      this.a.nonce = nonce;
-      this.a.salt = salt;
-      this.a.commits.set(this.self, commit);
-      this.broadcast({
-        type: "race-commit",
-        race: this.race,
-        attempt: k,
-        commit,
-        out: this.outList(),
-      });
-      this.after(this.commitTimeoutMs, () => {
-        if (this.a.revealedAt !== undefined) return;
-        const missing = this.a.members.filter((id) => !this.a.commits.has(id));
-        this.forfeit(
-          missing.map((id) => ({
-            id,
-            reason: this.a.pendingOut.get(id) ?? COMMIT_MISSING,
-          })),
-        );
-      });
+      this.sendCommit(this.random(), this.random());
+      this.armCommitTimeout();
     }
+    this.takeFuture(k);
+    this.maybeReveal();
+  }
+
+  /**
+   * 새로고침 전 시도를 이어 간다(`RaceSessionInit.resume`). 같은 약속·같은 공개값을 다시 보내고(받은 기기는 겹친 것을 버린다),
+   * 풀림 시각과 내 수는 씨앗을 다시 정할 때 되살린다(`maybeFixSeed`·`fixSeed`). 남은 다른 기기가 다시 보내 준다.
+   * 돌아오기 전 일을 이 기기는 보지 못했으므로 남에 대해 재는 하한은 모두 「확인 약함」으로 둔다: 늦게 닿은 메시지로
+   * 남의 시간을 부풀려 1:1 판을 「판정 없음」으로 만들지 못하게 한다
+   */
+  private resumeAttempt(r: RaceResume): void {
+    for (const [id, reason] of r.out)
+      if (this.roster.includes(id) && !this.out.has(id))
+        this.out.set(id, reason);
+    const members = this.roster.filter((id) => !this.out.has(id));
+    if (members.length < 2 || !members.includes(this.self)) {
+      this.startAttempt(r.attempt);
+      return;
+    }
+    this.clearTimers();
+    this.attemptNo = r.attempt;
+    this.a = this.emptyAttempt(members);
+    this.resumed = r;
+    const now = this.clock.now();
+    for (const id of this.roster)
+      if (id !== this.self) this.leaves.set(id, [now]);
+    for (const [id, commit] of Array.isArray(r.commits) ? r.commits : [])
+      if (
+        members.includes(id) &&
+        id !== this.self &&
+        typeof commit === "string"
+      )
+        this.a.commits.set(id, commit);
+    this.sendCommit(r.nonce, r.salt);
+    if (r.revealedAt === undefined) this.armCommitTimeout();
+    else {
+      const a = this.a;
+      a.revealedAt = r.revealedAt;
+      a.nonces.set(this.self, r.nonce);
+      this.broadcast({
+        type: "race-reveal",
+        race: this.race,
+        attempt: this.attemptNo,
+        nonce: r.nonce,
+        salt: r.salt,
+      });
+      this.armRevealTimeout();
+    }
+    this.takeFuture(r.attempt);
+    this.maybeReveal();
+    this.maybeFixSeed();
+  }
+
+  private sendCommit(nonce: string, salt: string): void {
+    const k = this.attemptNo;
+    const commit = raceCommitment(this.race, k, this.self, nonce, salt);
+    this.a.nonce = nonce;
+    this.a.salt = salt;
+    this.a.commits.set(this.self, commit);
+    this.broadcast({
+      type: "race-commit",
+      race: this.race,
+      attempt: k,
+      commit,
+      out: this.outList(),
+    });
+  }
+
+  private armCommitTimeout(): void {
+    this.after(this.commitTimeoutMs, () => {
+      if (this.a.revealedAt !== undefined) return;
+      const missing = this.a.members.filter((id) => !this.a.commits.has(id));
+      this.forfeit(
+        missing.map((id) => ({
+          id,
+          reason: this.a.pendingOut.get(id) ?? COMMIT_MISSING,
+        })),
+      );
+    });
+  }
+
+  /** 앞서 받아 둔 이 시도의 메시지를 처리한다 */
+  private takeFuture(k: number): void {
     const pending = this.future.filter((f) => f.msg.attempt === k);
     this.future = this.future.filter((f) => f.msg.attempt > k);
     for (const f of pending) {
       if (this.attemptNo !== k) return;
       this.handle(f.msg, f.from);
     }
-    this.maybeReveal();
   }
 
   /**
@@ -835,6 +942,11 @@ export class RaceSession<Move, State> {
       nonce: a.nonce as string,
       salt: a.salt as string,
     });
+    this.armRevealTimeout();
+    this.maybeFixSeed();
+  }
+
+  private armRevealTimeout(): void {
     const k = this.attemptNo;
     this.after(this.revealTimeoutMs, () => {
       if (this.attemptNo !== k || this.a.seed !== undefined) return;
@@ -849,7 +961,6 @@ export class RaceSession<Move, State> {
         })),
       );
     });
-    this.maybeFixSeed();
   }
 
   private onReveal(
@@ -936,8 +1047,13 @@ export class RaceSession<Move, State> {
     const nonces: Record<string, string> = {};
     for (const id of a.members) nonces[id] = a.nonces.get(id) as string;
     const seed = raceSeed(this.race, this.attemptNo, nonces);
-    // 살펴보기는 씨앗을 안 지금부터 잰다. 시작 상태를 늦게 만든 기기도 풀림 시각은 같다
-    const releaseAt = this.clock.now() + this.inspectionMs;
+    // 살펴보기는 씨앗을 안 지금부터 잰다. 시작 상태를 늦게 만든 기기도 풀림 시각은 같다.
+    // 새로고침 전에 이미 안 씨앗이면 그때의 풀림 시각 그대로(새로고침으로 살펴보기·제한 시간을 늘리지 못한다)
+    const r = this.resumed;
+    const releaseAt =
+      r?.seed === seed && r.releaseAt !== undefined
+        ? r.releaseAt
+        : this.clock.now() + this.inspectionMs;
     let pending: Promise<void> | void;
     try {
       pending = this.game.prepare?.(seed, this.options.gameOptions);
@@ -1103,17 +1219,22 @@ export class RaceSession<Move, State> {
         v: RACE_PROTOCOL,
       });
     }
-    const toRelease = Math.max(0, releaseAt - this.clock.now());
-    this.after(toRelease, () => {
+    // 이어 간 판은 풀림 시각이 이미 지났을 수 있다: 제한 시간도 풀림 시각에서 잰다
+    const toRelease = releaseAt - this.clock.now();
+    this.after(Math.max(0, toRelease), () => {
       this.a.released = true;
     });
-    this.after(toRelease + this.timeLimitMs, () => {
+    this.after(Math.max(0, toRelease + this.timeLimitMs), () => {
       // 내 제한 시간: 더는 둘 수 없다(맞추지 못한 것은 판 끝에 정한다)
       this.maybeFinalize();
     });
-    this.after(toRelease + this.timeLimitMs + this.resultGraceMs, () =>
-      this.finalize(),
+    this.after(
+      Math.max(0, toRelease + this.timeLimitMs + this.resultGraceMs),
+      () => this.finalize(),
     );
+    const r = this.resumed;
+    delete this.resumed;
+    if (r && r.seed === seed) this.restoreMine(r);
     // 섞기 전에 판을 떠난 사람(더 높은 시도로 감, 스스로 그만둠)은 섞기를 다시 정하지 않고 뺀다
     for (const [id, reason] of a.pendingOut) this.exclude(id, reason);
     const k = this.attemptNo;
@@ -1124,6 +1245,62 @@ export class RaceSession<Move, State> {
       this.handle(f.msg, f.from);
     }
     this.checkSeedCommits();
+  }
+
+  /**
+   * 새로고침 전에 둔 내 수를 다시 적용하고 다시 보낸다(받은 기기는 이미 받은 번호를 버린다: 앞서 보낸 수를 바꿔 쓸 수 없다).
+   * 맞춤·그만둠도 그대로 되살린다. 적용할 수 없는 수가 나오면 그 앞까지만 둔다
+   */
+  private restoreMine(r: RaceResume): void {
+    const a = this.a;
+    const rec = a.records.get(this.self);
+    if (!rec || a.spectator) return;
+    for (const mv of r.moves) {
+      if (typeof mv?.m !== "string" || typeof mv.t !== "number") break;
+      if (mv.t < (rec.moveTimes.at(-1) ?? 0) || mv.t < 0) break;
+      let next: State;
+      try {
+        next = this.game.apply(rec.state as State, this.game.decodeMove(mv.m));
+      } catch {
+        break;
+      }
+      rec.state = next;
+      rec.applied++;
+      rec.moveTimes.push(mv.t);
+      rec.log.push({ m: mv.m, t: mv.t });
+      this.noteMark(rec, mv.t);
+    }
+    if (rec.applied > 0)
+      this.broadcast({
+        type: "race-moves",
+        race: this.race,
+        attempt: this.attemptNo,
+        moves: rec.log.map((x, i) => ({ i, m: x.m, t: x.t })),
+      });
+    if (r.retired !== undefined) {
+      rec.status = "dnf";
+      rec.reason = r.retired;
+      this.broadcast({
+        type: "race-retire",
+        race: this.race,
+        attempt: this.attemptNo,
+        reason: r.retired,
+      });
+    } else if (
+      r.done &&
+      r.done.n === rec.applied &&
+      this.game.isSolved(rec.state as State, this.self)
+    ) {
+      rec.status = "done";
+      rec.done = { n: r.done.n, t: r.done.t, arrivedAt: this.clock.now() };
+      this.broadcast({
+        type: "race-done",
+        race: this.race,
+        attempt: this.attemptNo,
+        n: r.done.n,
+        t: r.done.t,
+      });
+    }
   }
 
   /** 내가 알릴(알린) 씨앗 재료 */
@@ -1482,4 +1659,13 @@ export class RaceSession<Move, State> {
     const snap = this.snapshot();
     for (const fn of this.listeners) fn(snap);
   }
+}
+
+/** 남겨 둔 내 몫의 시각을 다른 시계로 옮긴다(`to = from + by`). 새로고침하면 세션 시계(`performance.now`)가 처음부터 다시 잰다 */
+export function shiftResume(r: RaceResume, by: number): RaceResume {
+  return {
+    ...r,
+    ...(r.revealedAt !== undefined ? { revealedAt: r.revealedAt + by } : {}),
+    ...(r.releaseAt !== undefined ? { releaseAt: r.releaseAt + by } : {}),
+  };
 }

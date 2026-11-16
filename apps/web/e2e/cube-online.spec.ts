@@ -1,4 +1,4 @@
-import { no3d } from "./cube";
+import { inputReady, keysFor, no3d, useNotationKeys } from "./cube";
 import {
   expect,
   fastForwardUntil,
@@ -262,5 +262,89 @@ test(
     );
     await expect(guest.locator("[data-cube-enter]")).toHaveCount(0);
     await shot(guest, "online-guest-reload", info.project.name);
+  },
+);
+
+/** 섞기의 거꾸로(표기 글) */
+function inverseAlg(alg: string): string {
+  return alg
+    .trim()
+    .split(/\s+/)
+    .reverse()
+    .map((t) =>
+      t.endsWith("2") ? t : t.endsWith("'") ? t.slice(0, -1) : `${t}'`,
+    )
+    .join(" ");
+}
+
+/**
+ * 새로고침 뒤 대결 자리 되찾기(docs/47 9-11). 두 탭(`?net=local`), `CUBE_MULTI=1`일 때만.
+ * 손님이 판 도중 두 수를 두고 새로 고치면 같은 참가자 자리(같은 아이디)로 돌아와 같은 수 기록·같은 큐브에서 이어 두고,
+ * 남은 수로 맞추면 방장 탭도 그 손님을 「맞춤」으로 본다(새 연결의 수를 그 자리 수로 받았다)
+ */
+test(
+  "온라인 대결: 손님이 판 도중 새로 고쳐도 같은 자리·같은 큐브에서 이어 맞춘다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
+    await no3d(context);
+    const host = await context.newPage();
+    await useNotationKeys(host);
+    await host.goto("/cube/online?net=local");
+    await host.locator("[data-cube-enter]").click();
+    const link = await host.locator("input[readonly]").inputValue();
+    const guest = await context.newPage();
+    await useNotationKeys(guest);
+    await guest.goto(link);
+    await guest.locator("[data-cube-enter]").click();
+    await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
+    await host.getByLabel("종목").selectOption("2");
+    await host.getByLabel("살펴보기").selectOption("0");
+    await host.locator("[data-cube-start]").click();
+    for (const p of [host, guest])
+      await expect(p.locator("[data-cube-race-phase]")).toHaveAttribute(
+        "data-cube-race-phase",
+        "race",
+        { timeout: SCRAMBLE_TIMEOUT },
+      );
+    await inputReady(guest);
+    const scramble = (await guest
+      .locator("[data-cube-scramble]")
+      .getAttribute("data-cube-scramble")) as string;
+    const mySeat = guest.locator("[data-cube-my-log]");
+    const me = (await mySeat.getAttribute("data-cube-peer")) as string;
+    await guest.keyboard.press("KeyR");
+    await guest.keyboard.press("KeyU");
+    await expect(mySeat).toHaveAttribute("data-cube-my-log", "R U");
+    await shot(guest, "online-rejoin-before", info.project.name);
+
+    await guest.reload();
+    await expect(guest.locator("[data-cube-race-phase]")).toHaveAttribute(
+      "data-cube-race-phase",
+      "race",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    await inputReady(guest);
+    // 같은 자리(참가자 아이디), 같은 섞기, 같은 수 기록 = 같은 큐브 상태. 상대 자리도 그대로 하나
+    await expect(mySeat).toHaveAttribute("data-cube-peer", me);
+    await expect(mySeat).toHaveAttribute("data-cube-my-log", "R U");
+    await expect(guest.locator("[data-cube-scramble]")).toHaveAttribute(
+      "data-cube-scramble",
+      scramble,
+    );
+    await expect(guest.locator("[data-cube-peer]")).toHaveCount(2);
+    await expect(guest.locator("[data-cube-moves]")).toHaveText("2");
+    await shot(guest, "online-rejoin-after", info.project.name);
+
+    // 남은 수로 맞춘다: 두었던 R U를 되돌리고 섞기의 거꾸로
+    for (const key of keysFor(`U' R' ${inverseAlg(scramble)}`))
+      await guest.keyboard.press(key);
+    await expect(mySeat).toHaveAttribute("data-cube-peer-status", "done");
+    await expect(host.locator(`[data-cube-peer="${me}"]`)).toHaveAttribute(
+      "data-cube-peer-status",
+      "done",
+      { timeout: 10_000 },
+    );
+    await shot(host, "online-rejoin-host", info.project.name);
   },
 );
