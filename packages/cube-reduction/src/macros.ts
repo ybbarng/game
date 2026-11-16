@@ -6,7 +6,15 @@
  */
 import type { CubeMove } from "@game/cube-engine";
 import { faceOfSticker, reductionGeometry } from "./geometry";
-import { invert, moves, outerMoves, simplify, sourceMap } from "./sim";
+import {
+  composeSources,
+  invert,
+  invertSource,
+  moves,
+  outerMoves,
+  simplify,
+  sourceMap,
+} from "./sim";
 
 export interface Macro {
   readonly moves: readonly CubeMove[];
@@ -23,9 +31,14 @@ export interface Macro {
   readonly centerFaces: readonly number[];
 }
 
-export function compileMacro(n: number, list: readonly CubeMove[]): Macro {
+/** 수열 `list`를 공식으로. `src`는 그 수열의 `sourceMap`(이미 있으면 넘겨 다시 세지 않는다) */
+export function compileMacro(
+  n: number,
+  list: readonly CubeMove[],
+  src: Int32Array = sourceMap(n, list),
+): Macro {
   const g = reductionGeometry(n);
-  const src = sourceMap(n, list);
+  const fixed = fixedSet(n);
   const centers: number[] = [];
   const slots = new Set<number>();
   let movesCorners = false;
@@ -44,7 +57,7 @@ export function compileMacro(n: number, list: readonly CubeMove[]): Macro {
         centerFaces.add(to);
       }
     } else if ((g.slotOf[p] as number) >= 0) slots.add(g.slotOf[p] as number);
-    else if (g.fixedCenters.includes(p)) movesFixed = true;
+    else if (fixed[p]) movesFixed = true;
     else movesCorners = true;
   }
   if (movesFixed)
@@ -58,6 +71,19 @@ export function compileMacro(n: number, list: readonly CubeMove[]): Macro {
     centersKeepFace,
     centerFaces: [...centerFaces].sort((a, b) => a - b),
   };
+}
+
+const fixedCache = new Map<number, Uint8Array>();
+
+/** 스티커 자리 → 홀수 크기의 면 정가운데인가 */
+function fixedSet(n: number): Uint8Array {
+  let hit = fixedCache.get(n);
+  if (!hit) {
+    hit = new Uint8Array(6 * n * n);
+    for (const p of reductionGeometry(n).fixedCenters) hit[p] = 1;
+    fixedCache.set(n, hit);
+  }
+  return hit;
 }
 
 /**
@@ -116,6 +142,17 @@ export function centerMacros(n: number): CenterMacros {
   for (const a of [...slices.map((s) => [s]), ...conj]) {
     for (const b of [...outer, ...slices]) pairs.push([a, [b]]);
   }
+  // 조각(a·b)마다 자리 표와 그 거꾸로를 한 번만 센다(같은 조각이 여러 교환자에 쓰인다)
+  const srcOf = new Map<CubeMove[], [Int32Array, Int32Array]>();
+  const pieceSrc = (list: CubeMove[]) => {
+    let hit = srcOf.get(list);
+    if (!hit) {
+      const src = sourceMap(n, list);
+      hit = [src, invertSource(src)];
+      srcOf.set(list, hit);
+    }
+    return hit;
+  };
   // [m, X s X']: 5×5의 가운데 줄 조각(+ 모양)은 정가운데 층(m)을 써야 셋만 돌릴 수 있다
   for (const m of innerSlices(n, true)) {
     if (m.turns === 2) continue;
@@ -128,8 +165,9 @@ export function centerMacros(n: number): CenterMacros {
     }
   }
   for (const [a, b] of pairs) {
-    const list = simplify([...a, ...b, ...invert(a), ...invert(b)]);
-    const src = sourceMap(n, list);
+    const [sa, sai] = pieceSrc(a);
+    const [sb, sbi] = pieceSrc(b);
+    const src = composeSources([sa, sb, sai, sbi]);
     // 면을 건너가는 조각 수(같은 면 안에서 도는 것은 세지 않는다)
     let count = 0;
     let key = "";
@@ -143,7 +181,8 @@ export function centerMacros(n: number): CenterMacros {
     for (const p of g.fixedCenters) if (src[p] !== p) fixed = true;
     if (fixed || count === 0 || count > 3 || seen.has(key)) continue;
     seen.add(key);
-    out.push(compileMacro(n, list));
+    const list = simplify([...a, ...b, ...invert(a), ...invert(b)]);
+    out.push(compileMacro(n, list, src));
   }
   const result = { inserts, cycles: out };
   centerCache.set(n, result);
@@ -212,8 +251,8 @@ export function edgeMacros(n: number): EdgeMacros {
   const pairs: Macro[] = [];
   const cycleMacros: Macro[] = [];
   const seen = new Set<string>();
-  const keep = (list: CubeMove[], out: Macro[]) => {
-    const m = compileMacro(n, list);
+  const keep = (list: CubeMove[], out: Macro[], made?: Macro) => {
+    const m = made ?? compileMacro(n, list);
     if (!m.centersKeepFace || m.slots.length === 0) return;
     let key = "";
     for (const s of m.slots) {
@@ -238,7 +277,7 @@ export function edgeMacros(n: number): EdgeMacros {
         const m = compileMacro(n, list);
         if (!m.centersKeepFace || m.movesCorners || m.slots.length > 3)
           continue;
-        keep(list, cycleMacros);
+        keep(list, cycleMacros, m);
         cycles.push(list);
       }
     }
@@ -249,7 +288,7 @@ export function edgeMacros(n: number): EdgeMacros {
       const list = [s, ...c, ...invert([s])];
       const m = compileMacro(n, list);
       if (!m.centersKeepFace || m.slots.length > 2) continue;
-      keep(list, cycleMacros);
+      keep(list, cycleMacros, m);
     }
   }
   const result = { pairs, cycles: cycleMacros };
