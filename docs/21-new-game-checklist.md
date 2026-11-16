@@ -59,7 +59,7 @@
 - [ ] `kit.ts`: `GameKit`의 필수 항목을 모두 채운다. 빠지면 컴파일 오류가 난다.
   - `createMatch`, `step`, `viewOf`, `replay`, `pendingSeats`
   - `encode/decodeRules`, `startEvents`, `isOver`, `retireAction`
-  - `stats`: 판·게임 요약
+  - `stats`: 판·게임 요약, 승패 단위와 기록 하나의 승패(`result`, 같이 한 사람별·연승 업적이 쓴다), 그 게임만의 업적 둘 이상(`achievements`, 설명은 마침표로)
   - `review`: 다음 수 해설
   - `botFor`, `guestMayAct`
 - [ ] `settings.ts`: 규칙·단계·고른 것을 저장(persist)한다. `StoreHydration`에서 rehydrate한다
@@ -123,7 +123,7 @@
 ## 7. 기록과 복기
 
 - [ ] 혼자 하기와 방장은 `StatsRecorder`·`ArchiveRecorder`로 남긴다
-- [ ] `stats/ProfilePage.tsx`에 탭과 통계 화면을 더한다
+- [ ] `stats/ProfilePage.tsx`에 탭과 통계 화면을 더한다(`KIT_STATS`에도 그 게임 `stats`를 넣는다), 온라인 화면의 기록 대상에 `people: sessionPeople(세션)`
 - [ ] `review/ReviewPage.tsx`
   - `GAME_NAME`에 더한다
   - 다시 보기 화면: 처음·한 수 뒤로·앞으로·끝, 자동 재생, ←→ 키
