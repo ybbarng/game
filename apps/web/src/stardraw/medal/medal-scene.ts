@@ -374,6 +374,10 @@ export function createMedalScene(
 
   const scene = new THREE.Scene();
   scene.environment = studioEnvironment(renderer);
+  // 반사 세기는 모든 재질이 이 장면 값 하나를 쓴다(three r169는 장면 반사 지도가 있으면 재질의 envMapIntensity를
+  // 읽지 않는다). 재질마다 두던 값(금속 1.1~1.4, 리본 0.35, 보석 2.2)은 효과가 없어 지웠다. 생김새는 그대로다
+  // (2026-11-16, docs/36 「훈장」)
+  scene.environmentIntensity = 1;
 
   const camera = new THREE.PerspectiveCamera(26, 1 / 1.45, 0.1, 50);
   camera.position.set(0, 0.62, 8.6);
@@ -388,7 +392,6 @@ export function createMedalScene(
     roughnessMap: rough,
     clearcoat: 0.6,
     clearcoatRoughness: 0.08,
-    envMapIntensity: 1.25,
   });
   const polished = new THREE.MeshPhysicalMaterial({
     color: p.metal,
@@ -396,13 +399,11 @@ export function createMedalScene(
     roughness: 0.08,
     clearcoat: 1,
     clearcoatRoughness: 0.03,
-    envMapIntensity: 1.4,
   });
   const deep = new THREE.MeshPhysicalMaterial({
     color: p.metalDeep,
     metalness: 1,
     roughness: 0.22,
-    envMapIntensity: 1.1,
   });
   const guilloche = new THREE.MeshPhysicalMaterial({
     color: p.metal,
@@ -411,7 +412,6 @@ export function createMedalScene(
     roughnessMap: sun,
     clearcoat: 0.4,
     clearcoatRoughness: 0.1,
-    envMapIntensity: 1.3,
   });
   const en = enamelMaps(p);
   const enamel = new THREE.MeshPhysicalMaterial({
@@ -423,7 +423,6 @@ export function createMedalScene(
     roughnessMap: en.rough,
     clearcoat: 1,
     clearcoatRoughness: 0.02,
-    envMapIntensity: 1.2,
   });
   const rb = ribbonMaps(p);
   const silk = new THREE.MeshPhysicalMaterial({
@@ -436,7 +435,6 @@ export function createMedalScene(
     sheenRoughness: 0.4,
     sheenColor: new THREE.Color(0x3a4f9a),
     side: THREE.DoubleSide,
-    envMapIntensity: 0.35,
   });
 
   const medal = new THREE.Group();
@@ -551,7 +549,6 @@ export function createMedalScene(
       clearcoat: 1,
       iridescence: 1,
       iridescenceIOR: 1.6,
-      envMapIntensity: 2.2,
       flatShading: true,
     }),
   );
