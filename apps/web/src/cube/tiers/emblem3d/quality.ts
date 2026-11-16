@@ -128,6 +128,17 @@ export class MotionQuality extends Stepper {
   }
 }
 
+/**
+ * 이 장을 그릴 해상도 배율: 사람이 끄는 동안(손이 움직이는 중)만 낮춘 배율, 손이 멈췄거나·멈춘 장·저절로 흔드는
+ * 동안은 늘 제 해상도(1). 흔드는 동안 GPU가 못 따라오면 배율 대신 그리는 횟수를 줄인다(`SwayPacer`)
+ */
+export function drawScale(
+  s: { moving: boolean; resting: boolean; swaying: boolean },
+  q: Pick<MotionQuality, "scale">,
+): number {
+  return s.moving && !s.resting && !s.swaying ? q.scale : 1;
+}
+
 /** 흔드는 동안 그리는 간격 단계: 화면 갱신 1·2·3·4번에 한 번 */
 export const SWAY_EVERY = [1, 2, 3, 4] as const;
 /**

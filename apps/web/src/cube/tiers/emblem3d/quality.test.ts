@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BUDGET_MIN,
   BUDGET_SHARE,
+  drawScale,
   FrameBudget,
   MOTION_SCALES,
   MotionQuality,
@@ -107,6 +108,32 @@ describe("끄는 동안 해상도 조절", () => {
     feed(a, 30, 3);
     expect(a.level).toBeGreaterThan(0);
     expect(new MotionQuality(new FrameBudget(7.1)).scale).toBe(1);
+  });
+});
+
+describe("그릴 해상도 배율(drawScale)", () => {
+  it("저절로 흔드는 동안은 끌 때 단계를 아무리 낮췄어도 늘 배율 1(2026-11-13 사용자 「화질이 열화돼」)", () => {
+    const q = new MotionQuality(new FrameBudget(7.1));
+    feed(q, 40, 5);
+    expect(q.scale).toBe(MOTION_SCALES[MOTION_SCALES.length - 1]);
+    expect(drawScale({ moving: true, resting: false, swaying: true }, q)).toBe(
+      1,
+    );
+  });
+
+  it("사람이 끄는 중에만 낮춘 배율, 손이 멈췄거나 멈춘 장은 배율 1", () => {
+    const q = new MotionQuality(new FrameBudget(7.1));
+    feed(q, 12);
+    expect(q.scale).toBe(MOTION_SCALES[1]);
+    expect(drawScale({ moving: true, resting: false, swaying: false }, q)).toBe(
+      MOTION_SCALES[1],
+    );
+    expect(drawScale({ moving: true, resting: true, swaying: false }, q)).toBe(
+      1,
+    );
+    expect(
+      drawScale({ moving: false, resting: false, swaying: false }, q),
+    ).toBe(1);
   });
 });
 

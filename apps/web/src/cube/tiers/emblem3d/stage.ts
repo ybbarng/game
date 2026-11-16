@@ -10,6 +10,7 @@ import { levelOf } from "../emblemArt";
 import { type LookParts, lookParts } from "./lookStats";
 import { POSTER_PAGE } from "./poster";
 import {
+  drawScale,
   FrameBudget,
   MotionQuality,
   REST_MS,
@@ -44,6 +45,17 @@ import {
 import type { DrawPath } from "./support";
 
 /** 화면 시험이 고정한 한 장 예산(ms, `window.__emblem3dBudget`). 제품에서는 없다 */
+/**
+ * 화면 시험이 느린 기기에서도 흔들기를 그만두지 않게 하는 고리(`window.__emblem3dKeepSway`). GPU 없는 CI(소프트웨어
+ * 그리기)에서는 흔들기가 저절로 멈춰 흔드는 동안을 볼 수 없었다(2026-11-16). 제품에서는 없다
+ */
+function keepSway(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    (window as { __emblem3dKeepSway?: boolean }).__emblem3dKeepSway === true
+  );
+}
+
 function fixedBudget(): number | null {
   if (typeof window === "undefined") return null;
   const v = (window as { __emblem3dBudget?: unknown }).__emblem3dBudget;
@@ -633,7 +645,7 @@ export class EmblemStage implements ViewTurnTarget {
     const moving = this.moving;
     const swaying = this.swayingNow;
     const resting = this.drag !== null && now - this.lastMoveAt > REST_MS;
-    const want = moving && !resting && !swaying ? this.quality.scale : 1;
+    const want = drawScale({ moving, resting, swaying }, this.quality);
     this.tick += 1;
     let draw =
       this.dirty ||
@@ -674,7 +686,7 @@ export class EmblemStage implements ViewTurnTarget {
           // 가장 드물게 그려도 한 장이 그 사이에 끝나지 않으면(소프트웨어 GPU·저전력 기기) 저절로 흔들기를 멈춘다.
           // 계속 흔들면 초당 몇 장으로 끊기며 CPU를 쉬지 않고 쓴다(2026-11-13 잰 값: 소프트웨어 GPU에서 마스터 초당
           // 24장·한 장 150ms, 챌린저 8장). 끌어 돌리기는 그대로 된다
-          if (this.swayOn && tooSlowToSway(this.pacer)) {
+          if (this.swayOn && !keepSway() && tooSlowToSway(this.pacer)) {
             this.swayOn = false;
             this.sway = null;
             window.clearTimeout(this.resumeTimer);
