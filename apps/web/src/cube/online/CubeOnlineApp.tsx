@@ -80,6 +80,32 @@ function rememberJoined(room: string): void {
   }
 }
 
+/**
+ * 방장이 이 탭에서 연 방(sessionStorage). 방장 주소에는 방 코드가 없어서, 새로 고치면 이것으로 같은 방을 다시 연다
+ * (docs/47 9-11 「방장 되찾기」). 새로고침일 때만 쓴다: 다른 화면에 갔다 오면 새 방을 만든다
+ */
+const HOSTING_KEY = "cube.online.hosting";
+
+function hostedRoom(): string | null {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    if (nav?.type !== "reload") return null;
+    return sessionStorage.getItem(HOSTING_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberHosting(room: string): void {
+  try {
+    sessionStorage.setItem(HOSTING_KEY, room);
+  } catch {
+    // 남기지 못하면 새로 고칠 때 새 방을 만든다
+  }
+}
+
 async function connect(room: string, isHost: boolean): Promise<Transport> {
   if (isLocalNet()) return joinBroadcast(room);
   const { joinP2P } = await import("@/net/p2p-transport");
@@ -97,6 +123,8 @@ export function CubeOnlineApp() {
   /** 초대 링크에 실린 방장 연결 아이디(`k`). 옛 링크면 없다 */
   const [hostFromUrl, setHostFromUrl] = useState<string | undefined>();
   const [roomCode, setRoomCode] = useState("");
+  /** 방장이 새로 고쳐 다시 열 방(이 탭이 연 방) */
+  const [hostResume, setHostResume] = useState<string | null>(null);
   const [phone, setPhone] = useState(false);
   const [room, setRoom] = useState<CubeRoom | null>(null);
   const version = useCubeRoom(room);
@@ -108,7 +136,9 @@ export function CubeOnlineApp() {
     const code = params.get("room");
     setRoomFromUrl(code);
     setHostFromUrl(params.get("k") ?? undefined);
-    setRoomCode(code ?? randomId(16));
+    const hosted = code ? null : hostedRoom();
+    if (hosted) setHostResume(hosted);
+    setRoomCode(code ?? hosted ?? randomId(16));
     setPhone(touchOnly());
   }, []);
   useEffect(() => {
@@ -130,6 +160,7 @@ export function CubeOnlineApp() {
     setPlayerName(trimmed);
     setPhase("connecting");
     if (!isHost) rememberJoined(roomCode);
+    else rememberHosting(roomCode);
     try {
       const transport = await connect(roomCode, isHost);
       transportRef.current = transport;
@@ -139,8 +170,8 @@ export function CubeOnlineApp() {
         clock: raceClock,
         isHost,
         ...(!isHost && hostFromUrl ? { hostId: hostFromUrl } : {}),
-        // 손님만 자리를 되찾는다(방장이 새로 고치면 연결 아이디가 바뀌어 손님이 받지 않는다: 방을 다시 만든다)
-        ...(!isHost ? { seat: sessionSeatStore(roomCode) } : {}),
+        // 방장·손님 모두 자리를 남기고 되찾는다(방장은 손님마다 방장 자리 증명을 확인받는다, docs/47 9-11)
+        seat: sessionSeatStore(roomCode),
         name: trimmed,
         ...withAverages(),
         scrambler: scrambleInWorker,
@@ -171,6 +202,14 @@ export function CubeOnlineApp() {
     rejoined.current = true;
     void enter(savedName);
   }, [roomFromUrl, savedName, phone]);
+  // 방장이 새로 고쳤으면 같은 방을 기억한 이름으로 바로 다시 연다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 방 코드를 정한 뒤 한 번만 본다
+  useEffect(() => {
+    if (rejoined.current || phase !== "name" || !hostResume || phone) return;
+    if (!savedName || roomCode !== hostResume) return;
+    rejoined.current = true;
+    void enter(savedName);
+  }, [hostResume, roomCode, savedName, phone]);
 
   const state = room?.state;
   useEffect(() => {
@@ -246,6 +285,15 @@ export function CubeOnlineApp() {
             방장 연결이 끊김
           </p>
         )}
+        {room?.hostAway && (
+          <p
+            role="status"
+            data-cube-host-away
+            className="text-center text-amber-200 text-sm"
+          >
+            방장을 기다리는 중
+          </p>
+        )}
         {phase === "room" && room && !state && (
           <ConnectingNotice isHost={false} />
         )}
@@ -276,8 +324,12 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
   const state = room.state;
   const [botLevel, setBotLevel] = useState(levelText("casual"));
   const [link, setLink] = useState("");
-  // 방장 연결 아이디를 실어 손님이 처음부터 방장을 알게 한다(먼저 방 상태를 보낸 다른 손님을 믿지 않게)
-  useEffect(() => setLink(inviteUrl(roomCode, room.me)), [roomCode, room.me]);
+  // 방장 연결 아이디를 실어 손님이 처음부터 방장을 알게 한다(먼저 방 상태를 보낸 다른 손님을 믿지 않게).
+  // 방장이 새로 고쳤으면 새 연결 아이디(이미 들어온 손님은 방장 자리 증명으로 새 연결을 받는다, docs/47 9-11)
+  useEffect(
+    () => setLink(inviteUrl(roomCode, room.device)),
+    [roomCode, room.device],
+  );
   if (!state) return null;
   const s = state.settings;
   const host = room.isHost;
@@ -303,7 +355,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
                 <span className={p.id === room.me ? "text-amber-200" : ""}>
                   {p.name}
                   {p.bot ? ` (${botSkillLabel(p.bot, s.n)})` : ""}
-                  {p.id === state.host ? " · 방장" : ""}
+                  {!p.bot && p.device === state.host ? " · 방장" : ""}
                 </span>
                 {!p.bot && !room.isConnected(p.device) && (
                   <span className="text-red-300 text-xs">끊김</span>
