@@ -6,7 +6,9 @@ import AppKit
 /// 명령: `focus 1|0` · `scramble` · `mirror 1|0` · `size <n>` · `side <pt>` · `turns <개수>`(0.12초마다 손가락 자리 키) ·
 /// `show` · `hide` · `keys load|drop`(단축키 표) · `records|tiers|settings open|close`(기록 창·티어표·설정 창: 네이티브 창, `CUBIE_WEB_WINDOWS=1`이면 사이트 창, 화면 밖) ·
 /// `replay open`(기록 창에서 한 판 다시 보기, 판이 없으면 메모리 저장소에 하나 더함) · `practice start|stop`(공식 연습 첫 단계) ·
-/// `hero start|stop`(홈 시연) · `editor open|close`(「사용자」 배치로 두고 설정 창의 키 배치 편집기) · `state` · `quit`
+/// `hero start|stop`(홈 시연) · `editor open|close`(「사용자」 배치로 두고 설정 창의 키 배치 편집기) ·
+/// `pick <0~9>`(티어표 사다리 칸 누르기) · `showcase hidden|shown`(진열을 가려진 창처럼) · `profile open|close`(메뉴 프로필 칸 흔들기) ·
+/// `state` · `quit`
 @MainActor
 final class NativeMeasure {
   private let cube: NativeCubeWindow
@@ -16,6 +18,9 @@ final class NativeMeasure {
   var dropKeys: (() -> Void)?
   /// 보통 창(이름 records·tiers·settings) 열기·닫기
   var window: ((String, Bool) -> Void)?
+  /// 티어표 사다리 칸 누르기
+  var pickTier: ((Int) -> Void)?
+  private var profileWindow: NSWindow?
 
   /// `Measure.turns`와 같은 손가락 자리 키(두 손 배치) J F I E K D H G L S의 맥 키 코드
   static let fingerKeys: [UInt16] = [38, 3, 34, 14, 40, 2, 4, 5, 37, 1]
@@ -108,6 +113,33 @@ final class NativeMeasure {
       cube.measureHero(arg == "start")
     case "records", "tiers", "settings", "replay", "editor":
       window?(cmd, arg == "open")
+    case "pick":
+      if let t = Int(arg) { pickTier?(t) }
+    case "showcase":
+      // 티어표 진열·메뉴 칸을 창이 가려진 것처럼(멈추는지 CPU로 본다): `showcase hidden` · `showcase shown`
+      ShowcaseMotion.hidden = arg == "hidden"
+    case "profile":
+      // 메뉴 프로필 칸을 화면 밖 창에 붙여 메뉴가 열린 동안처럼 흔든다
+      if arg == "open" {
+        // 재기 저장소는 기록이 없어 티어가 없다: 가장 무거운 챌린저 띠로 잰다
+        var p = cube.profile
+        if p.emblemTier == nil {
+          p.emblemTier = "challenger"
+          p.emblem = NativeCubeWindow.emblem("challenger")
+        }
+        let v = ProfileMenuView(profile: p) {}
+        let w = NSWindow(contentRect: v.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.setFrameOrigin(NSPoint(x: -30000, y: -30000))
+        w.contentView = v
+        w.orderFrontRegardless()
+        profileWindow = w
+        log("profile open swaying=\(v.swaying)")
+      } else {
+        profileWindow?.contentView = nil
+        profileWindow?.close()
+        profileWindow = nil
+      }
     case "state": report("state")
     case "quit": NSApp.terminate(nil)
     default: log("unknown command: \(line)")

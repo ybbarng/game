@@ -34,8 +34,16 @@ enum NativeWindowShot {
       records.watch(first)
       ok = shoot(records.window, name: "native-records-replay", dir: dir) && ok
     }
+    // 티어표 진열(docs/52 5-11): 내 티어를 보는 때, 사다리에서 챌린저를 고른 때, 혼자 맞추기 기록이 없을 때
     let tiers = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok
+    tiers.page.pick(9)
+    ok = shoot(tiers.window, name: "native-tiers-pick", dir: dir, fullHeight: true) && ok
+    var noSolo = values
+    noSolo[TierSheet.recordsKey] = nil
+    noSolo[TierSheet.bestFiveKey] = nil
+    let empty = NativeTiersWindow(store: MemoryStore(noSolo), math: RustTierMath(), n: book.n)
+    ok = shoot(empty.window, name: "native-tiers-none", dir: dir, fullHeight: true) && ok
     let settingsWindow = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
     ok = shoot(settingsWindow.window, name: "native-settings", dir: dir, fullHeight: true) && ok
     // 「사용자」 배치 편집(사이트에서 「사용자」를 누르고 R에 J를 지정): 겹친 키 묻기, 바꾼 뒤 알림·키 없음·내보내기 상자
@@ -51,6 +59,7 @@ enum NativeWindowShot {
     ok = shoot(customWindow.window, name: "native-settings-custom", dir: dir, fullHeight: true) && ok
     for (name, look) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
       ok = shootProfiles(dir: dir, name: "native-profile-\(name)", appearance: NSAppearance(named: look)) && ok
+      ok = shootProfileSway(dir: dir, name: "native-profile-sway-\(name)", appearance: NSAppearance(named: look)) && ok
     }
     fflush(stdout)
     return ok ? 0 : 1
@@ -79,6 +88,36 @@ enum NativeWindowShot {
     return shoot(window, name: name, dir: dir)
   }
 
+
+  /// 메뉴 프로필 칸 흔들기(docs/52 5-11): 티어 넷 × 각 다섯(-0.5·-0.25·0·0.25·0.5 라디안, 0.125는 두 장을 겹친 사이 각)
+  static func shootProfileSway(dir: String, name: String, appearance: NSAppearance?) -> Bool {
+    let tiers = [3, 6, 7, 9]
+    let yaws = [-0.5, -0.25, -0.125, 0, 0.25, 0.5]
+    let w: CGFloat = 240
+    let box = FlippedView(
+      frame: NSRect(x: 0, y: 0, width: w * CGFloat(yaws.count), height: ProfileMenuView.height * CGFloat(tiers.count)))
+    box.appearance = appearance
+    box.fill = .windowBackgroundColor
+    for (r, t) in tiers.enumerated() {
+      for (c, yaw) in yaws.enumerated() {
+        let id = TierInfo.ids[t]
+        let v = ProfileMenuView(
+          profile: Profile(
+            name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[t]) · \(yaw)", emblem: NativeCubeWindow.emblem(id),
+            emblemTier: id),
+          onPick: {})
+        v.toolTip = String(yaw)
+        v.frame = NSRect(x: CGFloat(c) * w, y: CGFloat(r) * ProfileMenuView.height, width: w, height: ProfileMenuView.height)
+        box.addSubview(v)
+      }
+    }
+    let window = NSWindow(contentRect: box.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+    window.appearance = appearance
+    window.contentView = box
+    // 창에 붙으면 정면에서 흔들기를 시작하므로 붙인 뒤에 각을 정한다
+    for v in box.subviews.compactMap({ $0 as? ProfileMenuView }) { v.showYaw(Double(v.toolTip ?? "") ?? 0) }
+    return shoot(window, name: name, dir: dir)
+  }
 
   /// 창 내용을 PNG로(배율 2). `fullHeight`면 굴리는 내용 전체 높이로
   static func shoot(_ window: NSWindow, name: String, dir: String, fullHeight: Bool = false) -> Bool {
@@ -114,6 +153,20 @@ enum NativeWindowShot {
     rep.size = size
     view.cacheDisplay(in: view.bounds, to: rep)
     if let flat = rep.cgImage { ctx.draw(flat, in: CGRect(x: 0, y: 0, width: px.w, height: px.h)) }
+    // 층 그림(티어표 진열의 엠블럼)은 보기 그리기에 들지 않아 따로 얹는다
+    for p in allSubviews(view).compactMap({ $0 as? ShotPicture }) where !p.isHiddenOrHasHiddenAncestor {
+      guard let img = p.shotImage else { continue }
+      let local = (p as? LadderCellView)?.artRect ?? p.bounds
+      let r = p.convert(local, to: view)
+      let y = view.isFlipped ? size.height - r.maxY : r.minY
+      let dest = CGRect(x: r.minX * scale, y: y * scale, width: r.width * scale, height: r.height * scale)
+      ctx.saveGState()
+      ctx.addPath(CGPath(roundedRect: dest, cornerWidth: p.shotCorner * scale, cornerHeight: p.shotCorner * scale, transform: nil))
+      ctx.clip()
+      ctx.interpolationQuality = .high
+      ctx.draw(img, in: dest)
+      ctx.restoreGState()
+    }
     for c in cubes {
       c.isHidden = false
       c.layer?.isHidden = false

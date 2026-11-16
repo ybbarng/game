@@ -48,6 +48,9 @@ enum Config {
   /// `CUBIE_DEBUG=1`이면 포커스·다리 메시지와 웹 화면 상태를 표준 출력에 찍는다(동작 확인용)
   static let debug = ProcessInfo.processInfo.environment["CUBIE_DEBUG"] != nil
 
+  /// `CUBIE_REDUCE_MOTION=1`: 시스템 「동작 줄이기」처럼(티어표 진열·메뉴 프로필 칸 흔들기를 멈춘다, 확인·스크린샷용)
+  static let reduceMotion = ProcessInfo.processInfo.environment["CUBIE_REDUCE_MOTION"] == "1"
+
   /// `CUBIE_MEASURE=1`: 메모리 재기(`scripts/measure-memory.sh`, `Measure`). 사용자 화면·포커스를 건드리지 않는다:
   /// 앱은 앞으로 나올 수 없고(.prohibited) 창은 화면 밖에 투명하게 두며, 메뉴 막대 아이콘·전역 단축키·마우스 감시·
   /// 업데이트를 켜지 않는다. 웹 저장소는 비영속이라 사용자 기록·설정에 손대지 않는다. 명령은 표준 입력으로만 받는다

@@ -117,6 +117,24 @@ class FlippedView: NSView {
   override func draw(_ dirtyRect: NSRect) {
     NUI.drawBox(bounds, fill: fill, border: border, radius: radius)
   }
+
+  /// 넓은 상자는 그리지 않고 층 속성(바탕·모서리·테두리)으로 둔다. 넓은 칸을 그리면 AppKit이 GPU 비동기 그리기로 돌려 앱에
+  /// Metal 문맥과 드라이버 메모리 100MB 넘게가 붙었다(티어표 진열 큰 칸, docs/52 5-11). 화면 밖 스크린샷(`cacheDisplay`)은
+  /// 그대로 `draw`를 부른다
+  var layerDrawn = false {
+    didSet {
+      wantsLayer = true
+      needsDisplay = true
+    }
+  }
+  override var wantsUpdateLayer: Bool { layerDrawn }
+  override func updateLayer() {
+    guard let layer else { return }
+    layer.backgroundColor = fill?.cgColor
+    layer.cornerRadius = radius
+    layer.borderColor = border?.cgColor
+    layer.borderWidth = border == nil ? 0 : 1
+  }
 }
 
 extension NUI {

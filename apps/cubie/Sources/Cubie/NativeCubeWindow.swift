@@ -594,7 +594,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     let tier = book.tier(n)
     profile = Profile(
       name: name ?? "익명 큐버", tierText: "\(n)×\(n) \(tier?.name ?? "5판 뒤에")",
-      emblem: tier.flatMap { Self.emblem($0.id) })
+      emblem: tier.flatMap { Self.emblem($0.id) }, emblemTier: tier?.id)
   }
 
   /// 티어 엠블럼 그림(앱에 묶은 PNG, `Resources/Emblems/<티어>.png`)
