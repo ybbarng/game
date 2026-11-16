@@ -671,33 +671,89 @@ function ResultPanel({
       )}
       <ol className="flex flex-col gap-1.5" data-cross-solutions>
         {round.solutions.slice(0, 2).map((s) => (
-          <li key={s.moves} className="flex flex-wrap items-center gap-1.5">
-            <Swatch color={colors[s.color] ?? 0} />
-            {s.moves.split(" ").map((tok, i) => (
-              <MoveChip
-                // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
-                key={i}
-                notation={tok}
-                keysOf={keysOf}
-                className="rounded bg-white/10 px-1"
-              />
-            ))}
-            <button
-              type="button"
-              aria-pressed={demo === s.moves}
-              data-cross-demo
-              onClick={(e) => {
-                onDemo(demo === s.moves ? null : s.moves);
-                e.currentTarget.blur();
-              }}
-              className="ml-auto rounded bg-white/10 px-2 py-0.5 text-xs hover:bg-white/15"
-            >
-              {demo === s.moves ? "시연 닫기" : "시연"}
-            </button>
-          </li>
+          <SolutionRow
+            key={s.moves}
+            swatches={[colors[s.color] ?? 0]}
+            moves={s.moves}
+            keysOf={keysOf}
+            demo={demo}
+            onDemo={onDemo}
+          />
         ))}
       </ol>
+      {round.xcross && (
+        <div
+          className="flex flex-col gap-1.5 border-white/10 border-t pt-2"
+          data-cross-xcross={round.xcross.optimal}
+        >
+          <p className="text-white/70 text-xs">
+            X십자(십자 + F2L 짝 하나) 최적 {round.xcross.optimal}수
+          </p>
+          <ol className="flex flex-col gap-1.5">
+            {round.xcross.solutions.slice(0, 1).map((s) => (
+              <SolutionRow
+                key={s.moves}
+                swatches={[s.color, ...s.pair].map((c) => colors[c] ?? 0)}
+                moves={s.moves}
+                keysOf={keysOf}
+                demo={demo}
+                onDemo={onDemo}
+              />
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SolutionRow({
+  swatches,
+  moves,
+  keysOf,
+  demo,
+  onDemo,
+}: {
+  swatches: number[];
+  moves: string;
+  keysOf: ReturnType<typeof useMoveKeys>["keysOf"];
+  demo: string | null;
+  onDemo: (alg: string | null) => void;
+}) {
+  return (
+    <li className="flex flex-wrap items-center gap-1.5">
+      {swatches.map((c, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: 색 자리 차례가 뜻이다
+        <Swatch key={i} color={c} />
+      ))}
+      {moves === "" && <span className="text-white/60 text-xs">이미 됨</span>}
+      {moves
+        .split(" ")
+        .filter(Boolean)
+        .map((tok, i) => (
+          <MoveChip
+            // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
+            key={i}
+            notation={tok}
+            keysOf={keysOf}
+            className="rounded bg-white/10 px-1"
+          />
+        ))}
+      {moves !== "" && (
+        <button
+          type="button"
+          aria-pressed={demo === moves}
+          data-cross-demo
+          onClick={(e) => {
+            onDemo(demo === moves ? null : moves);
+            e.currentTarget.blur();
+          }}
+          className="ml-auto rounded bg-white/10 px-2 py-0.5 text-xs hover:bg-white/15"
+        >
+          {demo === moves ? "시연 닫기" : "시연"}
+        </button>
+      )}
+    </li>
   );
 }
 

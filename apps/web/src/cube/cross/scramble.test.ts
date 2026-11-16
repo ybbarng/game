@@ -116,4 +116,21 @@ describe("십자 섞기 거르기", () => {
     for (const c of r.best) expect(r.depths[c]).toBe(r.optimal);
     for (const s of r.solutions) expect(r.best).toContain(s.color);
   });
+
+  it("X십자 최적도 색마다 내고, 색마다 십자 최적보다 짧지 않으며 가장 짧은 색의 해를 준다", () => {
+    const r = analyzeRound(SEQS[1] as string, [0, 3], true);
+    for (const c of [0, 3])
+      expect(r.xcross.depths[c]).toBeGreaterThanOrEqual(r.depths[c] as number);
+    expect(r.xcross.optimal).toBe(
+      Math.min(r.xcross.depths[0] as number, r.xcross.depths[3] as number),
+    );
+    const start = roundStart(r);
+    expect(r.xcross.solutions.length).toBeGreaterThan(0);
+    for (const s of r.xcross.solutions) {
+      expect(r.xcross.depths[s.color]).toBe(r.xcross.optimal);
+      expect(s.moves.split(" ")).toHaveLength(r.xcross.optimal);
+      const after = applyMoves(3, start, parseMoves(3, s.moves));
+      expect(crossDone(after, s.color)).toBe(true);
+    }
+  });
 });

@@ -8,6 +8,7 @@
 import {
   type HumanSolve,
   STAGE_LABELS,
+  type StageName,
   solveBeginner2,
   solveBeginner3,
   solveCfop,
@@ -44,14 +45,17 @@ const TAUGHT = { taught: true } as const;
 
 /** `HERO_METHODS`의 `solve`를 바로(비동기 없이). 표에 해법을 더하면 여기에도 더한다 */
 export const HERO_SYNC: Readonly<
-  Record<string, (s: PuzzleState, first: number) => HumanSolve>
+  Record<
+    string,
+    (s: PuzzleState, first: number, until?: StageName) => HumanSolve
+  >
 > = {
   "2-beginner": (s) => solveBeginner2(s, TAUGHT),
-  "2-algs": (s, first) => solveIntermediate2(s, { first }),
+  "2-algs": (s, first, until) => solveIntermediate2(s, { first, until }),
   "3-beginner": (s) => solveBeginner3(s, TAUGHT),
-  "3-cfop": (s, first) => solveCfop(s, { first }),
-  "3-roux": (s, first) => solveRoux(s, { first }),
-  "3-zz": (s, first) => solveZZ(s, { first }),
+  "3-cfop": (s, first, until) => solveCfop(s, { first, until }),
+  "3-roux": (s, first, until) => solveRoux(s, { first, until }),
+  "3-zz": (s, first, until) => solveZZ(s, { first, until }),
   ...Object.fromEntries(
     ([4, 5, 6, 7] as const).flatMap((n) => [
       [
@@ -60,8 +64,8 @@ export const HERO_SYNC: Readonly<
       ],
       [
         `${n}-cfop`,
-        (s: PuzzleState, first: number) =>
-          solveHuman("advanced", n, s, undefined, { first }),
+        (s: PuzzleState, first: number, until?: StageName) =>
+          solveHuman("advanced", n, s, undefined, { first, until }),
       ],
     ]),
   ),
@@ -76,14 +80,15 @@ function solveFirstSync(
   const solve = HERO_SYNC[method];
   if (!def || !solve) throw new Error(`모르는 해법: ${method}`);
   if (def.first === "white") return { raw: solve(state, 0), first: 0 };
-  let best: { raw: HumanSolve; first: number; cost: number } | null = null;
+  // 사이트와 같이 색마다 그 단계까지만 풀어 견주고, 고른 색 하나만 끝까지 푼다
+  const stage = def.first.cheapest as StageName;
+  let best: { first: number; cost: number } | null = null;
   for (const first of FIRST_COLOR_ORDER) {
-    const raw = solve(state, first);
-    const cost = stageCost(raw, def.first.cheapest);
-    if (!best || cost < best.cost) best = { raw, first, cost };
+    const cost = stageCost(solve(state, first, stage), stage);
+    if (!best || cost < best.cost) best = { first, cost };
   }
   if (!best) throw new Error("풀지 못했다");
-  return best;
+  return { raw: solve(state, best.first), first: best.first };
 }
 
 /** 씨앗 → 섞기(mulberry32)·쥐는 방향 맞춘 뒤 풀 상태(사이트 `HeroLoop.beginCycle`) */
@@ -210,23 +215,20 @@ export function heroShowCase(
 export function buildHero(): string {
   const def = findHeroMethod("3-cfop");
   if (!def || def.first === "white") throw new Error("3-cfop은 색 중립이다");
-  const stage = def.first.cheapest;
+  const stage = def.first.cheapest as StageName;
   const cases: unknown[] = [];
   for (const seed of [51, 52, 53, 54, 55, 56, 57, 58]) {
     const sc = scramble("333", seed).text;
     const state = applyMoves(3, solvedCube(3), parseMoves(3, sc));
     const costs: number[] = [];
     let best: { first: number; cost: number } | null = null;
-    let chosen = solveCfop(state, { first: 0 });
+    // 색마다 십자까지만 풀어 견주고(단계 수는 끝까지 푼 판과 같다), 고른 색 하나만 끝까지 푼다
     for (const first of FIRST_COLOR_ORDER) {
-      const raw = solveCfop(state, { first });
-      const cost = stageCost(raw, stage);
+      const cost = stageCost(solveCfop(state, { first, until: stage }), stage);
       costs.push(cost);
-      if (!best || cost < best.cost) {
-        best = { first, cost };
-        chosen = raw;
-      }
+      if (!best || cost < best.cost) best = { first, cost };
     }
+    const chosen = solveCfop(state, { first: best?.first ?? 0 });
     cases.push({
       method: def.id,
       alg: sc,

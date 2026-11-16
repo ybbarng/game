@@ -63,6 +63,18 @@ export const MORE_CANDIDATES: Record<string, CandidateSpec[]> = {
     { alg: "R2 U2 R' U' R U' R' U2 R'", found: true },
   ],
   "f2l-39": [{ alg: "R U2 R U R' U R U2 R2", found: true }],
+  // 후보가 비어 있던 상황(2026-11-17): 같은 묶음 공식의 거울·거꾸로를 y·d 돌려 쥐기, 윗면 돌리기마다 해 보아 맞는 것과
+  // R·U·B 7수까지 찾은 것(found). 자료 공식을 돌려 쥐기만 한 것(R을 F로 바꾼 같은 공식 등)은 뺐다.
+  // f2l-4(R U R' 세 수)·f2l-17·f2l-18은 그런 것만 나와 비워 둔다.
+  "f2l-9": [{ alg: "U d R' U R U R' U' R" }],
+  "f2l-13": [{ alg: "U d R2 U' R U' R' U2 R2" }],
+  "f2l-16": [{ alg: "R U' B U' B' U2 R'", found: true }],
+  "f2l-24": [{ alg: "U d R2 U2 R U R' U R2" }],
+  "f2l-30": [{ alg: "U2 F' U F R U R'" }, { alg: "U' R U2 R' U2 R U R'" }],
+  "f2l-35": [{ alg: "U2 R U R' F R' F' R" }],
+  "f2l-36": [{ alg: "U2 F' U F U R U R'" }],
+  "f2l-40": [{ alg: "d R' U R r' U r U2 r' U' r" }],
+  "f2l-41": [{ alg: "d r' U r U2 r' U' r R' U' R" }],
 
   // ── 2×2 오르테가 ──
   "ortega-oll-sune": [
@@ -80,6 +92,11 @@ export const MORE_CANDIDATES: Record<string, CandidateSpec[]> = {
   ],
   "ortega-oll-pi": [{ alg: "R U2 R2 U' R2 U' R2 U2 R" }],
   "ortega-oll-u": [{ alg: "U2 F' L' U' L U F" }],
+  // 2026-11-17 후보가 비어 있던 상황(candidates-ll.ts 끝과 같은 방법으로 찾음)
+  "ortega-oll-t": [
+    { alg: "L F R' F' L' F R F'" },
+    { alg: "F R U' R' U R U R' F'" },
+  ],
   "ortega-oll-l": [
     { alg: "F R U' R' U' R U R' F'" },
     { alg: "R' F R B' R' F' R B" },

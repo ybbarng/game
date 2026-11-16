@@ -117,6 +117,58 @@ const letterOf = (notation: string) =>
 /** 가운데 층 → 따라 도는 면(M은 L, E는 D, S는 F) */
 const SLICE_FACE: Record<string, string> = { M: "L", E: "D", S: "F" };
 
+type Binding = Keymap["bindings"][number];
+
+/** 배치의 키 하나가 그 층 수에서 돌리는 수와, 깊이 키 뒤에 쳤을 때 돌리는 수들(깊이 키 차례) */
+interface PlayedKey {
+  b: Binding;
+  m: CubeMove | null;
+  deepMoves: { d: Binding; dm: CubeMove }[];
+}
+
+const playedCache = new WeakMap<Keymap, Map<string, PlayedKey[]>>();
+
+/**
+ * 배치의 키마다 그 크기·층 수에서 도는 수(배치 차례). 길 찾기는 수마다·층 수마다 키 전부 × 깊이 키 전부를 훑으므로
+ * (사용자 배치 편집기는 배치를 바꿀 때마다 동작 전부) 배치·크기·층 수마다 한 번만 계산한다.
+ * 깊이 키는 같은 깊이가 여러 키에 있으면 조합 키 없는 것만(「두 손」의 Shift+3은 Shift를 누른 채 치게 둔 같은 3)
+ */
+function playedKeys(
+  keymap: Keymap,
+  n: number,
+  layers: HandLayers,
+): PlayedKey[] {
+  let byKey = playedCache.get(keymap);
+  if (!byKey) {
+    byKey = new Map();
+    playedCache.set(keymap, byKey);
+  }
+  const id = `${n}|${layers.left},${layers.right}`;
+  const hit = byKey.get(id);
+  if (hit) return hit;
+  const allDepth = keymap.bindings.filter(
+    (b) => parseAction(b.action)?.kind === "depth",
+  );
+  const depthKeys = allDepth.flatMap((d) => {
+    const p = parseAction(d.action);
+    if (p?.kind !== "depth") return [];
+    const plain =
+      mods(d) === 0 ||
+      !allDepth.some((o) => o.action === d.action && mods(o) === 0);
+    return plain ? [{ d, depth: p.depth }] : [];
+  });
+  const out = keymap.bindings.map((b) => ({
+    b,
+    m: playedMove(n, b.action, layers),
+    deepMoves: depthKeys.flatMap(({ d, depth }) => {
+      const dm = playedMove(n, b.action, layers, depth);
+      return dm ? [{ d, dm }] : [];
+    }),
+  }));
+  byKey.set(id, out);
+  return out;
+}
+
 /**
  * 층 수 하나에서 그 수를 치는 길들(층 수 키 없이): 키 하나, 없으면 같은 키 두 번, 없으면 깊이 키 + 면 키,
  * 없으면 깊이 키 + 면 키를 두 번(「두 손」 3×3의 E2 = 2 → S를 두 번).
@@ -139,17 +191,6 @@ function routesAt(
   const outer =
     (target.from === target.to && (target.from === 1 || target.from === n)) ||
     (target.from === 1 && target.to === n);
-  // 같은 깊이가 여러 키에 있으면 조합 키 없는 것만(「두 손」의 Shift+3은 Shift를 누른 채 치게 둔 같은 3)
-  const allDepth = keymap.bindings.filter(
-    (b) => parseAction(b.action)?.kind === "depth",
-  );
-  const depthKeys = outer
-    ? []
-    : allDepth.filter(
-        (b) =>
-          mods(b) === 0 ||
-          !allDepth.some((o) => o.action === b.action && mods(o) === 0),
-      );
   // 가운데 층은 표기 정의에서 따라 도는 면의 키를 다음으로(3×3 E = 2 → D 키, S = 2 → F 키)
   const sliceFace = SLICE_FACE[letter];
   const rank = (action: string, presses: KeyChord[], ccw = false) => [
@@ -157,8 +198,7 @@ function routesAt(
     modsOf(presses),
     ccw ? 1 : 0,
   ];
-  for (const b of keymap.bindings) {
-    const m = playedMove(n, b.action, layers);
+  for (const { b, m, deepMoves } of playedKeys(keymap, n, layers)) {
     if (m && sameLayersOf(m, target)) {
       if (m.turns === target.turns) {
         const presses = [bare(b)];
@@ -168,10 +208,7 @@ function routesAt(
         double.push({ presses, rank: rank(b.action, presses, m.turns === 3) });
       }
     }
-    for (const d of depthKeys) {
-      const p = parseAction(d.action);
-      if (p?.kind !== "depth") continue;
-      const dm = playedMove(n, b.action, layers, p.depth);
+    for (const { d, dm } of outer ? [] : deepMoves) {
       // 깊이를 붙여도 그대로인 키(가운데 층·큐브 돌리기)는 바로 친 길에 이미 있다
       const same = !!m && !!dm && sameLayersOf(dm, m) && dm.turns === m.turns;
       if (

@@ -162,4 +162,72 @@ export const LL_CANDIDATES: Record<string, CandidateSpec[]> = {
   "oll-54": [{ alg: "U r U R' U R U' R' U R U2 r'" }],
   "oll-55": [{ alg: "U R U2 R2 U' R U' R' U2 F R F'" }],
   "oll-56": [{ alg: "F R U R' U' R F' r U R' U' r'" }],
+
+  // ── 후보가 비어 있던 상황(2026-11-17) ──
+  // 기억으로 옮긴 공식에 더해, 같은 묶음의 자료·후보 공식을 좌우·앞뒤 거울과 거꾸로로 바꾼 것을 y 돌려 쥐기와
+  // 윗면 돌리기마다 이 상황에 해 보아 맞는 것 가운데, 자료 공식을 돌려 쥐기만 한 것은 빼고 골랐다.
+  // 대부분 다른 손(왼손) 판이거나 뒷면을 쓰는 판이다.
+  "2look-oll-line": [{ alg: "F' L' U' L U F" }],
+  "oll-1": [
+    { alg: "R U B' R B R2 U' R' F R F'" },
+    { alg: "L' U2 L2 F' L' F U2 L F' L' F" },
+  ],
+  "oll-6": [
+    { alg: "F R U' R' U R U2 R' U' F'" },
+    { alg: "U2 l U2 L' U' L U' l'" },
+  ],
+  "oll-9": [
+    { alg: "R' U' R U' R B' R' B R' U2 R" },
+    { alg: "U2 L' U' L U' L F' L' F L' U2 L" },
+  ],
+  "oll-14": [
+    { alg: "R' F R U R' F' R y' R U' R'" },
+    { alg: "F' U' L' U L2 F L' U' L' U L" },
+  ],
+  "oll-16": [
+    { alg: "U2 R' F R U R' U' F' R U' R' U2 R" },
+    { alg: "U2 l U l' L U L' U' l U' l'" },
+  ],
+  "oll-31": [
+    { alg: "y2 S' L' U' L U L F' L' f" },
+    { alg: "U2 L' U' B U L U' L' B' L" },
+  ],
+  "oll-35": [
+    { alg: "f R U R' U' f' R U R' U R U2 R'" },
+    { alg: "U L' U2 L2 F' L' F L' U2 L" },
+  ],
+  "oll-36": [
+    { alg: "U2 R' U' R U' R' U R U R B' R' B" },
+    { alg: "U2 R' U' R U' R' U R U l U' R' U x" },
+  ],
+  "oll-38": [
+    { alg: "U2 L U L' U L U' L' U' L' B L B'" },
+    { alg: "R U R' U R U' R' U' l' U R U' x'" },
+  ],
+  "oll-40": [
+    { alg: "U2 L' B L U L' U' B' U L" },
+    { alg: "R' U' R B U B' U' R' U2 R" },
+  ],
+  "oll-41": [
+    { alg: "F U R U' R' F' R' U2 R U R' U R" },
+    { alg: "R U R' U R U2 R' B' R' U' R U B" },
+  ],
+  "oll-42": [
+    { alg: "B' U' R' U R B R U2 R' U' R U' R'" },
+    { alg: "y R' F R F' R' F R F' R U R' U' R U R'" },
+  ],
+  "oll-45": [{ alg: "U2 F' L' U' L U F" }, { alg: "U R' F' U' F U R" }],
+  "oll-46": [{ alg: "R U R B' R' B U' R'" }, { alg: "U2 L U L F' L' F U' L'" }],
+  "oll-48": [
+    { alg: "F R' F' U2 R U R' U R2 U2 R'" },
+    { alg: "U2 B L U L' U' L U L' U' B'" },
+  ],
+  "oll-57": [
+    { alg: "R U R' U' r R' U R U' r'" },
+    { alg: "L' U' L U M' U' L' U l" },
+  ],
+  "pll-t": [
+    { alg: "R U R' U' R' F R2 U' R' U F' L' U L" },
+    { alg: "F R U' R' U R U R2 F' R U R U' R'" },
+  ],
 };
