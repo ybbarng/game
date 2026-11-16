@@ -192,12 +192,18 @@ function apply(sim: Sim, seat: number, action: PlayAction): void {
   };
 }
 
+/**
+ * 가상 판 속 상대(그리고 고수가 기대는 정석). 고수 한 수를 정하는 동안만 `SearchBotOptions.rollout`으로 바뀐다.
+ * bench가 옛 중수와 새 중수를 가상 상대로 견줄 때 쓴다
+ */
+let rollout: Bot = heuristicBot;
+
 /** 남은 판을 1단계 봇끼리 끝까지 둔다 */
 function playOut(sim: Sim, rng: RngState): void {
   while (!sim.done) {
     const seat = turnOf(sim);
     const decision = decisionIn(sim, seat);
-    const action = heuristicBot.decide(viewIn(sim, seat, decision), rng);
+    const action = rollout.decide(viewIn(sim, seat, decision), rng);
     apply(sim, seat, action as PlayAction);
   }
 }
@@ -921,6 +927,8 @@ export interface SearchBotOptions {
   planWorlds?: number;
   /** 성향. 없으면 자리마다 정해진 성향(`personaForSeat`)을 쓴다 */
   persona?: Persona;
+  /** 가상 판 속 상대이자 기대는 정석. 없으면 중수(`heuristicBot`). bench에서 옛 중수와 견줄 때 쓴다 */
+  rollout?: Bot;
 }
 
 /**
@@ -931,38 +939,49 @@ export interface SearchBotOptions {
 export function createSearchBot(options: SearchBotOptions = {}): Bot {
   const worlds = options.worlds ?? 64;
   const planWorlds = options.planWorlds ?? 24;
+  const book = options.rollout ?? heuristicBot;
   return {
     name: "search",
     decide(view, rng) {
-      const decision = view.decision;
-      const persona = options.persona ?? personaForSeat(view.seat);
-      const fallback = heuristicBot.decide(view, rng);
-      // 2마는 판 흐름(카드 고르기)이 달라 공약·교환은 어림으로 둔다.
-      if (planWorlds > 0 && view.rules.playerCount >= 3) {
-        const planned =
-          decision?.kind === "election"
-            ? planElection(view, decision, planWorlds, rng, persona)
-            : decision?.kind === "exchange"
-              ? planExchange(view, decision, planWorlds, rng)
-              : decision?.kind === "friend"
-                ? planFriend(view, decision, planWorlds * 2, rng)
-                : null;
-        if (planned) return planned;
+      const before = rollout;
+      rollout = book;
+      try {
+        return decideWith(view, rng);
+      } finally {
+        rollout = before;
       }
-      if (decision?.kind !== "play" || view.goal === null) return fallback;
-      if (candidates(decision).length <= 1) return fallback;
-
-      const values = evaluatePlays(view, rng, worlds, persona);
-      if (!values) return fallback;
-      return chooseAction(
-        values.map((v) => v.action),
-        values.map((v) => v.mean),
-        fallback,
-        persona,
-        rng,
-      );
     },
   };
+
+  function decideWith(view: PlayerView, rng: RngState): Action {
+    const decision = view.decision;
+    const persona = options.persona ?? personaForSeat(view.seat);
+    const fallback = book.decide(view, rng);
+    // 2마는 판 흐름(카드 고르기)이 달라 공약·교환은 어림으로 둔다.
+    if (planWorlds > 0 && view.rules.playerCount >= 3) {
+      const planned =
+        decision?.kind === "election"
+          ? planElection(view, decision, planWorlds, rng, persona)
+          : decision?.kind === "exchange"
+            ? planExchange(view, decision, planWorlds, rng)
+            : decision?.kind === "friend"
+              ? planFriend(view, decision, planWorlds * 2, rng)
+              : null;
+      if (planned) return planned;
+    }
+    if (decision?.kind !== "play" || view.goal === null) return fallback;
+    if (candidates(decision).length <= 1) return fallback;
+
+    const values = evaluatePlays(view, rng, worlds, persona);
+    if (!values) return fallback;
+    return chooseAction(
+      values.map((v) => v.action),
+      values.map((v) => v.mean),
+      fallback,
+      persona,
+      rng,
+    );
+  }
 }
 
 /**
