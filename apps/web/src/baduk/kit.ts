@@ -146,8 +146,8 @@ export function explainBaduk(
       verdict: null,
       reasons: [
         state.passes > 0
-          ? "상대에 이어 쉬어 판이 끝났다"
-          : "쉬었다(둘이 이어 쉬면 판 위 그대로 센다)",
+          ? "상대에 이어 쉬어서 판이 끝났어요."
+          : "한 수 쉬었어요(둘이 이어 쉬면 판 위 그대로 세어 끝내요).",
       ],
     };
   if (action.type !== "place") return { situation, verdict: null, reasons: [] };
@@ -167,7 +167,7 @@ export function explainBaduk(
       situation,
       verdict: "good",
       reasons: [
-        `${mine}: 고수도 같은 수를 둔다(승률 ${percent(best.winRate)})`,
+        `고수도 같은 수(${mine})를 둬요(승률 ${percent(best.winRate)}).`,
       ],
     };
   const seen = best.stats.find((s) => s.move === action.at);
@@ -180,8 +180,8 @@ export function explainBaduk(
     situation,
     verdict: verdictOf(best.winRate - mineRate),
     reasons: [
-      `${mine}에 뒀다(승률 ${percent(mineRate)})`,
-      `고수라면 ${bestName}(승률 ${percent(best.winRate)})`,
+      `${mine}에 뒀어요(승률 ${percent(mineRate)}).`,
+      `고수라면 다른 수(${bestName})를 둬요(승률 ${percent(best.winRate)}).`,
     ],
   };
 }
