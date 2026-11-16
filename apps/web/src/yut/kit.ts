@@ -24,6 +24,7 @@ import {
 } from "@game/yut-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 
 export type YutKit = GameKit<
@@ -77,6 +78,21 @@ export interface YutGame {
 }
 
 export const yutStats: KitStats<YutView, GameEvent> = {
+  result: { unit: "round", outcome: (data) => (data as YutRound).outcome },
+  achievements: [
+    anyRound<YutRound>(
+      "mo-3",
+      "모 셋",
+      "한 판에 모를 세 번 던집니다.",
+      (r) => r.mos >= 3,
+    ),
+    anyRound<YutRound>(
+      "capture-3",
+      "잡기 셋",
+      "한 판에 상대 말을 세 번 잡습니다.",
+      (r) => r.captures >= 3,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "gameStarted"),
   roundEnded: (events) => events.some((e) => e.type === "gameEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),

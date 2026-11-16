@@ -28,7 +28,10 @@ import {
   useBadukSettings,
 } from "../settings";
 import { type BadukSaved, clearBaduk, loadBaduk, useBaduk } from "../store";
-import { BADUK_STUDY_LESSONS } from "../study-lessons";
+import {
+  BADUK_STUDY_LESSON_SUMMARY,
+  BADUK_STUDY_LESSONS,
+} from "../study-lessons";
 import { BADUK_LESSONS } from "../tutorial";
 import { BadukGame, StoneDot } from "./BadukGame";
 import { BadukLineScreen } from "./BadukLineScreen";
@@ -386,8 +389,7 @@ const STUDY_SETS = BADUK_PUZZLE_SETS.map((s) => ({
 const LESSON_SET = {
   id: "lessons",
   title: "단원 읽기",
-  summary:
-    "패로 버티기, 긴 축과 축머리, 포석을 그림으로 읽고 퀴즈를 푼다. 읽은 뒤 아래 문제와 따라 두기로 익힌다.",
+  summary: BADUK_STUDY_LESSON_SUMMARY,
   puzzleIds: BADUK_STUDY_LESSONS.map((l) => l.id),
   labels: BADUK_STUDY_LESSONS.map((l) => l.title),
 };

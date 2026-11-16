@@ -38,56 +38,56 @@ const TEXT: Record<
   { prompt: string; solved: string; wrong: string; wrongHint: string }
 > = {
   mate: {
-    prompt: "한 수로 외통을 만드세요",
+    prompt: "한 수로 외통을 만드세요.",
     solved: "외통!",
-    wrong: "외통이 아니에요",
-    wrongHint: "장군을 부르고, 궁이 피할 곳을 모두 막아야 해요",
+    wrong: "외통이 아니에요.",
+    wrongHint: "장군을 부르고, 궁이 피할 곳을 모두 막아야 해요.",
   },
   fork: {
-    prompt: "한 수로 두 곳을 함께 노리세요",
+    prompt: "한 수로 두 곳을 함께 노리세요.",
     solved: "양수겸장!",
-    wrong: "두 곳을 노리는 수가 아니에요",
-    wrongHint: "큰 기물 둘(또는 궁과 큰 기물)을 한 번에 노리는 자리를 찾아요",
+    wrong: "두 곳을 노리는 수가 아니에요.",
+    wrongHint: "큰 기물 둘(또는 궁과 큰 기물)을 한 번에 노리는 자리를 찾아요.",
   },
   trade: {
-    prompt: "이득인 잡기를 고르세요",
+    prompt: "이득인 잡기를 고르세요.",
     solved: "이득!",
-    wrong: "그 수로는 이득이 없어요",
-    wrongHint: "잡은 뒤 상대가 다시 잡는지, 무엇을 잃는지 따져 봐요",
+    wrong: "그 수로는 이득이 없어요.",
+    wrongHint: "잡은 뒤 상대가 다시 잡는지, 무엇을 잃는지 따져 봐요.",
   },
   cannon: {
-    prompt: "포 길을 열어 큰 기물을 노리세요",
+    prompt: "포 길을 열어 큰 기물을 노리세요.",
     solved: "포 길이 열렸어요!",
-    wrong: "그 수로는 포 길이 열리지 않아요",
+    wrong: "그 수로는 포 길이 열리지 않아요.",
     wrongHint:
-      "포는 꼭 하나를 넘어야 가요. 포와 상대 기물 사이에 다리를 놓아 봐요",
+      "포는 꼭 하나를 넘어야 가요. 포와 상대 기물 사이에 다리를 놓아 봐요.",
   },
   escape: {
-    prompt: "장군을 손해 없이 푸세요",
+    prompt: "장군을 손해 없이 푸세요.",
     solved: "잘 풀었어요!",
-    wrong: "그 풀기로는 손해를 봐요",
+    wrong: "그 풀기로는 손해를 봐요.",
     wrongHint:
-      "궁 비키기·사이 막기·장군 부른 기물 잡기를 모두 견줘 봐요. 풀고 나서 무엇을 잃는지 살펴요",
+      "궁 비키기·사이 막기·장군 부른 기물 잡기를 모두 견줘 봐요. 풀고 나서 무엇을 잃는지 살펴요.",
   },
   defend: {
-    prompt: "노림을 받는 기물을 지키세요",
+    prompt: "노림을 받는 기물을 지키세요.",
     solved: "잘 지켰어요!",
-    wrong: "그 수로는 기물을 잃어요",
+    wrong: "그 수로는 기물을 잃어요.",
     wrongHint:
-      "상대가 무엇을 노리는지 먼저 찾아요. 안전한 곳으로 비키거나, 잡히면 다시 잡을 수 있게 지켜요",
+      "상대가 무엇을 노리는지 먼저 찾아요. 안전한 곳으로 비키거나, 잡히면 다시 잡을 수 있게 지켜요.",
   },
   palace: {
-    prompt: "궁성 대각선을 타고 공격하세요",
+    prompt: "궁성 대각선을 타고 공격하세요.",
     solved: "궁성 공격!",
-    wrong: "그 수로는 얻는 게 없어요",
+    wrong: "그 수로는 얻는 게 없어요.",
     wrongHint:
-      "궁성 안에는 대각선 길이 있어요. 차·포·졸이 그 길로 장군을 부르거나 기물을 잡을 수 있는지 봐요",
+      "궁성 안에는 대각선 길이 있어요. 차·포·졸이 그 길로 장군을 부르거나 기물을 잡을 수 있는지 봐요.",
   },
   block: {
-    prompt: "멱을 막아 기물을 지키세요",
+    prompt: "멱을 막아 기물을 지키세요.",
     solved: "멱을 막았어요!",
-    wrong: "그 수로는 기물을 잃어요",
-    wrongHint: "상대 마·상이 곧게 처음 가는 칸(멱)에 기물을 놓으면 못 와요",
+    wrong: "그 수로는 기물을 잃어요.",
+    wrongHint: "상대 마·상이 곧게 처음 가는 칸(멱)에 기물을 놓으면 못 와요.",
   },
 };
 
@@ -176,10 +176,10 @@ function JanggiPuzzleRun({
     puzzle.kind !== "mate" || puzzle.mateIn === 1
       ? text.prompt
       : run.step === 0
-        ? `${COUNT[puzzle.mateIn]} 수 만에 외통: 첫 수를 두세요`
+        ? `${COUNT[puzzle.mateIn]} 수 만에 외통: 첫 수를 두세요.`
         : run.step < puzzle.mateIn - 1
-          ? `외통까지 ${COUNT[puzzle.mateIn - run.step]} 수 남았어요`
-          : "이제 외통을 만드세요";
+          ? `외통까지 ${COUNT[puzzle.mateIn - run.step]} 수 남았어요.`
+          : "이제 외통을 만드세요.";
 
   return (
     <PuzzleScreen

@@ -15,7 +15,7 @@ export const BADUK_FUSEKI: readonly StudyLine[] = [
   {
     id: "line-fuseki-nirensei",
     name: "이연성(흑)",
-    summary: "같은 쪽 두 귀의 화점에 둔다. 두 돌이 그 사이 변을 함께 바라본다.",
+    summary: "같은 쪽 두 귀의 화점에 둬요. 두 돌이 그 사이 변을 함께 바라봐요.",
     learner: 0,
     start: EMPTY,
     source: SOURCE,
@@ -34,7 +34,7 @@ export const BADUK_FUSEKI: readonly StudyLine[] = [
   {
     id: "line-fuseki-sanrensei",
     name: "삼연성(흑)",
-    summary: "이연성에 더해 그 사이 변의 화점까지 세 곳에 둔다.",
+    summary: "이연성에 더해 그 사이 변의 화점까지 세 곳에 둬요.",
     learner: 0,
     start: EMPTY,
     source: SOURCE,
@@ -43,7 +43,7 @@ export const BADUK_FUSEKI: readonly StudyLine[] = [
       { move: "D4", note: "백은 왼쪽 아래 귀를 차지해요." },
       {
         move: "Q4",
-        note: "오른쪽 아래 귀 화점. 오른쪽 변을 두 돌이 바라봐요(이연성).",
+        note: "오른쪽 아래 귀 화점에 둬요. 오른쪽 변을 두 돌이 바라봐요(이연성).",
       },
       { move: "D16", note: "백이 마지막 빈 귀를 차지해요." },
       {
@@ -55,7 +55,7 @@ export const BADUK_FUSEKI: readonly StudyLine[] = [
   {
     id: "line-fuseki-diagonal",
     name: "마주 보는 화점(흑)",
-    summary: "백이 한 귀를 차지하면, 흑은 그 대각선 쪽 귀에 둔다.",
+    summary: "백이 한 귀를 차지하면, 흑은 그 대각선 쪽 귀에 둬요.",
     learner: 0,
     start: EMPTY,
     source: SOURCE,
@@ -75,7 +75,7 @@ export const BADUK_FUSEKI: readonly StudyLine[] = [
   {
     id: "line-fuseki-komoku-shimari",
     name: "소목 굳힘(흑)",
-    summary: "소목에 두고, 빈 귀를 나눠 가진 뒤 귀를 한 수 더 굳힌다.",
+    summary: "소목에 두고, 빈 귀를 나눠 가진 뒤 귀를 한 수 더 굳혀요.",
     learner: 0,
     start: EMPTY,
     source: SOURCE,
@@ -96,7 +96,7 @@ export const BADUK_FUSEKI: readonly StudyLine[] = [
   {
     id: "line-fuseki-empty-corners",
     name: "빈 귀 먼저(백)",
-    summary: "백으로 둔다. 흑이 귀를 둘 차지해도 백은 남은 빈 귀부터 차지한다.",
+    summary: "백으로 둬요. 흑이 귀를 둘 차지해도 백은 남은 빈 귀부터 차지해요.",
     learner: 1,
     start: EMPTY,
     source: SOURCE,
@@ -124,6 +124,6 @@ export const BADUK_FUSEKI_SET = {
   id: "fuseki",
   title: "포석 따라 두기",
   summary:
-    "빈 19줄 판에서 귀 → 변 → 가운데 순서로 첫 몇 수를 따라 둔다. 상대 수는 저절로 두고, 내 수가 다르면 다시 두게 한다.",
+    "빈 19줄 판에서 귀 → 변 → 가운데 순서로 첫 몇 수를 따라 둬요. 상대 수는 저절로 두고, 내 수가 다르면 다시 두게 해요.",
   lines: BADUK_FUSEKI,
 };

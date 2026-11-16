@@ -460,7 +460,7 @@ test(
     await expect(mate1.getByText("0/12")).toBeVisible();
     await mate1.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "한 수로 체크메이트하세요",
+      "한 수로 체크메이트하세요.",
     );
 
     // 킹을 한 칸 옮기는 수는 메이트가 아니다.
@@ -470,7 +470,7 @@ test(
       .first()
       .getAttribute("data-target");
     await tapSquare(page, to as string, touch);
-    await expect(page.getByRole("status")).toHaveText("메이트가 아니에요");
+    await expect(page.getByRole("status")).toHaveText("메이트가 아니에요.");
     await page.getByRole("button", { name: "다시 하기" }).click();
 
     // 정답: 룩 b5 → b8
@@ -502,7 +502,7 @@ test(
     await expect(fork.getByText("0/8")).toBeVisible();
     await fork.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "한 기물로 두 곳을 함께 노려 기물을 얻으세요(포크)",
+      "한 기물로 두 곳을 함께 노려 기물을 얻으세요(포크).",
     );
 
     // 킹을 옮기는 수로는 기물을 얻지 못한다.
@@ -513,7 +513,7 @@ test(
       .getAttribute("data-target");
     await tapSquare(page, to as string, touch);
     await expect(page.getByRole("status")).toHaveText(
-      "그 수로는 기물을 얻지 못해요",
+      "그 수로는 기물을 얻지 못해요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
 
@@ -521,7 +521,7 @@ test(
     await tapSquare(page, "d5", touch);
     await tapSquare(page, "h1", touch);
     await expect(page.getByRole("status")).toHaveText("포크!");
-    await expect(page.getByText(/함께 노린다\(포크\)/)).toBeVisible();
+    await expect(page.getByText(/함께 노려요\(포크\)/)).toBeVisible();
     await page.screenshot({ path: info.outputPath("chess-fork.png") });
     await page.getByRole("button", { name: "← 목록" }).click();
     await expect(fork.getByText("1/8")).toBeVisible();
@@ -559,7 +559,7 @@ test("체스 오프닝 수순: 수순에 없는 수는 두지 않고 안내하�
   const set = page.getByRole("region", { name: "오프닝 수순" });
   await expect(set.getByText("0/9")).toBeVisible();
   await set.getByRole("button", { name: "런던 시스템" }).click();
-  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요.");
 
   // e4는 좋은 수지만 이 수순의 수가 아니다. 판에 두지 않는다.
   await tapSquare(page, "e2", touch);
@@ -601,7 +601,7 @@ test("체스 오프닝 수순: 수순에 없는 수는 두지 않고 안내하�
   await expect(page.locator('[data-square="e4"][data-piece="wP"]')).toHaveCount(
     1,
   );
-  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요.");
 });
 
 /** 칸 가운데의 화면 좌표(백이 아래인 판) */
@@ -660,12 +660,12 @@ test(
     const set = page.getByRole("region", { name: "킹과 폰" });
     await set.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "백이 이기는 단 하나의 수를 찾으세요",
+      "백이 이기는 단 하나의 수를 찾으세요.",
     );
     await tapSquare(page, "e5", false);
     await tapSquare(page, "e6", false);
     await expect(page.getByRole("status")).toHaveText(
-      "그 수는 흑이 막아 비겨요",
+      "그 수는 흑이 막아 비겨요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
     await tapSquare(page, "c5", false);
@@ -885,13 +885,13 @@ test(
     await expect(mate3.getByText("0/14")).toBeVisible();
     await mate3.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "세 수 만에 메이트: 첫 수를 두세요",
+      "세 수 만에 메이트: 첫 수를 두세요.",
     );
     // 정답: 룩 g4 → g7
     await tapSquare(page, "g4", false);
     await tapSquare(page, "g7", false);
     await expect(page.getByRole("status")).toHaveText(
-      "메이트까지 두 수: 다음 수를 두세요",
+      "메이트까지 두 수: 다음 수를 두세요.",
     );
     await page.screenshot({ path: info.outputPath("chess-mate3.png") });
   },

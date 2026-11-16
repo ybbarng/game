@@ -148,7 +148,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   {
     id: "goal",
     title: "장기는 어떤 게임?",
-    summary: "초가 먼저 두고, 상대 궁을 외통으로 몰면 이긴다",
+    summary: "초가 먼저 두고, 상대 궁을 외통으로 몰면 이겨요.",
     steps: [
       {
         kind: "explain",
@@ -202,7 +202,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   {
     id: "cannon",
     title: "포",
-    summary: "포는 기물 하나를 반드시 넘어서 간다",
+    summary: "포는 기물 하나를 반드시 넘어서 가요.",
     steps: [
       {
         kind: "explain",
@@ -244,7 +244,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
     id: "horse",
     title: "마·상",
     summary:
-      "마는 한 칸 + 대각선 한 칸, 상은 한 칸 + 대각선 두 칸. 막히면 못 간다",
+      "마는 한 칸 + 대각선 한 칸, 상은 한 칸 + 대각선 두 칸 가요. 막히면 못 가요.",
     steps: [
       {
         kind: "explain",
@@ -302,7 +302,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
     id: "check",
     title: "궁·사·졸과 장군",
     summary:
-      "궁과 사는 궁성 안에서, 졸은 앞과 옆으로. 궁성 대각선. 장군을 받으면 반드시 푼다",
+      "궁과 사는 궁성 안에서, 졸은 앞과 옆으로 다녀요. 궁성에는 대각선 길이 있어요. 장군을 받으면 반드시 풀어요.",
     steps: [
       {
         kind: "explain",
@@ -358,7 +358,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   {
     id: "mate",
     title: "외통",
-    summary: "장군을 어떻게 해도 풀 수 없으면 외통, 그 판을 이긴다",
+    summary: "장군을 어떻게 해도 풀 수 없으면 외통이고, 그 판을 이겨요.",
     steps: [
       {
         kind: "explain",
@@ -386,7 +386,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   {
     id: "score",
     title: "쉬기·빅장·점수",
-    summary: "외통 말고도 판이 끝나는 길. 남은 기물 점수로 가린다",
+    summary: "외통 말고도 판이 끝나는 길이 있어요. 남은 기물 점수로 가려요.",
     steps: [
       {
         kind: "explain",
@@ -440,7 +440,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   {
     id: "opening",
     title: "찻길 열기",
-    summary: "찻길을 열고, 마·상을 꺼내고, 궁 둘레는 지킨다",
+    summary: "찻길을 열고, 마·상을 꺼내고, 궁 둘레는 지켜요.",
     steps: [
       {
         kind: "explain",
@@ -494,7 +494,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   {
     id: "real",
     title: "실전",
-    summary: "상차림부터 입문 컴퓨터와 한 판",
+    summary: "상차림부터 입문 컴퓨터와 한 판 둬요.",
     steps: [
       {
         kind: "explain",

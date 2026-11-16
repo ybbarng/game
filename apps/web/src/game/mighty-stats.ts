@@ -2,14 +2,15 @@ import {
   type Card,
   type GameEvent,
   isJoker,
+  type JokerCallVerdict,
+  judgeJokerCall,
   type Kiruda,
   mightyOf,
   type PlayerView,
   type ScoreMultiplier,
 } from "@game/mighty-engine";
-
+import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
-
 import type { KitStats } from "./kit";
 
 /** 마이티 판 기록(내 자리에서 본 것) */
@@ -62,6 +63,23 @@ export interface JokerCallRecord {
   points: number;
 }
 
+/**
+ * 남긴 조커콜 기록 하나가 효과가 있었는지(엔진 `judgeJokerCall`, 기준은 docs/04 8.3절).
+ * 조커콜한 사람은 나이므로 내 편은 그 판의 역할로 안다.
+ */
+export function jokerCallVerdict(
+  role: MightyRound["role"],
+  call: JokerCallRecord,
+): JokerCallVerdict {
+  const caller = role === "opposition" ? "opposition" : "ruling";
+  const other = caller === "ruling" ? "opposition" : "ruling";
+  return judgeJokerCall({
+    caller,
+    joker: call.fromSide,
+    winner: call.won ? caller : other,
+  });
+}
+
 export interface MightyGame {
   players: number;
   rounds: number;
@@ -74,6 +92,40 @@ export interface MightyGame {
 
 /** 마이티 내 기록 */
 export const mightyStats: KitStats<PlayerView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => {
+      const r = data as MightyRound;
+      if (r.role === "out") return null;
+      return r.won ? "win" : "loss";
+    },
+  },
+  achievements: [
+    anyRound<MightyRound>(
+      "run",
+      "첫 런",
+      "런으로 이깁니다.",
+      (r) => r.won && r.multipliers.includes("run"),
+    ),
+    anyRound<MightyRound>(
+      "reverse-run",
+      "백런",
+      "백런으로 이깁니다.",
+      (r) => r.won && r.multipliers.includes("reverseRun"),
+    ),
+    anyRound<MightyRound>(
+      "no-friend",
+      "혼자서도",
+      "주공이 되어 노프렌드로 공약을 지킵니다.",
+      (r) => r.role === "declarer" && r.won && r.friend === "none",
+    ),
+    anyRound<MightyRound>(
+      "big-goal",
+      "큰 공약",
+      "주공이 되어 공약 18 이상을 지킵니다.",
+      (r) => r.role === "declarer" && r.won && r.goal.score >= 18,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundScored"),
   gameEnded: (events) => events.some((e) => e.type === "gameOver"),
@@ -225,6 +277,8 @@ export interface MightySummary {
     jokerCallHits: number;
     /** 조커콜 한 턴을 내 편이 먹었다 */
     jokerCallWins: number;
+    /** 효과 있는 조커콜: 상대 조커를 끌어내고 그 턴을 내 편이 먹었다 */
+    jokerCallEffective: number;
   };
   /** 명장면 횟수 */
   moments: {
@@ -338,6 +392,13 @@ export function summarizeMighty(
       ),
       jokerCallWins: full.reduce(
         (n, r) => n + (r.calls?.filter((c) => c.won).length ?? 0),
+        0,
+      ),
+      jokerCallEffective: full.reduce(
+        (n, r) =>
+          n +
+          (r.calls?.filter((c) => jokerCallVerdict(r.role, c) === "effective")
+            .length ?? 0),
         0,
       ),
     },

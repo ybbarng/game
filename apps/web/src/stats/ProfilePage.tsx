@@ -1,22 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { summarizeBaduk } from "@/baduk/kit";
+import { badukStats, summarizeBaduk } from "@/baduk/kit";
 import { BaseballStats } from "@/baseball/components/BaseballStats";
+import { baseballStats } from "@/baseball/kit";
 import { ChessStats } from "@/chess/components/ChessStats";
+import { chessStats } from "@/chess/kit";
 import { GalaxyStats } from "@/galaxy/components/GalaxyStats";
-import { summarizeMighty } from "@/game/mighty-stats";
+import { galaxyStats } from "@/galaxy/kit";
+import type { KitStats } from "@/game/kit";
+import { mightyStats, summarizeMighty } from "@/game/mighty-stats";
 import { useSettings } from "@/game/settings";
 import { kirudaName } from "@/game/terms";
 import { GostopStats } from "@/gostop/components/GostopStats";
-import { summarizeHearts } from "@/hearts/stats";
-import { summarizeJanggi } from "@/janggi/kit";
+import { gostopStats } from "@/gostop/kit";
+import { heartsStats, summarizeHearts } from "@/hearts/stats";
+import { janggiStats, summarizeJanggi } from "@/janggi/kit";
 import { cn } from "@/lib/cn";
 import { MinhwatuStats } from "@/minhwatu/components/MinhwatuStats";
+import { minhwatuStats } from "@/minhwatu/stats";
 import { NyrongppongStats } from "@/nyrongppong/components/NyrongppongStats";
-import { summarizeOmok } from "@/omok/kit";
+import { nyrongppongStats } from "@/nyrongppong/kit";
+import { omokStats, summarizeOmok } from "@/omok/kit";
 import { OnecardStats } from "@/onecard/components/OnecardStats";
+import { onecardStats } from "@/onecard/kit";
+import { listArchives } from "@/review/archive";
 import { YutStats } from "@/yut/components/YutStats";
+import { yutStats } from "@/yut/kit";
+
+import { AchievementsCard, PeopleCard, recordsOf } from "./game-extras";
+import { peopleFromArchives } from "./people";
+import { filterBook, PERIOD_LABEL, PERIODS, type Period } from "./period";
 
 import { clearStats, importStats, loadStats, type StatsBook } from "./records";
 import {
@@ -62,6 +76,23 @@ const TAB_LABEL: Record<GameTab, string> = {
   onecard: "🃏 원카드",
 };
 
+/** 게임마다 승패 단위와 업적(게임 키트의 `stats`) */
+const KIT_STATS: Record<GameTab, KitStats<never, never>> = {
+  mighty: mightyStats,
+  hearts: heartsStats,
+  omok: omokStats,
+  janggi: janggiStats,
+  chess: chessStats,
+  baduk: badukStats,
+  nyrongppong: nyrongppongStats,
+  gostop: gostopStats,
+  minhwatu: minhwatuStats,
+  baseball: baseballStats,
+  yut: yutStats,
+  galaxy: galaxyStats,
+  onecard: onecardStats,
+};
+
 /** 열 판마다 한 단계 오른다 */
 const ROUNDS_PER_LEVEL = 10;
 
@@ -81,6 +112,14 @@ export function ProfilePage() {
   const name = useSettings((s) => s.playerName);
   const [book, setBook] = useState<StatsBook | null>(null);
   const [tab, setTab] = useState<GameTab>("mighty");
+  const [period, setPeriod] = useState<Period>("all");
+  /** 기간을 거를 때 쓰는 지금(기록을 읽을 때 한 번 정한다) */
+  const [now, setNow] = useState(() => new Date(0));
+  /** 옛 친구와 하기 기록의 같이 한 사람(복기 기록의 자리 이름에서) */
+  const [archivePeople, setArchivePeople] = useState<
+    ReadonlyMap<string, readonly string[]>
+  >(new Map());
+  const botNames = useSettings((s) => s.botNames);
   const [confirmClear, setConfirmClear] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   /** 들어온 게임의 처음 화면. 게임 목록에서 왔으면 목록 */
@@ -90,6 +129,7 @@ export function ProfilePage() {
   // 저장소는 브라우저에만 있으므로 그린 뒤에 읽는다.
   useEffect(() => {
     setBook(loadStats());
+    setNow(new Date());
     // 게임에서 들어왔으면 그 게임 기록부터 보이고 그 게임으로 돌아간다.
     const game = new URLSearchParams(window.location.search).get("game");
     if (
@@ -111,7 +151,21 @@ export function ProfilePage() {
       setTab(game);
     }
   }, []);
+  useEffect(() => {
+    let live = true;
+    void listArchives().then((archives) => {
+      if (live) setArchivePeople(peopleFromArchives(archives, botNames));
+    });
+    return () => {
+      live = false;
+    };
+  }, [botNames]);
   if (!book) return <main className="min-h-dvh bg-slate-950" />;
+
+  const shown = filterBook(book, period, now);
+  const spec = KIT_STATS[tab];
+  const hasAny = book.rounds.some((r) => r.game === tab);
+  const hasShown = shown.rounds.some((r) => r.game === tab);
 
   const total = book.rounds.length;
   const level = Math.floor(total / ROUNDS_PER_LEVEL) + 1;
@@ -217,34 +271,67 @@ export function ProfilePage() {
               </button>
             ))}
           </div>
+          <fieldset className="flex flex-wrap gap-1.5" aria-label="기간">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={period === p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "rounded-lg px-3 py-1 text-xs",
+                  period === p
+                    ? "bg-amber-200 font-semibold text-black"
+                    : "bg-black/30 text-white/80 hover:bg-black/40",
+                )}
+              >
+                {PERIOD_LABEL[p]}
+              </button>
+            ))}
+          </fieldset>
         </header>
 
-        {tab === "mighty" ? (
-          <MightyStats book={book} />
+        {hasAny && !hasShown ? (
+          <p className="rounded-3xl border border-white/10 bg-black/35 p-4 text-sm text-white/70">
+            이 기간에는 기록이 없습니다.
+          </p>
+        ) : tab === "mighty" ? (
+          <MightyStats book={shown} />
         ) : tab === "hearts" ? (
-          <HeartsStats book={book} />
+          <HeartsStats book={shown} />
         ) : tab === "janggi" ? (
-          <JanggiStats book={book} />
+          <JanggiStats book={shown} />
         ) : tab === "baduk" ? (
-          <BadukStats book={book} />
+          <BadukStats book={shown} />
         ) : tab === "chess" ? (
-          <ChessStats book={book} />
+          <ChessStats book={shown} />
         ) : tab === "gostop" ? (
-          <GostopStats book={book} />
+          <GostopStats book={shown} />
         ) : tab === "minhwatu" ? (
-          <MinhwatuStats book={book} />
+          <MinhwatuStats book={shown} />
         ) : tab === "nyrongppong" ? (
-          <NyrongppongStats book={book} />
+          <NyrongppongStats book={shown} />
         ) : tab === "baseball" ? (
-          <BaseballStats book={book} />
+          <BaseballStats book={shown} />
         ) : tab === "yut" ? (
-          <YutStats book={book} />
+          <YutStats book={shown} />
         ) : tab === "galaxy" ? (
-          <GalaxyStats book={book} />
+          <GalaxyStats book={shown} />
         ) : tab === "onecard" ? (
-          <OnecardStats book={book} />
+          <OnecardStats book={shown} />
         ) : (
-          <OmokStats book={book} />
+          <OmokStats book={shown} />
+        )}
+
+        {hasShown && (
+          <PeopleCard
+            spec={spec}
+            records={recordsOf(shown, tab)}
+            fallback={archivePeople}
+          />
+        )}
+        {hasAny && (
+          <AchievementsCard spec={spec} records={recordsOf(book, tab)} />
         )}
 
         <Card title="기록 관리">
@@ -375,7 +462,11 @@ function MightyStats({ book }: { book: StatsBook }) {
             { label: "먹은 턴", value: c.tricks },
             { label: "딴 점수 카드", value: c.points },
             { label: "조커 낸 판", value: c.jokerPlays },
-            { label: "조커콜", value: c.jokerCalls },
+            {
+              label: "조커콜",
+              value: c.jokerCalls,
+              sub: `효과 ${c.jokerCallEffective}`,
+            },
             { label: "조커콜로 조커 끌어냄", value: c.jokerCallHits },
             { label: "조커콜 턴 먹음", value: c.jokerCallWins },
           ]}
