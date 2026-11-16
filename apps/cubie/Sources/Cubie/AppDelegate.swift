@@ -93,6 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self?.measureWindow(.settings, open: open)
           }
         }
+        // `pick <티어 0~9>`: 티어표 사다리 칸 누르기(docs/52 5-11)
+        m.pickTier = { [weak self] t in (self?.sheets[.tiers] as? NativeTiersWindow)?.page.pick(t) }
         nativeMeasure = m
       }
       return

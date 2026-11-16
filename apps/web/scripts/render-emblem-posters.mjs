@@ -15,11 +15,13 @@
  * 3) 정지 그림 `public/cube/tiers/emblem3d/still/<티어>-<s|m|l>.webp`(emblem3d/still.ts): 정면 한 장, 투명 바탕. 작은
  *    단계(s)는 작게 봐도 알아보게 맞춰 찍는다(칸을 더 채움·밝힘·테두리, 티어 색 살리기 `SMALL_TINT`).
  * 4) Cubie 앱에 묶는 PNG `apps/cubie/Resources/Emblems/<티어>.png`(32pt·64px)와 `Emblems/big/<티어>.png`(64pt·128px).
+ * 4-1) Cubie 티어표 진열과 메뉴 프로필 칸의 흔들기 그림 `apps/cubie/Resources/Emblems/sway/`(`ONLY=cubie-sway`). 사다리
+ *    칸은 2) 진열 칸 그림을 앱이 그대로 묶는다(`apps/cubie/build.sh`).
  * 5) README 그림 `apps/cubie/docs/tiers.webp`: 열 티어를 아래에서 위로 오르는 사다리로(투명 바탕, GitHub 밝은·어두운 화면 모두).
  *
  * 쓰는 법(apps/web에서):
  *   pnpm build                                        # out/ 이 있어야 한다
- *   E2E_PORT=5892 node scripts/render-emblem-posters.mjs   # ONLY=ladder|posters|hdr|sprites|stills|cubie|readme, TIER=gold
+ *   E2E_PORT=5892 node scripts/render-emblem-posters.mjs   # ONLY=ladder|posters|hdr|sprites|stills|cubie|cubie-sway|readme, TIER=gold
  *   BASE=http://localhost:3456 …                      # 띄워 둔 서버를 쓴다(빌드 없이 잴 때)
  *
  * - 목록은 `poster.ts`·`still.ts`와 같아야 한다(.ts를 그대로 불러올 수 없어 여기 다시 적는다). 어긋나면 단위 시험
@@ -36,7 +38,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
 
@@ -125,6 +127,27 @@ const CUBIE = [
   { dir: join(cubieDir, "big"), px: 128 },
 ];
 
+/**
+ * Cubie 앱 티어표 창 진열의 흔들기 그림(docs/52 5-11). 앱은 3D를 띄우지 않고(GPU로 그리면 드라이버가 약 108MB를 붙인다)
+ * 위쪽 큰 칸 3D가 그리는 장을 좌우 각마다 미리 찍어 넘긴다. 사이트 흔들기와 같은 ±0.5 라디안을 `CUBIE_SWAY_FRAMES`장으로
+ * 고르게 나누고, 앱은 이웃한 두 장을 겹쳐 사이 각을 메운다. 한 장씩 파일로 둔다(앱이 지금 보이는 장만 풀어 메모리를
+ * 아낀다). 메뉴 프로필 칸(32pt)은 정지 그림 작은 단계와 같은 맞춤으로 `CUBIE_MENU_FRAMES`각을 투명 바탕에 찍어 가로로
+ * 이어 붙인다. 앱 `TierShowcase.heroFrames`·`menuFrames`와 같아야 한다(앱 시험 `TierShowcaseTests`가 묶은 파일 수를 본다).
+ * 장 수·품질은 앱 크기와 맞바꾼 값이다(25장 품질 0.75면 큰 칸만 4.9MB, docs/52 5-11)
+ */
+const evenYaws = (count) =>
+  Array.from(
+    { length: count },
+    (_, i) => -SPRITE_AMP + (2 * SPRITE_AMP * i) / (count - 1),
+  );
+const CUBIE_SWAY_FRAMES = 21;
+const CUBIE_SWAY_YAWS = evenYaws(CUBIE_SWAY_FRAMES);
+const CUBIE_MENU_FRAMES = 13;
+const CUBIE_MENU_YAWS = evenYaws(CUBIE_MENU_FRAMES);
+const CUBIE_SWAY_QUALITY = Number(process.env.CUBIE_SWAY_QUALITY ?? 0.72);
+const CUBIE_MENU_QUALITY = 0.8;
+const cubieSwayDir = join(cubieDir, "sway");
+
 const want = (k) => !ONLY || ONLY === k;
 
 let server = null;
@@ -181,11 +204,12 @@ async function toWebp(page, png) {
 const fromDataUrl = (url) =>
   Buffer.from(url.slice(url.indexOf(",") + 1), "base64");
 
+/** 저장소 뿌리에서 본 경로(Cubie 쪽 파일도 읽기 쉽게) */
+const shown = (file) => relative(join(web, "../.."), file);
+
 function save(file, bytes) {
   writeFileSync(file, bytes);
-  console.log(
-    `${file.slice(web.length + 1)} ${(bytes.length / 1024).toFixed(1)}KB`,
-  );
+  console.log(`${shown(file)} ${(bytes.length / 1024).toFixed(1)}KB`);
 }
 
 /** 티어 화면을 찍기 고리와 함께 연다 */
@@ -481,6 +505,82 @@ async function sprites(page) {
   }
 }
 
+/** PNG data URL 여럿 → 각각 WebP 바이트(브라우저 안에서) */
+async function webpsOf(page, urls, quality) {
+  const list = await page.evaluate(
+    async ([us, q]) => {
+      const out = [];
+      for (const u of us) {
+        const bmp = await createImageBitmap(await (await fetch(u)).blob());
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        c.getContext("2d").drawImage(bmp, 0, 0);
+        const blob = await c.convertToBlob({ type: "image/webp", quality: q });
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let s = "";
+        for (const x of buf) s += String.fromCharCode(x);
+        out.push(btoa(s));
+      }
+      return out;
+    },
+    [urls, quality],
+  );
+  return list.map((b) => Buffer.from(b, "base64"));
+}
+
+/** Cubie 흔들기 그림: 큰 칸(280pt·배율 2, 불투명 티어표 바탕) 한 장씩과 메뉴 프로필 칸(32pt, 투명) 띠 */
+async function cubieSway(page) {
+  let total = 0;
+  for (const tier of TIERS) {
+    const dir = join(cubieSwayDir, tier);
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    const urls = await page.evaluate((j) => window.__emblemCapture.frames(j), {
+      tier,
+      size: HERO_SIZE,
+      yaws: CUBIE_SWAY_YAWS,
+      pageColor: PAGE.dark,
+    });
+    const files = await webpsOf(page, urls, CUBIE_SWAY_QUALITY);
+    let sum = 0;
+    files.forEach((b, i) => {
+      writeFileSync(join(dir, `${String(i).padStart(2, "0")}.webp`), b);
+      sum += b.length;
+    });
+    total += sum;
+    console.log(`${shown(dir)} ${files.length}장 ${(sum / 1024).toFixed(1)}KB`);
+    // 메뉴 프로필 칸: 정지 그림 작은 단계와 같은 맞춤(칸 채움·밝힘·테두리·티어 색)으로 각마다, 가로로 이어 붙인 PNG
+    const cubieSmall = CUBIE[0];
+    const frames = [];
+    for (const yaw of CUBIE_MENU_YAWS)
+      frames.push(
+        await stillPng(page, { ...cubieSmall, tier, yaws: [yaw], yaw }),
+      );
+    const strip = await page.evaluate(
+      async ([list, quality]) => {
+        const imgs = await Promise.all(
+          list.map(async (u) =>
+            createImageBitmap(await (await fetch(u)).blob()),
+          ),
+        );
+        const w = imgs[0].width;
+        const c = new OffscreenCanvas(w * imgs.length, w);
+        const ctx = c.getContext("2d");
+        for (const [i, im] of imgs.entries()) ctx.drawImage(im, i * w, 0);
+        const blob = await c.convertToBlob({ type: "image/webp", quality });
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let s = "";
+        for (const x of buf) s += String.fromCharCode(x);
+        return btoa(s);
+      },
+      [frames, CUBIE_MENU_QUALITY],
+    );
+    const bytes = Buffer.from(strip, "base64");
+    total += bytes.length;
+    save(join(cubieSwayDir, `${tier}-menu.webp`), bytes);
+  }
+  console.log(`Cubie 흔들기 그림 합계 ${(total / 1024 / 1024).toFixed(2)}MB`);
+}
+
 /** 정지 그림 한 장(투명 PNG data URL). 작은 단계는 티어 색을 살린다 */
 async function stillPng(page, job) {
   return page.evaluate(
@@ -489,7 +589,7 @@ async function stillPng(page, job) {
         {
           tier: j.tier,
           px: j.px,
-          yaws: [0],
+          yaws: [j.yaw ?? 0],
           ...(j.fill ? { fill: j.fill } : {}),
           ...(j.halo !== undefined ? { halo: j.halo } : {}),
           ...(j.exposure ? { exposure: j.exposure } : {}),
@@ -596,6 +696,7 @@ try {
     );
   }
   if (want("sprites")) await sprites(page);
+  if (want("cubie-sway")) await cubieSway(page);
   const jobs = [];
   if (want("stills")) {
     mkdirSync(stillDir, { recursive: true });

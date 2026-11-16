@@ -45,6 +45,9 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns Resources/MenuIcon*.png "$APP/Contents/Resources/"
 # 티어 엠블럼(네이티브 화면). 사이트 3D 엠블럼을 정면에서 찍은 정지 그림, apps/web/scripts/render-emblem-posters.mjs가 만든다
 cp -R Resources/Emblems "$APP/Contents/Resources/"
+# 티어표 진열 사다리 칸 그림은 사이트 진열 칸 그림을 그대로 쓴다(17각 띠, 같은 render-emblem-posters.mjs가 만든다, docs/52 5-11)
+mkdir -p "$APP/Contents/Resources/Emblems/ladder"
+cp ../web/public/cube/tiers/emblem3d/sprite/*.webp "$APP/Contents/Resources/Emblems/ladder/"
 plutil -insert CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -insert CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
 

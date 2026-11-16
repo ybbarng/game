@@ -12,15 +12,19 @@ public struct Profile: Equatable, Sendable {
   public var tierText: String?
   /// 티어 엠블럼 그림(PNG). 티어가 없거나 웹이 그리지 못했으면 nil
   public var emblem: Data?
+  /// 엠블럼 티어 id(「gold」). 있으면 메뉴가 열린 동안 앱에 묶은 흔들기 그림으로 천천히 흔든다(네이티브 화면, docs/52 5-11)
+  public var emblemTier: String?
 
   public init(
-    name: String, photo: Data? = nil, signedIn: Bool = false, tierText: String? = nil, emblem: Data? = nil
+    name: String, photo: Data? = nil, signedIn: Bool = false, tierText: String? = nil, emblem: Data? = nil,
+    emblemTier: String? = nil
   ) {
     self.name = name
     self.photo = photo
     self.signedIn = signedIn
     self.tierText = tierText
     self.emblem = emblem
+    self.emblemTier = emblemTier
   }
 
   /// 웹이 아직 알려 주지 않았을 때(화면이 뜨기 전, 프로필을 모르는 옛 웹). 번호는 웹이 정하므로 붙이지 않는다
