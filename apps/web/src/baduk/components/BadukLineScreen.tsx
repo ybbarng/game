@@ -15,11 +15,12 @@ import { useState } from "react";
 import { LineScreen, useLineRun } from "@/components/study/LineScreen";
 import type { StudyLine } from "@/study/line";
 
+import { BADUK_FUSEKI_SET } from "../fuseki";
 import { BADUK_JOSEKI_SET, parseJosekiStart } from "../joseki";
 import { useBadukStudyProgress } from "../progress";
 import { BadukBoard } from "./BadukBoard";
 
-/** 정석은 19줄 판에서 둔다 */
+/** 정석·포석은 19줄 판에서 둔다 */
 const SIZE = 19;
 const JOSEKI_RULES = { ...STANDARD_RULES, size: SIZE } as const;
 
@@ -41,7 +42,10 @@ function lineState(line: StudyLine): BadukState {
   return { ...state, toPlay: start.toPlay };
 }
 
-/** 바둑 정석 수순 하나를 따라 둔다 */
+/** 수순 묶음: 정석, 포석 */
+const LINE_SETS = [BADUK_JOSEKI_SET, BADUK_FUSEKI_SET];
+
+/** 바둑 정석·포석 수순 하나를 따라 둔다 */
 export function BadukLineScreen({
   lineId,
   onExit,
@@ -51,12 +55,15 @@ export function BadukLineScreen({
   onExit: () => void;
   onOpen: (id: string) => void;
 }) {
-  const lines = BADUK_JOSEKI_SET.lines;
+  const set = LINE_SETS.find((s) => s.lines.some((l) => l.id === lineId));
+  if (!set) return null;
+  const lines = set.lines;
   const index = lines.findIndex((l) => l.id === lineId);
   const line = lines[index];
   if (!line) return null;
   return (
     <BadukLineRun
+      setTitle={set.title}
       line={line}
       index={index}
       total={lines.length}
@@ -68,6 +75,7 @@ export function BadukLineScreen({
 }
 
 function BadukLineRun({
+  setTitle,
   line,
   index,
   total,
@@ -75,6 +83,7 @@ function BadukLineRun({
   onExit,
   onOpen,
 }: {
+  setTitle: string;
   line: StudyLine;
   index: number;
   total: number;
@@ -117,7 +126,7 @@ function BadukLineRun({
   return (
     <LineScreen
       game="baduk"
-      setTitle={BADUK_JOSEKI_SET.title}
+      setTitle={setTitle}
       line={line}
       index={index}
       total={total}
