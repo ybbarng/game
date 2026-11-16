@@ -11,6 +11,7 @@ import type { Card } from "@game/mighty-engine";
 
 import type { Incident } from "./coordinator";
 import type { FairDevice } from "./device";
+import { passWaits } from "./device-fixture";
 import {
   type OnecardNet,
   onecardNet,
@@ -24,9 +25,6 @@ import {
   type OnecardRoundDeal,
   onecardDealId,
 } from "./onecard-table";
-
-/** 기기가 기다리는 시간(증명 미루기 10초, 응답 30초의 두 배)을 넉넉히 넘긴다 */
-const PROOF_WAIT_MS = 120_000;
 
 /** 세 번째 다시 섞기(조각 3)의 기기 판 번호 */
 export const SEG3 = onecardDealId(1, 3);
@@ -95,13 +93,8 @@ export async function playRound(
   }
   await net.settle();
   for (const d of net.decks) d.revealAll(1);
-  // 카드가 없는 기기가 미뤄 둔 증명(PROOF_DEFER_MS)과 응답 기다리기가 다 지나게 한다.
-  await net.settle();
-  for (let i = 0; net.clock.pending() > 0; i++) {
-    if (i > 10) throw new Error("기다림이 끝나지 않는다");
-    net.clock.advance(PROOF_WAIT_MS);
-    await net.settle();
-  }
+  // 카드가 없는 기기가 미뤄 둔 증명(PROOF_DEFER_MS)과 응답 기다리기가 하나씩 그 시각에 지나게 한다.
+  await passWaits(net);
   return { net, pools, log };
 }
 
