@@ -24,11 +24,14 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { useChat } from "@/net/chat";
 
 import { outcomeFor } from "../kit";
+import { sceneOf } from "../scene";
 import { yutSession } from "../session";
 import { YUT_LEVELS } from "../settings";
 import { useYut } from "../store";
+import { seatAngle } from "../toss/sim";
 import {
   PendingChips,
   PieceToken,
@@ -36,9 +39,9 @@ import {
   SideTray,
   seatLabel,
   sideLabel,
-  YutSticks,
 } from "./parts";
 import { ThrowPad, TOO_LOW_NOTICE } from "./ThrowPad";
+import { TossMat } from "./TossMat";
 import { YutBoard } from "./YutBoard";
 import "@/yut/components/yut.css";
 
@@ -77,6 +80,77 @@ function resultText(
         ? "시간을 다 써서 졌어요"
         : `${name(result.seat)}이(가) 시간을 다 썼어요`;
   }
+}
+
+/** 윷판과 멍석을 나란히 두는 화면(PC·눕힌 휴대폰, globals.css `split`과 같은 조건) */
+const SPLIT_QUERY =
+  "(orientation: landscape) and (max-height: 600px), (min-width: 1024px)";
+
+function useSplit(): boolean {
+  const [split, setSplit] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia?.(SPLIT_QUERY);
+    if (!q) return;
+    setSplit(q.matches);
+    const on = () => setSplit(q.matches);
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return split;
+}
+
+/**
+ * 멍석 둘레의 다른 사람 자리(던지는 장면). 자리 방향은 3D 멍석과 같은 `seatAngle`이라 그 사람이 던지면 이쪽에서
+ * 날아온다. 온라인이면 그 자리에서 한 말을 말풍선으로 띄운다
+ */
+function SeatRing({
+  view,
+  name,
+  bubble,
+}: {
+  view: YutView;
+  name: (seat: number) => string;
+  bubble: (seat: number) => string | null;
+}) {
+  const players = view.rules.players;
+  return (
+    <>
+      {Array.from({ length: players }, (_, seat) => seat)
+        .filter((seat) => seat !== view.mySeat)
+        .map((seat) => {
+          const a = seatAngle(seat - view.mySeat, players);
+          const left = Math.max(14, Math.min(86, 50 + Math.cos(a) * 44));
+          const top = Math.max(7, Math.min(88, 50 + Math.sin(a) * 44));
+          const said = bubble(seat);
+          return (
+            <div
+              key={seat}
+              data-mat-seat={seat}
+              className="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+              style={{ left: `${left}%`, top: `${top}%` }}
+            >
+              {said && (
+                <span
+                  data-mat-bubble
+                  className="yut-pop max-w-36 truncate rounded-xl bg-white px-2 py-0.5 text-black text-xs shadow"
+                >
+                  {said}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-xs",
+                  view.turn === seat && "ring-2 ring-amber-300",
+                )}
+              >
+                <PieceToken side={sideOf(view.rules, seat)} size={12} />
+                <span className="max-w-20 truncate">{name(seat)}</span>
+              </span>
+            </div>
+          );
+        })}
+    </>
+  );
 }
 
 function bannerOf(result: GameResult | null, view: YutView): Banner {
@@ -121,6 +195,17 @@ export function YutGame({
   const undo = useYut((s) => s.undo);
   const canUndo = useYut((s) => s.canUndo());
   const clearNotice = useYut((s) => s.clearNotice);
+  const tossing = useYut((s) => s.tossing);
+  const split = useSplit();
+  const chatMessages = useChat((s) => s.messages);
+  // 말풍선이 4초 뒤 사라지도록 다시 그린다
+  const [, setChatTick] = useState(0);
+  const lastChatAt = chatMessages.at(-1)?.at ?? 0;
+  useEffect(() => {
+    if (!lastChatAt) return;
+    const id = setTimeout(() => setChatTick((t) => t + 1), 4100);
+    return () => clearTimeout(id);
+  }, [lastChatAt]);
   const [selected, setSelected] = useState<ThrowValue | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [armed, setArmed] = useState<number | null>(null);
@@ -132,8 +217,11 @@ export function YutGame({
   }, [notice, clearNotice]);
 
   const decision = view?.decision ?? null;
+  const scene = view ? sceneOf(view.phase, tossing) : "throw";
+  const moving = scene === "move";
+  // 던진 윷이 구르는 동안(던지는 장면)에는 말을 고르지 않는다
   const options: MoveOption[] =
-    decision?.kind === "move" ? decision.options : [];
+    decision?.kind === "move" && moving ? decision.options : [];
   const usable = new Set(options.map((o) => o.value));
   const value =
     selected !== null && usable.has(selected)
@@ -211,10 +299,17 @@ export function YutGame({
   const online = local === null;
   const players = view.rules.players;
   const name = (seat: number) => seatLabel(seat, me, seatNames, players - 1);
+  /** 4초 안에 그 자리에서 한 말(온라인만) */
+  const chatBubble = (seat: number): string | null => {
+    if (!online) return null;
+    const recent = [...chatMessages]
+      .reverse()
+      .find((m) => m.seat === seat && Date.now() - m.at < 4000);
+    return recent ? recent.text : null;
+  };
   const levelName = YUT_LEVELS.find((l) => l.value === level)?.label ?? "";
   const result = view.result;
   const gameOver = view.phase === "gameOver";
-  const tossing = view.phase === "reveal" || view.phase === "open";
   const myTurn = view.turn === me;
   const turnName = name(view.turn);
 
@@ -226,6 +321,7 @@ export function YutGame({
     status = myTurn ? "내 차례 — 윷을 던지세요" : `${turnName}의 차례`;
   else if (view.phase === "reveal" || view.phase === "open")
     status = "모두의 기기가 함께 던지는 중…";
+  else if (tossing) status = "윷이 구르는 중…";
   else if (decision?.kind === "move")
     status =
       options.length > 0
@@ -313,33 +409,50 @@ export function YutGame({
         </div>
       )}
 
-      {/* 위(세로)·왼쪽(가로): 윷판 */}
-      <div className="flex w-full max-w-[min(32rem,calc(100dvh-16rem))] min-w-64 flex-col items-center split:col-start-1 split:row-span-6 split:row-start-2 split:max-w-none">
-        <YutBoard
-          view={view}
-          events={events}
-          movable={movable}
-          preview={preview}
-          onHover={setHover}
-          onPick={pick}
-        />
+      {/*
+        두 장면(docs/37 15절). 휴대폰 세로: 같은 자리에서 멍석(던지는 장면)과 윷판(말 옮기는 장면)이 바뀐다.
+        PC·눕힌 휴대폰: 왼쪽 윷판, 오른쪽 위 멍석으로 나란히(yut.css)
+      */}
+      <div
+        className="yut-stage w-full max-w-[min(32rem,calc(100dvh-16rem))] min-w-64"
+        data-scene={scene}
+      >
+        <div className="yut-layer yut-mat-layer" data-mat>
+          <TossMat view={view} visible={!moving || split} />
+          <SeatRing view={view} name={name} bubble={chatBubble} />
+          {/* 모아 둔 결과(윷·모 뒤). 윷이 구르는 동안에는 결과를 미리 알리지 않게 숨긴다 */}
+          {!moving && !tossing && view.pending.length > 0 && (
+            <div className="pointer-events-none absolute top-2 left-2 z-[6]">
+              <PendingChips
+                values={view.pending}
+                selected={null}
+                usable={usable}
+              />
+            </div>
+          )}
+        </div>
+        <div className="yut-layer yut-board-layer">
+          <YutBoard
+            view={view}
+            events={events}
+            movable={movable}
+            preview={preview}
+            onHover={setHover}
+            onPick={pick}
+          />
+        </div>
       </div>
 
-      {/* 아래(세로)·오른쪽(가로): 윷가락, 결과, 던지기, 편별 말 */}
-      <div className="flex w-full max-w-xl flex-col items-center gap-2 split:col-start-2 split:row-start-2">
-        <YutSticks
-          sticks={view.lastThrow?.sticks ?? null}
-          value={view.lastThrow?.value ?? null}
-          nak={view.lastThrow?.nak ?? null}
-          throwKey={view.lastThrow ? view.lastThrow.index + 1 : 0}
-          tossing={tossing}
-        />
-        <PendingChips
-          values={view.pending}
-          selected={value}
-          usable={usable}
-          {...(decision?.kind === "move" ? { onSelect: setSelected } : {})}
-        />
+      {/* 아래(세로)·오른쪽(가로): 던지는 장면은 내 손의 윷, 말 옮기는 장면은 모은 결과와 새 말 */}
+      <div className="flex h-36 w-full max-w-xl flex-col items-center justify-center gap-2 split:col-start-2 short-landscape:h-28">
+        {moving && (
+          <PendingChips
+            values={view.pending}
+            selected={value}
+            usable={usable}
+            {...(decision?.kind === "move" ? { onSelect: setSelected } : {})}
+          />
+        )}
         {decision?.kind === "move" && homeOption && (
           <button
             type="button"
@@ -363,7 +476,7 @@ export function YutGame({
             {value !== null ? ` (${throwName(value)})` : ""}
           </button>
         )}
-        {decision?.kind === "throw" && (
+        {decision?.kind === "throw" && !moving && (
           <ThrowPad
             onThrow={throwGesture}
             onTooLow={() => setNotice(TOO_LOW_NOTICE)}
