@@ -316,7 +316,7 @@ function settle(state: YutState, events: GameEvent[]): void {
 
 /** 끝내기: 약속·공개를 기다리던 사람이 하나뿐이면 그 사람의 편이 진다 */
 function retire(state: YutState): StepResult {
-  if (state.phase === "gameOver") return fail("이미 끝난 게임이다");
+  if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   const pending = pendingSeats(state);
@@ -424,12 +424,12 @@ export function step(
   action: Action,
 ): StepResult {
   if (!Number.isInteger(seat) || seat < 0 || seat >= state.rules.players)
-    return fail("없는 자리다");
+    return fail("없는 자리예요.");
   switch (action.type) {
     case "retire":
       return retire(state);
     case "resign": {
-      if (state.phase === "gameOver") return fail("이미 끝난 게임이다");
+      if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       endGame(
@@ -445,11 +445,11 @@ export function step(
     }
     case "timeout": {
       if (clockTurn(state)?.seat !== seat)
-        return fail("시계가 가는 차례가 아니다");
+        return fail("시계가 가는 차례가 아니에요.");
       const control = timeControlOf(state.rules) as TimeControl;
       const clock = (state.clocks as PlayerClock[])[seat] as PlayerClock;
       if (!spendTime(clock, action.spent, control).flagged)
-        return fail("아직 시간이 남았다");
+        return fail("아직 시간이 남았어요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       // 시간을 다 쓴 사람의 시계는 0으로 보인다.
@@ -457,11 +457,11 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "commit": {
-      if (state.phase !== "commit") return fail("약속할 때가 아니다");
+      if (state.phase !== "commit") return fail("약속할 때가 아니에요.");
       const chain = state.chains[seat];
-      if (!chain || chain.commit !== null) return fail("이미 약속했다");
+      if (!chain || chain.commit !== null) return fail("이미 약속했어요.");
       if (typeof action.hash !== "string" || !LINK_PATTERN.test(action.hash))
-        return fail("약속 형식이 아니다");
+        return fail("약속 형식이 아니에요.");
       const next = clone(state);
       next.chains[seat] = { commit: action.hash, last: action.hash, used: 0 };
       const events: GameEvent[] = [{ type: "committed", seat }];
@@ -469,14 +469,14 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "throw": {
-      if (state.phase !== "throw") return fail("던질 때가 아니다");
-      if (state.turn !== seat) return fail("차례가 아니다");
+      if (state.phase !== "throw") return fail("던질 때가 아니에요.");
+      if (state.turn !== seat) return fail("차례가 아니에요.");
       const gesture = usesGesture(state.rules);
       if (
         gesture &&
         (typeof action.seal !== "string" || !LINK_PATTERN.test(action.seal))
       )
-        return fail("몸짓 봉인이 없다");
+        return fail("몸짓 봉인이 없어요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       if (charge(next, seat, action.spent, events))
@@ -488,14 +488,14 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "reveal": {
-      if (state.phase !== "reveal") return fail("공개할 때가 아니다");
-      if (state.reveals[seat] !== null) return fail("이미 공개했다");
+      if (state.phase !== "reveal") return fail("공개할 때가 아니에요.");
+      if (state.reveals[seat] !== null) return fail("이미 공개했어요.");
       const chain = state.chains[seat];
-      if (!chain?.last) return fail("약속이 없다");
+      if (!chain?.last) return fail("약속이 없어요.");
       if (typeof action.link !== "string" || !LINK_PATTERN.test(action.link))
-        return fail("고리 형식이 아니다");
+        return fail("고리 형식이 아니에요.");
       if (chainHash(action.link) !== chain.last)
-        return fail("약속한 사슬의 다음 고리가 아니다");
+        return fail("약속한 사슬의 다음 고리가 아니에요.");
       const next = clone(state);
       next.reveals[seat] = action.link;
       next.chains[seat] = {
@@ -512,13 +512,14 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "open": {
-      if (state.phase !== "open") return fail("몸짓을 열 때가 아니다");
-      if (state.turn !== seat) return fail("던진 사람이 아니다");
-      if (!isGesture(action.gesture)) return fail("몸짓 값이 규칙에 맞지 않다");
+      if (state.phase !== "open") return fail("몸짓을 열 때가 아니에요.");
+      if (state.turn !== seat) return fail("던진 사람이 아니에요.");
+      if (!isGesture(action.gesture))
+        return fail("몸짓 값이 규칙에 맞지 않아요.");
       if (typeof action.salt !== "string" || !LINK_PATTERN.test(action.salt))
-        return fail("소금 형식이 아니다");
+        return fail("소금 형식이 아니에요.");
       if (sealOf(action.gesture, action.salt) !== state.seal)
-        return fail("봉인한 몸짓이 아니다");
+        return fail("봉인한 몸짓이 아니에요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       const { height, direction, strength } = action.gesture;
@@ -526,22 +527,22 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "unopened": {
-      if (state.phase !== "open") return fail("몸짓을 기다릴 때가 아니다");
-      if (state.turn !== seat) return fail("던진 사람이 아니다");
+      if (state.phase !== "open") return fail("몸짓을 기다릴 때가 아니에요.");
+      if (state.turn !== seat) return fail("던진 사람이 아니에요.");
       if (action.index !== state.throwCount)
-        return fail("기다리던 던지기가 아니다");
+        return fail("기다리던 던지기가 아니에요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       voidThrow(next, "unopened", null, null, events);
       return { ok: true, state: next, events };
     }
     case "move": {
-      if (state.phase !== "move") return fail("움직일 때가 아니다");
-      if (state.turn !== seat) return fail("차례가 아니다");
+      if (state.phase !== "move") return fail("움직일 때가 아니에요.");
+      if (state.turn !== seat) return fail("차례가 아니에요.");
       const option = legalMoves(state).find(
         (o) => o.value === action.value && o.from === action.from,
       );
-      if (!option) return fail("그 말로 그 결과를 쓸 수 없다");
+      if (!option) return fail("그 말로 그 결과를 쓸 수 없어요.");
       const next = clone(state);
       // 시간을 넘겨 고른 수는 두지 않고 시간패로 끝낸다.
       const timeEvents: GameEvent[] = [];
@@ -555,7 +556,7 @@ export function step(
       const movers = action.from === HOME ? group.slice(0, 1) : group;
       const sample = movers[0]?.piece as Piece;
       const moved = travel(sample, action.value, state.rules.landOnHome);
-      if (!moved) return fail("그 말로 그 결과를 쓸 수 없다");
+      if (!moved) return fail("그 말로 그 결과를 쓸 수 없어요.");
       let captured = 0;
       let capturedSide: number | null = null;
       let stacked = 0;
@@ -603,7 +604,7 @@ export function step(
       return { ok: true, state: next, events };
     }
     default:
-      return fail("모르는 행동이다");
+      return fail("모르는 행동이에요.");
   }
 }
 
