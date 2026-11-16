@@ -943,6 +943,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 
 - 야우는 탐색하지 않고 단원의 경우별 정해진 길만 따라, 옮긴 코드도 경우 고르기와 수 잇기뿐이다. 축소법(`reduction.rs`)·3×3 사람 해법(`taught.rs`)과는 다른 길이라 3×3 처음 맞추기의 다음 한 걸음(흰 십자 ~ 코너 방향)도 `beginner-path.ts`에서 따로 옮겼다.
 - 앱은 설정 해법 목록(`CubeSettings.heroMethods`)에 `4-yau`를 더했다. C ABI(`cubie_hero_steps`·`cubie_hero_scramble`)는 해법 id로 고르므로 그대로다. 계산은 디버그 빌드에서 첫 면 색 여섯을 다 풀어도 한 판 약 5ms라 축소법보다 가볍다.
+- 앱 크기: 이 맥 칩용(arm64) 실행 파일 2,407,072 → 2,525,104바이트(+115KB, 약 +4.9%, `build.sh`로 바꾸기 전 커밋과 견줌).
 
 **공통 시험 자료**: `fixtures/hero-show-yau.json`(씨앗 1~4, 첫 면 색 빨강·초록·주황·흰, OLL 패리티 셋·PLL 패리티 하나가 든다). 씨앗 → 섞기·쥐는 방향, 첫 면 색, 보여 주기 변환 뒤 수·단계·꼬리표·살피는 자리·강조, 연출 걸음 전부 **어긋남 0**(`cargo test --test hero_show hero_show_yau`). 사이트는 `core-fixtures-hero-yau.test.ts` 한 파일(판이 가벼워 나누지 않음). 코어 단위 시험은 시연 섞기 열두 판 × 첫 면 색 여섯이 끝까지 맞고 십자 셋 끝에 그 색 센터가 아랫면인지 본다(사이트 `yau-hero.test.ts`와 같은 확인).
 
