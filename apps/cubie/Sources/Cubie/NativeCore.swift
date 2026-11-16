@@ -24,6 +24,26 @@ enum NativeCore {
       return (at, String(line[line.index(after: sp)...]))
     }
   }
+
+  /// 홈 시연이 코어에 있는 해법(사이트 `HERO_METHODS` 가운데 옮긴 것, docs/52 5-6)
+  static let heroMethods: Set<String> = ["3-beginner", "3-cfop"]
+
+  /// 홈 시연 한 판(코어 `hero_show`): 걸음(시각 ms, 표기, 회전 ms)과 「맞춤」 멈춤이 시작하는 시각. 모르는 해법이면 nil
+  static func heroSteps(method: String, seed: UInt32) -> (steps: [(at: Double, move: String, moveMs: Double)], end: Double)? {
+    let s = method.withCString { m in string { cubie_hero_steps(m, seed, $0, $1) } }
+    var steps: [(at: Double, move: String, moveMs: Double)] = []
+    var end: Double?
+    for line in s.split(separator: "\n") {
+      let parts = line.split(separator: " ")
+      if parts.count == 2, parts[0] == "end" {
+        end = Double(parts[1])
+      } else if parts.count == 3, let at = Double(parts[0]), let ms = Double(parts[2]) {
+        steps.append((at, String(parts[1]), ms))
+      }
+    }
+    guard let end, !steps.isEmpty else { return nil }
+    return (steps, end)
+  }
 }
 
 /// 평균·티어(코어 `tier.rs`)

@@ -590,7 +590,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     IdleShow.Hooks(
       solved: { [weak self] in self?.cube.solved ?? true },
       replay: { [weak self] done in self?.startReplay(done) },
-      hero: { _ in nil },
+      hero: { [weak self] done in self?.startHero(done) },
       jiggle: { [weak self] done in self?.startJiggle(done) ?? {} },
       restore: { [weak self] in
         self?.cube.showJump(solved: false)
@@ -642,6 +642,20 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
       moveMs: { i in
         steps[i].scramble ? min(IdleShow.scrambleMoveMs, base) : IdleShow.replayMoveMs(steps, i, base: base)
       }, hold: IdleShow.endHoldMs, done: done)
+  }
+
+  /// 다시 볼 판이 없을 때 홈 시연(사이트 미니 `HeroLoop` 한 판): 맞춘 큐브에서 섞기 → 쥐는 방향 → 사람 해법 풀이,
+  /// 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다. 코어에 없는 해법·크기면 nil(조금 섞기로 넘어간다)
+  private func startHero(_ done: @escaping @MainActor () -> Void) -> (() -> Void)? {
+    guard let id = settings.heroMethodId(n: cube.n), NativeCore.heroMethods.contains(id),
+      let show = NativeCore.heroSteps(method: id, seed: UInt32.random(in: 0...UInt32.max)),
+      let last = show.steps.last
+    else { return nil }
+    if Config.debug { print("[cubie] hero \(id) steps=\(show.steps.count) end=\(show.end)"); fflush(stdout) }
+    cube.showJump(solved: true)
+    let steps = show.steps.map { IdleShow.Step(at: $0.at, moves: $0.move, scramble: false) }
+    return play(
+      steps, moveMs: { show.steps[$0].moveMs }, hold: show.end - last.at + IdleShow.endHoldMs, done: done)
   }
 
   private func startJiggle(_ done: @escaping @MainActor () -> Void) -> () -> Void {

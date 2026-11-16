@@ -559,7 +559,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 다 맞춘 축하(움츠렸다 튐·빛 고리·시간 숫자, 최고면 금색) | `SolveCheer.tsx` | `CACubeView.cheer`(합성기 애니메이션) | 옮김 |
 | 떠 있을 때: 내 판 다시 보기(최고·최근 번갈아, 그때 속도) | `idle.ts`·`replay.ts` | `IdleShow` + 코어 다시 보기 걸음 | 옮김 |
 | 떠 있을 때: 섞인 큐브 조금 섞었다 되돌리기 | `idle.ts` `jigglePlan` | `IdleShow.jigglePlan` | 옮김 |
-| 떠 있을 때: 다시 볼 판이 없으면 홈 시연(사람 해법 풀이) | `HeroLoop`·`hero/methods.ts`·`present.ts` | 코어 `hero.rs`(3×3 프리드리히 첫 면 색 고르기·풀이, 공통 자료 `hero.json` 어긋남 0) | 일부(앱은 아직 조금 섞기로 대신, 아래 「남은 것」 1) |
+| 떠 있을 때: 다시 볼 판이 없으면 홈 시연(사람 해법 풀이) | `HeroLoop`·`hero/methods.ts`·`present.ts`·`piece-marks.ts` | 코어 `hero_show.rs`(섞기·쥐는 방향·보여 주기 변환·연출 걸음과 시간)·`taught.rs`(배우는 방식 3×3 초보자)·`hero.rs`(프리드리히 첫 면 색), C ABI `cubie_hero_steps`, 앱 `IdleShow` 홈 시연 자리(공통 자료 `hero-show.json` 어긋남 0) | 옮김(2026-11-16, 3×3 초보자·프리드리히. 그 밖의 크기·루·ZZ는 조금 섞기, 아래 「남은 것」 1) |
 | 소리(돌리기·맞춤·틀림) | `game/sound.ts` | `CubieSound`(같은 모양을 미리 PCM으로, 울림 없음) | 옮김 |
 | 동작 줄이기(떠 있을 때 움직임 없음·축하 줄임·섞기 연출 바로·거울 바로) | `prefers-reduced-motion` | 시스템 설정(`accessibilityDisplayShouldReduceMotion`) | 옮김 |
 | Esc: 표 닫기 → 연습 끝내기 → 이전 앱 | 앱 | 앱(같은 코드) | 옮김 |
@@ -581,19 +581,20 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 웹과 다르게 한 것(일부러)
 
 - 힌트·공식 연습은 창 크기와 상관없이 늘 큐브 옆 말풍선이다(웹은 짧은 변 240px 이상이면 창 안 카드). 앱 창 안에 글을 그리면 큐브와 겹치고, 말풍선이 이미 있다.
-- 다시 볼 판이 없을 때 홈 시연(사람 해법 풀이) 대신 조금 섞었다 되돌린다. 사이트도 시연이 없는 크기에서는 이 길로 간다.
+- 다시 볼 판이 없을 때 홈 시연은 3×3(초보자 해법·프리드리히)만 한다. 그 밖의 크기와 첫 화면 해법을 루·ZZ로 고른 경우에는 조금 섞었다 되돌린다(사이트는 2×2~7×7과 루·ZZ도 시연한다, 아래 「남은 것」 1). 시연 풀이는 섞기가 끝나기 전에 앱이 미리 다 계산해 두어(3×3 초보자 수 ms) 사이트처럼 워커를 기다리지 않는다.
 - 단축키 표의 칸 글은 코어 `keys::table`이 사이트 `KeyboardMap` 「모두」와 같게 만든다(3×3 「두 손」 X·. = M′, 큰 큐브에서 못 쓰는 M′·M은 흐리게, Alt 줄, ↑ 처음 각도). 같은지는 공통 자료 `fixtures/keytable.json`(두 손·표기·사용자 × 2~7)으로 본다(2026-11-12). 줄이 넷인 칸(Alt와 Alt+Shift가 다 있는 사용자 배치)은 글꼴을 줄여 칸 안에 넣는다(웹은 넘치면 잘린다).
 - 소리는 사이트와 같은 모양을 처음 쓸 때 PCM으로 만들어 두고 `NSSound`로 낸다(돌리기는 여섯 벌을 돌려 씀, 울림 없음). 웹은 수마다 새로 합성했다.
 - 3D로 돌린 층(조각 겉면 몸통·스티커·거울 판과 유리·돌리는 동안 자르는 면 판)은 곧은 가장자리 다듬기(`allowsEdgeAntialiasing`, 네 변)를 켠다(`CACubeView.smoothEdges`). Core Animation은 기본으로 둥근 모서리만 다듬고 곧은 변은 다듬지 않아, 사용자가 「대각선 안티알리어싱이 애매하고 조금 계단처럼 보인다」고 했다(2026-11-12. 웹과 나란히 띄워 보면 차이는 크지 않다고 했고, 메모리·성능 부하가 크면 되돌리기로 함). 잰 값(`measure-memory.sh --native`, 96pt): 메모리는 상태마다 −1.1~+0.8MB(가장 늘어난 공식 연습 중 29.9 → 30.7MB), 돌리는 중 CPU는 거울 보임 3.1 → 3.6%, 거울 숨김 3.5 → 3.2%, 공식 연습 2.0 → 2.6%, 가만히·숨김은 그대로 0%. 되돌릴 기준(어느 상태든 5MB 넘게, 돌리는 중 2%p 넘게)보다 작아 그대로 둔다. 화면 밖 스크린샷(`CARenderer`)은 설정 전에도 대각선을 다듬어 그려 전후가 거의 같다(192×192 중 5픽셀 다름, `docs/cubie-native/compare-edges.webp`). 실제 창(WindowServer 합성)에서 나아졌는지는 사용자가 본다.
 
 #### 남은 것
 
-1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절). 2026-11-12 첫 걸음: 코어 `hero.rs`가 3×3 프리드리히(`3-cfop`)의 첫 면 색(여섯 색 중 십자가 가장 싼 색, 같으면 흰색 먼저)을 고르고 그 색으로 푼다(`human::solve_cfop_first`, 사이트 `firstFaceMap`과 같은 색 바꿈). 사이트 `solveWithFirst`와 공통 자료 `hero.json`(섞기 8개, 색마다 십자 수·고른 색·풀이 수·단계) 어긋남 0. 남은 차례:
-   1. 보여 주기 변환(`hero/present.ts` 811줄: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 조각 찾기 돌리기·강조 사건·쉬는 자리)을 코어로. 미니는 꼬리표를 보이지 않으니 수·쉬는 자리만 맞추면 된다.
-   2. 연출 차례·시간(`hero/loop.ts` `HeroLoop`: 섞기 → 쥐기 → 풀이 걸음, `heroTiming`·`heroMoveMs`)을 코어 연출 줄로. 사이트 `solveSteps`·`scrambleSteps`와 공통 자료로 견준다.
-   3. 나머지 해법을 코어로: 3×3 초보자(`solveBeginner3` 배우는 방식, `taught.ts`·`taught-plan.ts`)·루·ZZ(`methods-roux-zz.ts`)·2×2 초보자·공식, 4×4~7×7 축소법(`big.ts`). 「번갈아」 차례(`heroRotation`)도.
-   4. 앱 `IdleShow`의 홈 시연 자리에 잇고(지금은 조금 섞기), 웹·네이티브 비교 그림을 남긴다.
-   - 1~3을 마치기 전에 앱에 잇지 않는다. 보여 주기 변환 없이 풀이만 돌리면 사이트와 다른 시연이 되어 오히려 어긋남이 생긴다.
+1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절). **2026-11-16 3×3을 옮겼다**: 미니 화면은 떠 있을 때 한 판마다 연출을 새로 시작해 그 크기 해법 차례의 첫 해법을 쓴다(설정 「첫 화면 큐브」가 번갈아면 초보자 해법, 같은 크기의 해법을 골랐으면 그것). 코어가 그 해법 둘을 옮겼다.
+   - `taught.rs`: 배우는 방식 3×3 초보자(사이트 `solveBeginner3(state, { taught: true })`, `taught.ts`·`cross-front.ts`): 흰 면 위 십자를 F·D·y로만, 첫 층 코너 지름길, z2 뒤 둘째 층은 앞-오른쪽 칸만, 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향. 살피는 자리 앞뒤 수를 합치지 않는다(`look_barrier`).
+   - `hero_show.rs`: 조각 강조(`piece-marks.ts`), 보여 주기 변환(`present.ts` 전부: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 보이는 세 면에서 찾는 돌리기, 이미 맞은 조각 확인, 마지막 층 맞출 칸·알아볼 모양, 쉬는 자리), 연출 걸음과 시간(`loop.ts` `heroTiming`·`randomScramble`·`orientForSolve`·`scrambleSteps`·`orientSteps`·`solveSteps` 강조 「잠깐」·`heroMoveMs`), 꼬리표(`heroStageLabel`). 걸음은 시각표(`hero_timeline`: 시각·수·회전 시간, 「맞춤」 멈춤이 시작하는 때)로 앱에 준다.
+   - 공통 자료 `fixtures/hero-show.json`(씨앗 8개 × 초보자·프리드리히): 씨앗 → 섞기·쥐는 방향, 첫 면 색, 변환 뒤 수·단계·살피는 자리·찾는 돌리기·쉬는 자리·강조(스티커까지), 연출 걸음 전부. 어긋남 0. 씨앗 150개 × 둘(300판)로도 한 번 견줘 어긋남 0이었다(자료에는 8개만 남김).
+   - 앱: C ABI `cubie_hero_steps(해법, 씨앗)` → `NativeCubeWindow.startHero`가 맞춘 큐브에서 시각표대로 돌리고 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다(사이트 미니와 같다). 해법은 설정 `heroSize`·`heroMethod`를 사이트와 같은 규칙으로 읽는다(`CubeSettings.heroMethodId`, 시험 `HeroSettingsTests`).
+   - 비교 그림 `docs/cubie-native/compare-hero.webp`: 초보자 해법 씨앗 5의 멈춤 자리 열 곳(섞인 뒤 · 흰 십자 · 첫 층 · 뒤집은 뒤 · 둘째 층 · 마지막 층 단계)을 웹(배포된 사이트를 WebKit, 시계를 멈추고 Math.random을 같은 mulberry32로)과 네이티브(화면 밖 스크린샷)로 나란히. 장면마다 칸 색이 같다(카메라 원근 차이는 5-5부터 있던 것). 다시 만들기: `CUBIE_NATIVE_SHOT=<폴더> CUBIE_NATIVE_SHOT_HERO=3-beginner:5 apps/cubie/Cubie.app/Contents/MacOS/Cubie` 뒤 `node apps/cubie/scripts/hero-compare.mjs <폴더>`.
+   - 남은 차례: 루·ZZ(`methods-roux-zz.ts`, 보기 `mirror`는 변환에 이미 있다)·2×2 초보자·공식, 4×4~7×7 축소법(`big.ts`). 그 크기·해법에서는 앱이 조금 섞기로 넘어간다. 조각 강조 빛(사이트 `onMarks`)은 미니 화면도 그리지 않아 옮기지 않았다(멈춤 시간에는 들어 있다).
 2. ~~공식 연습 가리기~~(2026-11-12 옮김, 위 기능 표).
 3. ~~단축키 표 칸 바탕 면 색~~(2026-11-12 옮김: 칸 바탕·사선 무늬·빌린 면 색 선, 설정 「키 그림에 면 색」을 끄면 칠하지 않음).
 4. 실제 창의 손맛·포커스·말풍선 자리·모니터 떼기는 사람이 확인(아래 「판을 내기 전에」).

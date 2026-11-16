@@ -144,6 +144,9 @@ uint32_t cubie_game_practice_record(const CubieGame *game, uint32_t which, uint8
 /// 다시 보기 글 → 걸음 줄들(「시각 표기」, 줄바꿈으로 이음). 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
 uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, double offset, uint8_t *out,
                             uint32_t len);
+/// 홈 시연 한 판(해법 id 「3-beginner」·「3-cfop」, 씨앗): 줄마다 「시각 표기 회전ms」, 끝 줄 「end 시각」(「맞춤」 멈춤이
+/// 시작하는 때). 맞춘 큐브에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수(out이 NULL이면 길이만)
+uint32_t cubie_hero_steps(const char *method, uint32_t seed, uint8_t *out, uint32_t len);
 
 // ---- 기록 계산(native/cubie-native/src/ffi_records.rs, 코어 tier.rs) ----
 

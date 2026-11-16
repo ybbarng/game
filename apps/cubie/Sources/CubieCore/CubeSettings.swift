@@ -28,6 +28,22 @@ public struct CubeSettings: Equatable, Sendable {
   public var colorScheme = "standard"
   /// 단축키 표 칸에 면 색을 칠할지(사이트 `keyColors`)
   public var keyColors = true
+  /// 첫 화면 큐브 크기·해법(사이트 `heroSize`·`heroMethod`). 해법은 그 크기의 것이 아니면 「번갈아」(`alternate`)
+  public var heroSize = 3
+  public var heroMethod = "alternate"
+
+  /// 사이트 `HERO_METHODS`의 id(크기마다 표 차례)
+  public static let heroMethods: [Int: [String]] = [
+    2: ["2-beginner", "2-algs"], 3: ["3-beginner", "3-cfop", "3-roux", "3-zz"],
+    4: ["4-beginner", "4-cfop"], 5: ["5-beginner", "5-cfop"], 6: ["6-beginner", "6-cfop"], 7: ["7-beginner", "7-cfop"],
+  ]
+
+  /// 떠 있을 때 홈 시연이 쓸 해법(사이트 미니 `heroRotation(n, heroMethod)`의 첫 해법: 연출을 한 판마다 새로 시작한다).
+  /// 고른 해법이 이 크기의 것이면 그것, 아니면 그 크기 표의 첫 해법(초보자)
+  public func heroMethodId(n: Int) -> String? {
+    guard let list = Self.heroMethods[n] else { return nil }
+    return list.contains(heroMethod) ? heroMethod : list.first
+  }
 
   /// 가린 칸 색(사이트 `view/cube-view.ts` `HIDDEN_COLOR`)
   public var hiddenColor: UInt32 { hiddenGray ? 0x6b6b6b : 0x111111 }
@@ -59,6 +75,8 @@ public struct CubeSettings: Equatable, Sendable {
     if let b = d["sound"] as? NSNumber, isBool(b) { s.sound = b.boolValue }
     if let v = d["scrambleShow"] as? String, let show = ScrambleShow(rawValue: v) { s.scrambleShow = show }
     s.hiddenGray = (d["hidden"] as? String) == "gray"
+    if let h = d["heroSize"] as? NSNumber, isInt(h), heroMethods[h.intValue] != nil { s.heroSize = h.intValue }
+    if let m = d["heroMethod"] as? String, heroMethods[s.heroSize]?.contains(m) == true { s.heroMethod = m }
     return s
   }
 

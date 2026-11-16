@@ -652,6 +652,39 @@ pub unsafe extern "C" fn cubie_replay_steps(
     unsafe { write_str(&lines.join("\n"), out, len) }
 }
 
+/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(`3-beginner`·`3-cfop`)와 씨앗으로 섞기 →
+/// 쥐는 방향 → 풀이의 시각표를 줄마다 「시각 표기 회전ms」로, 끝 줄은 「end 시각」(「맞춤」 멈춤이 시작하는 때)으로
+/// `out`에 쓴다. 맞춘 큐브(흰 위·초록 앞)에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수를 돌려준다
+///
+/// # Safety
+/// `method`는 NUL로 끝나는 C 글, `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_hero_steps(
+    method: *const c_char,
+    seed: u32,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    use cube_core::hero_show::{hero_show, hero_timeline, HeroMethod};
+    let text = (unsafe { c_str(method) })
+        .and_then(HeroMethod::from_id)
+        .and_then(|m| {
+            let mut rng = cube_core::rng::Rng::new(seed);
+            hero_show(m, &mut || rng.next_float()).ok()
+        })
+        .map(|show| {
+            let (cues, end) = hero_timeline(&show.steps);
+            let mut lines: Vec<String> = cues
+                .iter()
+                .map(|c| format!("{} {} {}", c.at, c.mv, c.move_ms))
+                .collect();
+            lines.push(format!("end {end}"));
+            lines.join("\n")
+        })
+        .unwrap_or_default();
+    unsafe { write_str(&text, out, len) }
+}
+
 /// 코어 섞기(같은 씨앗이면 사이트와 같은 섞기)와 연출(`SHOW_*`). 섞기 수 개수를 돌려준다
 ///
 /// # Safety
@@ -1029,6 +1062,31 @@ mod tests {
             assert_eq!(
                 cubie_replay_steps(3, t.as_ptr(), 1000.0, 50.0, std::ptr::null_mut(), 0),
                 k as u32
+            );
+        }
+    }
+
+    #[test]
+    fn hero_steps_as_lines() {
+        use std::ffi::CString;
+        unsafe {
+            let m = CString::new("3-beginner").unwrap();
+            let need = cubie_hero_steps(m.as_ptr(), 5, std::ptr::null_mut(), 0) as usize;
+            let mut buf = vec![0u8; need];
+            let k = cubie_hero_steps(m.as_ptr(), 5, buf.as_mut_ptr(), need as u32) as usize;
+            let text = std::str::from_utf8(&buf[..k]).unwrap();
+            let lines: Vec<&str> = text.lines().collect();
+            assert!(lines[0].starts_with("0 "));
+            assert!(lines.last().unwrap().starts_with("end "));
+            assert!(lines.len() > 100);
+            // 같은 씨앗이면 같은 판
+            let mut again = vec![0u8; need];
+            cubie_hero_steps(m.as_ptr(), 5, again.as_mut_ptr(), need as u32);
+            assert_eq!(buf, again);
+            let roux = CString::new("3-roux").unwrap();
+            assert_eq!(
+                cubie_hero_steps(roux.as_ptr(), 5, std::ptr::null_mut(), 0),
+                0
             );
         }
     }
