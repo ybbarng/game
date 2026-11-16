@@ -138,7 +138,7 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await expect(stones(page)).toHaveCount(2);
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();
-  await expect(page.getByRole("status")).toHaveText("기권했어요");
+  await expect(page.getByRole("status")).toHaveText("기권했어요.");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("baduk-end.png") });
 
@@ -262,7 +262,7 @@ test(
     });
     await black.getByRole("button", { name: "쉬기" }).click();
     await expect(black.getByRole("status")).toHaveText("세어 보니 이겼어요!");
-    await expect(white.getByRole("status")).toHaveText("세어 보니 졌어요", {
+    await expect(white.getByRole("status")).toHaveText("세어 보니 졌어요.", {
       timeout: 15_000,
     });
     await expect(white.getByText("흑 81 : 백 7.5").first()).toBeVisible();
@@ -290,7 +290,7 @@ test(
     });
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(page.getByRole("status")).toHaveText("기권했어요");
+    await expect(page.getByRole("status")).toHaveText("기권했어요.");
     // 복기 기록이 실제로 쓰인 뒤에 떠난다.
     await page.waitForFunction(
       () =>
@@ -352,7 +352,7 @@ test(
       "3:00",
     );
     await page.clock.runFor(270_001);
-    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
+    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요.");
     await page.screenshot({ path: info.outputPath("baduk-time.png") });
   },
 );

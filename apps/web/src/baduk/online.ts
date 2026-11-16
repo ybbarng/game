@@ -28,5 +28,5 @@ export const badukOnline: BoardOnlineGame<
   useStore: useBaduk,
   botFor: badukBotFor,
   rulesSummary: (rules) =>
-    `${rules.size}줄 · 덤 ${rules.komi}. 첫 판 흑(먼저 둠)은 무작위, 판마다 흑백을 바꿉니다.`,
+    `${rules.size}줄 · 덤 ${rules.komi} · 첫 판 흑(먼저 둠)은 무작위 · 판마다 흑백 바꿈`,
 };
