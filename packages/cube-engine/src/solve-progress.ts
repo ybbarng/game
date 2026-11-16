@@ -13,6 +13,7 @@ import { CUBE_ROTATIONS, cubeTopology, OPPOSITE_FACE } from "./topology";
  *   가장 잘 맞는 쪽으로 센다(위층만 어긋난 큐브도 거의 다 맞은 것으로 보인다).
  *   기준 색: 홀수 크기는 면 정가운데 색, 짝수 크기는 큐브 전체 방향 24가지 가운데 가장 잘 맞는 방향.
  * - 큰 큐브(4×4부터): 센터를 맞춘 면 수 → 엣지 짝 수 → 조각 점수(코너 8 + 엣지 줄 12)를 차례로 쓴다.
+ * - 이정표의 층 단계(십자~윗면)는 큰 큐브도 센터를 다 맞춘 뒤 3×3처럼 본다(코너와 엣지 한 줄).
  * - 이정표: 여러 해법의 대표 단계(층별·CFOP·루·ZZ·코너 먼저). 순서·색과 상관없이 지금 상태가 맞으면 켜진다.
  */
 
@@ -420,6 +421,17 @@ export function isMilestoneId(id: string): id is MilestoneId {
   return MILESTONE_LABEL.has(id as MilestoneId);
 }
 
+/** 큰 큐브가 센터·엣지 짝 뒤 3×3처럼 지나는 층별·CFOP 단계(docs/51 1-2) */
+const BIG_LAYER_STEPS: readonly MilestoneId[] = [
+  "cross",
+  "f2l1",
+  "f2l2",
+  "f2l3",
+  "layer1",
+  "layer2",
+  "oll",
+];
+
 /** 그 크기에서 켜질 수 있는 이정표(차례대로) */
 export function milestonesFor(n: number): readonly MilestoneId[] {
   if (n === 2) return ["layer1", "oll", "ll"];
@@ -427,10 +439,10 @@ export function milestonesFor(n: number): readonly MilestoneId[] {
     return MILESTONES.map((m) => m.id).filter(
       (id) => id !== "centers" && id !== "edges",
     );
-  return ["centers", "edges", "ll"];
+  return ["centers", "edges", ...BIG_LAYER_STEPS, "ll"];
 }
 
-/** 3×3 조각 묶음(이정표 판정용) */
+/** 조각 묶음(이정표 판정용). 3×3은 코너·엣지 조각, 큰 큐브는 코너와 엣지 한 줄 */
 interface Pieces3 {
   /** 면 f가 닿은 엣지 조각 */
   edgesOn: number[][];
@@ -443,11 +455,16 @@ interface Pieces3 {
   units: Unit[];
 }
 
-let pieces3Cache: Pieces3 | null = null;
+const piecesCache = new Map<number, Pieces3>();
 
 function pieces3(): Pieces3 {
-  if (pieces3Cache) return pieces3Cache;
-  const units = unitsOf(3);
+  return piecesOf(3);
+}
+
+function piecesOf(n: number): Pieces3 {
+  const hit = piecesCache.get(n);
+  if (hit) return hit;
+  const units = unitsOf(n);
   const edgesOn: number[][] = [[], [], [], [], [], []];
   const cornersOn: number[][] = [[], [], [], [], [], []];
   const edgeBetween = new Map<string, number>();
@@ -462,8 +479,9 @@ function pieces3(): Pieces3 {
       for (const f of u.sides) cornersOn[f]?.push(i);
     }
   });
-  pieces3Cache = { edgesOn, cornersOn, edgeBetween, cornerBetween, units };
-  return pieces3Cache;
+  const made = { edgesOn, cornersOn, edgeBetween, cornerBetween, units };
+  piecesCache.set(n, made);
+  return made;
 }
 
 const keyOf = (...faces: number[]) =>
@@ -478,18 +496,28 @@ function perpendicular(a: number, b: number): number[] {
 }
 
 /** 자리 면 f의 칸이 모두 color인가 */
-function faceIs(colors: Uint8Array, f: number, color: number): boolean {
-  for (let k = 0; k < 9; k++) if (colors[f * 9 + k] !== color) return false;
+function faceIs(
+  n: number,
+  colors: Uint8Array,
+  f: number,
+  color: number,
+): boolean {
+  const nn = n * n;
+  for (let k = 0; k < nn; k++) if (colors[f * nn + k] !== color) return false;
   return true;
 }
 
-/** 층별·CFOP 이정표(3×3, 가운데 색 기준) */
+/**
+ * 층별·CFOP 이정표(가운데 색 기준). 3×3은 코너·엣지 조각, 큰 큐브는 코너와 엣지 한 줄(센터를 다 맞춘 뒤 3×3처럼
+ * 맞추는 단계. 줄은 날개까지 모두 맞아야 맞은 것)
+ */
 function layerMilestones(
+  n: number,
   colors: Uint8Array,
   frame: Frame,
   out: Set<MilestoneId>,
 ): void {
-  const p = pieces3();
+  const p = piecesOf(n);
   const ok = (i: number) => unitOk(p.units[i] as Unit, colors, frame);
   for (let f = 0; f < 6; f++) {
     if (!(p.edgesOn[f] as number[]).every(ok)) continue;
@@ -510,7 +538,7 @@ function layerMilestones(
     if (corners === 4) out.add("layer1");
     if (pairs === 4) {
       out.add("layer2");
-      if (faceIs(colors, top, frame[top] as number)) out.add("oll");
+      if (faceIs(n, colors, top, frame[top] as number)) out.add("oll");
     }
   }
 }
@@ -661,13 +689,22 @@ export function milestonesOf(n: number, state: PuzzleState): MilestoneId[] {
   else if (n === 2) pocketMilestones(colors, out);
   else if (n === 3) {
     const frame = framesOf(3, colors)[0] as Frame;
-    layerMilestones(colors, frame, out);
+    layerMilestones(3, colors, frame, out);
     rouxMilestones(state, out);
     eolineMilestone(colors, frame, out);
     cornersMilestone(3, colors, out);
   } else {
-    if (solvedCenterFaces(n, state) === 6) out.add("centers");
     if (pairedEdgeLines(n, state) === 12) out.add("edges");
+    if (solvedCenterFaces(n, state) === 6) {
+      out.add("centers");
+      // 센터를 다 맞춘 큰 큐브는 3×3처럼 층별·CFOP 단계를 본다. 기준 색은 면마다 센터 색
+      const nn = n * n;
+      const frame = Uint8Array.from(
+        { length: 6 },
+        (_, f) => colors[f * nn + n + 1] as number,
+      );
+      layerMilestones(n, colors, frame, out);
+    }
   }
   return milestonesFor(n).filter((id) => out.has(id));
 }
