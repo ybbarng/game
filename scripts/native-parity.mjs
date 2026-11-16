@@ -46,6 +46,10 @@ export const WATCHED = [
   { path: `${WEB}cube/solve-session.ts`, why: "한 판 기록·가리기" },
   { path: `${WEB}cube/flow/combo.ts`, why: "흐름 콤보" },
   { path: `${WEB}cube/hero/`, why: "홈 시연·첫 면 색" },
+  {
+    path: `${WEB}cube/piece-marks.ts`,
+    why: "홈 시연 조각 강조·찾는 돌리기(코어 hero_show.rs)",
+  },
   { path: `${WEB}cube/practice/`, why: "공식 연습" },
   { path: `${WEB}cube/learn/judge.ts`, why: "단계 판정·가리기(stageMask)" },
   { path: `${WEB}cube/learn/alg-sets.ts`, why: "공식 연습 자료" },
