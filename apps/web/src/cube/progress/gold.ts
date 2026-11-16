@@ -3,7 +3,8 @@
 // 구간 = 칩 하나(같은 순간 켜진 이정표 묶음, `groupSplits`)가 앞 칩부터 걸린 시간(`lap`). 같은 구간끼리만 견준다:
 // 구간의 이름은 「앞 칩의 대표 단계 > 이 칩의 대표 단계」(첫 칩은 「시작 > …」). 그래서 층별의 첫 층 > 둘째 층과
 // CFOP의 F2L 3/4 > 둘째 층처럼 길이가 다른 구간이 섞이지 않는다.
-// 견주는 옛 기록은 같은 크기·같은 방식(혼자 맞추기)의 이 기기 기록이고(`loadRecords(mode, n)`), 해법은 지금 「자동」 하나다.
+// 견주는 옛 기록은 같은 크기·같은 방식(혼자 맞추기)의 이 기기 기록이다(`loadRecords(mode, n)`). 해법을 고르면 그 해법의
+// 단계만 남겨 센다(`methods.ts`의 `methodBests`).
 // 구간 기록 칸(`splits`)이 없는 옛 기록은 건너뛴다. 처음 만난 구간은 견줄 것이 없어 골드가 아니다.
 
 import {
@@ -32,14 +33,16 @@ export function segmentsOf(splits: readonly Split[]): Segment[] {
   });
 }
 
-/** 옛 기록들의 구간마다 가장 짧았던 길이 */
+/** 옛 기록들의 구간마다 가장 짧았던 길이. `keep`을 주면 그 이정표만 남겨 구간을 센다(내 해법, `methods.ts`) */
 export function bestSegments(
   records: readonly SolveRecord[],
+  keep?: (id: string) => boolean,
 ): Map<string, number> {
   const best = new Map<string, number>();
   for (const r of records) {
     if (!r.splits) continue;
-    for (const s of segmentsOf(parseSplits(r.splits))) {
+    const all = parseSplits(r.splits);
+    for (const s of segmentsOf(keep ? all.filter((x) => keep(x.id)) : all)) {
       const b = best.get(s.key);
       if (b === undefined || s.lap < b) best.set(s.key, s.lap);
     }

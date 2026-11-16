@@ -468,10 +468,14 @@ pub fn milestones_for(n: usize) -> Vec<Milestone> {
             .into_iter()
             .filter(|m| !matches!(m, Centers | Edges))
             .collect(),
-        _ => vec![Centers, Edges, Ll],
+        // 센터·엣지 짝 뒤에는 3×3처럼 층별·CFOP 단계(사이트 `BIG_LAYER_STEPS`)
+        _ => vec![
+            Centers, Edges, Cross, F2l1, F2l2, F2l3, Layer1, Layer2, Oll, Ll,
+        ],
     }
 }
 
+/// 조각 묶음: 3×3은 코너·엣지 조각, 큰 큐브는 코너와 엣지 한 줄(사이트 `piecesOf`)
 struct Pieces3 {
     edges_on: Vec<Vec<usize>>,
     corners_on: Vec<Vec<usize>>,
@@ -480,15 +484,24 @@ struct Pieces3 {
 }
 
 fn pieces3() -> &'static Pieces3 {
-    static CACHE: OnceLock<Pieces3> = OnceLock::new();
-    CACHE.get_or_init(|| {
+    pieces_of(3)
+}
+
+fn pieces_of(n: usize) -> &'static Pieces3 {
+    static CACHE: OnceLock<Vec<Pieces3>> = OnceLock::new();
+    let all = CACHE.get_or_init(|| (MIN_SIZE..=MAX_SIZE).map(build_pieces).collect());
+    &all[n - MIN_SIZE]
+}
+
+fn build_pieces(n: usize) -> Pieces3 {
+    {
         let mut p = Pieces3 {
             edges_on: vec![Vec::new(); 6],
             corners_on: vec![Vec::new(); 6],
             edge_between: HashMap::new(),
             corner_between: HashMap::new(),
         };
-        for (i, u) in units_of(3).iter().enumerate() {
+        for (i, u) in units_of(n).iter().enumerate() {
             if u.sides.len() == 2 {
                 p.edge_between.insert(u.sides.clone(), i);
                 for &f in &u.sides {
@@ -502,7 +515,7 @@ fn pieces3() -> &'static Pieces3 {
             }
         }
         p
-    })
+    }
 }
 
 fn key_of(faces: &[usize]) -> Vec<usize> {
@@ -516,13 +529,15 @@ fn perpendicular(a: usize, b: usize) -> [usize; 2] {
     [c, c + 3]
 }
 
-fn face_is(colors: &[u8], f: usize, color: u8) -> bool {
-    (0..9).all(|k| colors[f * 9 + k] == color)
+fn face_is(n: usize, colors: &[u8], f: usize, color: u8) -> bool {
+    let nn = n * n;
+    (0..nn).all(|k| colors[f * nn + k] == color)
 }
 
-fn layer_milestones(colors: &[u8], frame: &Frame, out: &mut Vec<Milestone>) {
-    let p = pieces3();
-    let units = units_of(3);
+/// 층별·CFOP 이정표(가운데 색 기준). 큰 큐브는 센터를 다 맞춘 뒤 코너와 엣지 한 줄로 본다(사이트 `layerMilestones`)
+fn layer_milestones(n: usize, colors: &[u8], frame: &Frame, out: &mut Vec<Milestone>) {
+    let p = pieces_of(n);
+    let units = units_of(n);
     let ok = |i: usize| unit_ok(&units[i], colors, frame);
     for f in 0..6 {
         if !p.edges_on[f].iter().all(|&i| ok(i)) {
@@ -557,7 +572,7 @@ fn layer_milestones(colors: &[u8], frame: &Frame, out: &mut Vec<Milestone>) {
         }
         if pairs == 4 {
             out.push(Milestone::Layer2);
-            if face_is(colors, top, frame[top]) {
+            if face_is(n, colors, top, frame[top]) {
                 out.push(Milestone::Oll);
             }
         }
@@ -721,16 +736,23 @@ pub fn milestones_of(n: usize, state: &State) -> Vec<Milestone> {
         pocket_milestones(&colors, &mut out);
     } else if n == 3 {
         let frame = frames_of(3, &colors)[0];
-        layer_milestones(&colors, &frame, &mut out);
+        layer_milestones(3, &colors, &frame, &mut out);
         roux_milestones(state, &mut out);
         eoline_milestone(&colors, &frame, &mut out);
         corners_milestone(3, &colors, &mut out);
     } else {
-        if solved_center_faces(n, state) == 6 {
-            out.push(Milestone::Centers);
-        }
         if paired_edge_lines(n, state) == 12 {
             out.push(Milestone::Edges);
+        }
+        if solved_center_faces(n, state) == 6 {
+            out.push(Milestone::Centers);
+            // 센터를 다 맞춘 큰 큐브는 3×3처럼 층 단계를 본다. 기준 색은 면마다 센터 색
+            let nn = n * n;
+            let mut frame: Frame = [0; 6];
+            for (f, c) in frame.iter_mut().enumerate() {
+                *c = colors[f * nn + n + 1];
+            }
+            layer_milestones(n, &colors, &frame, &mut out);
         }
     }
     milestones_for(n)

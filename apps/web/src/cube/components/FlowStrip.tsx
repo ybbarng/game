@@ -5,6 +5,7 @@ import { realClock } from "@game/fair-play/clock";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import {
+  chunkNow,
   comboLevel,
   comboNow,
   EMPTY_FLOW,
@@ -102,6 +103,8 @@ export function FlowStripView({
   const tps = flowSpeed(strip, now);
   const large = size === "large";
   const combo = showCombo ? comboNow(strip, now) : 0;
+  // 공식 덩어리(R U R′ U′ 등)를 끊김 없이 되풀이하면 몇 번째인지(docs/51 2-1)
+  const chunk = showCombo ? chunkNow(strip.chunk, now) : 0;
   const level = comboLevel(combo);
   return (
     <div
@@ -120,6 +123,20 @@ export function FlowStripView({
           <Chip key={item.id} item={item} large={large} colors={colors} />
         ))}
       </div>
+      {showCombo && (
+        <span
+          data-cube-chunk={chunk > 0 ? chunk : undefined}
+          className={`w-7 shrink-0 font-mono font-semibold text-amber-100/85 tabular-nums ${
+            large ? "text-xs" : "text-[10px]"
+          }`}
+        >
+          {chunk > 0 && (
+            <span key={chunk} className="cube-combo-tick inline-block">
+              ×{chunk}
+            </span>
+          )}
+        </span>
+      )}
       {showCombo && (
         <span
           data-cube-combo={level > 0 ? combo : undefined}
