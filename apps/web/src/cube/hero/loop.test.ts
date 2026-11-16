@@ -307,6 +307,11 @@ describe("HeroLoop", () => {
     ["3-zz", "EO라인", [1, 2]],
     ["2-beginner", "첫 층", [1, 2]],
     ["4-cfop", "흰·노랑 센터", [1]],
+    [
+      "4-yau",
+      /^(흰|빨강|초록|노랑|주황|파랑)·(흰|빨강|초록|노랑|주황|파랑) 센터$/,
+      [1],
+    ],
   ] as const)(
     "%s: 돌리기·가운데 층이 섞인 섞기 뒤에도 단계 차례대로 맞춘다",
     async (id, first, seeds) => {
@@ -585,6 +590,7 @@ describe("해법 표", () => {
     expect(heroRotation(4, "3-cfop").map((m) => m.id)).toEqual([
       "4-beginner",
       "4-cfop",
+      "4-yau",
     ]);
   });
 

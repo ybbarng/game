@@ -25,5 +25,7 @@ struct HeroSettingsTests {
     #expect(CubeSettings.parse(#"{"heroSize":4,"heroMethod":"4-cfop"}"#).heroMethodId(n: 4) == "4-cfop")
     #expect(CubeSettings.parse(#"{"heroSize":3.5,"heroMethod":"3-cfop"}"#).heroMethod == "3-cfop")
     #expect(CubeSettings.parse(#"{"heroSize":9,"heroMethod":"3-zz"}"#).heroMethodId(n: 3) == "3-zz")
+    // 4×4 야우도 고를 수 있다(사이트 해법 표 `4-yau`)
+    #expect(CubeSettings.parse(#"{"heroSize":4,"heroMethod":"4-yau"}"#).heroMethodId(n: 4) == "4-yau")
   }
 }

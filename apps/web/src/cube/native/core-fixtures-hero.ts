@@ -39,6 +39,7 @@ import {
   stageCost,
 } from "../hero/methods";
 import { presentSolve } from "../hero/present";
+import { solveYauHuman } from "../learn/yau-hero";
 import { fixtureJson } from "./core-fixtures";
 
 const TAUGHT = { taught: true } as const;
@@ -69,6 +70,7 @@ export const HERO_SYNC: Readonly<
       ],
     ]),
   ),
+  "4-yau": (s, first, until) => solveYauHuman(s, first, until),
 };
 
 /** 사이트 `solveWithFirst`를 바로(비동기 없이): 늘 흰색, 아니면 첫 단계가 가장 싼 색 */
@@ -124,6 +126,13 @@ export const HERO_SHOW_BIG_CASES: readonly (readonly [
     (n === 4 ? [1, 2] : [1]).map((seed) => [`${n}-${m}`, seed] as const),
   ),
 );
+
+/** 4×4 야우(씨앗 넷: 패리티가 나오는 판, 첫 면 색이 흰색이 아닌 판을 함께) */
+export const HERO_SHOW_YAU_SEEDS: readonly number[] = [1, 2, 3, 4];
+
+export function buildHeroShowYau(): string {
+  return heroShowJson(["4-yau"], [...HERO_SHOW_YAU_SEEDS]);
+}
 
 export function buildHeroShowBig(): string {
   return fixtureJson(

@@ -41,6 +41,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 export const BASE_SPECS = ["home", "not-found", "back-navigation"];
 
 /**
+ * 공용 주소(내 기록·복기 등, 게임 묶음 밖)만 시험하는 spec. 묶음에 넣지 않는다: 공용 주소는 「그 주소를 여는 spec」으로
+ * 고르므로 내 기록 화면이 바뀌면 이 spec이 골라진다. 공용 주소를 묶음으로 만들면 내 기록 → 복기 링크 따라가기가 끊긴다
+ */
+export const COMMON_SPECS = ["profile"];
+
+/**
  * registry.ts에 없는 화면 묶음. dirs는 apps/web/src 아래 폴더, app은 apps/web/src/app 아래 주소 폴더.
  * registry의 게임은 src/<id>/·src/app/<id>/·public/<id>/가 기본이고, 여기 적으면 덧붙는다.
  */
@@ -213,6 +219,7 @@ export function loadContext(root) {
   // 어느 게임에도 안 든 spec(새 화면 등)은 기본 묶음처럼 늘 돈다. 아무 때도 안 도는 spec이 생기지 않게
   const owned = new Set([
     ...BASE_SPECS,
+    ...COMMON_SPECS,
     ...Object.values(areas).flatMap((a) => a.specs),
   ]);
   const orphanSpecs = specs.filter((s) => !owned.has(s));

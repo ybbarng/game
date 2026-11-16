@@ -94,6 +94,7 @@ describe("그 밖의 해법은 십자가 가장 싼 색(같으면 흰색)", () =
     ["2-algs", 2, "first-layer", [1, 2, 3]],
     ["3-zz", 3, "eoline", [1, 2]],
     ["3-roux", 3, "fb", [1, 2]],
+    ["4-yau", 4, "yau-cross3", [1, 2, 3]],
   ] as const)(
     "%s: 고른 색의 %s 단계 수가 여섯 색 가운데 가장 적다",
     async (id, n, stage, seeds) => {
@@ -128,5 +129,34 @@ describe("꼬리표 색 이름", () => {
     expect(heroStageLabel("eo", 2, STAGE_LABELS)).toBe("파란 십자");
     expect(heroStageLabel("f2l-1", 4, STAGE_LABELS)).toBe("F2L 첫째 짝");
     expect(heroStageLabel("centers-ud", 4, STAGE_LABELS)).toBe("흰·노랑 센터");
+  });
+
+  it("야우는 첫 두 센터와 십자 셋도 첫 면 색을 따른다(축소법 「흰·노랑 센터」는 그대로)", () => {
+    expect(heroStageLabel("yau-centers", 0, STAGE_LABELS)).toBe("흰·노랑 센터");
+    expect(heroStageLabel("yau-centers", 1, STAGE_LABELS)).toBe(
+      "빨강·주황 센터",
+    );
+    expect(heroStageLabel("yau-centers", 5, STAGE_LABELS)).toBe(
+      "파랑·초록 센터",
+    );
+    expect(heroStageLabel("yau-cross3", 2, STAGE_LABELS)).toBe("초록 십자 셋");
+    expect(heroStageLabel("yau-last-cross", 2, STAGE_LABELS)).toBe(
+      "마지막 십자 엣지",
+    );
+  });
+
+  it("야우 한 판의 꼬리표는 고른 첫 면 색으로 이어진다", async () => {
+    for (const seed of [1, 2, 3]) {
+      const h = await solveForHero("4-yau", scrambled(4, seed));
+      const color = ["흰", "빨간", "초록", "노란", "주황", "파란"][
+        h.first ?? 0
+      ];
+      const labels = h.stages.map((s) => s.label);
+      expect(labels.slice(0, 2)).toEqual([
+        expect.stringMatching(/센터$/),
+        `${color} 십자 셋`,
+      ]);
+      expect(labels).toContain("마지막 십자 엣지");
+    }
   });
 });

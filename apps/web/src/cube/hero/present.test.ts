@@ -47,6 +47,7 @@ describe("보여 주기 변환", () => {
     "2-beginner",
     "4-beginner",
     "4-cfop",
+    "4-yau",
     "5-cfop",
   ]) {
     it(`${id}: 위 단계 동안 첫 층 면이 위에 있고, 끝나면 z2로 아래로 간다`, async () => {
