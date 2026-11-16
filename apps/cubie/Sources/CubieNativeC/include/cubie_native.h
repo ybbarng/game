@@ -148,6 +148,23 @@ uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, d
 /// 시작하는 때). 맞춘 큐브에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수(out이 NULL이면 길이만)
 uint32_t cubie_hero_steps(const char *method, uint32_t seed, uint8_t *out, uint32_t len);
 
+// ---- 사용자 키 배치 편집(native/cubie-native/src/ffi_keymap.rs, 코어 keys/editor.rs) ----
+
+/// 저장 글(cube.keymap.v1) → 편집기 화면 줄들: preset·mouse·keyless·conflicts 줄, 묶음마다 group 줄과 action 줄
+/// (키는 「chordKey 0x1f 키 이름」을 0x1e로 이음). 글 전체 바이트 수
+uint32_t cubie_keymap_view(const char *stored, uint32_t n, uint8_t *out, uint32_t len);
+/// 키를 지정하기 전: 그 키에 다른 동작이 놓였으면 묻는 글, 아니면 빈 글
+uint32_t cubie_keymap_ask(const char *stored, const char *action, const char *code, uint8_t mods, uint8_t *out,
+                          uint32_t len);
+/// 편집 하나(op: assign·unbind·clear·customFrom·preset·toCustom·mouse·import). 첫 줄 새 저장 글, 둘째 줄은 알림
+/// 「msg\t글」이나 가져오기 오류 「err\t글」이 있을 때만
+uint32_t cubie_keymap_edit(const char *stored, const char *op, const char *arg, const char *code, uint8_t mods,
+                           uint8_t *out, uint32_t len);
+/// 내보내기 글(JSON, 두 칸 들여쓰기)
+uint32_t cubie_keymap_export(const char *stored, uint8_t *out, uint32_t len);
+/// 키 누름 → 지정할 키의 조합 비트(Shift 1·Alt 2·Ctrl 4). 조합 키만 눌렀거나 ⌘ 조합이면 -1
+int32_t cubie_keymap_chord(const char *code, bool shift, bool alt, bool ctrl, bool meta);
+
 // ---- 기록 계산(native/cubie-native/src/ffi_records.rs, 코어 tier.rs) ----
 
 /// 기록 한 판. ms가 음수면 DNF

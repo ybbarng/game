@@ -154,7 +154,7 @@ pub unsafe extern "C" fn cubie_game_key(
     }
 }
 
-unsafe fn c_str<'a>(p: *const c_char) -> Option<&'a str> {
+pub(crate) unsafe fn c_str<'a>(p: *const c_char) -> Option<&'a str> {
     if p.is_null() {
         return None;
     }
@@ -162,7 +162,7 @@ unsafe fn c_str<'a>(p: *const c_char) -> Option<&'a str> {
 }
 
 /// 글을 `out`에 `len`바이트까지 쓴다(UTF-8, 끝 NUL 없음). 글 전체 바이트 수를 돌려준다(모자라면 더 큰 자리로 다시 부른다)
-unsafe fn write_str(s: &str, out: *mut u8, len: u32) -> u32 {
+pub(crate) unsafe fn write_str(s: &str, out: *mut u8, len: u32) -> u32 {
     let b = s.as_bytes();
     if !out.is_null() && b.len() <= len as usize {
         unsafe { std::ptr::copy_nonoverlapping(b.as_ptr(), out, b.len()) };

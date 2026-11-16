@@ -58,6 +58,7 @@ import {
   buildSession,
 } from "./core-fixtures-human";
 import { buildKeycaps } from "./core-fixtures-keycaps";
+import { buildKeymapEditor } from "./core-fixtures-keymap-editor";
 import { buildKeyTable } from "./core-fixtures-keytable";
 import { buildPractice, buildRustPracticeData } from "./core-fixtures-practice";
 import { buildSummary } from "./core-fixtures-records";
@@ -765,6 +766,7 @@ export const BUILDERS = {
   "fixtures/keypaint.json": buildKeyPaint,
   "fixtures/hero.json": buildHero,
   "fixtures/hero-show.json": buildHeroShow,
+  "fixtures/keymap-editor.json": buildKeymapEditor,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,
