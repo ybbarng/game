@@ -45,12 +45,12 @@ export const PRINTS: Readonly<
   Record<string, Readonly<Record<number, string>>>
 > = {
   // 2: 조커콜 가리기(PR #321, 2026-11-17)
-  mighty: { 1: "dea64995aad39860", 2: "d3c458d090dcf07a" },
+  mighty: { 1: "0dac799a1d6e1907", 2: "b95fc6345c0bdcd9" },
   hearts: { 1: "ec73feddd42ca178" },
   chess: { 1: "e92c3bbdf283ff79" },
   janggi: { 1: "11865a0ffd88dfbd" },
   omok: { 1: "e2719c82992f851d" },
-  baduk: { 1: "39adc1b899d23a88" },
+  baduk: { 1: "86daaeceb8991321" },
   baseball: { 1: "d3ab961bcf234a58" },
   gostop: { 1: "99a869877fba3225" },
   minhwatu: { 1: "717685201ecc148f" },
@@ -80,7 +80,7 @@ export const CARD_CASES: PlanCase[] = [
     kit: mightyKit,
     rules: presetRules("standard5"),
     levels: [0, 1, 2],
-    every: { 2: 60 },
+    every: { 2: 150 },
     steps: 3000,
   },
   {
@@ -101,7 +101,7 @@ export const BOARD_CASES: PlanCase[] = [
   { kit: chessKit, rules: CHESS_RULES, levels: [1], steps: 40 },
   { kit: janggiKit, rules: JANGGI_RULES, levels: [1], steps: 30 },
   { kit: omokKit, rules: OMOK_RULES, levels: [1], steps: 120 },
-  { kit: badukKit, rules: BADUK_RULES, levels: [1], steps: 6 },
+  { kit: badukKit, rules: BADUK_RULES, levels: [1], steps: 4 },
   { kit: baseballKit, rules: BASEBALL_RULES, levels: [1] },
   { kit: yutKit, rules: YUT_RULES, levels: [1] },
   { kit: galaxyKit, rules: GALAXY_RULES, levels: [1] },
