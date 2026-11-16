@@ -157,6 +157,58 @@ export function describeAction(action: Action): string {
   }
 }
 
+/**
+ * 그 걸음에 일어난 원카드 고유의 일(외침·잡기·헛외침·벌칙 장·공격으로 먹기·다시 섞기·다 냄·파산) 한 줄씩.
+ * 판 위 다시 보기 막대 아래에 그 걸음 동안 남는다. 낸 카드·한 장 먹기는 판 위에 보여 적지 않는다
+ */
+export function onecardStepNotes(
+  events: readonly GameEvent[],
+  name: (seat: number) => string,
+): string[] {
+  const notes: string[] = [];
+  // 누른 결과가 잡기·헛외침이면 그 줄이 누름을 대신한다(말풍선과 같다)
+  const judged = new Set(
+    events.flatMap((e) =>
+      e.type === "caught" || e.type === "falseShout" ? [e.seat] : [],
+    ),
+  );
+  for (const e of events) {
+    switch (e.type) {
+      case "shouted":
+        if (!judged.has(e.seat)) notes.push(`${name(e.seat)}: 원카드!`);
+        break;
+      case "caught":
+        notes.push(`${name(e.seat)}: ${name(e.target)} 잡음`);
+        break;
+      case "falseShout":
+        notes.push(`${name(e.seat)}: 헛외침`);
+        break;
+      case "drew":
+        if (e.reason === "caught")
+          notes.push(`${name(e.seat)}: 잡혀서 벌칙 ${e.count}장`);
+        else if (e.reason === "falseShout")
+          notes.push(`${name(e.seat)}: 헛외침 벌칙 ${e.count}장`);
+        else if (e.reason === "attack")
+          notes.push(`${name(e.seat)}: 공격 ${e.count}장 먹음`);
+        else if (e.reason === "reward")
+          notes.push(`${name(e.seat)}: 남의 원카드!로 ${e.count}장`);
+        break;
+      case "reshuffled":
+        notes.push(`버린 더미 ${e.count}장을 다시 섞음`);
+        break;
+      case "finished":
+        notes.push(`${name(e.seat)}: 다 냄, ${e.place}등`);
+        break;
+      case "bankrupt":
+        notes.push(`${name(e.seat)}: 파산`);
+        break;
+      default:
+        break;
+    }
+  }
+  return notes;
+}
+
 /** 다시 보기 해설: 지금은 상황만(고수 컴퓨터가 생기면 견준다) */
 function explainOnecard(
   state: OnecardState,
@@ -254,13 +306,14 @@ export const onecardKit: OnecardKit = {
       voids: state.hands.map(() => []),
       tally: state.hands.map((hand, seat) => ({
         seat,
-        label: "",
+        label: "남은 카드",
         value: `${hand.length}장`,
       })),
     }),
     describe: (action) => describeAction(action as Action),
     sortHand: (_state, cards) => sortOnecards(cards as OnecardCard[]),
     explain: explainOnecard,
+    stepNotes: (events, name) => onecardStepNotes(events as GameEvent[], name),
   },
   botFor: (level) => toKitBot(onecardBotFor(level)),
   /**

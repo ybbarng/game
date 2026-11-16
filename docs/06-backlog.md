@@ -137,7 +137,7 @@
 ## 큐브 대결 남은 빈틈 (2026-11-05)
 
 - [ ] 1:1에서 지는 쪽이 상대 하한을 부풀려 매번 「판정 없음」으로 만들 수 있다(이기지는 못하지만 경기를 끝없이 늘림, #107). 같은 기기 때문에 판정 없음이 이어지면 그 사람을 표시하거나, n번 이어지면 방장이 판을 끝낼 수 있게
-- [ ] 원카드 복기를 공통 ReviewPage에서 판 위(CardArchiveView)로 보기(원카드 세션 요청, 11-05)
+- [x] 원카드 복기를 공통 ReviewPage에서 판 위(CardArchiveView)로 보기(원카드 세션 요청, 11-05). 2026-11-17: 마이티·하트와 같은 판 위 다시 보기(`review/replay-table.ts` 어댑터, `onecard/replay-table.tsx`), 그 걸음의 외침·잡힘·헛외침 말풍선과 사건 글(키트 `review.stepNotes`), 시험 `onecard/review.test.ts`·`e2e/onecard-review.spec.ts`
 
 ## M6 이후 (확장)
 

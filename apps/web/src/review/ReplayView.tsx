@@ -1,42 +1,27 @@
 "use client";
 
-import type { Card } from "@game/mighty-engine";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { GameTable } from "@/components/GameTable";
 import { SuitMark, SuitText } from "@/components/SuitText";
-import type { Commentary, GameKit, Verdict } from "@/game/kit";
-import { mightyKit } from "@/game/mighty-kit";
-import { type AttachableHost, useGame } from "@/game/store";
-import { HeartsTable } from "@/hearts/components/HeartsTable";
-import { heartsKit } from "@/hearts/kit";
-import { type HeartsHost, useHearts } from "@/hearts/store";
+import type { Commentary, Verdict } from "@/game/kit";
 import { cn } from "@/lib/cn";
 
 import { CardChip } from "./CardChip";
 import { VERDICT_LABEL } from "./commentary";
 import type { Replayed } from "./replay";
 import { ReplayHost } from "./replay-host";
+import type { AnyKit, ReplayTable } from "./replay-table";
 import type { RoundSpan } from "./rounds";
-
-type AnyKit = GameKit<unknown, unknown, unknown, unknown, unknown, unknown>;
-
-/** 상황판에 쓰는 상태 모양(마이티·하트 공통으로 있는 것만) */
-interface BoardState {
-  round: {
-    hands: string[][];
-    trick: { plays: { seat: number; card: string }[] } | null;
-    tricks: { plays: { seat: number; card: string }[] }[];
-  };
-}
 
 const SUITS = ["S", "H", "D", "C"] as const;
 
 /**
- * 다시 보기: 게임 화면을 그대로 쓰고, 위에 앞뒤로 움직이는 단추와 상황판(모든 패·나온 카드)을 얹는다
+ * 다시 보기: 게임 화면을 그대로 쓰고, 위에 앞뒤로 움직이는 단추와 상황판(모든 패·나온 카드)을 얹는다.
+ * 게임마다 다른 것(화면·상태 붙이기·손패·나온 카드)은 `table`(마이티·하트·원카드)이 맡는다.
+ * 키트가 그 걸음의 고유 사건 글(`review.stepNotes`)을 주면 막대 아래 한 줄에 보인다
  */
 export function ReplayView({
-  game,
+  table,
   replayed,
   seat,
   seatNames,
@@ -46,7 +31,7 @@ export function ReplayView({
   onExit,
   log,
 }: {
-  game: string;
+  table: ReplayTable;
   replayed: Replayed<unknown, unknown>;
   /** 행동 기록(다음 수를 고수의 수와 견준다) */
   log: readonly { seat: number; action: unknown }[];
@@ -57,8 +42,7 @@ export function ReplayView({
   name: (seat: number) => string;
   onExit: () => void;
 }) {
-  const hearts = game === "hearts";
-  const kit = (hearts ? heartsKit : mightyKit) as unknown as AnyKit;
+  const { kit } = table;
   const host = useRef<ReplayHost<
     unknown,
     unknown,
@@ -75,9 +59,7 @@ export function ReplayView({
   /** 기록을 화면 상태에 붙인 뒤에 게임 화면을 그린다(화면 크기 재기가 첫 그림에 붙는다) */
   const [ready, setReady] = useState(false);
   const last = replayed.states.length - 1;
-  const mightyIdle = useGame((s) => !s.busy && s.queue.length === 0);
-  const heartsIdle = useHearts((s) => !s.busy && s.queue.length === 0);
-  const idle = hearts ? heartsIdle : mightyIdle;
+  const idle = table.useIdle();
   const compact = useNarrowPortrait();
   const bar = useBarBottom();
 
@@ -87,16 +69,9 @@ export function ReplayView({
       const next = new ReplayHost(kit, replayed, seat, target);
       host.current = next;
       setIndex(target);
-      if (hearts)
-        useHearts
-          .getState()
-          .attachReplay(next as unknown as HeartsHost, seatNames);
-      else
-        useGame
-          .getState()
-          .attachReplay(next as unknown as AttachableHost, seatNames);
+      table.attach(next, seatNames, replayed.events[target] ?? []);
     },
-    [hearts, kit, last, replayed, seat, seatNames],
+    [table, kit, last, replayed, seat, seatNames],
   );
 
   const forward = useCallback(() => {
@@ -116,128 +91,135 @@ export function ReplayView({
   // 재생: 화면이 사건을 다 보여 주면 다음 걸음.
   useEffect(() => {
     if (!playing || !idle) return;
-    const timer = setTimeout(forward, 120);
+    const timer = setTimeout(forward, table.pauseMs);
     return () => clearTimeout(timer);
-  }, [playing, idle, forward]);
+  }, [playing, idle, forward, table.pauseMs]);
 
   const span =
     [...spans].reverse().find((s) => s.start <= index) ?? spans[0] ?? null;
   const nextSpan = spans.find((s) => s.start > index) ?? null;
-  const state = replayed.states[index] as BoardState | undefined;
+  const state = replayed.states[index];
   const openHands =
-    reveal && state
+    reveal && state !== undefined
       ? // 기록의 카드 문자열은 엔진 카드 그대로다.
-        (state.round.hands.map((hand) =>
-          kit.review.sortHand(state, hand),
-        ) as Card[][])
+        table.hands(state).map((hand) => kit.review.sortHand(state, hand))
       : null;
+  // 그 걸음의 고유 사건 글. 키트가 주면 줄을 늘 두어(빈 걸음도) 걸음마다 판 높이가 바뀌지 않게 한다
+  const notes = kit.review.stepNotes
+    ? kit.review.stepNotes(replayed.events[index] ?? [], name)
+    : null;
+  const Table = table.Table;
 
   return (
     <div className="relative min-h-dvh bg-black">
-      {ready &&
-        (hearts ? (
-          <HeartsTable
-            onExit={onExit}
-            openHands={openHands}
-            topInset={bar.bottom}
-          />
-        ) : (
-          <GameTable
-            onExit={onExit}
-            openHands={openHands}
-            topInset={bar.bottom}
-          />
-        ))}
-      <div className="pointer-events-none fixed inset-x-0 top-3.5 z-[400] flex justify-center px-2">
+      {ready && (
+        <Table onExit={onExit} openHands={openHands} topInset={bar.bottom} />
+      )}
+      <div className="pointer-events-none fixed inset-x-0 top-3.5 z-[400] flex flex-col items-center gap-1 px-2">
         <div
           ref={bar.ref}
-          className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 rounded-2xl bg-black/85 px-2 py-1.5 text-sm shadow-2xl"
-          role="toolbar"
-          aria-label="다시 보기"
+          className="pointer-events-auto flex max-w-full flex-col items-center gap-1 rounded-2xl bg-black/85 px-2 py-1.5 text-sm shadow-2xl"
         >
-          <span className="px-1 text-amber-200 text-xs">
-            다시 보기{span ? ` · ${span.number}판` : ""} · {index}/{last}
-          </span>
-          <Ctl
-            label="판 처음"
-            onClick={() =>
-              jump(
-                span && index > span.start
-                  ? span.start
-                  : ([...spans].reverse().find((s) => s.start < index)?.start ??
-                      0),
-              )
-            }
+          <div
+            role="toolbar"
+            aria-label="다시 보기"
+            className="flex flex-wrap items-center justify-center gap-1"
           >
-            ⏮
-          </Ctl>
-          <Ctl
-            label="한 걸음 뒤로"
-            onClick={() => {
-              setPlaying(false);
-              jump(index - 1);
-            }}
-          >
-            ◀
-          </Ctl>
-          <Ctl
-            label="한 걸음 앞으로"
-            onClick={() => {
-              setPlaying(false);
-              forward();
-            }}
-          >
-            ▶
-          </Ctl>
-          <Ctl
-            label="다음 판"
-            onClick={() => nextSpan && jump(nextSpan.start)}
-            disabled={!nextSpan}
-          >
-            ⏭
-          </Ctl>
-          {/* 한 걸음씩과 헷갈리지 않게 자동 재생은 따로 글자로 둔다 */}
-          <Ctl
-            label={playing ? "자동 재생 멈추기" : "자동 재생"}
-            onClick={() => setPlaying((p) => !p)}
-            active={playing}
-          >
-            {playing ? "⏸ 멈춤" : "자동 재생"}
-          </Ctl>
-          <Ctl
-            label={reveal ? "모든 패 숨기기" : "모든 패 보기"}
-            onClick={() => setReveal((r) => !r)}
-            active={reveal}
-          >
-            {reveal ? "패 숨기기" : "패 보기"}
-          </Ctl>
-          <Ctl
-            label="상황판"
-            onClick={() => {
-              // 세로 휴대폰 상황판은 손패 목록을 빼고, 손패는 자리 판 아래에 펼쳐 본다.
-              if (!board && compact) setReveal(true);
-              setBoard((b) => !b);
-            }}
-            active={board}
-          >
-            상황판
-          </Ctl>
-          {/* 좁은 화면에서는 이 막대가 위 상태 줄을 덮으므로 나가기를 여기에도 둔다 */}
-          <Ctl label="다시 보기 나가기" onClick={onExit}>
-            ✕
-          </Ctl>
+            <span className="px-1 text-amber-200 text-xs">
+              다시 보기{span ? ` · ${span.number}판` : ""} · {index}/{last}
+            </span>
+            <Ctl
+              label="판 처음"
+              onClick={() =>
+                jump(
+                  span && index > span.start
+                    ? span.start
+                    : ([...spans].reverse().find((s) => s.start < index)
+                        ?.start ?? 0),
+                )
+              }
+            >
+              ⏮
+            </Ctl>
+            <Ctl
+              label="한 걸음 뒤로"
+              onClick={() => {
+                setPlaying(false);
+                jump(index - 1);
+              }}
+            >
+              ◀
+            </Ctl>
+            <Ctl
+              label="한 걸음 앞으로"
+              onClick={() => {
+                setPlaying(false);
+                forward();
+              }}
+            >
+              ▶
+            </Ctl>
+            <Ctl
+              label="다음 판"
+              onClick={() => nextSpan && jump(nextSpan.start)}
+              disabled={!nextSpan}
+            >
+              ⏭
+            </Ctl>
+            {/* 한 걸음씩과 헷갈리지 않게 자동 재생은 따로 글자로 둔다 */}
+            <Ctl
+              label={playing ? "자동 재생 멈추기" : "자동 재생"}
+              onClick={() => setPlaying((p) => !p)}
+              active={playing}
+            >
+              {playing ? "⏸ 멈춤" : "자동 재생"}
+            </Ctl>
+            <Ctl
+              label={reveal ? "모든 패 숨기기" : "모든 패 보기"}
+              onClick={() => setReveal((r) => !r)}
+              active={reveal}
+            >
+              {reveal ? "패 숨기기" : "패 보기"}
+            </Ctl>
+            <Ctl
+              label="상황판"
+              onClick={() => {
+                // 세로 휴대폰 상황판은 손패 목록을 빼고, 손패는 자리 판 아래에 펼쳐 본다.
+                if (!board && compact) setReveal(true);
+                setBoard((b) => !b);
+              }}
+              active={board}
+            >
+              상황판
+            </Ctl>
+            {/* 좁은 화면에서는 이 막대가 위 상태 줄을 덮으므로 나가기를 여기에도 둔다 */}
+            <Ctl label="다시 보기 나가기" onClick={onExit}>
+              ✕
+            </Ctl>
+          </div>
+          {notes && (
+            <p
+              data-replay-notes
+              role="status"
+              aria-label="이 걸음에 일어난 일"
+              title={notes.join(" · ")}
+              className="h-5 max-w-full truncate px-1 text-amber-100 text-xs leading-5"
+            >
+              {notes.join(" · ")}
+            </p>
+          )}
         </div>
       </div>
-      {board && state && (
+      {board && state !== undefined && (
         <Board
           state={state}
           name={name}
           seat={seat}
-          kit={kit}
+          table={table}
           index={index}
           next={log[index] ?? null}
           compact={compact}
-          after={(replayed.states[index + 1] as BoardState | undefined) ?? null}
+          after={replayed.states[index + 1] ?? null}
         />
       )}
       {replayed.error && (
@@ -279,18 +261,22 @@ function Ctl({
   );
 }
 
-/** 다음 수를 고수(실력 단계 2)라면 어떻게 두었을까. 계산이 무거울 수 있어 그린 뒤에 한다 */
+/**
+ * 다음 수를 고수(실력 단계 2)라면 어떻게 두었을까. 계산이 무거울 수 있어 그린 뒤에 한다.
+ * 대국을 돌리는 기기가 넣은 행동(원카드 시간 끝·다시 섞기·외침 등, `kit.hostAction`)은 견주지 않는다(undefined)
+ */
 function useExpertMove(
   kit: AnyKit,
   state: unknown,
   next: { seat: number; action: unknown } | null,
   index: number,
-): string | null {
+): string | null | undefined {
+  const comparable = next !== null && !kit.hostAction?.(next.action);
   const [move, setMove] = useState<string | null>(null);
   useEffect(() => {
     setMove(null);
     const bot = kit.botFor?.(2);
-    if (!next || !bot) return;
+    if (!next || !bot || !comparable) return;
     const timer = setTimeout(() => {
       try {
         const view = kit.viewOf(state, next.seat) as { decision: unknown };
@@ -301,8 +287,8 @@ function useExpertMove(
       }
     }, 30);
     return () => clearTimeout(timer);
-  }, [kit, state, next, index]);
-  return move;
+  }, [kit, state, next, index, comparable]);
+  return comparable ? move : undefined;
 }
 
 /** 다음 수 해설. 고수의 계산을 다시 하므로 그린 뒤에 한다 */
@@ -335,30 +321,33 @@ function Board({
   state,
   name,
   seat,
-  kit,
+  table,
   index,
   next,
   after,
   compact,
 }: {
-  state: BoardState;
+  state: unknown;
   name: (seat: number) => string;
   seat: number;
-  kit: AnyKit;
+  table: ReplayTable;
   index: number;
   next: { seat: number; action: unknown } | null;
-  after: BoardState | null;
+  after: unknown;
   /** 세로 휴대폰: 아래에 낮게 붙이고, 남의 손패 목록은 빼고(자리 판 아래 펼친 패로 본다) 내 패만 둔다 */
   compact: boolean;
 }) {
+  const { kit } = table;
   const situation = kit.review.situation(state);
   const expert = useExpertMove(kit, state, next, index);
   const commentary = useCommentary(kit, state, next, after, index, name);
   const actual = next ? kit.review.describe(next.action) : null;
-  const played = [
-    ...state.round.tricks.flatMap((t) => t.plays),
-    ...(state.round.trick?.plays ?? []),
-  ].map((p) => p.card);
+  const { title: playedTitle, cards: played } = table.played(state);
+  // 무늬 없는 카드(조커)는 무늬 줄 뒤에 따로
+  const unsuited = played.filter((c) => !SUITS.some((s) => c.startsWith(s)));
+  const chip = (c: string) => (
+    <CardChip key={c} card={c} {...(table.chip?.(c) ?? {})} />
+  );
   return (
     // 오른쪽 위는 게임 화면의 설정 메뉴가 열리는 곳이라 왼쪽에 둔다.
     // 세로 휴대폰은 다른 사람 패와 가운데 턴 카드를 가리지 않게 아래(내 손패 자리)에 낮게 붙인다.
@@ -385,21 +374,23 @@ function Board({
             <span>
               실제: <b>{actual && <SuitText text={actual} />}</b>
             </span>
-            <span className="text-white/70">
-              고수라면:{" "}
-              {expert === null ? (
-                "생각하는 중…"
-              ) : (
-                <b
-                  className={
-                    expert === actual ? "text-sky-300" : "text-amber-200"
-                  }
-                >
-                  <SuitText text={expert} />
-                  {expert === actual ? " (같다)" : ""}
-                </b>
-              )}
-            </span>
+            {expert !== undefined && (
+              <span className="text-white/70">
+                고수라면:{" "}
+                {expert === null ? (
+                  "생각하는 중…"
+                ) : (
+                  <b
+                    className={
+                      expert === actual ? "text-sky-300" : "text-amber-200"
+                    }
+                  >
+                    <SuitText text={expert} />
+                    {expert === actual ? " (같다)" : ""}
+                  </b>
+                )}
+              </span>
+            )}
           </div>
           <Explanation commentary={commentary} compact={compact} />
         </section>
@@ -436,7 +427,7 @@ function Board({
         {!compact && (
           <h3 className="mb-1 font-bold text-white/80 text-xs">모든 패</h3>
         )}
-        {state.round.hands.map((hand, s) =>
+        {table.hands(state).map((hand, s) =>
           compact && s !== seat ? null : (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: 자리 번호가 곧 정체다
@@ -451,9 +442,7 @@ function Board({
               >
                 {name(s)}
               </span>
-              {kit.review.sortHand(state, hand).map((c) => (
-                <CardChip key={c} card={c} />
-              ))}
+              {kit.review.sortHand(state, hand).map(chip)}
               {(situation.voids[s] ?? []).length > 0 && (
                 <span className="ml-1 rounded bg-rose-900/70 px-1 text-[10px] text-rose-200">
                   <SuitText text={(situation.voids[s] ?? []).join("")} /> 없음
@@ -492,7 +481,7 @@ function Board({
             compact ? "sr-only" : "mb-1",
           )}
         >
-          이 판에 나온 카드
+          {playedTitle}
         </h3>
         {compact && played.length === 0 && (
           <span className="text-white/30 text-xs">아직 없음</span>
@@ -512,15 +501,15 @@ function Board({
               {cards.length === 0 ? (
                 <span className="text-white/30 text-xs">없음</span>
               ) : (
-                cards.map((c) => <CardChip key={c} card={c} />)
+                cards.map(chip)
               )}
             </div>
           );
         })}
-        {played.includes("JK") && (
+        {unsuited.length > 0 && (
           <div className="flex items-center gap-1">
             <span className="w-5" />
-            <CardChip card="JK" />
+            {unsuited.map(chip)}
           </div>
         )}
       </section>
