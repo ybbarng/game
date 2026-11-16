@@ -15,6 +15,7 @@ import {
   PuzzleScreen,
   usePuzzleRun,
 } from "@/components/study/PuzzleScreen";
+import type { ReviewRun } from "@/components/study/review-run";
 
 import { useChessStudyProgress } from "../progress";
 import {
@@ -58,10 +59,13 @@ export function ChessPuzzleScreen({
   puzzleId,
   onExit,
   onOpen,
+  review,
 }: {
   puzzleId: string;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const found = findInSets<ChessPuzzle>(CHESS_PUZZLE_SETS, puzzleId);
   if (!found) return null;
@@ -72,6 +76,7 @@ export function ChessPuzzleScreen({
       puzzle={found.puzzle}
       onExit={onExit}
       onOpen={onOpen}
+      review={review}
     />
   );
 }
@@ -82,12 +87,15 @@ function ChessPuzzleRun({
   puzzle,
   onExit,
   onOpen,
+  review,
 }: {
   set: ChessPuzzleSet;
   index: number;
   puzzle: ChessPuzzle;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const coordinates = useChessSettings((s) => s.coordinates);
   const solve = useChessStudyProgress((s) => s.solve);
@@ -225,6 +233,7 @@ function ChessPuzzleRun({
         setSelected(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
+      review={review}
       onExit={onExit}
     />
   );

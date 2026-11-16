@@ -7,6 +7,8 @@ import type { Cue } from "@/game/sound";
 import { playUiCue } from "@/game/ui-sound";
 import { cn } from "@/lib/cn";
 
+import { nextButton, type ReviewRun } from "./review-run";
+
 /*
  * 수 배우기 문제 화면의 공통 틀(docs/23). 장기·체스·바둑이 함께 쓴다.
  * - `usePuzzleRun`: 문제 하나를 푸는 흐름(내 수 판정 → 상대 응수 → 풀었나/틀렸나, 진행 기록)
@@ -189,6 +191,8 @@ export function PuzzleScreen({
   onNext,
   onExit,
   extraButtons,
+  review,
+  revealLabel = "정답 보기",
 }: {
   /** `data-game` 값(게임마다 판 색 등) */
   game: string;
@@ -218,7 +222,12 @@ export function PuzzleScreen({
   onExit: () => void;
   /** 판 밑에 더 둘 단추(바둑 쉬기 등) */
   extraButtons?: ReactNode;
+  /** 「오늘 복습」으로 연 문제면 복습 줄(머리줄 차례, 푼 뒤 다음 문제) */
+  review?: ReviewRun | undefined;
+  /** 「정답 보기」 단추 이름(엔드게임 연습은 「수 보기」) */
+  revealLabel?: string;
 }) {
+  const next = nextButton(review, onNext, onExit, "다음 문제");
   const outcome: Outcome | null =
     status === "solved" ? "win" : status === "wrong" ? "loss" : null;
   const statusText =
@@ -243,7 +252,9 @@ export function PuzzleScreen({
           ← 목록
         </button>
         <span className="ml-auto font-semibold">
-          {setTitle} {index + 1}/{total}
+          {review
+            ? `오늘 복습 ${review.index + 1}/${review.total}`
+            : `${setTitle} ${index + 1}/${total}`}
         </span>
       </header>
 
@@ -294,7 +305,7 @@ export function PuzzleScreen({
               onClick={onReveal}
               className="rounded-xl bg-white/10 px-4 py-2"
             >
-              정답 보기
+              {revealLabel}
             </button>
           )}
           {status === "wrong" && (
@@ -309,10 +320,10 @@ export function PuzzleScreen({
           {status === "solved" && (
             <button
               type="button"
-              onClick={onNext ?? onExit}
+              onClick={next.onClick}
               className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
             >
-              {onNext ? "다음 문제" : "목록으로"}
+              {next.label}
             </button>
           )}
         </div>

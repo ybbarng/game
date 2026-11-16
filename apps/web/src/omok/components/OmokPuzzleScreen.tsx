@@ -8,6 +8,7 @@ import {
   PuzzleScreen,
   usePuzzleRun,
 } from "@/components/study/PuzzleScreen";
+import type { ReviewRun } from "@/components/study/review-run";
 
 import { useOmokStudyProgress } from "../progress";
 import {
@@ -33,10 +34,13 @@ export function OmokPuzzleScreen({
   puzzleId,
   onExit,
   onOpen,
+  review,
 }: {
   puzzleId: string;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const found = findInSets<OmokPuzzle>(OMOK_PUZZLE_SETS, puzzleId);
   if (!found) return null;
@@ -47,6 +51,7 @@ export function OmokPuzzleScreen({
       puzzle={found.puzzle}
       onExit={onExit}
       onOpen={onOpen}
+      review={review}
     />
   );
 }
@@ -57,12 +62,15 @@ function OmokPuzzleRun({
   puzzle,
   onExit,
   onOpen,
+  review,
 }: {
   set: OmokPuzzleSet;
   index: number;
   puzzle: OmokPuzzle;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const solve = useOmokStudyProgress((s) => s.solve);
   const miss = useOmokStudyProgress((s) => s.miss);
@@ -195,6 +203,7 @@ function OmokPuzzleRun({
         setAim(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
+      review={review}
       onExit={onExit}
     />
   );

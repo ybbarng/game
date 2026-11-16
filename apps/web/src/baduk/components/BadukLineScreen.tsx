@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 
 import { LineScreen, useLineRun } from "@/components/study/LineScreen";
+import type { ReviewRun } from "@/components/study/review-run";
 import type { StudyLine } from "@/study/line";
 
 import { BADUK_FUSEKI_SET } from "../fuseki";
@@ -50,10 +51,13 @@ export function BadukLineScreen({
   lineId,
   onExit,
   onOpen,
+  review,
 }: {
   lineId: string;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const set = LINE_SETS.find((s) => s.lines.some((l) => l.id === lineId));
   if (!set) return null;
@@ -70,6 +74,7 @@ export function BadukLineScreen({
       nextId={lines[index + 1]?.id ?? null}
       onExit={onExit}
       onOpen={onOpen}
+      review={review}
     />
   );
 }
@@ -82,6 +87,7 @@ function BadukLineRun({
   nextId,
   onExit,
   onOpen,
+  review,
 }: {
   setTitle: string;
   line: StudyLine;
@@ -90,6 +96,8 @@ function BadukLineRun({
   nextId: string | null;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const solve = useBadukStudyProgress((s) => s.solve);
   const miss = useBadukStudyProgress((s) => s.miss);
@@ -169,6 +177,7 @@ function BadukLineRun({
         setAim(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
+      review={review}
       onExit={onExit}
     />
   );

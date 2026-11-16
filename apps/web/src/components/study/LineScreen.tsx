@@ -20,6 +20,7 @@ import {
 } from "@/study/line";
 
 import { type Applied, type MoveSounds, playMoveCue } from "./PuzzleScreen";
+import { nextButton, type ReviewRun } from "./review-run";
 
 /*
  * 수 배우기 "수순 따라 두기" 화면의 공통 틀(docs/23 2절). 장기 포진·체스 오프닝·바둑 정석이 함께 쓴다.
@@ -252,6 +253,7 @@ export function LineScreen({
   onNext,
   onExit,
   extraButtons,
+  review,
 }: {
   /** `data-game` 값 */
   game: string;
@@ -278,7 +280,10 @@ export function LineScreen({
   onExit: () => void;
   /** 판 밖에서 두는 수 단추(바둑 쉬기 등). 내 차례에만 보인다 */
   extraButtons?: ReactNode;
+  /** 「오늘 복습」으로 연 수순이면 복습 줄(머리줄 차례, 끝낸 뒤 다음 문제) */
+  review?: ReviewRun | undefined;
 }) {
+  const next = nextButton(review, onNext, onExit, "다음 수순");
   // 마지막 두 수(내 수와 상대 답)의 설명. 상대가 곧바로 받아도 내 수의 설명이 사라지지 않게 한다.
   const notes = history
     .map((h, ply) => ({ ply, note: h.note, label: moveLabel(ply, h.notation) }))
@@ -306,7 +311,9 @@ export function LineScreen({
           ← 목록
         </button>
         <span className="ml-auto font-semibold">
-          {setTitle} {index + 1}/{total}
+          {review
+            ? `오늘 복습 ${review.index + 1}/${review.total}`
+            : `${setTitle} ${index + 1}/${total}`}
         </span>
       </header>
 
@@ -400,10 +407,10 @@ export function LineScreen({
           {status === "done" && (
             <button
               type="button"
-              onClick={onNext ?? onExit}
+              onClick={next.onClick}
               className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
             >
-              {onNext ? "다음 수순" : "목록으로"}
+              {next.label}
             </button>
           )}
         </div>
