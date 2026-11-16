@@ -269,10 +269,13 @@ function Pile({
   view,
   width,
   onShout,
+  disabled,
 }: {
   view: OnecardView;
   width: number;
   onShout: (seen: number, rtMs?: number) => void;
+  /** 치지 못한다(판 끝·다시 보기). 모습은 그대로다 */
+  disabled: boolean;
 }) {
   // 마지막으로 그린 프레임을 적은 판 번호. 화면 시험이 "이 판을 다 그렸다"를 조건으로 기다린다
   const [shownTurn, setShownTurn] = useState<number | null>(null);
@@ -283,13 +286,13 @@ function Pile({
   turnNoRef.current = view.turnNo;
   const shoutRef = useRef(onShout);
   shoutRef.current = onShout;
-  const overRef = useRef(view.phase === "over");
-  overRef.current = view.phase === "over";
+  const overRef = useRef(disabled);
+  overRef.current = disabled;
   const [slap, setSlap] = useState(0);
   const press = useRef<ShoutPress | null>(null);
   if (press.current === null)
     press.current = new ShoutPress(realClock, (s, rt) => {
-      // 판이 끝난 뒤의 스페이스도 치지 않는다(단추는 `disabled`)
+      // 판이 끝난 뒤·다시 보기의 스페이스도 치지 않는다(단추는 `disabled`)
       if (overRef.current) return;
       setSlap((n) => n + 1);
       shoutRef.current(s, rt);
@@ -331,7 +334,7 @@ function Pile({
       data-pile
       data-turn-no={view.turnNo}
       data-shown-turn={shownTurn ?? undefined}
-      disabled={view.phase === "over"}
+      disabled={disabled}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         press.current?.press(e.pointerId, ...seenAt(e.timeStamp));
@@ -425,13 +428,26 @@ function missionPlace(
   return { top: Math.max(...blocking.map((p) => p.y + p.h)) + fanBelow + 8 };
 }
 
-/** 대국 화면. `mission`이 있으면 튜토리얼 미션 띠를 얹는다 */
+/** 다시 보기로 그릴 때(공통 `ReplayView`가 위에 막대를 얹는다) */
+export interface OnecardReplayProps {
+  /** 다른 사람 손패를 앞면으로 펼친다(자리마다 정렬한 패). null이면 뒷면 부채 */
+  openHands: readonly (readonly string[])[] | null;
+  /** 위에 막대가 있어 그 아래 공간에만 그린다(px) */
+  topInset: number;
+}
+
+/**
+ * 대국 화면. `mission`이 있으면 튜토리얼 미션 띠를 얹는다. `replay`면 누를 수 있는 것(내기·먹기·더미 치기·그만두기)을
+ * 끄고, 그 걸음의 말풍선(외침·잡힘·헛외침)을 걸음 동안 남긴다. 버린 더미 맨 위 카드는 평소처럼 바로 그린다
+ */
 export function OnecardGame({
   onExit,
   mission,
+  replay,
 }: {
   onExit: () => void;
   mission?: MissionProps;
+  replay?: OnecardReplayProps;
 }) {
   const {
     view,
@@ -469,7 +485,9 @@ export function OnecardGame({
   const pointer = useRef<string>("mouse");
   // 손패를 훑거나 끌어 낸 손은 카드 누르기로 치지 않는다(useHandControls가 손을 뗄 때 처리한다)
   const gestured = useRef(false);
-  const bubbles = useBubbles(events, eventSeq);
+  const liveBubbles = useBubbles(events, eventSeq);
+  // 다시 보기는 앞뒤로 넘기며 보므로 그 걸음의 말풍선을 사라지지 않게 둔다
+  const bubbles = replay ? bubblesOf(events) : liveBubbles;
   const fx = useCardFlights<OnecardCard>();
   const [table, setTable] = useState<{ deck: Spot; pile: Spot } | null>(null);
   // 나눠 준 뒤 손패가 손패 가운데에서 펼쳐진다(하트·마이티와 같다)
@@ -513,7 +531,8 @@ export function OnecardGame({
       })
     : null;
   // 나눠 주는 동안은 내 차례여도 손패를 내지 않는다(하트 `canActHearts`와 같다)
-  const myTurn = view?.phase === "play" && view.turn === me && !dealing;
+  const myTurn =
+    !replay && view?.phase === "play" && view.turn === me && !dealing;
   const playable = new Set(
     (view?.moves ?? []).flatMap((a) => (a.type === "play" ? [a.card] : [])),
   );
@@ -608,13 +627,14 @@ export function OnecardGame({
 
   if (!view || !host) return null;
   const levelName = ONECARD_LEVELS.find((l) => l.value === level)?.label ?? "";
-  const online = local === null;
+  const online = local === null && !replay;
+  // 다시 보기: 온라인 판이면 남긴 자리 이름, 혼자 한 판이면 컴퓨터 이름
   const name = (seat: number) =>
     seat === me
       ? "나"
       : online
         ? (seatNames?.[seat] ?? `자리 ${seat + 1}`)
-        : botName(botNames, (seat - me + n) % n);
+        : (seatNames?.[seat] ?? botName(botNames, (seat - me + n) % n));
   const canDraw = view.moves.some((a) => a.type === "draw");
 
   /** 마우스는 누르면 바로 내고, 터치는 한 번 겨누고 다시 눌러 낸다 */
@@ -639,6 +659,8 @@ export function OnecardGame({
   else if (view.finished.includes(me))
     status = `다 냈어요! ${view.finished.indexOf(me) + 1}등 · 남은 사람을 기다려요`;
   else if (view.bankrupt.includes(me)) status = "파산했어요 · 남은 판을 봐요";
+  else if (replay && view.phase === "play" && view.turn === me)
+    status = view.attack > 0 ? `내 차례 · 공격 +${view.attack}` : "내 차례";
   else if (myTurn)
     status =
       view.attack > 0
@@ -675,7 +697,7 @@ export function OnecardGame({
         y: layout.center.y + layout.center.h / 2,
       }
     : { x: 0, y: 0 };
-  const canResign = !over && !online && !mission;
+  const canResign = !over && !online && !mission && !replay;
   // 판 가운데 칸: computeLayout의 바닥(center, 위쪽 자리 판 아래 뒷면 부채는 `fanHeight`로 이미 피했다)에서
   // 손패 위 차례 안내를 피한다(낮은 가로 화면에서 겹치지 않게). 카드 크기는 남은 높이에 맞춘다.
   const middle = layout
@@ -710,12 +732,21 @@ export function OnecardGame({
       // 받은 외침·잡기·헛외침 사건 수를 자리 순서로(말풍선은 잠깐이라 화면 시험은 이 값을 기다린다)
       data-shouts-by={shoutEvents.join(",")}
       data-my-seat={view.mySeat}
+      data-replay={replay ? "" : undefined}
       className={cn(
         "relative h-dvh w-full overflow-hidden text-white",
         ONECARD_BG,
         fade.className,
       )}
-      style={fade.style}
+      style={
+        replay && replay.topInset > 0
+          ? {
+              ...fade.style,
+              marginTop: replay.topInset,
+              height: `calc(100dvh - ${replay.topInset}px)`,
+            }
+          : fade.style
+      }
       {...controls.handlers}
       onPointerUpCapture={() => {
         gestured.current = controls.gestureMoved();
@@ -740,7 +771,7 @@ export function OnecardGame({
             <span className="min-w-0 flex-1 truncate opacity-80">
               {mission
                 ? `배우기 · ${mission.title}`
-                : `${n}명 · ${view.rules.handSize}장 · ${online ? "친구와" : `컴퓨터(${levelName})`}`}
+                : `${n}명 · ${view.rules.handSize}장 · ${replay ? "다시 보기" : online ? "친구와" : `컴퓨터(${levelName})`}`}
             </span>
             <span
               className="shrink-0 tabular-nums opacity-90"
@@ -792,7 +823,7 @@ export function OnecardGame({
             const seat = seatOf(offset);
             const plate = layout.seats[offset]?.plate;
             if (!plate) return [];
-            const revealed = result?.hands[seat];
+            const revealed = result?.hands[seat] ?? replay?.openHands?.[seat];
             if (revealed) {
               if (revealed.length === 0) return [];
               return [
@@ -896,6 +927,7 @@ export function OnecardGame({
                 view={view}
                 width={Math.round(middle?.pileW ?? 0)}
                 onShout={shout}
+                disabled={over || replay !== undefined}
               />
             </div>
             <div
@@ -954,7 +986,7 @@ export function OnecardGame({
                     }
                   />
                   <RankTable view={view} name={name} />
-                  {!mission && (
+                  {!mission && !replay && (
                     <div className="flex justify-center gap-2">
                       <ActionButton onClick={onExit}>다시 하기</ActionButton>
                       <a
