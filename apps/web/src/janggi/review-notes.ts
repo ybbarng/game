@@ -42,7 +42,7 @@ export function reviewNotes(
   const taken = board[move.to] ?? "";
   if (taken !== "") {
     const kind = taken[1] as Kind;
-    notes.push(`${obj(KIND_NAMES[kind])} 잡았다(${PIECE_VALUE[kind]}점)`);
+    notes.push(`${obj(KIND_NAMES[kind])} 잡았어요(${PIECE_VALUE[kind]}점).`);
   }
   // 놓친 공짜: 두기 전 위험한 상대 기물이 있는데 아무것도 잡지 않았으면 가장 큰 것 하나
   const free = threatenedPieces(board, other(side), options).sort(
@@ -50,7 +50,7 @@ export function reviewNotes(
   )[0];
   if (free && taken === "")
     notes.push(
-      `공짜로 잡을 수 있던 ${label(board, free.at, ["을", "를"])} 두고 다른 수를 뒀다`,
+      `공짜로 잡을 수 있던 ${label(board, free.at, ["을", "를"])} 두고 다른 수를 뒀어요.`,
     );
   // 새 위험: 두기 전에는 안전했는데 이 수 뒤 잡힐 위험이 생긴 내 기물(가장 큰 것 하나).
   // 옮긴 기물은 출발 자리에서 위험했는지로 견준다.
@@ -63,7 +63,7 @@ export function reviewNotes(
     .sort(byValue(after))[0];
   if (risky)
     notes.push(
-      `이 수 뒤 ${label(after, risky.at, ["이", "가"])} 잡힐 위험에 놓였다`,
+      `이 수 뒤 ${label(after, risky.at, ["이", "가"])} 잡힐 위험에 놓였어요.`,
     );
   return notes;
 }
