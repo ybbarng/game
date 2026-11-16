@@ -64,13 +64,13 @@ export const janggiStats: KitStats<JanggiView, GameEvent> = {
     anyRound<JanggiRound>(
       "checkmate",
       "외통",
-      "외통으로 이깁니다.",
+      "외통으로 이겨요.",
       (r) => r.outcome === "win" && r.by === "checkmate",
     ),
     anyRound<JanggiRound>(
       "han-win",
       "한의 승리",
-      "한(나중)으로 이깁니다.",
+      "한(나중)으로 이겨요.",
       (r) => r.outcome === "win" && r.side === "han",
     ),
   ],

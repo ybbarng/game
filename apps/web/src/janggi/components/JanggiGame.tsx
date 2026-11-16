@@ -224,21 +224,21 @@ export function JanggiGame({
   let status: string;
   if (view.phase === "setup")
     status = mySetup
-      ? "상차림을 고르세요(마·상 자리)"
+      ? "상차림을 고르세요(마·상 자리)."
       : online
         ? `${opponent}가 상차림을 고르는 중`
         : "컴퓨터가 상차림을 고르는 중…";
   else if (view.phase === "play")
     status = myMove
       ? view.check === mySide
-        ? "장군! 궁을 지키세요"
+        ? "장군! 궁을 지키세요."
         : selected !== null
           ? hint && selected === hint.from
-            ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요"
-            : "갈 곳을 누르세요"
+            ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요."
+            : "갈 곳을 누르세요."
           : hintPass
-            ? "힌트: 지금은 쉬어도 돼요(「한 수 쉬기」)"
-            : "내 차례 — 옮길 기물을 누르세요"
+            ? "힌트: 지금은 쉬어도 돼요(「한 수 쉬기」)."
+            : "내 차례 — 옮길 기물을 누르세요."
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
@@ -247,19 +247,19 @@ export function JanggiGame({
       result.kind === "checkmate"
         ? "외통으로 이겼어요!"
         : result.kind === "resign"
-          ? "상대가 기권했어요"
+          ? "상대가 기권했어요."
           : result.kind === "time"
             ? "상대 시간이 다 돼 이겼어요!"
             : "점수로 이겼어요!";
   else
     status =
       result?.kind === "checkmate"
-        ? "외통당해 졌어요"
+        ? "외통당해 졌어요."
         : result?.kind === "resign"
-          ? "기권했어요"
+          ? "기권했어요."
           : result?.kind === "time"
-            ? "시간이 다 돼 졌어요"
-            : "점수로 졌어요";
+            ? "시간이 다 돼 졌어요."
+            : "점수로 졌어요.";
 
   // 판이 막 끝난 장면이면 모든 게임처럼 가운데에 크게 띄운다(미션은 결과 창이 따로 있다).
   const ended = events.find((e) => e.type === "roundEnded");
@@ -326,8 +326,8 @@ export function JanggiGame({
             className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
           >
             {hostLeft
-              ? "방장이 방을 나갔습니다"
-              : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+              ? "방장이 방을 나갔어요."
+              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
           </p>
         )
       }
