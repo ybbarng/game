@@ -451,6 +451,77 @@ test(
   },
 );
 
+/** 아래로 당겼다가 옆으로 쓸어 놓는다(튕긴 쪽이 60도를 넘어 반드시 낙, docs/37 13-3) */
+async function sweepSticks(page: Page): Promise<void> {
+  const box = await throwButton(page).boundingBox();
+  if (!box) throw new Error("윷가락이 보이지 않는다");
+  const x = box.x + box.width / 2;
+  const y = box.y + 40;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 120, { steps: 6 });
+  await page.mouse.move(x + 120, y + 100, { steps: 10 });
+  await page.mouse.up();
+}
+
+test(
+  "윷놀이 배우기: 공정한 던지기 단원에서 직접 던지고, 쓸어 던지면 낙이라 다시 한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 앞 단원 다섯을 마친 사람(공정한 던지기는 여섯째 단원이라 그 전에는 잠겨 있다)
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "yut-tutorial",
+        JSON.stringify({
+          state: {
+            completed: ["goal", "shortcut", "capture", "bonus", "home"],
+          },
+          version: 0,
+        }),
+      );
+    });
+    await page.goto("/yut");
+    await page.getByRole("button", { name: /윷놀이 배우기/ }).click();
+    await page.getByRole("button", { name: /공정한 던지기/ }).click();
+    await expect(page.getByText("윷 던지는 법")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("yut-fair-lesson.png") });
+    // 설명 둘(던지는 법, 낙) → 던지기 미션
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    await expect(throwButton(page)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("yut-fair-mission.png") });
+
+    await sweepSticks(page);
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await expect(throwButton(page)).toBeVisible();
+    await throwSticks(page);
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+
+    // 설명 둘(모두가 함께 정함, 겨냥할 수 없음) → 퀴즈 셋
+    await expect(page.getByText("모두가 함께 정해요")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("yut-fair-seal.png") });
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    for (const answer of [
+      "아무도 없다",
+      "낙이 날지 말지",
+      "그 던지기는 없던 일이 되고 더 던지지 못한다",
+    ]) {
+      await page.getByRole("button", { name: answer }).click();
+      await expect(page.getByText("정답이에요!")).toBeVisible();
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    }
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+  },
+);
+
 const stage = (page: Page) => page.locator(".yut-stage");
 const mat = (page: Page) => page.locator("[data-toss]");
 
