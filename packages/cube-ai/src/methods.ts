@@ -336,9 +336,19 @@ function insertBySearch(
             hs.push(
               heuristic(tracked, [tracked.length - 2, tracked.length - 1]),
             );
+            // 짝 + 십자 엣지 하나(24³칸). 어림 표는 모두 실제 남은 수보다 크지 않아, 표를 더해도 잘리는 가지는
+            // 답이 없는 가지뿐이고 같은 수 차례로 찾는 첫 답은 그대로다. 짝만 보는 표는 십자를 흐트러뜨렸다 되돌리는
+            // 수를 세지 못해 탐색이 몇 배 넓었다(CFOP 30판 F2L CPU 약 3분의 1로)
+            for (let e = 0; e < 4; e++)
+              hs.push(
+                heuristic(tracked, [e, tracked.length - 2, tracked.length - 1]),
+              );
           } else {
             tracked.push({ kind: "c", piece: 4 + q });
             hs.push(heuristic(tracked, [tracked.length - 1]));
+            // 코너 + 십자 엣지 하나(24²칸), 위 짝과 같은 까닭
+            for (let e = 0; e < 4; e++)
+              hs.push(heuristic(tracked, [e, tracked.length - 1]));
           }
         }
         const path = idaSearch(
