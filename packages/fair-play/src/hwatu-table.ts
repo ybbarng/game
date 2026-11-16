@@ -411,7 +411,7 @@ export class HwatuCoordinator<
         reportShuffleTamper(
           this.device,
           dealId,
-          "바닥에 같은 카드가 두 번 있다",
+          "바닥에 같은 카드가 두 번 있어요.",
           (i) => this.incident(i),
         );
         return;
@@ -462,7 +462,7 @@ export class HwatuCoordinator<
           reportShuffleTamper(
             this.device,
             dealId,
-            "열어 보니 같은 카드가 두 번 있다",
+            "열어 보니 같은 카드가 두 번 있어요.",
             (i) => this.incident(i),
           );
           return;
@@ -488,7 +488,7 @@ export class HwatuCoordinator<
     if (slot !== expected || (to !== PUBLIC && !this.devices.includes(to))) {
       this.incident({
         seat: 0,
-        reason: "방장이 더미를 순서와 다르게 열라고 했다",
+        reason: "방장이 더미를 순서와 다르게 열라고 했어요.",
       });
       return;
     }
@@ -610,7 +610,7 @@ export function checkHwatuReplay<
 ): HwatuReplayCheck<State> {
   const first = deals.get(1);
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없다" };
+    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
   let state = spec.createMatch(rules, seed, first.preset).state;
   const states = [state];
   let used = 0;
@@ -624,7 +624,7 @@ export function checkHwatuReplay<
         ok: false,
         index,
         seat: 0,
-        reason: "방장이 엔진이 쓰지 않은 더미 카드를 열었다",
+        reason: "방장이 엔진이 쓰지 않은 더미 카드를 열었어요.",
       };
     return null;
   };
@@ -660,7 +660,7 @@ export function checkHwatuReplay<
               ok: false,
               index,
               seat: 0,
-              reason: "방장이 더미 카드를 엔진과 다르게 열었다",
+              reason: "방장이 더미 카드를 엔진과 다르게 열었어요.",
             };
           used += 1;
         }
@@ -900,10 +900,10 @@ export class HwatuHostTable<
     seat: number,
     action: Action,
   ): Promise<Prepared<Action>> {
-    if (this.halted) return { ok: false, error: "판을 멈췄다" };
+    if (this.halted) return { ok: false, error: "판을 멈췄어요." };
     const round = this.spec.roundOf(this.hooks.state());
     if (!(await this.until(() => this.coordinator.readyAll(round), null)))
-      return { ok: false, error: "판을 멈췄다" };
+      return { ok: false, error: "판을 멈췄어요." };
     const deal = this.coordinator.dealOf(round) as number;
     const state = this.hooks.state();
     const hand = this.spec.viewOf(state, seat).hand;
@@ -911,7 +911,7 @@ export class HwatuHostTable<
     let slots: number[] = [];
     if (this.deviceOf(seat) === 0) {
       const view = this.viewFor(seat, this.spec.viewOf(state, seat));
-      if (!view) return { ok: false, error: "카드를 여는 중입니다" };
+      if (!view) return { ok: false, error: "카드를 여는 중이에요." };
       const mine = this.device.myCards(deal);
       for (const card of this.spec.revealsOf(action, view)) {
         if (hand.includes(card)) continue;
@@ -919,7 +919,7 @@ export class HwatuHostTable<
           .map((t) => slotOfToken(t))
           .find((s) => s !== null && mine.get(s) === card);
         if (slot === undefined || slot === null)
-          return { ok: false, error: "손에 없는 카드다" };
+          return { ok: false, error: "손에 없는 카드예요." };
         slots.push(slot);
       }
       if (slots.length > 0) {
@@ -934,25 +934,25 @@ export class HwatuHostTable<
       if (slots.some((s) => !hand.includes(tokenOf(s)))) {
         this.coordinator.incident({
           seat,
-          reason: "자기 손에 없는 자리의 카드를 내려 했다",
+          reason: "자기 손에 없는 자리의 카드를 내려 했어요.",
         });
-        return { ok: false, error: "자기 손에 없는 자리의 카드다" };
+        return { ok: false, error: "자기 손에 없는 자리의 카드예요." };
       }
     }
     if (slots.length > 0) {
       if (!(await this.waitOpen(round, slots)))
-        return { ok: false, error: "카드 열쇠가 오지 않았다" };
+        return { ok: false, error: "카드 열쇠가 오지 않았어요." };
       const opened = slots.map((s) => this.device.open(deal, s) as string);
       const known = new Set([...opened, ...hand]);
       if (this.spec.claimedOf(action).some((c) => !known.has(c))) {
-        const reason = "낸다고 한 카드와 열쇠로 연 카드가 다르다";
+        const reason = "낸다고 한 카드와 열쇠로 연 카드가 달라요.";
         this.coordinator.incident({ seat, reason });
         return { ok: false, error: reason };
       }
     }
     // 엔진을 한 걸음 미리 돌려 보고 더미를 몇 장 쓰는지, 판이 끝나는지 본다.
     for (let guard = 0; guard < 8; guard++) {
-      if (this.halted) return { ok: false, error: "판을 멈췄다" };
+      if (this.halted) return { ok: false, error: "판을 멈췄어요." };
       const current = this.opened(this.hooks.state());
       const r = this.spec.roundOf(current);
       const ready = this.coordinator.readyAll(r + 1);
@@ -972,11 +972,11 @@ export class HwatuHostTable<
         // 다음 판을 시작하는 걸음: 다음 판 패가 준비될 때까지 기다린다.
         this.coordinator.beginRound(r + 1);
         if (!(await this.until(() => this.coordinator.readyAll(r + 1), null)))
-          return { ok: false, error: "판을 멈췄다" };
+          return { ok: false, error: "판을 멈췄어요." };
         continue;
       }
       const ctx = this.coordinator.ctxOf(r);
-      if (!ctx) return { ok: false, error: "판을 찾지 못했다" };
+      if (!ctx) return { ok: false, error: "판을 찾지 못했어요." };
       const deck = this.spec.deckOf(current);
       const consumed = deck.length - this.spec.deckOf(dry.state).length;
       if (consumed > 0) {
@@ -1002,7 +1002,7 @@ export class HwatuHostTable<
         }
         if (publicSlots.length > 0) {
           if (!(await this.waitOpen(r, publicSlots)))
-            return { ok: false, error: "뒤집을 카드 열쇠가 오지 않았다" };
+            return { ok: false, error: "뒤집을 카드 열쇠가 오지 않았어요." };
           continue;
         }
       }
@@ -1019,7 +1019,7 @@ export class HwatuHostTable<
             15_000,
           ))
         )
-          return { ok: false, error: "판 끝 열쇠가 오지 않았다" };
+          return { ok: false, error: "판 끝 열쇠가 오지 않았어요." };
         continue;
       }
       break;
@@ -1341,7 +1341,7 @@ export class HwatuGuestSeat<
           this.coordinator.incident({
             seat: 0,
             reason:
-              "방장이 차례인 사람이 카드를 내기 전에 더미를 열라고 했다(미리 보기)",
+              "방장이 차례인 사람이 카드를 내기 전에 더미를 열라고 했어요(미리 보기).",
           });
           return;
         }

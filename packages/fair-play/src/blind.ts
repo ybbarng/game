@@ -135,7 +135,7 @@ export function blindStep(
   if (action.type !== "play" || hand.includes(action.card))
     return step(input, seat, action);
   if (slot === undefined || !hand.includes(tokenOf(slot)))
-    return { ok: false, error: "그 자리의 카드가 아니다" };
+    return { ok: false, error: "그 자리의 카드가 아니에요." };
   const state: MatchState = JSON.parse(JSON.stringify(input));
   const { round } = state;
   round.hands[seat] = [action.card];

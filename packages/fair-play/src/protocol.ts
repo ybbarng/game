@@ -457,10 +457,13 @@ export function finalAudit(
   for (const slot of live) {
     const card = deal.ledger.open(slot, ids);
     if (card === null)
-      return { ok: false, reason: `자리 ${slot}이 카드가 아니다(섞기 조작)` };
+      return {
+        ok: false,
+        reason: `자리 ${slot}이 카드가 아니에요(섞기 조작).`,
+      };
     cards.push(card);
   }
   if (new Set(cards).size !== cards.length)
-    return { ok: false, reason: "같은 카드가 두 번 있다(섞기 조작)" };
+    return { ok: false, reason: "같은 카드가 두 번 있어요(섞기 조작)." };
   return { ok: true, cards };
 }
