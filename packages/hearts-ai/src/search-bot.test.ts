@@ -13,12 +13,16 @@ import {
 import { type Card, createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
+import type { HeartsBot } from "./knowledge";
 import type { HeartsPersona } from "./persona";
+import { heartsNormalBot } from "./rule-bot";
 import {
   createHeartsSearchBot,
   planHeartsPass,
   planHeartsPlay,
   type SearchBudget,
+  type Standing,
+  standingAwareBot,
   standingValue,
 } from "./search-bot";
 
@@ -194,6 +198,49 @@ describe("하트 고수: 점수 판", () => {
     const [d5, h2] = plan?.values.map((v) => v.mean) ?? [];
     expect(d5).toBeCloseTo(26 / 3);
     expect(h2).toBeCloseTo(26 / 3);
+  });
+});
+
+describe("하트 고수: 시뮬레이션 안의 순위 보는 버리기", () => {
+  /** 늘 정한 카드를 내는 바탕 봇 */
+  const always = (card: Card): HeartsBot => ({
+    name: "always",
+    decide: () => ({ type: "play", card }),
+  });
+  const decide = (bot: HeartsBot, view: PlayerView) =>
+    bot.decide(view, createRng(1));
+  /** 이번 판 전 점수. 지금 판에서 2번이 4점, 3번이 21점을 먹었다 */
+  const standingOf = (scores: number[]): Standing => ({
+    scores,
+    endScore: 100,
+  });
+
+  it("2등이면 99점인 1번이 이기는 턴에 하트를 버리지 않고 ◆5를 버린다", () => {
+    // 1번이 ♥2를 먹으면 100점으로 게임이 끝나고 42점인 2번이 1등이다(나는 44점).
+    const scores = [44, 99, 38, 50];
+    const bot = standingAwareBot(heartsNormalBot, standingOf(scores));
+    expect(decide(heartsNormalBot, lateView(scores))).toMatchObject({
+      card: "H2",
+    });
+    expect(decide(bot, lateView(scores))).toMatchObject({ card: "D5" });
+  });
+
+  it("1등이면 1번에게 하트를 주어 게임을 끝낸다: 바탕 봇이 ◆5를 골라도 ♥2로 바꾼다", () => {
+    const scores = [20, 99, 38, 50];
+    const bot = standingAwareBot(always("D5"), standingOf(scores));
+    expect(decide(bot, lateView(scores))).toMatchObject({ card: "H2" });
+  });
+
+  it("시뮬레이션 안의 내 수가 순위를 봐도 같은 씨앗이면 같은 카드를 고른다", () => {
+    const view = lateView([44, 99, 38, 50]);
+    const card = () =>
+      createHeartsSearchBot({
+        worlds: 8,
+        persona: EXACT,
+        standing: true,
+        standingRollout: "self",
+      }).decide(view, createRng(7));
+    expect(card()).toEqual(card());
   });
 });
 
