@@ -99,6 +99,10 @@
   .yut-stage[data-scene="throw"] .yut-mat-layer {
     transition-delay: 0s;
   }
+  /* 다시 보기에서 건너뛰거나 뒤로 가면 연출 없이 바로 바꾼다(docs/37 14-7) */
+  .yut-stage[data-instant] > .yut-layer {
+    transition: none;
+  }
 }
 /* 멍석을 그리지 못하는 기기(2D): 짚 빛 둥근 깔개 */
 .yut-mat-2d {

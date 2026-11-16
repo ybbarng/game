@@ -1,3 +1,9 @@
+import { decodeYutRules } from "@game/yut-engine";
+
+// 옛 엔진(규칙 판 1, 몸짓 없음)으로 만든 판 기록
+import legacy from "../../../packages/yut-engine/src/legacy-y1.fixture.json" with {
+  type: "json",
+};
 import { useTestSpeed } from "./fast";
 import {
   animationsDone,
@@ -727,5 +733,224 @@ test("윷놀이: 움직임 줄이기면 3D 없이 결과만 보이고 장면이 
   await expect(
     page.locator("[data-throw-result]:not([data-throw-result=''])"),
   ).toBeVisible();
+  await expect(page.locator("[data-toss-3d]")).toHaveCount(0);
+});
+
+/** 입문 컴퓨터와 몇 수 두다 기권해 복기 기록 하나를 남긴다(연출 없이 빠르게) */
+async function leaveOneGame(page: Page): Promise<void> {
+  await page.goto("/yut");
+  await startSolo(page);
+  for (let i = 0; i < 4; i++) await playStep(page, false);
+  await untilMyThrow(page);
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
+  await expect
+    .poll(() => page.evaluate(finishedYutGames), { intervals: [50] })
+    .toBe(1);
+}
+
+/** 연출을 켜고 시계를 잡은 새 탭에서 복기 목록의 윷놀이 기록을 연다 */
+async function openReplay(page: Page): Promise<Page> {
+  const review = await page.context().newPage();
+  await review.addInitScript(() =>
+    sessionStorage.setItem("mighty-splash-seen", "1"),
+  );
+  await review.emulateMedia({ reducedMotion: "no-preference" });
+  await review.clock.install();
+  await review.goto("/review");
+  // 숨은 탭이면 멍석이 그리지 않는다(대국을 둔 탭은 닫는다)
+  await page.close();
+  await review.bringToFront();
+  expect(await review.evaluate(() => document.hidden)).toBe(false);
+  await speedUpAnimations(review);
+  await review.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
+  await expect(review.locator("[data-yut-board]")).toBeVisible();
+  return review;
+}
+
+/** 다시 보기 걸음 글(「던지기 n번 · 걸음/끝」) */
+const replayStatus = (page: Page) =>
+  page.getByRole("status").filter({ hasText: /던지기 \d+번 · \d+\// });
+
+/** 이 탭에서 3D 멍석이 굴린 횟수 */
+const tossPlays = (page: Page) =>
+  page.evaluate(
+    () =>
+      (window as unknown as { __yutToss?: { plays: number } }).__yutToss
+        ?.plays ?? 0,
+  );
+
+/** 한 걸음씩 앞으로 가다 멍석이 굴리기 시작하면 멈춘다 */
+async function stepUntilToss(page: Page): Promise<void> {
+  for (let i = 0; i < 40; i++) {
+    await stepForward(page);
+    if ((await stage(page).getAttribute("data-replay-toss")) !== null) {
+      await expect(mat(page)).toHaveAttribute("data-toss", "playing");
+      return;
+    }
+  }
+  throw new Error("다시 보기에서 던지기 결과가 나오지 않는다");
+}
+
+/** 다시 보기 한 걸음 앞으로(그 걸음이 화면에 그려질 때까지) */
+async function stepForward(page: Page): Promise<void> {
+  const before = Number(await stage(page).getAttribute("data-replay-step"));
+  await page.getByRole("button", { name: "한 수 앞으로" }).click();
+  await expect(stage(page)).toHaveAttribute(
+    "data-replay-step",
+    String(before + 1),
+  );
+}
+
+test(
+  "윷놀이 다시 보기: 한 걸음 앞으로 가면 그 던지기를 3D 멍석에 굴리고, 건너뛰거나 뒤로 가면 멈춘 모습만 보인다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    await leaveOneGame(page);
+    const review = await openReplay(page);
+    await expect(review.locator("[data-toss-3d]")).toHaveAttribute(
+      "data-toss-3d",
+      "ready",
+    );
+    // 끝 걸음으로 연다: 마지막 던지기가 멈춘 모습, 굴린 적 없음
+    await expect(mat(review)).toHaveAttribute("data-toss", "done");
+    expect(await tossPlays(review)).toBe(0);
+
+    // 처음으로 건너뛰기: 연출 없음(장면도 바로 바뀐다), 아직 던지기가 없다
+    await review.getByRole("button", { name: "처음" }).click();
+    await expect(mat(review)).toHaveAttribute("data-toss", "idle");
+    await expect(stage(review)).toHaveAttribute("data-instant", "");
+
+    // 한 걸음씩 앞으로: 던지기 결과가 나온 걸음에서 굴린다. 그동안 던지는 장면에 머문다
+    await stepUntilToss(review);
+    expect(await sceneNow(review)).toBe("throw");
+    expect(await stage(review).getAttribute("data-instant")).toBeNull();
+    await review.clock.fastForward(350);
+    await review.screenshot({ path: info.outputPath("yut-replay-flight.png") });
+    await fastForwardUntil(review, async () => (await tossPlays(review)) > 0, {
+      step: 50,
+    });
+    await expect(mat(review)).toHaveAttribute("data-toss", "done");
+    await expect(
+      review.locator("[data-throw-result]:not([data-throw-result=''])"),
+    ).toBeVisible();
+    expect(await sceneNow(review)).toBe("throw");
+    // 빈 캔버스면 약 0.07, 멍석이 그려져 있으면 0.29~0.36
+    expect(await strawShare(review)).toBeGreaterThan(0.15);
+    await review.screenshot({ path: info.outputPath("yut-replay-done.png") });
+    // 결과 글을 읽을 틈 뒤에는 그 걸음의 장면으로(말을 옮길 차례면 말 옮기는 장면)
+    await review.clock.fastForward(1000);
+    await animationsDone(stage(review));
+    await review.screenshot({ path: info.outputPath("yut-replay-after.png") });
+
+    // 한 걸음 뒤로: 굴리지 않는다. 다시 한 걸음 앞으로 오면 같은 던지기를 다시 굴린다
+    const at = Number(await stage(review).getAttribute("data-replay-step"));
+    await review.getByRole("button", { name: "한 수 뒤로" }).click();
+    await expect(stage(review)).toHaveAttribute(
+      "data-replay-step",
+      String(at - 1),
+    );
+    await expect(stage(review)).toHaveAttribute("data-instant", "");
+    await expect(stage(review)).not.toHaveAttribute("data-replay-toss");
+    await expect(mat(review)).not.toHaveAttribute("data-toss", "playing");
+    await stepForward(review);
+    await expect(stage(review)).toHaveAttribute("data-replay-toss", "");
+    await expect(mat(review)).toHaveAttribute("data-toss", "playing");
+    expect(await sceneNow(review)).toBe("throw");
+    await fastForwardUntil(review, async () => (await tossPlays(review)) > 1, {
+      step: 50,
+    });
+
+    // 끝으로 건너뛰기: 굴리지 않고 마지막 던지기가 멈춘 모습만
+    await review.getByRole("button", { name: "끝" }).click();
+    await expect(stage(review)).toHaveAttribute("data-instant", "");
+    await expect(stage(review)).not.toHaveAttribute("data-replay-toss");
+    await expect(mat(review)).toHaveAttribute("data-toss", "done");
+    await review.clock.fastForward(3000);
+    expect(await tossPlays(review)).toBe(2);
+  },
+);
+
+test("윷놀이 다시 보기: 자동 재생은 던지기 연출이 끝나고 결과를 보인 뒤에 다음 걸음으로 간다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await leaveOneGame(page);
+  const review = await openReplay(page);
+  await expect(review.locator("[data-toss-3d]")).toHaveAttribute(
+    "data-toss-3d",
+    "ready",
+  );
+  await review.getByRole("button", { name: "처음" }).click();
+  await review.getByRole("button", { name: "자동 재생" }).click();
+  await fastForwardUntil(
+    review,
+    async () => (await tossNow(review)) === "playing",
+    { step: 100 },
+  );
+  const during = (await replayStatus(review).textContent()) ?? "";
+  // 구르는 동안은 자동 재생 간격(0.7초)이 지나도 다음 걸음으로 가지 않는다
+  await review.clock.fastForward(800);
+  await expect(replayStatus(review)).toHaveText(during);
+  await fastForwardUntil(review, async () => (await tossPlays(review)) > 0, {
+    step: 50,
+  });
+  await expect(replayStatus(review)).toHaveText(during);
+  // 결과를 보인 뒤 다음 걸음으로
+  await fastForwardUntil(
+    review,
+    async () => (await replayStatus(review).textContent()) !== during,
+    { step: 100 },
+  );
+  await review.getByRole("button", { name: "⏸ 멈춤" }).click();
+});
+
+test("윷놀이 다시 보기: 몸짓이 없는 옛 기록(규칙 판 1)은 3D 없이 2D 윷가락으로 보인다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  const decoded = decodeYutRules(legacy.rules);
+  if (!decoded.ok) throw new Error(decoded.reason);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/review");
+  // 2026-11-17 전 엔진으로 만든 판을 복기 기록에 넣는다
+  await page.evaluate(
+    (archive) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open("mighty-review", 1);
+        open.onupgradeneeded = () =>
+          open.result.createObjectStore("games", { keyPath: "id" });
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const tx = open.result.transaction("games", "readwrite");
+          tx.objectStore("games").put(archive);
+          tx.oncomplete = () => {
+            open.result.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+    {
+      id: `solo:${legacy.seed}`,
+      game: "yut",
+      mode: "solo",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      rules: decoded.rules,
+      seed: legacy.seed,
+      log: legacy.log,
+      seat: 0,
+      seatNames: null,
+      rounds: 1,
+      over: true,
+    },
+  );
+  await page.reload();
+  await page.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
+  await expect(page.locator("[data-yut-board]")).toBeVisible();
+  await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+  await page.getByRole("button", { name: "처음" }).click();
+  for (let i = 0; i < 12; i++)
+    await page.getByRole("button", { name: "한 수 앞으로" }).click();
+  await expect(mat(page)).toHaveAttribute("data-toss", "2d");
   await expect(page.locator("[data-toss-3d]")).toHaveCount(0);
 });
