@@ -52,23 +52,23 @@ export function distanceTable(tracked: readonly Tracked[]): Uint8Array {
   queue[0] = start;
   let head = 0;
   let tail = 1;
-  const cur = new Array<number>(k).fill(0);
+  // 조각마다 쓸 이동 표를 미리 고르고, 좌표 × 18은 한 번만 곱한다(칸마다 18수 × k번 되풀이하는 곳이라)
+  const tables = tracked.map((t) => (t.kind === "c" ? corner : edge));
+  const cur = new Int32Array(k);
   while (head < tail) {
     const idx = queue[head++] as number;
     let rest = idx;
     for (let i = 0; i < k; i++) {
-      cur[i] = rest % 24;
-      rest = Math.floor(rest / 24);
+      cur[i] = (rest % 24) * FACE_MOVE_COUNT;
+      rest = (rest - (rest % 24)) / 24;
     }
     const d = dist[idx] as number;
     for (let m = 0; m < FACE_MOVE_COUNT; m++) {
       let next = 0;
-      for (let i = k - 1; i >= 0; i--) {
-        const table = (tracked[i] as Tracked).kind === "c" ? corner : edge;
+      for (let i = k - 1; i >= 0; i--)
         next =
           next * 24 +
-          (table[(cur[i] as number) * FACE_MOVE_COUNT + m] as number);
-      }
+          ((tables[i] as Uint8Array)[(cur[i] as number) + m] as number);
       if (dist[next] === 255) {
         dist[next] = d + 1;
         queue[tail++] = next;
@@ -115,17 +115,35 @@ export function idaSearch(
   const { corner, edge } = coordMoveTables();
   const k = tracked.length;
   const goal = tracked.map(homeCoord);
-  const isCorner = tracked.map((t) => t.kind === "c");
+  // 아래는 탐색 마디마다 도는 곳이라 고를 것을 미리 골라 둔다(조각마다 이동 표, 수마다 면, 어림 표마다 조각 자리)
+  const tables = tracked.map((t) => (t.kind === "c" ? corner : edge));
+  const moveList = Int32Array.from(moves);
+  const faceList = Int32Array.from(moves, (m) => Math.floor(m / 3));
+  const hTables = hs.map((x) => x.table);
+  const hMembers = hs.map((x) => Int32Array.from(x.members));
   const stack: Int8Array[] = [];
   const path: number[] = [];
 
-  const h = (c: Int8Array): number => {
-    let best = 0;
-    for (const { members, table } of hs) {
+  /** 어림 표 가운데 하나라도 `limit`보다 크면 true(= 가장 큰 값 > limit) */
+  const exceeds = (c: Int8Array, limit: number): boolean => {
+    for (let j = 0; j < hTables.length; j++) {
+      const members = hMembers[j] as Int32Array;
       let idx = 0;
       for (let i = members.length - 1; i >= 0; i--)
         idx = idx * 24 + (c[members[i] as number] as number);
-      const v = table[idx] as number;
+      if (((hTables[j] as Uint8Array)[idx] as number) > limit) return true;
+    }
+    return false;
+  };
+
+  const h = (c: Int8Array): number => {
+    let best = 0;
+    for (let j = 0; j < hTables.length; j++) {
+      const members = hMembers[j] as Int32Array;
+      let idx = 0;
+      for (let i = members.length - 1; i >= 0; i--)
+        idx = idx * 24 + (c[members[i] as number] as number);
+      const v = (hTables[j] as Uint8Array)[idx] as number;
       if (v > best) best = v;
     }
     return best;
@@ -141,14 +159,15 @@ export function idaSearch(
     if (togo === 0) return isGoal(c);
     if (stack.length <= depth + 1) stack.push(new Int8Array(k));
     const next = stack[depth + 1] as Int8Array;
-    for (const m of moves) {
-      const face = Math.floor(m / 3);
+    for (let j = 0; j < moveList.length; j++) {
+      const face = faceList[j] as number;
       if (prevFace >= 0 && skipMove(face, prevFace)) continue;
-      for (let i = 0; i < k; i++) {
-        const table = isCorner[i] ? corner : edge;
-        next[i] = table[(c[i] as number) * FACE_MOVE_COUNT + m] as number;
-      }
-      if (h(next) > togo - 1) continue;
+      const m = moveList[j] as number;
+      for (let i = 0; i < k; i++)
+        next[i] = (tables[i] as Uint8Array)[
+          (c[i] as number) * FACE_MOVE_COUNT + m
+        ] as number;
+      if (exceeds(next, togo - 1)) continue;
       path[depth] = m;
       if (dfs(depth + 1, togo - 1, face)) return true;
     }

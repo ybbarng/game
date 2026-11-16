@@ -19,7 +19,7 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { firstFaceMap } from "./facelets";
 import type { Step } from "./methods";
-import { type HumanSolve, Solve, type StageName } from "./solve";
+import { type HumanSolve, Solve, type StageName, StageReached } from "./solve";
 
 /**
  * 4×4~7×7 사람 흉내(축소법). 가운데 → 모서리 짝 → 마지막 두 모서리까지는 축소법(cube-reduction)
@@ -140,6 +140,7 @@ export function solveBigHuman(
   state: PuzzleState,
   limits?: ReductionLimits,
   first = 0,
+  until?: StageName,
 ): HumanSolve {
   const red = reduction(n, state, limits);
   const redMoves = red.moves.split(/\s+/).filter(Boolean);
@@ -155,6 +156,7 @@ export function solveBigHuman(
   }
   let cur = applyMoves(n, state, parseMoves(n, moves.join(" ")));
   let s = new Solve(3, threeView(n, cur, first));
+  s.stopAt = until ?? null;
 
   /** 지금 3×3 판에 둔 수를 n×n 수로 옮겨 붙이고 n×n 상태를 앞으로 보낸다 */
   const flush = () => {
@@ -175,7 +177,14 @@ export function solveBigHuman(
 
   for (const step of steps) {
     if (typeof step === "function") {
-      step(s);
+      try {
+        step(s);
+      } catch (e) {
+        // 멈출 단계(`until`)에 닿았다: 그때까지의 3×3 수를 옮겨 붙이고 돌려준다
+        if (!(e instanceof StageReached)) throw e;
+        flush();
+        return { moves, stages, looks };
+      }
       continue;
     }
     if (n % 2 === 1) continue;
@@ -193,6 +202,7 @@ export function solveBigHuman(
     stages.push({ name: step, start, end: moves.length });
     cur = applyMoves(n, cur, alg);
     s = new Solve(3, threeView(n, cur, first));
+    s.stopAt = until ?? null;
   }
   if (!s.isSolved()) throw new Error("다 맞추지 못했다");
   flush();

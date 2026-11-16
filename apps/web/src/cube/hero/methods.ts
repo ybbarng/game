@@ -1,4 +1,4 @@
-import type { HumanSolve } from "@game/cube-ai";
+import type { HumanSolve, StageName } from "@game/cube-ai";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { PieceMark } from "../piece-marks";
@@ -36,8 +36,15 @@ export interface HeroMethodDef {
   size: HeroSize;
   /** 설정·꼬리표에 보이는 이름 */
   label: string;
-  /** `first`: 첫 면 색(0 흰 · 1 빨강 · 2 초록 · 3 노랑 · 4 주황 · 5 파랑) */
-  solve: (state: PuzzleState, first: number) => Promise<HumanSolve>;
+  /**
+   * `first`: 첫 면 색(0 흰 · 1 빨강 · 2 초록 · 3 노랑 · 4 주황 · 5 파랑).
+   * `until`: 이 단계까지만 풀고 멈춘다(첫 면 색을 견줄 때, `HumanOptions.until`). 없으면 끝까지 푼다
+   */
+  solve: (
+    state: PuzzleState,
+    first: number,
+    until?: StageName,
+  ) => Promise<HumanSolve>;
   view: HeroView;
   /** 첫 면 색 고르기: 늘 흰색, 아니면 이 단계 수가 가장 적은 색(색 중립) */
   first: "white" | { cheapest: string };
@@ -66,7 +73,8 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     id: "2-algs",
     size: 2,
     label: "공식 해법",
-    solve: async (s, first) => (await ai()).solveIntermediate2(s, { first }),
+    solve: async (s, first, until) =>
+      (await ai()).solveIntermediate2(s, { first, until }),
     view: {},
     first: { cheapest: "first-layer" },
   },
@@ -89,7 +97,8 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     id: "3-cfop",
     size: 3,
     label: "프리드리히",
-    solve: async (s, first) => (await ai()).solveCfop(s, { first }),
+    solve: async (s, first, until) =>
+      (await ai()).solveCfop(s, { first, until }),
     view: { ...CROSS_VIEW, search: true },
     first: CROSS,
   },
@@ -97,7 +106,8 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     id: "3-roux",
     size: 3,
     label: "루",
-    solve: async (s, first) => (await ai()).solveRoux(s, { first }),
+    solve: async (s, first, until) =>
+      (await ai()).solveRoux(s, { first, until }),
     // 첫 블록은 왼쪽 아래라 카메라(위-앞-오른쪽)에서 가려진다: y2로 돌려 오른쪽에 보이고 되돌린다
     view: { mirror: ["fb"] },
     first: { cheapest: "fb" },
@@ -106,7 +116,7 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     id: "3-zz",
     size: 3,
     label: "ZZ",
-    solve: async (s, first) => (await ai()).solveZZ(s, { first }),
+    solve: async (s, first, until) => (await ai()).solveZZ(s, { first, until }),
     // 왼쪽 블록도 같은 까닭으로 y2
     view: { mirror: ["zz-left"] },
     first: { cheapest: "eoline" },
@@ -125,8 +135,11 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
       id: `${size}-cfop`,
       size,
       label: "축소법(프리드리히)",
-      solve: async (s, first) =>
-        (await ai()).solveHuman("advanced", size, s, undefined, { first }),
+      solve: async (s, first, until) =>
+        (await ai()).solveHuman("advanced", size, s, undefined, {
+          first,
+          until,
+        }),
       view: CROSS_VIEW,
       first: CROSS,
     },
@@ -217,14 +230,16 @@ export async function solveWithFirst(
 ): Promise<{ raw: HumanSolve; first: number }> {
   if (def.first === "white")
     return { raw: await def.solve(state, 0), first: 0 };
-  let best: { raw: HumanSolve; first: number; cost: number } | null = null;
+  // 색마다 그 단계까지만 풀어 견주고, 고른 색 하나만 끝까지 푼다. 수 합치기는 단계 안에서만 해서 그 단계 수는
+  // 끝까지 푼 판과 같다(예전에는 여섯 색을 모두 끝까지 풀어 F2L 탐색이 시연 계산의 대부분이었다)
+  const stage = def.first.cheapest as StageName;
+  let best: { first: number; cost: number } | null = null;
   for (const first of FIRST_COLOR_ORDER) {
-    const raw = await def.solve(state, first);
-    const cost = stageCost(raw, def.first.cheapest);
-    if (!best || cost < best.cost) best = { raw, first, cost };
+    const cost = stageCost(await def.solve(state, first, stage), stage);
+    if (!best || cost < best.cost) best = { first, cost };
   }
   if (!best) throw new Error("풀지 못했다");
-  return { raw: best.raw, first: best.first };
+  return { raw: await def.solve(state, best.first), first: best.first };
 }
 
 /**

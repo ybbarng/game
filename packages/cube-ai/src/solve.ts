@@ -120,6 +120,32 @@ export interface HumanSolve {
 
 const SOLVED_FRAME: readonly Face[] = FACES;
 
+/** `Solve.stopAt` 단계에 닿아 멈췄다(해법 입구가 받아 그때까지의 판을 돌려준다) */
+export class StageReached extends Error {
+  constructor() {
+    super("멈출 단계에 닿았다");
+  }
+}
+
+/**
+ * `until`이 있으면 그 단계까지만 풀고 그때까지의 판을 돌려준다(`HumanOptions.until`). 없으면 `run` 그대로.
+ * 첫 면 색을 견줄 때 여섯 색을 모두 끝까지 풀지 않으려고 둔다
+ */
+export function solveUntil(
+  s: Solve,
+  until: StageName | undefined,
+  run: () => HumanSolve,
+): HumanSolve {
+  if (!until) return run();
+  s.stopAt = until;
+  try {
+    return run();
+  } catch (e) {
+    if (e instanceof StageReached) return s.result();
+    throw e;
+  }
+}
+
 export class Solve {
   readonly n: number;
   f: string[];
@@ -193,10 +219,17 @@ export class Solve {
     return true;
   }
 
+  /**
+   * 이 단계를 묶으면 더 풀지 않고 멈춘다(`StageReached`를 던진다, `HumanOptions.until`). 수 합치기는 단계 안에서만
+   * 하므로(`result`) 멈춘 판의 단계 수는 끝까지 푼 판과 같다
+   */
+  stopAt: StageName | null = null;
+
   /** 지금까지 둔 수 가운데 아직 단계에 들지 않은 수를 `name` 단계로 묶는다 */
   stage(name: StageName): void {
     const start = this.stageList.at(-1)?.end ?? 0;
     this.stageList.push({ name, start, end: this.moves.length });
+    if (name === this.stopAt) throw new StageReached();
   }
 
   /** 다음 수 앞에서 다음 모양을 살핀다(공식을 되풀이하는 단계의 한 바퀴 시작) */

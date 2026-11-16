@@ -26,6 +26,7 @@ import { PARTY_MODE_LABELS, PARTY_MODES } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
 import { CubeRoom, MAX_PLAYERS, NAME_MAX, TIME_LIMIT_SEC } from "./room";
+import { sessionSeatStore } from "./seat";
 import {
   FORMAT_LABELS,
   type MatchFormat,
@@ -59,7 +60,7 @@ function touchOnly(): boolean {
 
 /**
  * 손님이 이 탭에서 들어간 방(sessionStorage, 탭을 닫으면 사라진다). 판 중에 새로 고쳐도 이름 화면에서 멈추지 않고
- * 기억한 이름으로 바로 다시 들어간다(자리 되찾기는 아니고 새 손님으로, docs/map.json 남은 일)
+ * 기억한 이름으로 바로 다시 들어가고, 탭에 남긴 자리 정보(`sessionSeatStore`)로 예전 자리를 되찾는다(docs/47 9-11)
  */
 const REJOIN_KEY = "cube.online.joined";
 
@@ -138,6 +139,8 @@ export function CubeOnlineApp() {
         clock: raceClock,
         isHost,
         ...(!isHost && hostFromUrl ? { hostId: hostFromUrl } : {}),
+        // 손님만 자리를 되찾는다(방장이 새로 고치면 연결 아이디가 바뀌어 손님이 받지 않는다: 방을 다시 만든다)
+        ...(!isHost ? { seat: sessionSeatStore(roomCode) } : {}),
         name: trimmed,
         ...withAverages(),
         scrambler: scrambleInWorker,
