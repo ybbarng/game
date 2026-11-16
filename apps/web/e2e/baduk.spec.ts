@@ -383,7 +383,7 @@ test(
 
     // 축: 계속 단수로 몰아 따낸다(백은 늘 같은 수로 버틴다).
     await page
-      .getByRole("region", { name: "축" })
+      .getByRole("region", { name: "축", exact: true })
       .getByRole("button", { name: "풀기 시작" })
       .click();
     for (const name of ["C3", "C6", "B6", "A6"]) {
