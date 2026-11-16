@@ -296,21 +296,21 @@ export function decodeRuleString(text: string): DecodeResult {
   if (trimmed.length !== ENCODED_LENGTH) {
     return {
       ok: false,
-      reason: `규칙 문자열은 ${ENCODED_LENGTH}글자여야 한다`,
+      reason: `규칙 문자열은 ${ENCODED_LENGTH}글자여야 해요.`,
     };
   }
   const values = [...trimmed].map((ch) => ch.charCodeAt(0) - BASE_CHAR);
   if (values.some((v) => v < 0 || v > 91)) {
-    return { ok: false, reason: "규칙 문자열에 쓸 수 없는 글자가 있다" };
+    return { ok: false, reason: "규칙 문자열에 쓸 수 없는 글자가 있어요." };
   }
   const head = values.slice(0, 2);
   const cards = values.slice(2, INT_COUNT).map(legacyNumberToCard);
   if (cards.some((c) => c === null)) {
-    return { ok: false, reason: "카드 번호가 올바르지 않다" };
+    return { ok: false, reason: "카드 번호가 올바르지 않아요." };
   }
   const playerCount = head[0] as number;
   if (playerCount < 2 || playerCount > 7) {
-    return { ok: false, reason: "인원은 2~7명이어야 한다" };
+    return { ok: false, reason: "인원은 2~7명이어야 해요." };
   }
   const flags = Object.fromEntries(
     BOOL_FIELDS.map((field, i) => {
