@@ -793,6 +793,8 @@ test.describe("체스 수 배우기: 날짜 간격 복습", () => {
       });
       const review = page.getByRole("region", { name: "오늘 복습" });
       await expect(review.getByText("2문제")).toBeVisible();
+      // 배우기 목록에서 내려 둔 자리가 아니라 맨 위에서 열려 복습 칸이 보인다
+      await expect(review).toBeInViewport();
       // 늦은 것부터
       await expect(review.getByRole("button")).toHaveText([
         "포크 1번",

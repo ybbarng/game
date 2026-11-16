@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { nextPuzzle, type StudyProgressStore } from "@/study/progress";
@@ -43,6 +43,10 @@ export function StudyHome({
   const records = progress((s) => s.records);
   // 저장값을 읽기 전(미리 그린 HTML)에는 기록이 비어 복습 칸이 없으니 이때 때를 읽어도 첫 화면이 같다.
   const [now] = useState(Date.now);
+  // 앞 화면(배우기 목록)에서 내려 둔 자리 그대로 열리면 맨 위 「오늘 복습」이 가려진다. 열 때 맨 위에서 시작한다.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <main
       className={cn("flex min-h-dvh justify-center p-4 text-white", background)}
