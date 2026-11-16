@@ -677,6 +677,36 @@ test(
 );
 
 test(
+  "체스 수 배우기: 바깥 패스 폰 문제에서 a폰만 밀면 틀리고, 킹이 반대쪽 흑 폰으로 가면 이긴다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 문제 풀이 진행은 크기와 상관없다
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const set = page.getByRole("region", { name: "바깥 패스 폰" });
+    await expect(set).toContainText("패스 폰이라고 해요.");
+    await set.getByRole("button", { name: "풀기 시작" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "백이 이기는 단 하나의 수를 찾으세요.",
+    );
+    await tapSquare(page, "a4", false);
+    await tapSquare(page, "a5", false);
+    await expect(page.getByRole("status")).toHaveText(
+      "그 수로는 이기지 못해요.",
+    );
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await tapSquare(page, "f3", false);
+    await tapSquare(page, "f4", false);
+    await expect(page.getByRole("status")).toHaveText("이기는 수예요!");
+    await expect(
+      page.getByText(/반대쪽 흑 폰\(f5·h7\)을 잡으러 가요/),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath("chess-outside-pawn.png") });
+  },
+);
+
+test(
   "체스: 잡힐 수 있는 내 기물에 주황 점선이 보이고, 옵션에서 감출 수 있다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {

@@ -28,6 +28,7 @@ import {
   defenseOffThread,
   explainEndgame,
   explainMate,
+  explainOutside,
   judgeMove,
   puzzleState,
   solutionMove,
@@ -130,7 +131,9 @@ function ChessPuzzleRun({
         ? explainTactic(before.position, move, puzzle.tactic)
         : puzzle.kind === "endgame"
           ? explainEndgame(before.position, move)
-          : explainMate(before.position, move),
+          : puzzle.kind === "outside"
+            ? explainOutside(before.position, move)
+            : explainMate(before.position, move),
     solve: () => solve(puzzle.id),
     miss: () => miss(puzzle.id),
   });
@@ -152,7 +155,8 @@ function ChessPuzzleRun({
 
   const legal = status === "play" ? legalFor(state, 0) : [];
   const tactic = puzzle.kind === "tactic" ? puzzle.tactic : null;
-  const endgame = puzzle.kind === "endgame";
+  /** 킹과 폰·바깥 패스 폰: 이기는 수 하나를 찾는 끝내기 문제 */
+  const endgame = puzzle.kind === "endgame" || puzzle.kind === "outside";
   const prompt = tactic
     ? TACTIC_PROMPT[tactic]
     : endgame
@@ -209,16 +213,20 @@ function ChessPuzzleRun({
       wrongText={
         tactic
           ? "그 수로는 기물을 얻지 못해요."
-          : endgame
-            ? "그 수는 흑이 막아 비겨요."
-            : "메이트가 아니에요."
+          : puzzle.kind === "outside"
+            ? "그 수로는 이기지 못해요."
+            : endgame
+              ? "그 수는 흑이 막아 비겨요."
+              : "메이트가 아니에요."
       }
       wrongHint={
         tactic
           ? TACTIC_HINT[tactic]
-          : endgame
-            ? "폰보다 킹이 먼저예요. 흑 킹과 한 칸 띄우고 마주 서거나, 폰 바로 앞 칸을 내 킹으로 차지해요."
-            : "체크를 걸고, 킹이 피할 칸을 모두 막아야 해요."
+          : puzzle.kind === "outside"
+            ? "바깥 패스 폰이 흑 킹을 붙잡아 두는 사이 내 킹이 반대쪽 흑 폰을 잡으러 가요. 흑 킹이 그 폰 바로 옆이면 폰을 한 칸 더 밀어 흑 킹을 더 멀리 끌고 가요."
+            : endgame
+              ? "폰보다 킹이 먼저예요. 흑 킹과 한 칸 띄우고 마주 서거나, 폰 바로 앞 칸을 내 킹으로 차지해요."
+              : "체크를 걸고, 킹이 피할 칸을 모두 막아야 해요."
       }
       shown={shown !== null}
       explain={run.explain}

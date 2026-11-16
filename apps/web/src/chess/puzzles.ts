@@ -12,6 +12,7 @@ import { TACTIC_NAMES, type Tactic } from "./tactics";
  * - mate: `mateIn`수 만에 메이트. 마지막 수는 메이트면 어느 수든 정답이다
  * - tactic: 포크·핀·스큐어·발견 공격으로 기물을 얻는 수. 정답 수 하나뿐
  * - endgame: 킹과 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹+폰 대 킹 승패표 `@game/chess-ai`의 `kpk.ts`로 확인)
+ * - outside: 바깥 패스 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹과 폰 판 끝까지 읽기 `@game/chess-ai`의 `pawn-ending.ts`로 확인)
  */
 export type ChessPuzzle = {
   id: string;
@@ -22,6 +23,7 @@ export type ChessPuzzle = {
   | { kind: "mate"; mateIn: 1 | 2 | 3 }
   | { kind: "tactic"; tactic: Tactic }
   | { kind: "endgame" }
+  | { kind: "outside" }
 );
 
 export interface ChessPuzzleSet {
@@ -106,6 +108,24 @@ const MATE_IN_THREE: readonly Raw[] = [
  * 킹과 폰 끝내기(2026-11-03): 킹+폰 대 킹 승패표(`@game/chess-ai`의 `kpk.ts`)로 "이기는 수가 킹 수 하나뿐이고,
  * 폰부터 밀면 비기는" 판을 찾아 골랐다. kpk.test.ts가 모든 문제를 다시 확인한다.
  */
+/**
+ * 바깥 패스 폰: 폰 수는 두 편이 같다. 백은 판 가장자리 쪽(a·b줄)에 패스 폰 하나와 반대쪽 폰 하나, 흑은 반대쪽에 폰 둘.
+ * 직접 만든 판을 킹과 폰 끝까지 읽기(`pawn-ending.ts`)로 찾아 골랐다(「이기는 수는 정답 하나뿐, 다른 수는 모두 이기지 못함」).
+ * outside.test.ts가 같은 방식으로 다시 확인한다
+ */
+const OUTSIDE_PAWN: readonly Raw[] = [
+  // 흑 킹이 a폰을 잡으러 가는 사이 백 킹은 반대쪽 흑 폰으로 간다
+  { fen: "8/7p/8/2k2p2/P7/5KP1/8/8 w - - 0 40", solution: "Kf4" },
+  { fen: "8/8/7p/5p2/Pk6/6P1/3K4/8 w - - 0 40", solution: "Ke3" },
+  { fen: "8/5p2/8/6p1/Pk4P1/8/2K5/8 w - - 0 40", solution: "Kd3" },
+  { fen: "8/8/5pp1/2k5/P7/6P1/6K1/8 w - - 0 40", solution: "Kf3" },
+  // b줄 패스 폰도 반대쪽 폰들과 멀리 떨어져 있으면 바깥 패스 폰이다
+  { fen: "8/8/6p1/1k3p2/1P1K4/6P1/8/8 w - - 0 40", solution: "Ke5" },
+  // 흑 킹이 a폰 옆에 왔다: 폰을 한 칸 더 밀어 흑 킹을 더 멀리 끌고 간다
+  { fen: "8/5pp1/8/8/P3KP2/1k6/8/8 w - - 0 40", solution: "a5" },
+  { fen: "8/6pp/8/8/P7/1k3KP1/8/8 w - - 0 40", solution: "a5" },
+];
+
 const KING_AND_PAWN: readonly Raw[] = [
   // 맞서기(옵포지션): 킹끼리 한 칸 띄우고 마주 서서 흑 킹을 비키게 한다
   { fen: "3k4/8/8/2K1P3/8/8/8/8 w - - 0 50", solution: "Kd6" },
@@ -245,6 +265,17 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
     puzzles: KING_AND_PAWN.map((p, i) => ({
       id: `king-pawn-${i + 1}`,
       kind: "endgame" as const,
+      ...p,
+    })),
+  },
+  {
+    id: "outside-pawn",
+    title: "바깥 패스 폰",
+    summary:
+      "폰 앞쪽으로 같은 세로줄과 바로 옆 세로줄에 상대 폰이 하나도 없으면, 끝줄까지 가는 길을 막을 폰이 없어요. 이런 폰을 패스 폰이라고 해요. 판 가장자리 쪽에서 다른 폰들과 멀리 떨어진 패스 폰은 바깥 패스 폰이라고 해요. 폰은 서 있는 세로줄 이름을 붙여 a폰·b폰처럼 불러요. 흑 킹이 바깥 패스 폰을 막으러 멀리 가는 사이, 백 킹은 반대쪽 흑 폰을 잡으러 가요. 이기는 단 하나의 수를 찾아요.",
+    puzzles: OUTSIDE_PAWN.map((p, i) => ({
+      id: `outside-pawn-${i + 1}`,
+      kind: "outside" as const,
       ...p,
     })),
   },
