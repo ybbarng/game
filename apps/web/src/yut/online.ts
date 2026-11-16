@@ -50,6 +50,8 @@ export const yutOnline: BoardOnlineGame<
   useStore: useYut,
   botFor: yutBotFor,
   rulesSummary(rules) {
-    return `${yutRulesSummary(rules)}. 첫 차례는 무작위. 던지기 결과는 던진 사람의 몸짓과 모두의 기기가 함께 정해 방장도 고를 수 없습니다.`;
+    return `${yutRulesSummary(rules)} · 첫 차례는 무작위`;
   },
+  rulesNote: () =>
+    "던지기 결과는 던진 사람의 몸짓과 모두의 기기가 함께 정해 방장도 고를 수 없어요.",
 };

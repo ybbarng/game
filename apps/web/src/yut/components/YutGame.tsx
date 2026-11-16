@@ -24,6 +24,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { subj } from "@/lib/josa";
 import { useChat } from "@/net/chat";
 
 import { outcomeFor } from "../kit";
@@ -57,30 +58,30 @@ function resultText(
   name: (seat: number) => string,
 ): string {
   const mySide = sideOf(view.rules, view.mySeat);
-  if (!result) return "게임을 끝냈어요";
+  if (!result) return "게임을 끝냈어요.";
   const won = result.side === mySide;
   const winner =
     result.side === null ? null : sideLabel(view, result.side, name);
   switch (result.kind) {
     case "finish":
       return won
-        ? "말을 모두 냈어요! 이겼어요"
-        : `${winner}이(가) 먼저 말을 모두 냈어요`;
+        ? "말을 모두 냈어요! 이겼어요."
+        : `${subj(winner ?? "상대")} 먼저 말을 모두 냈어요.`;
     case "resign":
-      if (result.seat === view.mySeat) return "기권했어요";
+      if (result.seat === view.mySeat) return "기권했어요.";
       return winner === null
-        ? `${name(result.seat)}이(가) 기권해 끝났어요`
+        ? `${subj(name(result.seat))} 기권해 끝났어요.`
         : won
-          ? `${name(result.seat)}이(가) 기권해 이겼어요`
-          : `${name(result.seat)}이(가) 기권했어요`;
+          ? `${subj(name(result.seat))} 기권해 이겼어요.`
+          : `${subj(name(result.seat))} 기권했어요.`;
     case "forfeit":
       return result.seat === view.mySeat
-        ? "던지기 고리를 공개하지 않아 졌어요"
-        : `${name(result.seat)}이(가) 공개하지 않아 끝났어요`;
+        ? "던지기 고리를 공개하지 않아 졌어요."
+        : `${subj(name(result.seat))} 공개하지 않아 끝났어요.`;
     case "time":
       return result.seat === view.mySeat
-        ? "시간을 다 써서 졌어요"
-        : `${name(result.seat)}이(가) 시간을 다 썼어요`;
+        ? "시간을 다 써서 졌어요."
+        : `${subj(name(result.seat))} 시간을 다 썼어요.`;
   }
 }
 
@@ -256,15 +257,15 @@ export function YutGame({
   else if (view.phase === "commit")
     status = "모두의 기기가 던지기 사슬을 약속하는 중…";
   else if (view.phase === "throw")
-    status = myTurn ? "내 차례 — 윷을 던지세요" : `${turnName}의 차례`;
+    status = myTurn ? "내 차례 — 윷을 던지세요." : `${turnName}의 차례`;
   else if (view.phase === "reveal" || view.phase === "open")
     status = "모두의 기기가 함께 던지는 중…";
   else if (decision?.kind === "move")
     status =
       options.length > 0
-        ? `움직일 말을 고르세요 · ${view.pending.map((v) => throwName(v)).join(", ")}`
-        : "쓸 수 있는 결과가 없어요";
-  else status = `${turnName}이(가) 말을 고르는 중…`;
+        ? `움직일 말을 고르세요. 남은 결과: ${view.pending.map((v) => throwName(v)).join(", ")}`
+        : "쓸 수 있는 결과가 없어요.";
+  else status = `${subj(turnName)} 말을 고르는 중…`;
 
   const ended = events.find((e) => e.type === "gameEnded");
   const banner: Banner | null =
@@ -321,8 +322,8 @@ export function YutGame({
           className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
         >
           {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+            ? "방장이 방을 나갔어요."
+            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
         </p>
       )}
       {waitingOffline && (

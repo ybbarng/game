@@ -255,7 +255,7 @@ export function YutSticks({
             : showFaces && value !== null
               ? `${throwName(value)}${value === 4 || value === 5 ? "! 한 번 더" : ""}`
               : sticks === null && nak === null
-                ? "윷을 던져 보세요"
+                ? "윷을 던져 보세요."
                 : ""}
       </p>
     </div>

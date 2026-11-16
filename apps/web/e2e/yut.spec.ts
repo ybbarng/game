@@ -363,7 +363,7 @@ test(
     await expect(throwButton(page)).toBeVisible();
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(status(page)).toHaveText("기권했어요");
+    await expect(status(page)).toHaveText("기권했어요.");
     await expect
       .poll(() => page.evaluate(finishedYutGames), { intervals: [50] })
       .toBe(1);
