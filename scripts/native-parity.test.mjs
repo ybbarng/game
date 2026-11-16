@@ -27,6 +27,12 @@ describe("감시 목록", () => {
     expect(watchedEntry("apps/web/src/cube/view/mirror.ts")).not.toBeNull();
     expect(watchedEntry("apps/web/src/cube/input/keymaps.ts")).not.toBeNull();
     expect(watchedEntry("apps/web/src/cube/practice/stages.ts")).not.toBeNull();
+    // 후보 공식은 공식 연습의 고를 공식(코어 practice_data.rs choices)이 된다(2026-11-17)
+    for (const f of ["candidates.ts", "candidates-ll.ts", "candidates-more.ts"])
+      expect(watchedEntry(`apps/web/src/cube/algs/${f}`), f).not.toBeNull();
+    expect(
+      watchedEntry("apps/web/src/cube/algs/candidates.test.ts"),
+    ).toBeNull();
     expect(watchedEntry("apps/web/src/cube/mini/hint.test.ts")).toBeNull();
     expect(
       watchedEntry("apps/web/src/cube/hero/big-hero-test-util.ts"),

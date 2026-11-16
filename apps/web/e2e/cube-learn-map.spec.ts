@@ -57,6 +57,21 @@ test("배우기: 3×3 초보자 지도는 일곱 단계 띠와 단계별 시연,
   ).toHaveAttribute("data-stage", "4");
 });
 
+test("배우기: 4×4 야우 지도도 다섯 단계를 단계별로 시연한다(야우 풀이 함수의 수)", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=444-yau-map");
+  const demo = page.locator("[data-stage-demo]");
+  await expect(demo).toHaveAttribute("data-stage-demo", "0");
+  await expect(page.locator("[data-stage-strip='5'] li")).toHaveCount(5);
+  await page.locator("[data-stage-next]").click();
+  await expect(demo).toHaveAttribute("data-stage-demo", "1");
+  await expect(page.locator("[data-stage-now]")).toContainText("흰 십자 셋");
+  await page.locator("[data-stage-pick='3']").click();
+  await expect(demo).toHaveAttribute("data-stage-demo", "3");
+  await shot(page, "learn-yau-map-demo", info.project.name);
+});
+
 test(
   "배우기: 노란 십자 ㄱ자는 U로 쥐고 거꾸로 공식 한 번에 통과한다",
   { tag: "@only-desktop" },
