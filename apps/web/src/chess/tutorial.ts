@@ -138,7 +138,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "goal",
     title: "체스는 어떤 게임?",
-    summary: "백이 먼저 두고, 상대 킹을 체크메이트하면 이긴다",
+    summary: "백이 먼저 두고, 상대 킹을 체크메이트하면 이겨요.",
     steps: [
       {
         kind: "explain",
@@ -190,7 +190,8 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "pieces",
     title: "비숍·퀸·나이트·킹",
-    summary: "비숍은 대각선, 퀸은 모든 방향, 나이트는 뛰어넘고, 킹은 한 칸",
+    summary:
+      "비숍은 대각선, 퀸은 모든 방향으로 가고, 나이트는 뛰어넘고, 킹은 한 칸 가요.",
     steps: [
       {
         kind: "explain",
@@ -252,7 +253,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
     id: "pawn",
     title: "폰과 승급",
     summary:
-      "폰은 앞으로 한 칸(처음엔 두 칸), 잡을 때는 대각선. 끝줄에 닿으면 바뀐다",
+      "폰은 앞으로 한 칸(처음엔 두 칸) 가고, 잡을 때는 대각선으로 가요. 끝줄에 닿으면 바뀌어요.",
     steps: [
       {
         kind: "explain",
@@ -309,14 +310,14 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "check",
     title: "체크",
-    summary: "킹이 노려지면 체크. 다음 수로 반드시 풀어야 한다",
+    summary: "킹이 노려지면 체크예요. 다음 수로 반드시 풀어야 해요.",
     steps: [
       {
         kind: "explain",
         title: "체크!",
         body: [
           "상대 기물이 내 킹을 잡을 수 있게 되면 **체크**예요. 이렇게 만드는 것을 「체크를 부른다」고 해요. 체크를 받으면 다음 수로 꼭 풀어야 해요.",
-          "풀기는 셋이에요. ① 킹을 비킨다 ② 사이를 막는다 ③ 체크한 기물을 잡는다. 킹이 잡히게 되는 수는 둘 수 없어요.",
+          "풀기는 셋이에요. ① 킹을 비켜요. ② 사이를 막아요. ③ 체크한 기물을 잡아요. 킹이 잡히게 되는 수는 둘 수 없어요.",
         ],
         scene: CHECK_SCENE,
       },
@@ -351,7 +352,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
     id: "mate",
     title: "체크메이트와 스테일메이트",
     summary:
-      "체크를 풀 수 없으면 체크메이트. 체크가 아닌데 둘 수가 없으면 비긴다",
+      "체크를 풀 수 없으면 체크메이트예요. 체크가 아닌데 둘 수가 없으면 비겨요.",
     steps: [
       {
         kind: "explain",
@@ -395,7 +396,8 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "special",
     title: "캐슬링과 앙파상",
-    summary: "킹과 룩을 한 번에 옮기는 캐슬링, 지나간 폰을 잡는 앙파상",
+    summary:
+      "킹과 룩을 한 번에 옮기는 캐슬링과, 지나간 폰을 잡는 앙파상을 배워요.",
     steps: [
       {
         kind: "explain",
@@ -448,7 +450,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "opening",
     title: "오프닝 원칙",
-    summary: "가운데를 차지하고, 기물을 꺼내고, 일찍 캐슬링한다",
+    summary: "가운데를 차지하고, 기물을 꺼내고, 일찍 캐슬링해요.",
     steps: [
       {
         kind: "explain",
@@ -503,14 +505,14 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "endgame",
     title: "기본 끝내기",
-    summary: "퀸이나 룩 하나와 킹으로 상대 킹을 몰아 체크메이트한다",
+    summary: "퀸이나 룩 하나와 킹으로 상대 킹을 몰아 체크메이트해요.",
     steps: [
       {
         kind: "explain",
         title: "기물이 남았으면 끝까지 몰아요",
         body: [
           "기물을 많이 잡아도 **체크메이트를 못 하면 이기지 못해요**. 상대에게 킹만 남았을 때 체크메이트로 마무리하는 것을 **끝내기**라고 해요. 그 방법을 익혀 둬요.",
-          "요령은 셋이에요. ① 상대 킹이 다닐 수 있는 칸 묶음을 **상자**라고 불러요. 퀸이나 룩으로 **상자를 조금씩 좁힌다** ② 내 **킹도 데려와** 함께 민다 ③ 상대 킹을 **가장자리**로 몬 뒤 체크메이트한다.",
+          "요령은 셋이에요. ① 상대 킹이 다닐 수 있는 칸 묶음을 **상자**라고 불러요. 퀸이나 룩으로 **상자를 조금씩 좁혀요**. ② 내 **킹도 데려와** 함께 밀어요. ③ 상대 킹을 **가장자리**로 몬 뒤 체크메이트해요.",
         ],
         scene: QUEEN_MATE_SCENE,
       },
@@ -569,14 +571,14 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
   {
     id: "real",
     title: "실전",
-    summary: "처음부터 입문 컴퓨터와 한 판",
+    summary: "처음부터 입문 컴퓨터와 한 판 둬요.",
     steps: [
       {
         kind: "explain",
         title: "두는 요령",
         body: [
           "한 수 두기 전에 ① 상대가 내 기물을 잡을 수 있나 ② 내가 공짜로 잡을 기물이 있나를 살펴요.",
-          "기물 점수: 폰 1·나이트 3·비숍 3·룩 5·퀸 9. 큰 기물을 내주고 작은 기물을 잡는 일이 없게 조심해요.",
+          "기물 점수는 폰 1·나이트 3·비숍 3·룩 5·퀸 9예요. 큰 기물을 내주고 작은 기물을 잡는 일이 없게 조심해요.",
           "기물 점수 합이 크게 앞서면 퀸과 룩으로 상대 킹을 가장자리로 몰아 체크메이트해요.",
         ],
       },

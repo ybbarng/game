@@ -26,8 +26,8 @@ import {
 } from "@game/janggi-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
-
 import { reviewNotes } from "./review-notes";
 import { obj } from "./study";
 
@@ -59,6 +59,21 @@ export interface JanggiGame {
 }
 
 export const janggiStats: KitStats<JanggiView, GameEvent> = {
+  result: { unit: "round", outcome: (data) => (data as JanggiRound).outcome },
+  achievements: [
+    anyRound<JanggiRound>(
+      "checkmate",
+      "외통",
+      "외통으로 이깁니다.",
+      (r) => r.outcome === "win" && r.by === "checkmate",
+    ),
+    anyRound<JanggiRound>(
+      "han-win",
+      "한의 승리",
+      "한(나중)으로 이깁니다.",
+      (r) => r.outcome === "win" && r.side === "han",
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),

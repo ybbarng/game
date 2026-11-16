@@ -26,8 +26,8 @@ import { createRng } from "@game/mighty-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";
+import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
-
 import { gostopFair } from "./fair";
 
 export type GostopKit = GameKit<
@@ -61,6 +61,27 @@ export interface GostopGame {
 }
 
 export const gostopStats: KitStats<GostopView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => {
+      const o = (data as GostopRound).outcome;
+      return o === "nagari" ? "draw" : o;
+    },
+  },
+  achievements: [
+    anyRound<GostopRound>(
+      "three-go",
+      "쓰리고",
+      "고를 세 번 부르고 이깁니다.",
+      (r) => r.outcome === "win" && r.goCount >= 3,
+    ),
+    anyRound<GostopRound>(
+      "chongtong",
+      "총통",
+      "총통으로 이깁니다.",
+      (r) => r.outcome === "win" && r.kind === "chongtong",
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),

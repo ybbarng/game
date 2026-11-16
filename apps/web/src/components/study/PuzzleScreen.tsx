@@ -274,7 +274,7 @@ export function PuzzleScreen({
           summary={
             status === "solved"
               ? shown
-                ? "정답을 본 뒤 풀었어요. 다음에 다시 풀어 보세요"
+                ? "정답을 본 뒤 풀었어요. 다음에 다시 풀어 보세요."
                 : "맞혔어요!"
               : status === "wrong"
                 ? wrongHint

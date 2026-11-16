@@ -93,7 +93,7 @@ describe("메이트 문제", () => {
     const p = one[0] as ChessPuzzle;
     const lines = explainMate(puzzleState(p).position, solutionMove(p));
     expect(lines[0]).toBe("룩을 b8로(Rb8#): 체크!");
-    expect(lines.join(" ")).toContain("흑 자기 기물이 막고 있다");
-    expect(lines.at(-1)).toBe("막거나 잡을 수도 없어 체크메이트다");
+    expect(lines.join(" ")).toContain("흑 자기 기물이 막고 있어요");
+    expect(lines.at(-1)).toBe("막거나 잡을 수도 없어 체크메이트예요.");
   });
 });

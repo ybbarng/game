@@ -5,7 +5,15 @@ import type { KitBot } from "./kit";
  * `level`은 그 게임의 `kit.botFor(level)`과 같은 봇, `name`은 화면용 고수처럼 단계 밖의 봇이다
  */
 export type BotKey =
-  | { game: string; level: number }
+  | {
+      game: string;
+      level: number;
+      /**
+       * 실제 시계로 시간 상한을 쓰는 컴퓨터(하트 고수의 혼자 하기). 기기 속도에 따라 수가 달라질 수 있어
+       * 다시 계산해 맞춰 보는 온라인 방에서는 쓰지 않는다
+       */
+      timed?: true;
+    }
   | { game: string; name: "advisor" };
 
 type AnyBot = KitBot<unknown, unknown>;
@@ -22,7 +30,12 @@ const loaders: Record<string, (key: BotKey) => Promise<AnyBot>> = {
   },
   hearts: async (key) => {
     const { heartsBotFor } = await import("../hearts/bots");
-    return as(heartsBotFor(levelOf(key) as 0 | 1 | 2));
+    const level = levelOf(key) as 0 | 1 | 2;
+    if ("timed" in key && key.timed) {
+      const { realClock } = await import("@game/fair-play");
+      return as(heartsBotFor(level, realClock));
+    }
+    return as(heartsBotFor(level));
   },
   chess: async (key) => {
     if ("name" in key)

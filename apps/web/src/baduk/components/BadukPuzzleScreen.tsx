@@ -36,32 +36,32 @@ import {
 } from "../study";
 import { BadukBoard } from "./BadukBoard";
 
-/** 잡기 문제 모양마다 보이는 글. `follow`는 둘째 수부터의 안내(없으면 "계속 몰아 따내세요") */
+/** 잡기 문제 모양마다 보이는 글. `follow`는 둘째 수부터의 안내(없으면 "계속 몰아 따내세요.") */
 const CAPTURE_TEXT: Record<
   CaptureTheme,
   { prompt: string; hint: string; follow?: string }
 > = {
   atari: {
-    prompt: "△ 백 돌을 따내세요",
-    hint: "단수를 어느 쪽에서 치느냐가 중요해요. 백이 넓은 쪽으로 못 나오게 막아요",
+    prompt: "△ 백 돌을 따내세요.",
+    hint: "단수를 어느 쪽에서 치느냐가 중요해요. 백이 넓은 쪽으로 못 나오게 막아요.",
   },
   ladder: {
-    prompt: "축으로 △ 백 돌을 잡으세요",
-    hint: "계속 단수를 치며 몰아요. 백이 뻗을 때마다 활로가 하나뿐이어야 해요",
+    prompt: "축으로 △ 백 돌을 잡으세요.",
+    hint: "계속 단수를 치며 몰아요. 백이 뻗을 때마다 활로가 하나뿐이어야 해요.",
   },
   net: {
-    prompt: "장문으로 △ 백 돌을 잡으세요",
-    hint: "바로 단수 치면 달아나요. 한 칸 떨어져 길을 막아 봐요",
+    prompt: "장문으로 △ 백 돌을 잡으세요.",
+    hint: "바로 단수 치면 달아나요. 한 칸 떨어져 길을 막아 봐요.",
   },
   snapback: {
-    prompt: "한 점을 내주고 △ 백 돌을 되따내세요",
-    hint: "백 무리에 붙은 빈 자리에 일부러 들어가 봐요. 따이더라도 다시 두면 더 많이 따내요",
-    follow: "같은 자리에 다시 두어 되따내세요",
+    prompt: "한 점을 내주고 △ 백 돌을 되따내세요.",
+    hint: "백 무리에 붙은 빈 자리에 일부러 들어가 봐요. 따이더라도 다시 두면 더 많이 따내요.",
+    follow: "같은 자리에 다시 두어 되따내세요.",
   },
   ko: {
-    prompt: "패를 따내며 △ 백 돌을 잡으세요",
-    hint: "백 돌 하나를 따내면서 △ 백 돌을 단수로 만드는 자리를 찾아요",
-    follow: "백은 되따내지 못했어요. 이제 따내세요",
+    prompt: "패를 따내며 △ 백 돌을 잡으세요.",
+    hint: "백 돌 하나를 따내면서 △ 백 돌을 단수로 만드는 자리를 찾아요.",
+    follow: "백은 되따내지 못했어요. 이제 따내세요.",
   },
   "long-ladder": {
     prompt: "축으로 △ 백 돌을 판 끝까지 몰아 잡으세요.",
@@ -183,10 +183,10 @@ function BadukPuzzleRun({
     : capture
       ? run.step === 0
         ? capture.prompt
-        : (capture.follow ?? "계속 몰아 따내세요")
+        : (capture.follow ?? "계속 몰아 따내세요.")
       : live
-        ? "△ 흑 무리를 살리세요"
-        : "△ 백 무리를 잡으세요";
+        ? "△ 흑 무리를 살리세요."
+        : "△ 백 무리를 잡으세요.";
   const marks: Record<number, string> = {};
   if (puzzle.kind === "kofight") {
     // 팻감 쓰기: 첫 수 앞에는 되따낼 수 없는 자리를 ×로. 팻감 받기: 노림받은 흑 돌을 △로
@@ -203,7 +203,7 @@ function BadukPuzzleRun({
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   const prompt =
     aim !== null
-      ? `${pointName(aim, PUZZLE_SIZE)}: 한 번 더 누르면 둔다`
+      ? `${pointName(aim, PUZZLE_SIZE)}: 한 번 더 누르면 둬요.`
       : goal;
 
   return (
@@ -246,10 +246,10 @@ function BadukPuzzleRun({
         ko
           ? ko.wrong
           : capture
-            ? "그 수로는 못 따내요"
+            ? "그 수로는 못 따내요."
             : live
-              ? "그 수로는 살 수 없어요"
-              : "그 수로는 백이 살아요"
+              ? "그 수로는 살 수 없어요."
+              : "그 수로는 백이 살아요."
       }
       wrongHint={
         ko
@@ -257,10 +257,10 @@ function BadukPuzzleRun({
           : capture
             ? capture.hint
             : shape
-              ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요`
+              ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요.`
               : live
-                ? "눈 자리를 둘로 나누는 곳을 찾아요"
-                : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요"
+                ? "눈 자리를 둘로 나누는 곳을 찾아요."
+                : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요."
       }
       shown={shown !== null}
       explain={run.explain}

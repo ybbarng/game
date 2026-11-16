@@ -156,6 +156,8 @@ export const buttonKit: GameKit<
     roundNumber: (view) => view.board,
     round: () => null,
     game: () => null,
+    result: { unit: "round", outcome: () => null },
+    achievements: [],
   },
   review: {
     firstExtra: () => undefined,

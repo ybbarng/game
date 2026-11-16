@@ -28,8 +28,8 @@ import {
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";
+import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
-
 import { nyrongppongFair } from "./fair";
 
 export type NyrongppongKit = GameKit<
@@ -69,6 +69,24 @@ export interface NyrongppongGame {
 }
 
 export const nyrongppongStats: KitStats<NyrongppongView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => ((data as NyrongppongRound).won ? "win" : "loss"),
+  },
+  achievements: [
+    anyRound<NyrongppongRound>(
+      "ppong-3",
+      "뽕 셋",
+      "한 판에 뽕을 세 번 합니다.",
+      (r) => r.ppongs >= 3,
+    ),
+    anyRound<NyrongppongRound>(
+      "yak-end",
+      "약으로 끝냄",
+      "약을 이루어 판을 끝냅니다.",
+      (r) => r.end === "yak" && r.mine,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),
