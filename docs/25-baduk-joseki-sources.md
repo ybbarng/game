@@ -2,7 +2,7 @@
 
 수순 확인: Sensei's Library(OPL), https://senseis.xmp.net/
 
-바둑 「수 배우기」의 정석 수순 따라 두기(docs/23 2절 line 형식)에 넣을 수순을 **출처에서 그대로 옮겨 둔 것**이다. 아직 데이터 파일에 넣지 않았다. 수순 틀(`study/line.ts`, 체스 PR #2로 main에 들어옴)에 바둑 시작 판(판 크기·놓인 돌)과 정석 대칭 처리가 더해진 뒤에 넣는다(2026-11-03 본부 세션 결정).
+바둑 「수 배우기」의 정석 수순 따라 두기(docs/23 2절 line 형식)에 넣을 수순을 **출처에서 그대로 옮겨 둔 것**이다. 2026-11-03 첫 7갈래, 2026-11-17 넷을 더해 지금 11갈래가 `apps/web/src/baduk/joseki.ts`에 있다(아래 「넣은 것」·「2차」).
 
 ## 받는 법
 
@@ -33,4 +33,36 @@
 
 - 2026-11-03 표의 12개 수순을 모두 엔진(`tryPlace`)으로 놓인 돌부터 다시 둬 규칙에 맞는 것을 확인했다(임시 시험, 저장소에는 넣지 않음). 넣을 때는 단위 시험으로 다시 확인한다.
 - 위 표의 「놓인 돌」에 수 순서가 없는 것(예: 붙여막기의 흑 E17·E16·F16)은 그림이 중간 모양에서 시작한 것이다. 수순 따라 두기에는 놓인 돌을 시작 판으로 두거나, 앞 수순(마늘모 붙임 등)과 이어 하나의 갈래로 만든다.
-- 다음에 볼 문서(이름만 확인): `44PointLowApproachOneSpaceLowPincer`, `44PointLowApproachTwoSpaceHighPincer`, `44PointHighApproach`, `34PointHighApproach`, `34PointLowApproachKeima`, `34PointLowApproachOneSpaceLowPincer`, `44PointLowApproachLowExtensionSlide33`.
+- 다음에 볼 문서(이름만 확인): `44PointLowApproachOneSpaceLowPincer`, `44PointLowApproachTwoSpaceHighPincer`, `44PointHighApproach`, `34PointHighApproach`, `34PointLowApproachKeima`, `34PointLowApproachOneSpaceLowPincer`, `44PointLowApproachLowExtensionSlide33`. → 2026-11-17 아래 「2차」에서 봤다.
+
+## 넣은 것(2026-11-03 첫 7갈래, 2026-11-17 넷 더해 11갈래)
+
+`apps/web/src/baduk/joseki.ts`. 위 표의 12개 가운데 「삼삼 침입 — 선수 잡기 두 갈래」, 「마늘모 붙임 — 낮은 귀」, 「소목 날일자 걸침 — 귀 지키기」는 다른 갈래 안의 `branches`로 들어갔다. 2026-11-17에 「예전 마무리」와 「양 젖힘」을 따로 갈래로 넣어 표의 12개를 모두 썼다.
+
+## 2차(2026-11-17 조사): 다음 문서 일곱
+
+받는 법은 위와 같다(Claude in Chrome으로 문서를 열고, 페이지 안 `fetch`로 SGF를 받아 `AB`·`AW`·수를 읽음). 문서 머리의 「Difficulty」(Beginner·Intermediate·Advanced)로 처음 배우는 사람용인지 골랐다. 넣은 것은 모두 `joseki.test.ts`가 놓인 돌부터 엔진으로 다시 둔다.
+
+| 이름(우리말) | 출처 문서·그림 | 난이도 | 놓인 돌 | 수순 | 판단 |
+|---|---|---|---|---|---|
+| 삼삼 침입 — 예전 마무리 | `?33PointInvasion` 「The old continuation」 | (1차 표) | 흑 D17·D16·C15·C14·C13, 백 C17·C16·B15·B14 | 백 D18, 흑 E18, 백 C18, 흑 F17 | 넣음 `line-33-invasion-old-end` |
+| 삼삼 침입 — 양 젖힘 | 같은 문서 「Double hane: another standard」 | (1차 표) | 흑 D17·D16·C15, 백 C17·C16·B15 | 흑 B14, 백 C14, 흑 D15, 백 B13, 흑 B16, 백 A14, 흑 B17 | 넣음 `line-33-invasion-double-hane` |
+| 화점 날일자 걸침 — 변 쪽 날일자, 삼삼 막기 | `?44PointLowApproachLowExtensionSlide33` 「Two-Space Low Extension」 | Beginner | 흑 D16 | 백 F17, 흑 C14, 백 D18, 흑 C17, 백 J17 | 넣음 `line-44-slide-33` |
+| 소목 한 칸 높은 걸침 — 붙이고 물러서기 | `?34PointHighApproachInsideContactSolidConnection` 「Joseki」(곧은 이음) | Beginner(`?34PointHighApproachAttachDrawbackJoseki`) | 흑 C16, 백 E16 | 흑 E17, 백 F17, 흑 D17, 백 F16, 흑 C14, 백 K17 | 넣음 `line-34-high-attach` 본줄기 |
+| 위 갈래 — 한 칸 건너 잇기 | `?34PointHighApproachInsideContactHangingConnection` 「Joseki」 | 같음 | 위와 같음(그림의 오른쪽 귀 돌 Q17·R15는 이 귀와 상관없어 뺌) | 백 G16, 흑 C14, 백 L17 | 넣음, 백 넷째 수의 갈래 |
+| 위 갈래 — 마늘모·날일자 | 곧은 이음 문서 「Diagonal」·「Knight's move」 | 같음 | 위 수순의 흑 C14 자리 | 흑 D15(또는 D14), 백 K17, 흑 C10 | 넣음, 흑 C14의 갈래 둘 |
+| 화점 한 칸 높은 걸침 | `?44PointHighApproach` 「Joseki」 | 표시 없음 | 흑 D16 | 백 F16, 흑 D14, 백 D17, 흑 C17, 백 E17, 흑 C18 | 넣지 않음: 문서가 프로 대국에서 아주 드물고 판 전체 사정에 따라 두는 수라고 적었다 |
+| 화점 걸침 한 칸 낮은 협공 — 삼삼 들어가기 | `?44PointOneSpaceLowPincerInvasionBlock` 「Traditional joseki」 | Advanced | 흑 D16·D10 | 백 F17, 흑 H17, 백 C17, 흑 C16, 백 D17, 흑 E16, 백 F18, 흑 G15 | 넣지 않음: 고급, 옛 수순이고 AI 뒤 바뀐 수순이 따로 있다. 놓인 돌 D10이 있어야 성립한다 |
+| 화점 걸침 한 칸 낮은 협공(그 밖) | `?44PointLowApproachOneSpaceLowPincer` | Intermediate | — | 문서는 갈래 목록뿐(아래 문서로 나뉨) | 넣지 않음: 중급 |
+| 화점 걸침 두 칸 높은 협공 | `?44PointLowApproachTwoSpaceHighPincer` | Intermediate | — | 「The setup」 등 판 전체 그림 | 넣지 않음: 중급, 수순이 귀 밖까지 길다 |
+| 소목 날일자 걸침 한 칸 낮은 협공 | `?34PointLowApproachOneSpaceLowPincer` | Intermediate | — | — | 넣지 않음: 중급 |
+| 소목 날일자 걸침 — 날일자 받기 | `?34PointLowApproachKeima` | — | — | 1차의 `34PointLowApproachKnightsMoveExtension`과 같은 정석 | 이미 있음(`line-34-knight-extension`) |
+
+- 다음 후보(아직 안 봄): 소목 한 칸 높은 걸침의 다른 받기(`34PointHighApproachInsideContactHane` 아래 갈래, `34PointHighApproachOutsideContact`), 화점 날일자 걸침의 「Small Knight Extension」(`44PointLowApproachLowExtensionSlide33`의 b). 같은 방법으로 확인한 뒤 넣는다.
+
+## 글과 낱말(2026-11-17)
+
+- 정석 설명에 나오는 돌 모양 이름(정석·걸침·날일자·낮은/높은 걸침·한 칸 뛰기·붙이다·젖히다·양 젖힘·마늘모·끊다·서다·2선·기다·두텁다·침입)은 수 배우기 단원 「정석: 귀에서 주고받기」(`lesson-joseki`)가 그림과 함께 먼저 알린다. `joseki-terms.test.ts`가 규칙 배우기 → 단원 → 정석 글 차례로 이어 읽어 뜻을 알리기 전에 쓴 곳이 없는지 본다.
+- 단원 그림의 자리(날일자 거리, 줄 수, 붙임·젖힘·마늘모 관계)와 새 갈래 설명의 활로 수·끊는 자리는 `joseki.test.ts`가 엔진으로 확인한다.
+- 처음 보는 독자 검토(대화 맥락 없는 서브에이전트)에서 받은 지적을 고쳤다: 벽 그림의 대각선 틈 D15를 설명 없이 「튼튼하게 이어진 벽」이라 한 것(끊어도 백 돌 활로가 둘뿐이라고 밝히고 시험), 삼삼 C17을 「화점 아래」, 벽이 「위·왼쪽」을 본다고 한 것, 대각선 수를 「마늘모로 서요」, 3선 C16을 「기어」, 둘 다 넓은 판에서 「넓은 쪽에서 막아요」, 「백의 끊는 자리」가 끊는 쪽·끊기는 쪽 둘로 읽히던 것(「끊기는 자리」로), 「C15에 이어」가 잇다로 읽히던 것, 「침입」·「붙여막기」를 풀지 않은 것(단원에서 침입을 알리고, 붙여막기는 「붙이고 막기」로), 셋째 줄을 어느 끝에서 세는지 없던 것, 「(선수).」로 끝나던 문장. 포석 단원의 벌림 뜻은 「두세 칸」에서 「두 칸 이상」으로 넓혔다(정석의 벌림은 네 칸 건너기도 한다).
+- 같은 날 첫 7갈래의 글도 고쳤다: 판 위 끝에서 둘째 줄(F18·G18·C18)을 「1선」이라 한 것을 「2선」으로, 판 가운데 쪽으로 선 수를 「위로」라 한 것을 「가운데 쪽으로」로, 한 칸 뛴 수를 「벌려」라 한 것(포석 단원의 벌림은 두세 칸 건너기)을 「한 칸 뛰어」로, 왼쪽 위 귀의 위쪽 변을 「오른쪽 변」이라 한 것을 「위쪽 변」으로.

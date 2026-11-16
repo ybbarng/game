@@ -784,6 +784,74 @@ test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘
   await page.screenshot({ path: info.outputPath("baduk-joseki.png") });
 });
 
+test(
+  "바둑 정석 단원과 소목 한 칸 높은 걸침: 돌 모양 이름을 읽고, 백이 어느 쪽으로 이어도 수순을 끝까지 둔다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 수순 진행은 크기와 상관없다(수순 화면 배치는 위 마늘모 붙임 시험이 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baduk");
+    await page.getByRole("button", { name: /바둑 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+
+    // 단원: 설명 일곱 → 퀴즈 둘 → 끝
+    const lessons = page.getByRole("region", { name: "단원 읽기" });
+    await lessons
+      .getByRole("button", { name: "정석: 귀에서 주고받기" })
+      .click();
+    await expect(page.getByRole("heading", { name: "정석이란" })).toBeVisible();
+    for (const title of [
+      "걸침과 날일자",
+      "한 칸 뛰기",
+      "붙임, 젖힘, 마늘모",
+      "끊는 자리, 서기, 기기",
+      "벽과 두터움",
+      "따라 둘 정석",
+    ]) {
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+      await expect(page.getByRole("heading", { name: title })).toBeVisible();
+      if (title === "붙임, 젖힘, 마늘모" || title === "끊는 자리, 서기, 기기")
+        await page.screenshot({
+          path: info.outputPath(`baduk-lesson-joseki-${title}.png`),
+        });
+    }
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "걸침", exact: true }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "끊는다", exact: true }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+    await page.getByRole("button", { name: "단원 목록으로" }).click();
+    await expect(
+      lessons.getByRole("button", { name: "정석: 귀에서 주고받기 (끝냄)" }),
+    ).toBeVisible();
+
+    // 수순: 흑이 먼저 붙인다 → 백 젖힘 → 물러서기 → 백은 F16(곧게) 또는 G16(한 칸 건너) → 한 칸 뛰기 → 백 벌림
+    await page
+      .getByRole("region", { name: "정석 따라 두기" })
+      .getByRole("button", {
+        name: "소목 한 칸 높은 걸침 — 붙이고 물러서기(흑)",
+      })
+      .click();
+    const status = page.getByRole("status");
+    await expect(status).toHaveText("수순의 다음 수를 두세요.");
+    await placeAt19(page, "E17", touch);
+    await expect(
+      page.locator('[data-point="F17"][data-stone="white"]'),
+    ).toHaveCount(1);
+    await placeAt19(page, "D17", touch);
+    const connected = page.locator(
+      '[data-point="F16"][data-stone="white"], [data-point="G16"][data-stone="white"]',
+    );
+    await expect(connected).toHaveCount(1);
+    await placeAt19(page, "C14", touch);
+    await expect(status).toHaveText("수순을 끝까지 두었어요!");
+    await page.screenshot({
+      path: info.outputPath("baduk-joseki-34-high.png"),
+    });
+  },
+);
+
 test("바둑 초고수: 옵션에서 고르고, 생각하는 동안 「생각하는 중」을 보이다가 한 수 받는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
