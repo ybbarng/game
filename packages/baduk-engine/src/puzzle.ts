@@ -1,4 +1,5 @@
 import {
+  areaOwners,
   areaScore,
   type Board,
   boardHash,
@@ -640,6 +641,10 @@ export interface EndgameResult {
  * 끝내기 읽기(수 배우기 끝내기, docs/23): `toPlay`가 둘 차례에, 정한 빈 자리(`area`) 안에서만 두거나 쉰다.
  * 두 편이 잇달아 쉬면 판 위 그대로 센다(`areaScore`, 돌 수 + 집 수). 흑은 점수 차를 크게, 백은 작게 둔다.
  * 판 나머지는 이미 다 막혔다고 보고 두지 않는다(그래서 정한 자리가 적으면 끝까지 읽는다).
+ * 다만 정한 자리에 붙은 무리가 단수가 되면 두 가지를 더 둔다. 그 활로가 자기 집(`areaOwners`가 그 편 것으로 센 빈 점)이면 그 편은 거기에 이어 받을 수 있다.
+ * 자기 집을 자기 돌로 채우는 것은 점수(돌 수 + 집 수)를 바꾸지 않으니 셈이 어긋나지 않는다.
+ * 또 그 무리가 상대 무리면 마지막 활로에 두어 따낼 수 있다(받지 않은 선수를 벌하는 수).
+ * 정한 자리에 붙지 않은 무리는 보지 않는다(끝내기 한 곳만 셀 때 다른 곳이 섞이지 않게)
  * 읽는 길 위에서 같은 판 모양이 다시 나오는 수(패 되따내기)는 두지 않는다.
  * `passed`는 바로 앞 수가 쉬기였는지(이번에도 쉬면 끝난다)
  */
@@ -651,6 +656,22 @@ export function solveEndgame(
 ): EndgameResult {
   const memo = new Map<string, number>();
   const path = new Set([boardHash(board)]);
+  /** 이 편이 둘 수 있는 자리: 정한 자리, 단수인 자기 무리의 활로 가운데 자기 집, 단수인 상대 무리를 따내는 자리 */
+  const size = sizeOf(board);
+  const touching = new Set(area.flatMap((a) => [...neighbors(a, size)]));
+  const movesFor = (b: Board, turn: Stone): number[] => {
+    const owners = areaOwners(b);
+    const extra = new Set<number>();
+    for (let p = 0; p < b.length; p++) {
+      if (!b[p] || !(touching.has(p) || area.includes(p))) continue;
+      const libs = groupOf(b, p).liberties;
+      if (libs.length !== 1) continue;
+      const lib = libs[0] as number;
+      if (b[p] !== turn) extra.add(lib);
+      else if (owners[lib] === turn) extra.add(lib);
+    }
+    return [...area, ...[...extra].filter((p) => !area.includes(p))];
+  };
   const scoreOf = (b: Board) => {
     const s = areaScore(b);
     return s.black - s.white;
@@ -662,7 +683,7 @@ export function solveEndgame(
     const better = (a: number, c: number) =>
       turn === 1 ? Math.max(a, c) : Math.min(a, c);
     let result = afterPass ? scoreOf(b) : value(b, other(turn), true);
-    for (const at of area) {
+    for (const at of movesFor(b, turn)) {
       const next = place(b, at, turn, path);
       if (!next) continue;
       path.add(next.key);
@@ -684,7 +705,7 @@ export function solveEndgame(
   };
   let score: number | null = null;
   let best: (number | null)[] = [];
-  for (const at of [...area, null]) {
+  for (const at of [...movesFor(board, toPlay), null]) {
     const v = after(at);
     if (v === null) continue;
     if (score === null || (toPlay === 1 ? v > score : v < score)) {

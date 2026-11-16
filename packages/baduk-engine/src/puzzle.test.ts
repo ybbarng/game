@@ -165,4 +165,20 @@ describe("끝내기 읽기", () => {
     );
     expect(endgameSize(b, [p("E5")])).toBe(2);
   });
+
+  it("빈 점에 두어 백을 단수로 몰면, 백은 자기 집 쪽 활로로 이어 받고 받지 않으면 흑이 따낸다", () => {
+    // 백 E9 한 점이 흑 D9 옆에 떨어졌다. 활로는 E8(누구 것도 아닌 빈 점)과 F9(백 집)
+    const cut = board(
+      rows.map((r) => `D${r}`),
+      [...rows.filter((r) => r !== 8).map((r) => `E${r}`), "F8"],
+    );
+    expect(solveEndgame(cut, [p("E8")], 1).best).toEqual([p("E8")]);
+    const atari = tryPlace(cut, p("E8"), 1);
+    if (!atari.ok) throw new Error("둘 수 없다");
+    // F9는 정한 자리가 아니지만, 단수인 백 E9의 활로이자 백 집이라 백이 이을 수 있다
+    expect(solveEndgame(atari.board, [p("E8")], 2).best).toEqual([p("F9")]);
+    expect(endgameSize(cut, [p("E8")])).toBe(2);
+    // 백이 받지 않고 쉬면, 흑은 F9에 두어 백 E9를 따낼 수 있다
+    expect(solveEndgame(atari.board, [p("E8")], 1).best).toContain(p("F9"));
+  });
 });
