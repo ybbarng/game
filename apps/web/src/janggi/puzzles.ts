@@ -1357,7 +1357,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
     id: "escape",
     title: "장군 풀기",
     summary:
-      "궁 비키기·사이 막기·장군 부른 기물 잡기 가운데 손해 없는 풀기를 고른다",
+      "궁 비키기·사이 막기·장군 부른 기물 잡기 가운데 손해 없는 풀기를 골라요.",
     puzzles: ESCAPES.map((p, i) => ({
       id: `escape-${i + 1}`,
       kind: "escape",
@@ -1368,7 +1368,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
     id: "defend",
     title: "잡힐 기물 지키기",
     summary:
-      "상대가 내 큰 기물을 공짜로 노린다. 안전한 곳으로 비키거나 다시 잡을 수 있게 지킨다",
+      "상대가 내 큰 기물을 공짜로 노려요. 안전한 곳으로 비키거나 다시 잡을 수 있게 지켜요.",
     puzzles: DEFENDS.map((p, i) => ({
       id: `defend-${i + 1}`,
       kind: "defend",
@@ -1378,7 +1378,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
   {
     id: "mate1",
     title: "한 수 외통",
-    summary: "한 수로 장군을 불러 궁이 피할 곳을 없앤다",
+    summary: "한 수로 장군을 불러 궁이 피할 곳을 없애요.",
     puzzles: MATE_IN_ONE.map((p, i) => ({
       id: `mate1-${i + 1}`,
       kind: "mate",
@@ -1389,7 +1389,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
   {
     id: "fork",
     title: "양수겸장",
-    summary: "한 수로 두 곳을 함께 노린다. 하나를 지키면 다른 하나를 잡는다",
+    summary: "한 수로 두 곳을 함께 노려요. 하나를 지키면 다른 하나를 잡아요.",
     puzzles: FORKS.map((p, i) => ({
       id: `fork-${i + 1}`,
       kind: "fork",
@@ -1400,7 +1400,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
     id: "trade",
     title: "잡을까 말까",
     summary:
-      "잡을 수 있다고 다 잡지 않는다. 다시 잡히지 않는 이득인 잡기를 고른다",
+      "잡을 수 있다고 다 잡지 않아요. 다시 잡히지 않는 이득인 잡기를 골라요.",
     puzzles: TRADES.map((p, i) => ({
       id: `trade-${i + 1}`,
       kind: "trade",
@@ -1411,7 +1411,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
     id: "cannon",
     title: "포 길 열기",
     summary:
-      "포는 하나를 넘어야 간다. 다리를 놓거나 치워 포가 큰 기물을 노리게 한다",
+      "포는 하나를 넘어야 가요. 다리를 놓거나 치워 포가 큰 기물을 노리게 해요.",
     puzzles: CANNONS.map((p, i) => ({
       id: `cannon-${i + 1}`,
       kind: "cannon",
@@ -1421,7 +1421,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
   {
     id: "block",
     title: "멱 막기",
-    summary: "상대 마·상이 지나는 칸(멱)을 막아 노림을 받는 기물을 지킨다",
+    summary: "상대 마·상이 지나는 칸(멱)을 막아 노림을 받는 기물을 지켜요.",
     puzzles: BLOCKS.map((p, i) => ({
       id: `block-${i + 1}`,
       kind: "block",
@@ -1432,7 +1432,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
     id: "palace",
     title: "궁성 공격",
     summary:
-      "궁성 안의 대각선 길을 쓴다. 차·포·졸이 대각선을 타고 장군을 부르거나 기물을 잡는다",
+      "궁성 안의 대각선 길을 써요. 차·포·졸이 대각선을 타고 장군을 부르거나 기물을 잡아요.",
     puzzles: PALACES.map((p, i) => ({
       id: `palace-${i + 1}`,
       kind: "palace",
@@ -1442,7 +1442,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
   {
     id: "mate2",
     title: "두 수 외통",
-    summary: "상대가 어떻게 받아도 다음 수에 외통이 되는 첫 수를 찾는다",
+    summary: "상대가 어떻게 받아도 다음 수에 외통이 되는 첫 수를 찾아요.",
     puzzles: MATE_IN_TWO.map((p, i) => ({
       id: `mate2-${i + 1}`,
       kind: "mate",
@@ -1453,7 +1453,7 @@ export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
   {
     id: "mate3",
     title: "세 수 외통",
-    summary: "상대가 어떻게 받아도 세 수째에 외통이 되는 첫 수를 찾는다",
+    summary: "상대가 어떻게 받아도 세 수째에 외통이 되는 첫 수를 찾아요.",
     puzzles: MATE_IN_THREE.map((p, i) => ({
       id: `mate3-${i + 1}`,
       kind: "mate",

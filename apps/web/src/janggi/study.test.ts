@@ -82,7 +82,7 @@ describe("포 길 열기 문제", () => {
       expect(legalMoves(board, "c").every((m) => board[m.to] === "")).toBe(
         true,
       );
-      expect(explainCannon(board, move)[0]).toMatch(/노린다/);
+      expect(explainCannon(board, move)[0]).toMatch(/노려요/);
       expectClearBest(p);
     },
   );
@@ -194,7 +194,7 @@ describe("양수겸장 문제", () => {
       expect(legalMoves(board, "c").every((m) => board[m.to] === "")).toBe(
         true,
       );
-      expect(explainFork(board, move)[0]).toMatch(/함께 노린다/);
+      expect(explainFork(board, move)[0]).toMatch(/함께 노려요/);
     },
   );
 
@@ -313,8 +313,8 @@ describe("장군 풀기 문제", () => {
       expect(ways.size).toBeGreaterThanOrEqual(2);
       expectClearBest(p);
       const lines = explainEscape(board, parseMove(p.solution));
-      expect(lines[0]).toMatch(/장군을 불렀다$/);
-      expect(lines[1]).toMatch(/비킨다|잡는다|막는다|치운다/);
+      expect(lines[0]).toMatch(/장군을 불렀어요\.$/);
+      expect(lines[1]).toMatch(/비켜요|잡아요|막아요|치워요/);
     },
   );
 
@@ -345,7 +345,7 @@ describe("궁성 공격 문제", () => {
       expectClearBest(p);
       const lines = explainPalace(board, move);
       expect(lines[0]).toMatch(/궁성 대각선을 따라/);
-      expect(lines[1]).toMatch(/외통이다|잡는다/);
+      expect(lines[1]).toMatch(/외통이에요|잡아요/);
     },
   );
 });
@@ -365,8 +365,8 @@ describe("잡힐 기물 지키기 문제", () => {
       expect(hangingPieces(applyMove(board, move))).toEqual([]);
       expectClearBest(p);
       const lines = explainDefend(board, move);
-      expect(lines[0]).toMatch(/공짜로 노린다$/);
-      expect(lines[1]).toMatch(/비킨다|지킨다|막는다|치운다/);
+      expect(lines[0]).toMatch(/공짜로 노려요\.$/);
+      expect(lines[1]).toMatch(/비켜요|지켜요|막아요|치워요/);
     },
   );
 
@@ -395,7 +395,7 @@ describe("해설 조사와 장군 풀기 해설", () => {
     expect(ro("58")).toBe("58로");
   });
 
-  it("궁이 기물을 잡으며 비키면 「잡으며 비킨다」로 쓴다", () => {
+  it("궁이 기물을 잡으며 비키면 「잡으며 비켜요」로 쓴다", () => {
     const kingTakes = all.filter((p) => {
       if (p.kind !== "escape") return false;
       const board = puzzleState(p).board;
@@ -406,7 +406,7 @@ describe("해설 조사와 장군 풀기 해설", () => {
     for (const p of kingTakes) {
       const board = puzzleState(p).board;
       expect(explainEscape(board, parseMove(p.solution))[1]).toMatch(
-        /^궁으로 .+ 잡으며 .+ 비킨다\(\d+점\)/,
+        /^궁으로 .+ 잡으며 .+ 비켜요\(\d+점\)/,
       );
     }
   });

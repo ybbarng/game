@@ -290,7 +290,7 @@ export const COORDS_LESSON: JanggiLesson = {
   id: "coords",
   title: "자리 부르기",
   summary:
-    "자리는 가로줄 숫자와 세로줄 숫자 둘로 부른다. 79는 7번 가로줄·9번 세로줄",
+    "자리는 가로줄 숫자와 세로줄 숫자 둘로 불러요. 79는 7번 가로줄·9번 세로줄이에요.",
   steps: [
     {
       kind: "explain",
@@ -327,7 +327,7 @@ export const SETUPS_LESSON: JanggiLesson = {
   id: "setups",
   title: "포진 고르기",
   summary:
-    "상차림 넷의 특징과 약점을 판 위 수순으로 본다. 처음에는 귀마(마상마상)가 쉽다",
+    "상차림 넷의 특징과 약점을 판 위 수순으로 봐요. 처음에는 귀마(마상마상)가 쉬워요.",
   steps: [
     {
       kind: "explain",
@@ -551,7 +551,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
   id: "first-moves",
   title: "첫 수와 초반 원칙",
   summary:
-    "막힌 쪽 찻길을 먼저 열고, 진마와 면포로 궁을 지킨다. 천궁과 욕심 수는 손해다",
+    "막힌 쪽 찻길을 먼저 열고, 진마와 면포로 궁을 지켜요. 천궁과 욕심 수는 손해예요.",
   steps: [
     {
       kind: "explain",
@@ -716,7 +716,8 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
 export const MATCHUPS_LESSON: JanggiLesson = {
   id: "matchups",
   title: "상대 차림 보고 고르기",
-  summary: "한의 차림 넷과 내 차림 넷, 16가지 짝에서 무엇을 고를지와 까닭",
+  summary:
+    "한의 차림 넷과 내 차림 넷, 16가지 짝에서 무엇을 고를지와 그 까닭을 배워요.",
   steps: [
     {
       kind: "explain",
@@ -773,7 +774,7 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
   id: "opening-line",
   title: "초반 21수 따라 두기",
   summary:
-    "한의 마상마상, 초 상마상마로 맞상을 피한 귀마 판의 초반 21수를 수마다 까닭과 점수 셈으로 보고, 초 수를 직접 따라 둔다",
+    "한의 마상마상, 초 상마상마로 맞상을 피한 귀마 판의 초반 21수를 수마다 까닭과 점수 셈으로 보고, 초 수를 직접 따라 둬요.",
   steps: [
     {
       kind: "explain",
