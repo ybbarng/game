@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.4.0</title>
+      <pubDate>Mon, 16 Nov 2026 06:29:37 +0000</pubDate>
+      <sparkle:version>0.4.0</sparkle:version>
+      <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;티어 엠블럼이 3D 보석과 같은 그림으로 바뀌었어요. 다시 볼 판이 없으면 사람 해법으로 푸는 시연을 보이고, 사용자 키 배치 편집도 앱 안에서 해요. 공식 연습에서 틀리면 정답의 키를 키캡 상자로 보여 줘요. 큐브 위에서 오른쪽 클릭하면 메뉴가 다시 뜨고, 새 판이 있으면 큐브를 불렀을 때 알려 줘요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.4.0/Cubie.zip" length="3933232" type="application/octet-stream" sparkle:edSignature="xGHmeujBj/HOkjw6r/qHhjvdOWImqaxvIo8q8wEUFnOfjQMXTfJ9jRd1NaG3b3No6/QmCrfwmeQOk2CHft9qAA=="/>
+    </item>
+    <item>
       <title>Cubie 0.3.0</title>
       <pubDate>Thu, 12 Nov 2026 08:14:23 +0000</pubDate>
       <sparkle:version>0.3.0</sparkle:version>
