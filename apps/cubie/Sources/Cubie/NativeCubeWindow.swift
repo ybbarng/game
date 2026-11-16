@@ -105,6 +105,9 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     hitRects = cube.hitRects
   }
 
+  /// 큐브 위 오른쪽 클릭 메뉴(앱이 메뉴 막대 메뉴와 같은 길로 만든다, `AppDelegate.buildMenu(forWindow: true)`)
+  override func contextMenu() -> NSMenu? { menuProvider?() }
+
   /// 앱 저장소의 설정·키 배치를 읽는다(설정 창을 닫은 뒤에도)
   private func readSettings() {
     settings = CubeSettings.parse(store.string(CubeSettings.key))

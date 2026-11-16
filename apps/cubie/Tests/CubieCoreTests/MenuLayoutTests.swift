@@ -40,7 +40,7 @@ struct MenuLayoutTests {
       ])
   }
 
-  @Test func 오른쪽_클릭_메뉴는_큐브로_가기와_업데이트_끝내기가_없다() {
+  @Test func 오른쪽_클릭_메뉴는_큐브로_가기와_업데이트_확인이_없고_끝내기는_맨_끝에() {
     let m = MenuLayout.main(forWindow: true, hotKeyOK: true, pendingUpdate: true, updaterAvailable: true, practiceAvailable: true)
     #expect(
       titles(m) == [
@@ -48,8 +48,25 @@ struct MenuLayoutTests {
         "기록 보기", "티어표", "—",
         "대결하기", "배우기", "—",
         "창", "키 배치·색…", "단축키 보기", "—",
-        "다시 불러오기",
+        "다시 불러오기", "Cubie 끝내기",
       ])
+  }
+
+  @Test func 끝내기는_어느_메뉴에서도_맨_끝에_있다() {
+    // 메뉴 막대 아이콘이 가려지면 오른쪽 클릭 메뉴가 앱을 끄는 유일한 길이다(2026-11-16)
+    for forWindow in [false, true] {
+      for hotKeyOK in [false, true] {
+        for pending in [false, true] {
+          for avail in [false, true] {
+            let m = MenuLayout.main(
+              forWindow: forWindow, hotKeyOK: hotKeyOK, pendingUpdate: pending, updaterAvailable: avail,
+              practiceAvailable: avail)
+            #expect(m.last == .quit)
+            #expect(m.filter { $0 == .quit }.count == 1)
+          }
+        }
+      }
+    }
   }
 
   @Test func 경고와_새_판은_맨_위에() {

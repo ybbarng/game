@@ -9,6 +9,20 @@ struct WindowGestureTests {
   /// 화면 오른쪽 아래 구석의 96pt 창
   let frame = CGRect(x: 1400, y: 86, width: 96, height: 96)
 
+  // MARK: 큐브 위 메뉴
+
+  @Test func 오른쪽_클릭과_Control_클릭은_메뉴를_연다() {
+    // 오른쪽 단추(트랙패드 두 손가락 클릭 포함)는 조합 키와 상관없이
+    #expect(WindowGesture.opensMenu(rightButton: true, control: false, command: false))
+    #expect(WindowGesture.opensMenu(rightButton: true, control: true, command: true))
+    // Control + 클릭
+    #expect(WindowGesture.opensMenu(rightButton: false, control: true, command: false))
+    // 그냥 클릭(큐브에 키 주기·끌어 옮기기)과 ⌘ + 끌기(창 옮기기)는 메뉴가 아니다
+    #expect(!WindowGesture.opensMenu(rightButton: false, control: false, command: false))
+    #expect(!WindowGesture.opensMenu(rightButton: false, control: false, command: true))
+    #expect(!WindowGesture.opensMenu(rightButton: false, control: true, command: true))
+  }
+
   // MARK: 끌기와 클릭
 
   @Test func 문턱보다_덜_움직이면_클릭() {
