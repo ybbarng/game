@@ -573,7 +573,8 @@ export function planToss(input: TossInput): TossPlan {
   const aimX = ax * aimAlong + px * aimSide;
   const aimZ = az * aimAlong + pz * aimSide;
   // 몸짓 높이: 높을수록 오래 난다
-  const apex = 0.55 + (g.height / 100) * 1.25;
+  // (건너편에서 높이 날면 고정한 카메라 위로 벗어나므로 화면 안에 머물 만큼만)
+  const apex = 0.3 + (g.height / 100) * 0.7;
   const baseFlight =
     (0.62 + Math.sqrt(g.height / 100) * 0.55) *
     (1.12 - (g.strength / 100) * 0.25);
@@ -694,7 +695,7 @@ export function planToss(input: TossInput): TossPlan {
       const late = Math.min(extra, 0.2);
       const longer = extra - late;
       const flight = s.flight + longer;
-      s.apex *= Math.min(1.8, (flight / s.flight) ** 2);
+      s.apex *= Math.min(1.4, (flight / s.flight) ** 2);
       s.flight = flight;
       s.delay += late;
       s.stop = want;
