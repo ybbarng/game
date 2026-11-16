@@ -94,15 +94,15 @@ describe("버리기와 차례", () => {
     const s = base();
     expect(step(s, 1, { type: "discard", card: "04a" })).toEqual({
       ok: false,
-      error: "차례가 아니다",
+      error: "차례가 아니에요.",
     });
     expect(step(s, 0, { type: "discard", card: "04a" })).toEqual({
       ok: false,
-      error: "손에 없는 카드다",
+      error: "손에 없는 카드예요.",
     });
     expect(step(s, 0, { type: "declare" })).toEqual({
       ok: false,
-      error: "약이 아니다",
+      error: "약이 아니에요.",
     });
     expect(step(s, 0, { type: "call" }).ok).toBe(false);
     expect(step(s, 0, { type: "continue" }).ok).toBe(false);
@@ -250,7 +250,7 @@ describe("뽕 응답 창", () => {
     expect(callClock(s)).toEqual({ seat: 1, left: 5000 });
     expect(step(s, 1, { type: "timeout", spent: 4999 })).toEqual({
       ok: false,
-      error: "아직 시간이 남았다",
+      error: "아직 시간이 남았어요.",
     });
     const t = ok(step(s, 1, { type: "timeout", spent: 5001 }));
     expect(t.phase).toBe("discard");
@@ -313,7 +313,7 @@ describe("뽕 응답 창", () => {
     const s = run(scene(), [[0, { type: "discard", card: "03g" }]]);
     expect(step(s, 3, { type: "call" })).toEqual({
       ok: false,
-      error: "뽕할 수 있는 패가 없다",
+      error: "뽕할 수 있는 패가 없어요.",
     });
     expect(step(s, 0, { type: "discard", card: "02a" }).ok).toBe(false);
   });
