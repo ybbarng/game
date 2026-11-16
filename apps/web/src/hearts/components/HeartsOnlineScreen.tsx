@@ -145,7 +145,7 @@ export function HeartsOnlineScreen({
         ? `${who} — 문제없음 ✓`
         : own
           ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봅니다)`,
+          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봐요)`,
     });
     if (own) {
       if (failure) useHearts.setState({ invalid: failure });
@@ -254,7 +254,7 @@ export function HeartsOnlineScreen({
         );
         guest.on("rejected", (e) => {
           useHearts.setState({ notice: e });
-          if (e === "다른 게임의 방입니다") {
+          if (e === "다른 게임의 방이에요.") {
             setError(e);
             setPhase("error");
           }
@@ -263,7 +263,7 @@ export function HeartsOnlineScreen({
           useHearts.setState({
             audit: result,
             notice: result.ok
-              ? "공정성 확인: 섞기와 진행에 문제가 없습니다"
+              ? "공정성 확인: 섞기와 진행에 문제가 없어요."
               : `공정성 확인 실패: ${result.reason}`,
           });
           onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
@@ -365,8 +365,8 @@ export function HeartsOnlineScreen({
             </label>
             {isHost && (
               <p className="text-xs opacity-60">
-                {PLAYER_COUNT}명. 빈자리는 컴퓨터가 채웁니다. 끝 점수{" "}
-                {rules.endScore}점.
+                {PLAYER_COUNT}명 · 끝 점수 {rules.endScore}점
+                <span className="block">빈자리는 컴퓨터가 채워요.</span>
               </p>
             )}
             {isHost && <RoomKindPicker />}
@@ -389,8 +389,8 @@ export function HeartsOnlineScreen({
                 className="rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
               >
                 {hostLeft
-                  ? "방장이 방을 나갔습니다"
-                  : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+                  ? "방장이 방을 나갔어요."
+                  : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
               </p>
             )}
             {isHost && (
@@ -464,15 +464,15 @@ export function HeartsOnlineScreen({
 
         {phase === "full" && (
           <p className="text-center text-sm">
-            자리가 다 찼거나 이미 시작한 방입니다.
+            자리가 다 찼거나 이미 시작한 방이에요.
           </p>
         )}
         {phase === "kicked" && (
-          <p className="text-center text-sm">방장이 방에서 내보냈습니다.</p>
+          <p className="text-center text-sm">방장이 방에서 내보냈어요.</p>
         )}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다: {error}
+            연결하지 못했어요: {error}
           </p>
         )}
 
@@ -485,8 +485,8 @@ export function HeartsOnlineScreen({
           이 방은 어떻게 지켜지나요?
         </a>
         <p className="text-center text-[11px] leading-relaxed opacity-50">
-          연결 문제를 고치려고 연결에 걸린 시간을 서버에 보냅니다(패·이름·채팅은
-          보내지 않습니다)
+          연결 문제를 고치려고 연결에 걸린 시간을 서버에 보내요(패·이름·채팅은
+          보내지 않아요).
         </p>
         <button
           type="button"
