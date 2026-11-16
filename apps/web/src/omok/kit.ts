@@ -136,10 +136,10 @@ export function explainOmok(
   const verdict = action.at === bestAt ? "good" : verdictOf(score, best);
   const reasons =
     action.at === bestAt
-      ? [`${pointName(action.at)}: 고수도 같은 자리를 둔다`]
+      ? [`고수도 같은 자리(${pointName(action.at)})에 둬요.`]
       : [
-          `${pointName(action.at)}에 뒀다`,
-          `고수라면 ${pointName(bestAt)}(모양 점수 ${best} 대 ${score})`,
+          `${pointName(action.at)}에 뒀어요.`,
+          `고수라면 다른 자리(${pointName(bestAt)})에 둬요(모양 점수 ${best} 대 ${score}).`,
         ];
   return { situation, verdict, reasons };
 }
