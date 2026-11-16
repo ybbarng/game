@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { lessonTexts, lineTexts, toneProblems } from "@/study/tone";
 
+import { ENDGAME_SETS, endgamePages, methodSteps } from "./endgame";
 import { CHESS_OPENING_SET, CHESS_OPENINGS } from "./openings";
 import { CHESS_PUZZLE_SETS } from "./puzzles";
 import {
@@ -43,5 +44,16 @@ describe("체스 수 배우기 글 말투", () => {
 
   it("배우기 단원 글이 해요체 + 마침표다", () => {
     expect(toneProblems(lessonTexts(CHESS_LESSONS))).toEqual([]);
+  });
+
+  it("엔드게임 묶음 소개·단원 쪽 글·방법 단계 설명이 해요체 + 마침표다", () => {
+    const pieces = ["Q", "R"] as const;
+    expect(
+      toneProblems([
+        ...ENDGAME_SETS.map((s) => s.summary),
+        ...pieces.flatMap((p) => endgamePages(p).flatMap((page) => page.body)),
+        ...pieces.flatMap((p) => methodSteps(p).map((s) => s.text)),
+      ]),
+    ).toEqual([]);
   });
 });
