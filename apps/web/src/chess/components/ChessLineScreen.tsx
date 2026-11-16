@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 
 import { LineScreen, useLineRun } from "@/components/study/LineScreen";
+import type { ReviewRun } from "@/components/study/review-run";
 import type { StudyLine } from "@/study/line";
 
 import { CHESS_OPENING_SET } from "../openings";
@@ -45,10 +46,13 @@ export function ChessLineScreen({
   lineId,
   onExit,
   onOpen,
+  review,
 }: {
   lineId: string;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const lines = CHESS_OPENING_SET.lines;
   const index = lines.findIndex((l) => l.id === lineId);
@@ -62,6 +66,7 @@ export function ChessLineScreen({
       nextId={lines[index + 1]?.id ?? null}
       onExit={onExit}
       onOpen={onOpen}
+      review={review}
     />
   );
 }
@@ -73,6 +78,7 @@ function ChessLineRun({
   nextId,
   onExit,
   onOpen,
+  review,
 }: {
   line: StudyLine;
   index: number;
@@ -80,6 +86,8 @@ function ChessLineRun({
   nextId: string | null;
   onExit: () => void;
   onOpen: (id: string) => void;
+  /** 「오늘 복습」으로 열었으면 복습 줄 */
+  review?: ReviewRun | undefined;
 }) {
   const coordinates = useChessSettings((s) => s.coordinates);
   const solve = useChessStudyProgress((s) => s.solve);
@@ -161,6 +169,7 @@ function ChessLineRun({
         setSelected(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
+      review={review}
       onExit={onExit}
     />
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
 import {
   TimePresetPicker,
@@ -355,8 +356,11 @@ type Screen =
   | { kind: "rules" }
   | { kind: "tutorial" }
   | { kind: "lesson"; lessonId: string }
-  | { kind: "study" }
-  | { kind: "puzzle"; puzzleId: string };
+  | { kind: "study"; reviewDone?: boolean | undefined }
+  | { kind: "puzzle"; puzzleId: string; review?: Review };
+
+/** 「오늘 복습」으로 연 문제의 복습 줄(없으면 보통으로 연 문제) */
+type Review = readonly string[] | undefined;
 
 /** 수 배우기 목록에 보일 문제 묶음 */
 const STUDY_SETS = OMOK_PUZZLE_SETS.map((s) => ({
@@ -406,6 +410,15 @@ export function OmokApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
+  const reviewOf = (queue: Review, current: string) =>
+    reviewRunFor({
+      queue,
+      current,
+      progress: useOmokStudyProgress,
+      open: (puzzleId, q) => setScreen({ kind: "puzzle", puzzleId, review: q }),
+      done: () => setScreen({ kind: "study", reviewDone: true }),
+    });
 
   if (screen.kind === "online")
     return (
@@ -439,8 +452,11 @@ export function OmokApp() {
         background={BG}
         sets={STUDY_SETS}
         progress={useOmokStudyProgress}
-        onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+        onOpen={(puzzleId, review) =>
+          setScreen({ kind: "puzzle", puzzleId, review })
+        }
         onBack={() => setScreen({ kind: "tutorial" })}
+        reviewDone={screen.reviewDone ?? false}
       />
     );
   if (screen.kind === "puzzle")
@@ -450,6 +466,7 @@ export function OmokApp() {
         puzzleId={screen.puzzleId}
         onExit={() => setScreen({ kind: "study" })}
         onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+        review={reviewOf(screen.review, screen.puzzleId)}
       />
     );
   if (screen.kind === "lesson")

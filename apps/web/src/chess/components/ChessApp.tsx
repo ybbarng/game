@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
 import {
   TimePresetPicker,
@@ -13,6 +14,7 @@ import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
+import { ENDGAME_SETS } from "../endgame";
 import { chessOnline } from "../online";
 import { CHESS_OPENING_SET } from "../openings";
 import { useChessStudyProgress, useChessTutorialProgress } from "../progress";
@@ -28,6 +30,7 @@ import {
 import { type ChessSaved, clearChess, loadChess, useChess } from "../store";
 import { CHESS_LESSONS } from "../tutorial";
 import { PieceIcon } from "./ChessBoard";
+import { ChessEndgameScreen } from "./ChessEndgameScreen";
 import { ChessGame } from "./ChessGame";
 import { ChessLineScreen } from "./ChessLineScreen";
 import { ChessPuzzleScreen } from "./ChessPuzzleScreen";
@@ -398,9 +401,13 @@ type Screen =
   | { kind: "rules" }
   | { kind: "tutorial" }
   | { kind: "lesson"; lessonId: string }
-  | { kind: "study" }
-  | { kind: "puzzle"; puzzleId: string }
-  | { kind: "line"; lineId: string };
+  | { kind: "study"; reviewDone?: boolean | undefined }
+  | { kind: "puzzle"; puzzleId: string; review?: Review }
+  | { kind: "line"; lineId: string; review?: Review }
+  | { kind: "endgame"; drillId: string; review?: Review };
+
+/** 「오늘 복습」으로 연 문제의 복습 줄(없으면 보통으로 연 문제) */
+type Review = readonly string[] | undefined;
 
 /** 수 배우기 목록에 보일 문제 묶음 */
 const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
@@ -408,6 +415,14 @@ const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
   title: s.title,
   summary: s.summary,
   puzzleIds: s.puzzles.map((p) => p.id),
+}));
+
+/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩) */
+const ENDGAME_STUDY_SETS = ENDGAME_SETS.map((s) => ({
+  id: s.id,
+  title: s.title,
+  summary: s.summary,
+  puzzleIds: s.drills.map((d) => d.id),
 }));
 
 /** 수 배우기 목록에 보일 오프닝 수순 묶음 */
@@ -419,11 +434,13 @@ const OPENING_SET = {
   labels: CHESS_OPENING_SET.lines.map((l) => l.name),
 };
 
-/** 목록에서 고른 것이 수순이면 수순 화면, 아니면 문제 화면 */
-const studyScreen = (id: string): Screen =>
+/** 목록에서 고른 것이 수순이면 수순 화면, 엔드게임 연습이면 연습 화면, 아니면 문제 화면 */
+const studyScreen = (id: string, review?: Review): Screen =>
   id.startsWith("line-")
-    ? { kind: "line", lineId: id }
-    : { kind: "puzzle", puzzleId: id };
+    ? { kind: "line", lineId: id, review }
+    : id.startsWith("end-")
+      ? { kind: "endgame", drillId: id, review }
+      : { kind: "puzzle", puzzleId: id, review };
 
 /** 체스(/chess): 첫 화면, 옵션, 규칙, 배우기, 다함께 체스 방, 대국 화면 */
 export function ChessApp() {
@@ -460,6 +477,15 @@ export function ChessApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
+  const reviewOf = (queue: Review, current: string) =>
+    reviewRunFor({
+      queue,
+      current,
+      progress: useChessStudyProgress,
+      open: (id, q) => setScreen(studyScreen(id, q)),
+      done: () => setScreen({ kind: "study", reviewDone: true }),
+    });
 
   if (screen.kind === "online")
     return (
@@ -481,7 +507,7 @@ export function ChessApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `이름난 첫 수들 ${OPENING_SET.puzzleIds.length}개, 메이트·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
+          detail: `이름난 첫 수들 ${OPENING_SET.puzzleIds.length}개, 메이트·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 퀸·룩으로 메이트하는 엔드게임 연습 ${ENDGAME_STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />
@@ -491,10 +517,11 @@ export function ChessApp() {
       <StudyHome
         title="체스 수 배우기"
         background={BG}
-        sets={[OPENING_SET, ...STUDY_SETS]}
+        sets={[OPENING_SET, ...STUDY_SETS, ...ENDGAME_STUDY_SETS]}
         progress={useChessStudyProgress}
-        onOpen={(id) => setScreen(studyScreen(id))}
+        onOpen={(id, review) => setScreen(studyScreen(id, review))}
         onBack={() => setScreen({ kind: "tutorial" })}
+        reviewDone={screen.reviewDone ?? false}
       />
     );
   if (screen.kind === "puzzle")
@@ -504,6 +531,7 @@ export function ChessApp() {
         puzzleId={screen.puzzleId}
         onExit={() => setScreen({ kind: "study" })}
         onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+        review={reviewOf(screen.review, screen.puzzleId)}
       />
     );
   if (screen.kind === "line")
@@ -513,6 +541,17 @@ export function ChessApp() {
         lineId={screen.lineId}
         onExit={() => setScreen({ kind: "study" })}
         onOpen={(id) => setScreen(studyScreen(id))}
+        review={reviewOf(screen.review, screen.lineId)}
+      />
+    );
+  if (screen.kind === "endgame")
+    return (
+      <ChessEndgameScreen
+        key={screen.drillId}
+        drillId={screen.drillId}
+        onExit={() => setScreen({ kind: "study" })}
+        onOpen={(id) => setScreen(studyScreen(id))}
+        review={reviewOf(screen.review, screen.drillId)}
       />
     );
   if (screen.kind === "lesson")
