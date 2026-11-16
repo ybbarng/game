@@ -185,6 +185,8 @@ export function createCubeRaceGame(
     shape && goal
       ? `|shape:${shape.id}:${shape.start}:${stateHash(goal.target)}`
       : "";
+  /** 상태 객체마다 진행(상태는 고치지 않고 수마다 새로 만든다) */
+  const progressOf = new WeakMap<PuzzleState, number>();
   return {
     id: `cube-${event}`,
     n,
@@ -237,10 +239,18 @@ export function createCubeRaceGame(
         : player !== undefined && Object.hasOwn(goals, player)
           ? goalReached(n, state, goals[player])
           : isSolved(n, state),
-    progress: (state) =>
-      goal && shape
-        ? shapeProgress(goal, state, shape.start)
-        : solvedPieceRatio(n, state),
+    progress: (state) => {
+      // 판 상태를 찍을 때(snapshot)마다 모든 참가자의 진행을 묻는데, 상태는 수를 둘 때만 새 객체로 바뀐다
+      let p = progressOf.get(state);
+      if (p === undefined) {
+        p =
+          goal && shape
+            ? shapeProgress(goal, state, shape.start)
+            : solvedPieceRatio(n, state);
+        progressOf.set(state, p);
+      }
+      return p;
+    },
     retireReasons: [BOT_NO_PLAN, ...PARTY_REASONS],
     ...(mode
       ? {
