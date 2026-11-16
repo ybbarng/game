@@ -155,9 +155,16 @@ export function explainEndgame(pos: Position, move: Move): string[] {
   const facing =
     (wx === bx && Math.abs(wy - by) === 2) ||
     (wy === by && Math.abs(wx - bx) === 2);
+  const farFacing =
+    (wx === bx && Math.abs(wy - by) === 4) ||
+    (wy === by && Math.abs(wx - bx) === 4);
   if (facing)
     lines.push(
       "킹끼리 한 칸 띄우고 마주 섰어요(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아가요.",
+    );
+  else if (farFacing)
+    lines.push(
+      "킹끼리 세 칸 띄우고 마주 섰어요(먼 맞서기). 흑 킹이 다가오면 백 킹도 마주 보며 다가가요. 그러면 한 칸 띄우고 마주 선 맞서기가 되고, 흑 킹이 비켜야 해요.",
     );
   else if (wy < Math.floor(pawn / 8))
     lines.push(
