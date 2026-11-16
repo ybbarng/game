@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { minhwatuKit } from "@/minhwatu/kit";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { reloadTab } from "@/net/reload-tab";
 
 import {
   type AnyHost,
@@ -38,10 +39,21 @@ const phase = (host: AnyHost) =>
 describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
   // 참가자 새로고침은 나이롱뽕(가져온 카드는 그 사람만 알아 되살릴 것이 가장 많다)으로 본다: nyrongppong-reload.test.ts
   it("방장이 판 중간과 다음 판에서 새로고침해도 이어 치고, 판마다·게임 끝 검증을 통과한다", async () => {
-    const { net, clock, host, guests, incidents, audits, verified, store } =
-      await setup(1, true);
+    const {
+      net,
+      clock,
+      host,
+      guests,
+      incidents,
+      audits,
+      verified,
+      store,
+      tab,
+    } = await setup(1, true);
+    if (!store || !tab) throw new Error("방장 저장소가 없다");
     await host.start();
     let current = host;
+    let currentTab = tab;
     for (const [k, point] of [4, 18].entries()) {
       await playHwatu({
         host: current,
@@ -51,9 +63,12 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
         done: () => (current.match?.actionLog().length ?? 0) >= point,
       });
       net.disconnect(k === 0 ? "host" : `host${k}`);
+      // 옛 탭은 사라진다: 더 남기지 못하고 계산도 멈춘다(reload-tab.ts)
+      currentTab.reload(current);
+      currentTab = reloadTab(store);
       // 메모리 네트워크는 끊김 알림을 마이크로태스크로 보내므로, 다음 차례 하나만 양보하면 모두에게 닿는다
       await new Promise((resolve) => setTimeout(resolve, 0));
-      const restore = store?.load();
+      const restore = store.load();
       current = new HostRoom({
         transport: net.join(`host${k + 1}`),
         ...hwatuHostOptions({
@@ -62,7 +77,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
           bot: minhwatuIntermediateBot,
           botLevel: 1,
           clock,
-          ...(store ? { store } : {}),
+          store: currentTab.store,
         }),
         ...(restore ? { restore } : {}),
       } as never) as AnyHost;
