@@ -38,7 +38,7 @@ import {
   PRESET_LABEL,
   resolveAction,
 } from "../input";
-import { keycapLabel, keysForMove } from "../keys/move-keys";
+import { keysForMove } from "../keys/move-keys";
 import { PRACTICE_N } from "../practice/problem";
 import type { PracticeMode } from "../practice/round";
 import { PracticeSession } from "../practice/session";
@@ -73,6 +73,7 @@ import {
 } from "../worker";
 import {
   type BubbleLine,
+  type BubbleSpan,
   type FromApp,
   hasApp,
   MINI_BUILD,
@@ -92,10 +93,10 @@ import {
   LEARN_PATH,
 } from "./hint";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
+import { algKeySpans, spansText } from "./key-spans";
 import { miniMirrorShown } from "./mirror";
 import { ProfileToApp } from "./ProfileToApp";
 import {
-  keysLabel,
   MENU_STAGES,
   MODE_TITLE,
   miniPracticeStorage,
@@ -2174,14 +2175,6 @@ function ReplayBox({
 /** 짧은 알림(남은 초, 횟수 다 씀 등)이 보이는 시간(ms) */
 const HINT_MSG_MS = 1500;
 
-/** 공식 한 줄의 수마다 키캡 글(「I J K」). 키가 없는 수는 「?」 */
-function keysText(keymap: Keymap | null, n: number, alg: string): string {
-  if (!keymap) return "";
-  return algTokens(alg)
-    .map((m) => keysForMove(keymap, n, m)?.map(keycapLabel).join(" ") ?? "?")
-    .join(" · ");
-}
-
 /** 앱 말풍선에 보낼 줄들(앱은 줄마다 글꼴만 고른다) */
 function hintBubbleLines(
   hint: FormulaHint | null,
@@ -2196,16 +2189,25 @@ function hintBubbleLines(
       style: "title",
     },
   ];
+  // 수 표기(고정폭 글자)와 키(키캡 상자)를 갈라 보인다(docs/47 4-4 「수 표기와 키」)
   if (hint.before) {
-    const k = keysText(keymap, n, hint.before);
-    lines.push({
-      text: `${hint.before} 뒤${k ? `  (${k})` : ""}`,
-      style: "note",
-    });
+    const spans: BubbleSpan[] = [
+      { text: hint.before, style: "move" },
+      { text: " 뒤", style: "plain" },
+      ...(keymap
+        ? [
+            { text: "  ", style: "plain" } as const,
+            ...algKeySpans(keymap, n, algTokens(hint.before)),
+          ]
+        : []),
+    ];
+    lines.push({ text: spansText(spans), style: "note", spans });
   }
   lines.push({ text: hint.alg, style: "alg" });
-  const k = keysText(keymap, n, hint.alg);
-  if (k) lines.push({ text: k, style: "keys" });
+  if (keymap) {
+    const spans = algKeySpans(keymap, n, algTokens(hint.alg));
+    lines.push({ text: spansText(spans), style: "keys", spans });
+  }
   return lines;
 }
 
@@ -2535,7 +2537,9 @@ function PracticeCard({
       )}
       {!roomy && p.wrong && (
         <span data-mini-practice-wrong-keys className="text-red-200">
-          {keysLabel(keymap, p.wrong.token)}
+          {keymap && (
+            <KeyCaps keys={keysForMove(keymap, PRACTICE_N, p.wrong.token)} />
+          )}
         </span>
       )}
       {roomy && p.commonAlg && showTokens && (

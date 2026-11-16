@@ -2,13 +2,14 @@
 // (`practice/session.ts`가 잇는다). 이 파일은 미니 모드에만 있는 것: 기록 자리, 앱 메뉴에 넘길 단계 목록,
 // 작은 창일 때 앱 말풍선에 보낼 줄.
 import type { Keymap } from "../input/keymaps";
-import { keycapLabel, keysForMove } from "../keys/move-keys";
+import { keysForMove } from "../keys/move-keys";
 import { PRACTICE_N } from "../practice/problem";
 import type { PracticeMode } from "../practice/round";
 import type { PracticeSession } from "../practice/session";
 import { METHOD_TITLE, PRACTICE_STAGES } from "../practice/stages";
 import { formatMs } from "../records";
 import type { BubbleLine, BubbleSpan } from "./app-bridge";
+import { moveKeySpans, spansText } from "./key-spans";
 
 /**
  * 미니 모드 연습 기록은 사이트 연습 기록(`cube.practice.v1`·보고 치기 `cube.train.v1`)과 같은 꼴로 `cube.mini.` 아래에 둔다.
@@ -59,14 +60,6 @@ export interface RoundKeys {
   again: string;
 }
 
-/** 수 하나의 키캡 글(「I」, 「I I」). 키가 없으면 「?」 */
-export function keysLabel(keymap: Keymap | null, token: string): string {
-  if (!keymap) return "";
-  return (
-    keysForMove(keymap, PRACTICE_N, token)?.map(keycapLabel).join(" ") ?? "?"
-  );
-}
-
 export const MODE_TITLE: Record<PracticeMode, string> = {
   follow: "따라 치기",
   see: "보고 치기",
@@ -107,9 +100,14 @@ export function practiceBubbleLines(
           : "next",
   }));
   lines.push({ text: tokens.join(" "), style: "alg", spans: spaced(spans) });
-  if (s.wrong) {
-    const k = keysLabel(keymap, s.wrong.token);
-    if (k) lines.push({ text: `${s.wrong.token}  ${k}`, style: "keys" });
+  if (s.wrong && keymap) {
+    // 수 표기(고정폭 글자)와 그 수의 키(키캡 상자)를 갈라 보인다(docs/47 4-4 「수 표기와 키」)
+    const wordSpans: BubbleSpan[] = [
+      { text: s.wrong.token, style: "move" },
+      { text: "  ", style: "plain" },
+      ...moveKeySpans(keysForMove(keymap, PRACTICE_N, s.wrong.token)),
+    ];
+    lines.push({ text: spansText(wordSpans), style: "keys", spans: wordSpans });
   }
   if (s.phase === "pause") lines.push({ text: "맞춤", style: "ok" });
   return lines;

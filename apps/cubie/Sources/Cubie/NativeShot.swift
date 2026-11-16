@@ -199,6 +199,31 @@ enum NativeShot {
       let parsed = lines.split(separator: "\n").map { NativeCubeWindow.bubbleLine(String($0)) }
       ok = shoot2D("native-practice", HintBubble().layoutForShot(lines: parsed)) && ok
     }
+    // 공식 연습에서 틀린 장면(docs/47 4-4 「수 표기와 키」): `CUBIE_NATIVE_SHOT_PRACTICE=oll:20,oll:79`(단계:씨앗).
+    // 첫 수와 다른 수의 키를 쳐서 틀린 줄을 띄운다. `-plain`은 낱말 꼴을 뺀 줄(옛 앱·옛 줄이 그리던 모양)
+    for spec in (ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT_PRACTICE"] ?? "").split(separator: ",") {
+      let parts = spec.split(separator: ":")
+      guard parts.count == 2, let seed = UInt32(parts[1]) else { continue }
+      let v = CACubeView(frame: NSRect(x: 0, y: 0, width: side, height: side), n: 3)
+      guard cubie_game_practice_start(v.game, String(parts[0]), false, "", "", "", seed) else {
+        print("[shot] 연습을 열지 못했다: \(spec)")
+        ok = false
+        continue
+      }
+      let read = {
+        "Enter".withCString { a in NativeCore.string { cubie_game_practice_lines(v.game, a, $0, $1) } }
+          .split(separator: "\n").map { NativeCubeWindow.bubbleLine(String($0)) }
+      }
+      let first = (read().first { $0["style"] as? String == "alg" }?["text"] as? String ?? "").split(separator: " ").first ?? ""
+      // 「두 손」 D 키 = L, S 키 = D. 첫 수가 L이면 S를 친다
+      _ = cubie_game_key(v.game, first.hasPrefix("L") ? 1 : 2, 0, seed)
+      let lines = read()
+      ok = shoot2D("native-practice-wrong-\(parts[0])-\(seed)", HintBubble().layoutForShot(lines: lines)) && ok
+      let plain = lines.map { l -> [String: Any] in
+        l["style"] as? String == "alg" ? l : l.filter { $0.key != "spans" }
+      }
+      ok = shoot2D("native-practice-wrong-\(parts[0])-\(seed)-plain", HintBubble().layoutForShot(lines: plain)) && ok
+    }
     // F1 단축키 표(두 손): 3×3(J 누름 빛남)과 7×7
     for (size, name) in [(3, "native-keys"), (7, "native-keys-7")] {
       let keys = NativeKeysView(frame: NSRect(origin: .zero, size: Config.keysPanelSize))

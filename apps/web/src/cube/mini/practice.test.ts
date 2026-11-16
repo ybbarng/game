@@ -96,6 +96,11 @@ describe("작은 창의 말풍선 줄", () => {
     const keys = lines.filter((l) => l.style === "keys");
     expect(keys).toHaveLength(1);
     expect(keys[0]?.text.startsWith(`${want}  `)).toBe(true);
+    // 수 표기와 키를 다른 꼴로 가른다(앱이 키는 키캡 상자로 그린다, docs/47 4-4 「수 표기와 키」)
+    const spans = keys[0]?.spans ?? [];
+    expect(spans[0]).toEqual({ text: want, style: "move" });
+    expect(spans.filter((x) => x.style === "key").length).toBeGreaterThan(0);
+    expect(spans.map((x) => x.text).join("")).toBe(keys[0]?.text);
     expect(
       lines.find((l) => l.style === "alg")?.spans?.find((x) => x.text === want)
         ?.style,

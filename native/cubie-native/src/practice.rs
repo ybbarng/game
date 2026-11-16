@@ -2,7 +2,7 @@
 //! 자료로 어긋남 0)를 한 판([`Game`])에 붙인다. 연습하는 동안 키는 진행기로 가고, 받은 수만 장면에 넣는다(틀린 수는
 //! 넣지 않고 그 수의 키를 잠깐 보인다). 말풍선 줄은 사이트 `mini/practice.ts` `practiceBubbleLines`와 같은 글이다.
 
-use cube_core::keys::{keycaps_for_move, Command, KeyInput, KeyResult};
+use cube_core::keys::{keycap_label, keys_for_move, Command, KeyInput, KeyResult, Keymap};
 use cube_core::mask::{mask_at_slots, mask_for, Visibility};
 use cube_core::practice::{
     stage_by_id, PracticeEvent, PracticeInput, PracticeMode, PracticePhase, PracticeSession,
@@ -16,6 +16,53 @@ pub const EV_REPAINT: u32 = 1;
 pub const EV_SOLVED: u32 = 2;
 pub const EV_INVALID: u32 = 4;
 pub const EV_ROUND_OVER: u32 = 8;
+
+/// 말풍선 낱말 하나를 「꼴:글」로(앱 `bubbleLine`이 0x1f로 나눠 읽는다)
+fn span(style: &str, text: &str) -> String {
+    format!("{style}:{text}")
+}
+
+/// 수 하나의 키 낱말(사이트 `mini/key-spans.ts` `moveKeySpans`, docs/47 4-4 「수 표기와 키」): 키마다 키캡(key),
+/// 같은 키는 빈칸으로 나란히, 다른 키로 넘어가면 차례 화살(arrow). 키가 없으면 「?」
+pub fn move_key_spans(keymap: &Keymap, n: usize, notation: &str) -> Vec<String> {
+    let Some(keys) = keys_for_move(keymap, n, notation).filter(|k| !k.is_empty()) else {
+        return vec![span("plain", "?")];
+    };
+    let labels: Vec<String> = keys.iter().map(keycap_label).collect();
+    let mut out = Vec::new();
+    for (i, l) in labels.iter().enumerate() {
+        if i > 0 {
+            out.push(if labels[i - 1] == *l {
+                span("plain", " ")
+            } else {
+                span("arrow", " → ")
+            });
+        }
+        out.push(span("key", l));
+    }
+    out
+}
+
+/// 공식의 수마다 키 낱말을 「 · 」로 잇는다(사이트 `algKeySpans`)
+pub fn alg_key_spans(keymap: &Keymap, n: usize, alg: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for (i, m) in alg.split_whitespace().enumerate() {
+        if i > 0 {
+            out.push(span("plain", " · "));
+        }
+        out.extend(move_key_spans(keymap, n, m));
+    }
+    out
+}
+
+/// 낱말들 → 말풍선 줄 끝 두 칸(「글\t낱말들」). 글은 낱말을 이은 것(꼴을 모르는 앱이 그린다)
+pub fn spans_fields(spans: &[String]) -> String {
+    let text: String = spans
+        .iter()
+        .map(|s| s.split_once(':').map_or("", |(_, t)| t))
+        .collect();
+    format!("{text}\t{}", spans.join("\u{1f}"))
+}
 
 /// 사이트 `formatMs`
 pub fn format_ms(ms: f64) -> String {
@@ -189,8 +236,6 @@ impl Game {
         let Some(s) = self.practice.as_ref() else {
             return vec![];
         };
-        let keymap = self.keymap_clone();
-        let keys = |t: &str| keycaps_for_move(&keymap, PRACTICE_N, t).unwrap_or_else(|| "?".into());
         if s.phase == PracticePhase::Over {
             if let Some(sum) = &s.summary {
                 let mut lines = vec![
@@ -260,10 +305,10 @@ impl Game {
             spans.join("\u{1f}")
         ));
         if let Some((_, token)) = &s.wrong {
-            let k = keys(token);
-            if !k.is_empty() {
-                lines.push(format!("keys\t{token}  {k}"));
-            }
+            // 수 표기(고정폭 글자)와 그 수의 키(키캡 상자)를 갈라 보인다(사이트 `practiceBubbleLines`)
+            let mut sp = vec![span("move", token), span("plain", "  ")];
+            sp.extend(move_key_spans(self.keymap(), PRACTICE_N, token));
+            lines.push(format!("keys\t{}", spans_fields(&sp)));
         }
         if s.phase == PracticePhase::Pause {
             lines.push("ok\t맞춤".into());
@@ -284,7 +329,49 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cube_core::keys::{preset_keymap, two_hand_keymap, Preset};
     use cube_core::practice::menu_stages;
+
+    // 사이트 `mini/key-spans.test.ts`와 같은 예(docs/47 4-4 「수 표기와 키」)
+    #[test]
+    fn key_spans_split_moves_and_keycaps() {
+        let two = two_hand_keymap();
+        let sp = alg_key_spans(&two, 3, "R U' R2");
+        assert_eq!(
+            sp,
+            [
+                "key:I",
+                "plain: · ",
+                "key:F",
+                "plain: · ",
+                "key:I",
+                "plain: ",
+                "key:I"
+            ]
+        );
+        assert_eq!(spans_fields(&sp).split('\t').next(), Some("I · F · I I"));
+        let sp = alg_key_spans(&preset_keymap(Preset::Notation), 4, "2R");
+        assert_eq!(sp, ["key:2", "arrow: → ", "key:R"]);
+        assert_eq!(move_key_spans(&two, 3, "Q"), ["plain:?"]);
+    }
+
+    #[test]
+    fn wrong_move_line_keeps_move_and_keycaps_apart() {
+        let mut g = Game::new(3);
+        assert!(g.practice_start(menu_stages()[0].id, false, "{}", "", "", 7));
+        let want = g.practice.as_ref().unwrap().tokens()[0].clone();
+        let other = if want.starts_with('D') { "B" } else { "D" };
+        let mv = cube_core::parse_moves(3, other).unwrap()[0];
+        g.practice.as_mut().unwrap().input(&mv, 0.0);
+        let lines = g.practice_lines("Enter");
+        let keys: Vec<&String> = lines.iter().filter(|l| l.starts_with("keys\t")).collect();
+        assert_eq!(keys.len(), 1, "{lines:?}");
+        let f: Vec<&str> = keys[0].split('\t').collect();
+        assert!(f[1].starts_with(&format!("{want}  ")), "{f:?}");
+        let spans: Vec<&str> = f[2].split('\u{1f}').collect();
+        assert_eq!(spans[0], format!("move:{want}"));
+        assert!(spans.iter().any(|s| s.starts_with("key:")), "{spans:?}");
+    }
 
     #[test]
     fn practice_runs_inside_the_game() {

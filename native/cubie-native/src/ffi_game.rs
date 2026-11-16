@@ -10,7 +10,6 @@ use crate::game::{Game, Outcome, ScrambleShow};
 use crate::keycode::mac_key_code;
 use cube_core::hint::{pick_hint, HintAnswer};
 use cube_core::keys::actions::parse_action;
-use cube_core::keys::keycaps_for_move;
 use cube_core::keys::keymap::KeyBinding;
 use cube_core::keys::{preset_keymap, Command, KeyInput, Keymap, Preset};
 use cube_core::replay::replay_steps;
@@ -309,8 +308,9 @@ pub unsafe extern "C" fn cubie_game_set_move_ms(g: *mut CubieGame, ms: f64) {
 }
 
 /// 지금 상태의 힌트(사이트 `pickHint`, docs/47 15-15)를 줄 여덟으로 쓴다: 갈래(`hint`·`none`·`unsupported`),
-/// 단계 이름, 상황 이름, 쥐는 법, 공식, 배우기 단원 id, 공식의 키캡 줄, 쥐는 법의 키캡 줄(사이트 `keysText`: 수마다
-/// 키캡을 「 · 」로 잇고, 키가 없는 수는 「?」). 글 전체 바이트 수를 돌려준다
+/// 단계 이름, 상황 이름, 쥐는 법, 공식, 배우기 단원 id, 공식의 키 낱말, 쥐는 법의 키 낱말. 키 낱말은 「꼴:글」을 0x1f로
+/// 이은 것이다(사이트 `mini/key-spans.ts` `algKeySpans`: 키마다 키캡, 수 사이 「 · 」, 키가 없는 수는 「?」,
+/// docs/47 4-4 「수 표기와 키」). 글 전체 바이트 수를 돌려준다
 ///
 /// # Safety
 /// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
@@ -319,10 +319,7 @@ pub unsafe extern "C" fn cubie_game_hint(g: *const CubieGame, out: *mut u8, len:
     let g = unsafe { &*g };
     let n = g.game.n;
     let keys = |alg: &str| -> String {
-        alg.split_whitespace()
-            .map(|m| keycaps_for_move(g.game.keymap(), n, m).unwrap_or_else(|| "?".into()))
-            .collect::<Vec<_>>()
-            .join(" · ")
+        crate::practice::alg_key_spans(g.game.keymap(), n, alg).join("\u{1f}")
     };
     let lines: Vec<String> = match pick_hint(n, g.game.state()) {
         HintAnswer::Hint(h) => vec![

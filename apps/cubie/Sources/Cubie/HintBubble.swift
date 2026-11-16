@@ -4,6 +4,7 @@ import CubieCore
 /// 「공식 보기」 말풍선(docs/47 15-15): 큐브 창 옆에 잠깐 뜨는 작은 패널. 기본 창(96pt)에는 글이 들어가지 않아 앱이 옆에 그린다.
 /// - 내용은 웹이 줄로 보낸다(`app-bridge.ts` `BubbleLine`: 글과 꼴 title·note·alg·keys·plain·ok). 앱은 줄마다 글꼴만 고른다.
 ///   줄에 `spans`가 있으면 그 줄을 낱말마다 색을 달리해 그린다(공식 연습의 친 것·지금 칠 것·틀린 것, docs/47 16-11).
+///   키를 적는 줄은 수 표기(move, 고정폭 글자)와 키(key, 키캡 상자)를 갈라 그린다(사이트 `MoveChip`과 같은 규칙, docs/47 4-4).
 ///   공식 연습도 같은 말풍선을 쓴다(작은 창일 때 공식과 판 끝 결과).
 /// - 포커스를 빼앗지 않고(키를 받지 않음) 마우스는 지나간다. 숨기기는 웹이 정한다(5초 뒤·수를 둠).
 /// - 자리는 `WindowPlacement.bubbleFrame`(창 옆 화면 안쪽, 보이는 영역 안).
@@ -95,18 +96,59 @@ final class HintBubble {
       if let spans = line["spans"] as? [[String: Any]], !spans.isEmpty {
         for span in spans {
           var a = attrs
+          let text = span["text"] as? String ?? ""
           switch span["style"] as? String {
           case "done": a[.foregroundColor] = NSColor.systemGreen
           case "now": a[.underlineStyle] = NSUnderlineStyle.single.rawValue
           case "wrong": a[.foregroundColor] = NSColor.systemRed
+          case "plain": break
+          case "move":
+            a[.font] = NSFont.monospacedSystemFont(ofSize: max(font.pointSize, 13), weight: .semibold)
+            a[.foregroundColor] = NSColor.white
+          case "key":
+            out.append(Self.keycap(text, line: font, attrs: attrs))
+            continue
+          case "arrow":
+            a[.font] = NSFont.systemFont(ofSize: 9)
+            a[.foregroundColor] = NSColor(white: 1, alpha: 0.6)
           default: a[.foregroundColor] = NSColor(white: 1, alpha: 0.6)
           }
-          out.append(NSAttributedString(string: span["text"] as? String ?? "", attributes: a))
+          out.append(NSAttributedString(string: text, attributes: a))
         }
       } else {
         out.append(NSAttributedString(string: text, attributes: attrs))
       }
     }
     return out
+  }
+
+  /// 키 하나를 키캡 상자로(사이트 `KeyCaps`의 `<kbd>`: 둥근 테두리, 보통 글꼴 굵게 11, docs/47 4-4 「수 표기와 키」).
+  /// 수 표기는 고정폭 글자라 상자 안의 키와 한눈에 갈린다. 상자는 줄 글자의 가운데 높이에 맞춘다
+  static func keycap(_ label: String, line: NSFont, attrs: [NSAttributedString.Key: Any]) -> NSAttributedString {
+    let font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+    let textAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor(white: 1, alpha: 0.92)]
+    let textSize = (label as NSString).size(withAttributes: textAttrs)
+    let height: CGFloat = 16
+    let width = max(16, ceil(textSize.width) + 8)
+    let image = NSImage(size: NSSize(width: width + 2, height: height), flipped: false) { _ in
+      let box = NSRect(x: 1.5, y: 0.5, width: width - 1, height: height - 1)
+      let path = NSBezierPath(roundedRect: box, xRadius: 3, yRadius: 3)
+      NSColor(white: 1, alpha: 0.08).setFill()
+      path.fill()
+      NSColor(white: 1, alpha: 0.45).setStroke()
+      path.lineWidth = 1
+      path.stroke()
+      let origin = NSPoint(x: 1 + (width - textSize.width) / 2, y: (height - textSize.height) / 2)
+      (label as NSString).draw(at: origin, withAttributes: textAttrs)
+      return true
+    }
+    let attachment = NSTextAttachment()
+    attachment.image = image
+    // 줄 글자의 x 높이 가운데에 상자 가운데를 맞춘다
+    let y = round((line.xHeight - height) / 2)
+    attachment.bounds = NSRect(x: 0, y: y, width: image.size.width, height: height)
+    let s = NSMutableAttributedString(attachment: attachment)
+    s.addAttributes(attrs, range: NSRange(location: 0, length: s.length))
+    return s
   }
 }

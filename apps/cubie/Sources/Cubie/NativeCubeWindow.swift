@@ -372,18 +372,36 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     onHint?(out)
   }
 
-  /// 코어 힌트 → 갈래와 말풍선 줄(사이트 `hintBubbleLines`: 단계·상황, 쥐는 법(키캡), 공식, 공식 키캡)
+  /// 코어 힌트 → 갈래와 말풍선 줄(사이트 `hintBubbleLines`: 단계·상황, 쥐는 법과 그 키, 공식, 공식의 키).
+  /// 키 칸은 코어가 낱말 꼴(「꼴:글」을 0x1f로 이음)로 주고, 수 표기(move)와 키(key, 키캡 상자)를 갈라 그린다(docs/47 4-4)
   static func hintLines(game: OpaquePointer) -> (kind: String, lines: [[String: Any]]) {
     let lines = NativeCore.string { cubie_game_hint(game, $0, $1) }.components(separatedBy: "\n")
     let field = { (i: Int) in i < lines.count ? lines[i] : "" }
     let (stage, name, before, alg, keys, beforeKeys) = (field(1), field(2), field(3), field(4), field(6), field(7))
     var out: [[String: Any]] = [["text": name.isEmpty ? stage : "\(stage) · \(name)", "style": "title"]]
     if !before.isEmpty {
-      out.append(["text": beforeKeys.isEmpty ? "\(before) 뒤" : "\(before) 뒤  (\(beforeKeys))", "style": "note"])
+      var spans: [[String: Any]] = [["style": "move", "text": before], ["style": "plain", "text": " 뒤"]]
+      if !beforeKeys.isEmpty { spans += [["style": "plain", "text": "  "]] + Self.spans(beforeKeys) }
+      out.append(["text": Self.spansText(spans), "style": "note", "spans": spans])
     }
     out.append(["text": alg, "style": "alg"])
-    if !keys.isEmpty { out.append(["text": keys, "style": "keys"]) }
+    if !keys.isEmpty {
+      let spans = Self.spans(keys)
+      out.append(["text": Self.spansText(spans), "style": "keys", "spans": spans])
+    }
     return (field(0).isEmpty ? "none" : field(0), out)
+  }
+
+  /// 「꼴:글」을 0x1f로 이은 낱말들 → 말풍선 낱말
+  static func spans(_ raw: String) -> [[String: Any]] {
+    raw.split(separator: "\u{1f}").map { sp -> [String: Any] in
+      let p = sp.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+      return ["style": p[0], "text": p.count > 1 ? p[1] : ""]
+    }
+  }
+
+  static func spansText(_ spans: [[String: Any]]) -> String {
+    spans.map { $0["text"] as? String ?? "" }.joined()
   }
 
   /// 짧은 알림 한 줄(1.5초)
@@ -514,12 +532,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   static func bubbleLine(_ raw: String) -> [String: Any] {
     let f = raw.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
     var line: [String: Any] = ["style": f.first ?? "plain", "text": f.count > 1 ? f[1] : ""]
-    if f.count > 2 {
-      line["spans"] = f[2].split(separator: "\u{1f}").map { sp -> [String: Any] in
-        let p = sp.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
-        return ["style": p[0], "text": p.count > 1 ? p[1] : ""]
-      }
-    }
+    if f.count > 2 { line["spans"] = spans(f[2]) }
     return line
   }
 

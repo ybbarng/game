@@ -1370,7 +1370,13 @@ function formulaKeys(alg: string): string[] {
 
 type PracticeSent = {
   type: string;
-  lines?: { text: string; style: string }[] | null;
+  lines?:
+    | {
+        text: string;
+        style: string;
+        spans?: { text: string; style: string }[];
+      }[]
+    | null;
   practice?: string | null;
   practiceStages?: { id: string; title: string; group: string }[];
 };
@@ -1466,6 +1472,10 @@ test(
     expect(lines.find((l) => l.style === "keys")?.text.split("  ")[0]).toBe(
       first,
     );
+    // 수 표기(move)와 키(key, 앱이 키캡 상자로 그림)를 다른 꼴로 보낸다(docs/47 4-4 「수 표기와 키」)
+    const keySpans = lines.find((l) => l.style === "keys")?.spans ?? [];
+    expect(keySpans[0]).toEqual({ text: first, style: "move" });
+    expect(keySpans.some((x) => x.style === "key")).toBe(true);
     await page.clock.fastForward(1500);
     await expect(main).not.toHaveAttribute("data-mini-practice-wrong", /.+/);
 

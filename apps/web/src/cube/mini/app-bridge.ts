@@ -61,9 +61,14 @@ export interface BubbleLine {
   spans?: BubbleSpan[];
 }
 
+/**
+ * 낱말 꼴. done·now·next·wrong은 공식 줄의 진행(0.1.7부터). 키를 적는 줄은 사이트 `MoveChip`과 같은 규칙으로
+ * 수 표기와 키를 가른다(docs/47 4-4 「수 표기와 키」): move = 수 표기(고정폭 글자), key = 키 하나(키캡 상자),
+ * arrow = 한 수의 다른 키로 넘어가는 차례 화살, plain = 줄의 글꼴·색 그대로(사이 글). 모르는 앱은 회색 글로 그린다
+ */
 export interface BubbleSpan {
   text: string;
-  style: "done" | "now" | "next" | "wrong";
+  style: "done" | "now" | "next" | "wrong" | "move" | "key" | "arrow" | "plain";
 }
 
 /** 화면이 앱에 보내는 것 */
