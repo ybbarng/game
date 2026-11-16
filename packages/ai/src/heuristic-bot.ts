@@ -26,8 +26,8 @@ import {
 
 import type { Bot } from "./bot";
 import { bestKiruda, cardKeepValue, estimatePoints, KIRUDAS } from "./hand";
-
-type Relation = "me" | "partner" | "opponent" | "unknown";
+import { jokerCallChance } from "./joker-call";
+import { isRulingSelf, relationTo } from "./sides";
 
 /**
  * 정석(나무위키 "전술 및 전략", docs/09-ai-strategy.md). 하나씩 켜고 끌 수 있어 세기를 따로 잰다.
@@ -38,6 +38,7 @@ type Relation = "me" | "partner" | "opponent" | "unknown";
  * - `voidSuit` 무늬 비우기: 바닥 카드를 버릴 때 A 없는 짧은 무늬를 통째로 묻는다
  * - `kirudaCut` 초간: 선 무늬가 없어 기루다로 간을 칠 때 편과 뒷사람을 보고 어느 기루다로 칠지 고른다
  * - `jokerSuicide` 조커 자살: 조커콜 무늬 A 프렌드(보통 ♣A)를 보면 첫 트릭에 조커를 버린다
+ * - `jokerCallOdds` 조커콜 가리기: 효과 있을(상대 조커를 끌어내고 우리 편이 먹을) 가능성이 낮으면 조커콜을 하지 않는다
  */
 export type BookRule =
   | "mightyAttack"
@@ -46,7 +47,8 @@ export type BookRule =
   | "countKiruda"
   | "voidSuit"
   | "kirudaCut"
-  | "jokerSuicide";
+  | "jokerSuicide"
+  | "jokerCallOdds";
 
 export const BOOK_RULES: readonly BookRule[] = [
   "mightyAttack",
@@ -56,6 +58,7 @@ export const BOOK_RULES: readonly BookRule[] = [
   "voidSuit",
   "kirudaCut",
   "jokerSuicide",
+  "jokerCallOdds",
 ];
 
 export interface RuleBotOptions {
@@ -68,12 +71,15 @@ export interface RuleBotOptions {
    * 편을 모르는데 점수 카드 싣기, 공약 숫자를 들쭉날쭉 부르기
    */
   mistakes?: number;
+  /** `jokerCallOdds`의 문턱: 효과 있을 가능성이 이만큼 안 되면 조커콜을 하지 않는다 */
+  jokerCallMin?: number;
 }
 
 interface Style {
   book: ReadonlySet<BookRule>;
   mistakes: number;
   rng: RngState;
+  jokerCallMin: number;
 }
 
 function slip(style: Style): boolean {
@@ -94,22 +100,6 @@ type PlayDecision = Extract<Decision, { kind: "play" }>;
 
 function kirudaOf(view: PlayerView): Kiruda {
   return view.goal?.kiruda ?? "NT";
-}
-
-function isRulingSelf(view: PlayerView): boolean {
-  return view.seat === view.declarer || view.friend === view.seat;
-}
-
-/** 다른 자리가 나와 같은 편인지. 프렌드가 드러나기 전에는 모를 수 있다. */
-function relationTo(view: PlayerView, other: number): Relation {
-  if (other === view.seat) return "me";
-  const ruling = isRulingSelf(view);
-  const friendKnown = view.friend !== null || view.friendRevealed;
-  const otherRuling =
-    other === view.declarer || (view.friend !== null && other === view.friend);
-  if (otherRuling) return ruling ? "partner" : "opponent";
-  if (!friendKnown) return "unknown";
-  return ruling ? "opponent" : "partner";
 }
 
 /** 카드를 쓰는 비용. 싼 카드부터 낸다. */
@@ -254,8 +244,13 @@ function lead(view: PlayerView, decision: PlayDecision, style: Style): Action {
   const mighty = mightyOf(view.rules, kiruda);
   const seen = seenCards(view);
 
-  // 조커콜로 상대 조커를 끌어낸다.
-  if (decision.jokerCallCard && !jokerOut)
+  // 조커콜로 상대 조커를 끌어낸다. 조커콜 가리기: 효과 있을 가능성이 낮으면(우리 편 조커일 법하면 등) 하지 않는다.
+  if (
+    decision.jokerCallCard &&
+    !jokerOut &&
+    (!style.book.has("jokerCallOdds") ||
+      jokerCallChance(view).effective >= style.jokerCallMin)
+  )
     return playCard(view, decision.jokerCallCard, true);
 
   // 첫 턴 확보: 조커 프렌드면 놓친 첫 턴 뒤에 조커콜까지 맞기 쉽다. 다른 무늬 A가 없으면 마이티로 먹는다.
@@ -528,16 +523,20 @@ function killAction(
   return { type: "kill", card: card ?? (decision.candidates[0] as Card) };
 }
 
+/** `jokerCallOdds`의 기본 문턱(bench로 정한다) */
+export const JOKER_CALL_MIN = 0.2;
+
 /** 규칙 기반 봇. 보이는 정보만으로 공약·교환·프렌드·카드를 고른다. */
 export function createRuleBot(options: RuleBotOptions = {}): Bot {
   const book = new Set(options.book ?? []);
   const mistakes = options.mistakes ?? 0;
+  const jokerCallMin = options.jokerCallMin ?? JOKER_CALL_MIN;
   return {
     name: options.name ?? "rule",
     decide(view: PlayerView, rng: RngState): Action {
       const decision = view.decision;
       if (decision === null) throw new Error("결정할 것이 없다");
-      const style: Style = { book, mistakes, rng };
+      const style: Style = { book, mistakes, rng, jokerCallMin };
       switch (decision.kind) {
         case "pick": {
           const card = decision.faceUp;
@@ -583,6 +582,7 @@ export const NORMAL_BOOK: readonly BookRule[] = [
   "voidSuit",
   "kirudaCut",
   "jokerSuicide",
+  "jokerCallOdds",
 ];
 
 /** 입문: 정석을 모르고 초보 실수를 30% 확률로 한다 */
