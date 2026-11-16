@@ -49,6 +49,8 @@ protocol CubeSurface: AnyObject {
   var onPlaced: (() -> Void)? { get set }
   /// 큐브 위 오른쪽 누르기 메뉴
   var menuProvider: (() -> NSMenu)? { get set }
+  /// 맞추는 중(시간이 도는 판·공식 연습). 새 판 말풍선은 이때 미룬다(`UpdateNotice`)
+  var solving: Bool { get }
 
   func send(_ command: CubeCommand)
   /// 포커스·보임이 바뀌었을 수 있다

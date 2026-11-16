@@ -117,6 +117,9 @@ final class CubeWindow: FloatingWindow, CubeSurface, WKNavigationDelegate {
     get { bridge.onPressed }
     set { bridge.onPressed = newValue }
   }
+  /// 웹 화면(되돌림 스위치)은 맞추는 중인지 알려 주지 않는다. 공식 연습만 본다
+  var solving: Bool { bridge.state.practice != nil }
+
   var menuProvider: (() -> NSMenu)? {
     get { webView.menuProvider }
     set { webView.menuProvider = newValue }

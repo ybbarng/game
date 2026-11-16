@@ -4,7 +4,8 @@ import Sparkle
 /// 자동 업데이트(Sparkle 2, docs/47 15-12).
 /// - 목록은 `SUFeedURL`(사이트의 /cubie/appcast.xml), 확인은 하루 한 번(`SUScheduledCheckInterval`), 업데이트 파일은 EdDSA로 확인한다.
 /// - 메뉴 막대 앱이라 정해진 확인에서 새 판을 찾아도 창을 띄우지 않는다(하던 앱의 포커스를 빼앗지 않게).
-///   메뉴 첫 줄에 「새 판 … 설치…」를 보이고, 누르면 그때 Sparkle 창을 연다.
+///   메뉴 첫 줄(메뉴 막대·큐브 오른쪽 클릭)에 「새 판 … 설치…」를 보이고, 누르면 그때 Sparkle 창을 연다.
+///   사용자가 큐브로 오면 큐브 옆 말풍선으로도 알린다(`AppDelegate.showUpdateNoticeIfDue`, `UpdateNotice`).
 @MainActor
 final class Updater: NSObject, SPUStandardUserDriverDelegate {
   private var controller: SPUStandardUpdaterController?

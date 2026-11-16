@@ -14,6 +14,13 @@ public enum WindowGesture {
     hypot(to.x - from.x, to.y - from.y) >= threshold
   }
 
+  /// 이 누르기로 큐브 위 메뉴를 여는가: 오른쪽 단추(트랙패드 두 손가락 클릭도 오른쪽 단추로 온다)와 Control + 클릭.
+  /// ⌘가 함께 눌렸으면 ⌘ + 끌기(창 옮기기)가 먼저다
+  public static func opensMenu(rightButton: Bool, control: Bool, command: Bool) -> Bool {
+    if rightButton { return true }
+    return control && !command
+  }
+
   /// 끌기: 누를 때 창 자리 `origin`에서 마우스가 움직인 만큼 옮긴 자리
   public static func dragged(origin: CGPoint, from: CGPoint, to: CGPoint) -> CGPoint {
     CGPoint(x: origin.x + (to.x - from.x), y: origin.y + (to.y - from.y))

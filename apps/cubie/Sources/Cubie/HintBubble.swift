@@ -7,12 +7,14 @@ import CubieCore
 ///   키를 적는 줄은 수 표기(move, 고정폭 글자)와 키(key, 키캡 상자)를 갈라 그린다(사이트 `MoveChip`과 같은 규칙, docs/47 4-4).
 ///   공식 연습도 같은 말풍선을 쓴다(작은 창일 때 공식과 판 끝 결과).
 /// - 포커스를 빼앗지 않고(키를 받지 않음) 마우스는 지나간다. 숨기기는 웹이 정한다(5초 뒤·수를 둠).
+///   새 판 알림(`UpdateNotice`)일 때만 누를 수 있다(`show(…, onClick:)`, 누르면 Sparkle 창).
+
 /// - 자리는 `WindowPlacement.bubbleFrame`(창 옆 화면 안쪽, 보이는 영역 안).
 @MainActor
 final class HintBubble {
   private let panel: NSPanel
   private let label = NSTextField(labelWithString: "")
-  private let box = NSView()
+  private let box = BubbleBox()
   private static let padding: CGFloat = 10
   private static let maxWidth: CGFloat = 300
 
@@ -45,8 +47,16 @@ final class HintBubble {
 
   var isShown: Bool { panel.isVisible }
 
-  /// 줄들을 그리고 큐브 창 옆에 띄운다. `cube`는 큐브 창 자리, `visible`은 그 창이 있는 화면의 보이는 영역
-  func show(lines: [[String: Any]], cube: NSRect, visible: NSRect) {
+  /// 새 판 알림 말풍선의 줄(판 번호와 「설치」만, `UpdateNotice.text`)
+  static func updateLines(version: String) -> [[String: Any]] {
+    [["text": UpdateNotice.text(version: version), "style": "title"]]
+  }
+
+  /// 줄들을 그리고 큐브 창 옆에 띄운다. `cube`는 큐브 창 자리, `visible`은 그 창이 있는 화면의 보이는 영역.
+  /// `onClick`이 있으면 말풍선을 누를 수 있다(없으면 마우스가 지나간다)
+  func show(lines: [[String: Any]], cube: NSRect, visible: NSRect, onClick: (() -> Void)? = nil) {
+    box.onClick = onClick
+    panel.ignoresMouseEvents = onClick == nil
     label.attributedStringValue = Self.text(lines)
     let fit = label.sizeThatFits(NSSize(width: Self.maxWidth - Self.padding * 2, height: .greatestFiniteMagnitude))
     let size = NSSize(width: ceil(fit.width) + Self.padding * 2, height: ceil(fit.height) + Self.padding * 2)
@@ -63,7 +73,11 @@ final class HintBubble {
       WindowPlacement.bubbleFrame(cube: cube, bubble: panel.frame.size, visible: visible), display: true)
   }
 
-  func hide() { panel.orderOut(nil) }
+  func hide() {
+    box.onClick = nil
+    panel.ignoresMouseEvents = true
+    panel.orderOut(nil)
+  }
 
   /// 스크린샷용: 줄들을 그린 상자(창은 띄우지 않는다)
   func layoutForShot(lines: [[String: Any]]) -> NSView {
@@ -150,5 +164,22 @@ final class HintBubble {
     let s = NSMutableAttributedString(attachment: attachment)
     s.addAttributes(attrs, range: NSRange(location: 0, length: s.length))
     return s
+  }
+}
+
+/// 말풍선 바탕. 누를 수 있는 말풍선(새 판 알림)이면 누르기를 받는다. 창이 키가 아니어도 첫 누름을 받는다
+private final class BubbleBox: NSView {
+  var onClick: (() -> Void)?
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    onClick != nil && frame.contains(point) ? self : nil
+  }
+  // 누름은 여기서 받고(다음 응답자로 넘기지 않는다), 뗄 때 말풍선 안이면 누른 것으로
+  override func mouseDown(with event: NSEvent) {}
+  override func mouseUp(with event: NSEvent) {
+    if bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
+  }
+  override func resetCursorRects() {
+    if onClick != nil { addCursorRect(bounds, cursor: .pointingHand) }
   }
 }

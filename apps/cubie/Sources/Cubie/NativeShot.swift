@@ -224,6 +224,8 @@ enum NativeShot {
       }
       ok = shoot2D("native-practice-wrong-\(parts[0])-\(seed)-plain", HintBubble().layoutForShot(lines: plain)) && ok
     }
+    // 새 판 알림 말풍선(docs/47 15-12, 판 번호는 보기)
+    ok = shoot2D("native-update", HintBubble().layoutForShot(lines: HintBubble.updateLines(version: "0.3.1"))) && ok
     // F1 단축키 표(두 손): 3×3(J 누름 빛남)과 7×7
     for (size, name) in [(3, "native-keys"), (7, "native-keys-7")] {
       let keys = NativeKeysView(frame: NSRect(origin: .zero, size: Config.keysPanelSize))

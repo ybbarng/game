@@ -565,6 +565,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | Esc: 표 닫기 → 연습 끝내기 → 이전 앱 | 앱 | 앱(같은 코드) | 옮김 |
 | 자리·모니터·크기·끌어 옮기기·핀치·손잡이·빈 곳 누르기 넘기기 | `CubeWindow` | `FloatingWindow`(웹과 함께 씀), 누르는 자리는 `CubeGeometry.hitRects` | 옮김 |
 | 메뉴 전체(`MenuLayout`)·⌃⌥⌘C·업데이트 | `AppDelegate` | 같은 코드(`CubeSurface`만 봄) | 옮김 |
+| 큐브 위 오른쪽 클릭 메뉴(오른쪽 단추·두 손가락 클릭·Control + 클릭) | `CubieWebView.willOpenMenu`(`WKWebView`가 띄움) | `FloatingWindow.handleDrag` → `NativeCubeWindow.contextMenu`(같은 `buildMenu(forWindow: true)`, 판단은 `WindowGesture.opensMenu`) | 옮김(2026-11-16. 0.2.0~0.3.0에서 빠져 있었다: 웹 뷰가 저절로 해 주던 일이라 기능 표에 줄이 없었다) |
 | 키 출처(공정함 확인) | `KeySource`·`key` 메시지 | 앱이 판에 바로 모음 | 옮김 |
 | 기록 옮기기(웹 저장소 → 앱 저장소, 한 번, 지우지 않음) | — | `WebStorageMigration` | 옮김 |
 | 대결하기·배우기 | 기본 브라우저 | 기본 브라우저 | 웹 창으로 남김(그대로) |
