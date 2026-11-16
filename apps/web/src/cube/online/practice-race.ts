@@ -23,6 +23,7 @@ import {
 } from "../practice/versus";
 import {
   ALG_PREFIX,
+  BOT_HOST_RELOAD,
   BOT_NO_PLAN,
   type CubeAct,
   type CubeRaceGame,
@@ -80,7 +81,7 @@ export function createPracticeRaceGame(rule: VersusRule): CubeRaceGame {
     },
     isSolved: (state) => versusOver(trackOf(state)),
     progress: (state) => versusProgress(trackOf(state)),
-    retireReasons: [BOT_NO_PLAN],
+    retireReasons: [BOT_NO_PLAN, BOT_HOST_RELOAD],
     // 큐브 돌리기(x·y·z)와 공식 보기·공식 알리기는 수로 세지 않는다
     isTurn(text) {
       if (text === PEEK_TEXT || text.startsWith(ALG_PREFIX)) return false;
