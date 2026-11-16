@@ -61,6 +61,7 @@ import {
   buildHint,
   buildRustHumanData,
   buildSession,
+  buildSessionYau,
 } from "./core-fixtures-human";
 import { buildKeycaps } from "./core-fixtures-keycaps";
 import { buildKeymapEditor } from "./core-fixtures-keymap-editor";
@@ -762,6 +763,7 @@ export const BUILDERS = {
   "fixtures/replay.json": buildReplay,
   "fixtures/keys.json": buildKeys,
   "fixtures/session.json": buildSession,
+  "fixtures/session-yau.json": buildSessionYau,
   "fixtures/hint.json": buildHint,
   "fixtures/practice.json": buildPractice,
   "fixtures/keycaps.json": buildKeycaps,

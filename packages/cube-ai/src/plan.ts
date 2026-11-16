@@ -20,6 +20,7 @@ import {
   fitLevel,
   type LegacyBotLevel,
   levelMethod,
+  type OldPlanVersion,
   readBotSkill,
 } from "./skill";
 import type { HumanSolve, SolveStage, StageName } from "./solve";
@@ -133,7 +134,8 @@ export const BASE_MEAN_MS: Readonly<Record<number, Record<BotLevel, number>>> =
     4: {
       novice: 251_680,
       casual: 112_130,
-      club: 65_820,
+      // 2026-11-17 bench(섞기 100개, 씨앗 1000부터): 야우(docs/47 10-4). 축소법 때는 65_820(`BASE_MEAN_MS_V3`)
+      club: 117_800,
       fast: 37_490,
       pro: 21_360,
     },
@@ -171,14 +173,44 @@ export const STAGE_PAUSE_FACTOR: Readonly<Partial<Record<StageName, number>>> =
     "centers-rest": 2,
     edges: 2,
     "last-edges": 1.5,
+    // 4×4 야우: 첫 두 센터는 축소법 센터처럼, 십자 엣지는 날개 둘을 찾아 함께 넣는다
+    "yau-centers": 2,
+    "yau-cross3": 1.5,
+    "yau-last-cross": 1.5,
     // 모양 공식: 목표 그림을 보고 어느 공식인지 떠올린다
     shape: 2,
   };
 
+/**
+ * 계획 표 3(2026-11-09~11-17)에서 지금 표와 다른 배율 1 평균: 4×4 중수가 축소법이던 때(2026-11-05 bench).
+ * 버전 3 글의 컴퓨터를 옛 계획 그대로 다시 계산한다. 바꾸지 않는다
+ */
+export const BASE_MEAN_MS_V3: Readonly<
+  Record<number, Partial<Record<BotLevel, number>>>
+> = {
+  4: { club: 65_820 },
+};
+
+/** 그 표의 배율 1 평균 */
+export function baseMeanMs(
+  level: BotLevel,
+  size: number,
+  version?: OldPlanVersion,
+): number | undefined {
+  return (
+    (version === 3 ? BASE_MEAN_MS_V3[size]?.[level] : undefined) ??
+    BASE_MEAN_MS[size]?.[level]
+  );
+}
+
 /** 단계·크기의 시간 배율(목표 / 배율 1 평균) */
-export function levelScale(level: BotLevel, size: number): number {
+export function levelScale(
+  level: BotLevel,
+  size: number,
+  version?: OldPlanVersion,
+): number {
   const target = BOT_TARGET_MS[size]?.[level];
-  const base = BASE_MEAN_MS[size]?.[level];
+  const base = baseMeanMs(level, size, version);
   if (target === undefined || base === undefined)
     throw new RangeError(`${size}×${size} 컴퓨터는 아직 없다`);
   return target / base;
@@ -206,14 +238,23 @@ export function botSpeed(
 export function resolveSkill(
   skill: Exclude<BotSkill, { kind: "legacy" }>,
   size: number,
-): { level: BotLevel; scale: number } {
+): { level: BotLevel; scale: number; method: SolveMethod } {
+  const v = skill.version;
   if (skill.kind === "level")
-    return { level: skill.level, scale: levelScale(skill.level, size) };
+    return {
+      level: skill.level,
+      scale: levelScale(skill.level, size, v),
+      method: levelMethod(skill.level, size, v),
+    };
   const fit = fitLevel(size, skill.targetMs);
-  const base = BASE_MEAN_MS[size]?.[fit.level];
+  const base = baseMeanMs(fit.level, size, v);
   if (base === undefined)
     throw new RangeError(`${size}×${size} 컴퓨터는 아직 없다`);
-  return { level: fit.level, scale: fit.targetMs / base };
+  return {
+    level: fit.level,
+    scale: fit.targetMs / base,
+    method: levelMethod(fit.level, size, v),
+  };
 }
 
 /** 큐브 돌리기(x·y·z)는 면 돌리기보다 조금 빠르다 */
@@ -332,11 +373,20 @@ export function botPlan(
       throw new RangeError("옛 단계는 모양 만들기를 모른다");
     return legacyPlan(read.level, size, startState, seed, opts);
   }
-  const { level, scale } = resolveSkill(read, size);
+  const { level, scale, method } = resolveSkill(read, size);
   if (opts.shape !== undefined)
-    return shapePlan(level, scale, size, startState, seed, opts.shape, opts);
+    return shapePlan(
+      level,
+      method,
+      scale,
+      size,
+      startState,
+      seed,
+      opts.shape,
+      opts,
+    );
   const { solve, fallback } = solveOrFallback(
-    levelMethod(level, size),
+    method,
     size,
     startState,
     opts.solve ?? solveHuman,
@@ -437,6 +487,7 @@ function timeSolve(
  */
 function shapePlan(
   level: BotLevel,
+  method: SolveMethod,
   scale: number,
   size: number,
   startState: PuzzleState,
@@ -452,7 +503,7 @@ function shapePlan(
   let first: HumanSolve = { moves: [], stages: [], looks: [] };
   if (!isSolved(size, startState)) {
     const made = solveOrFallback(
-      levelMethod(level, size),
+      method,
       size,
       startState,
       opts.solve ?? solveHuman,
