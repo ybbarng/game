@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { FairWire } from "./device";
 import { type Played, playRound, SEG3, settled } from "./onecard-chain-fixture";
@@ -32,9 +32,7 @@ describe("다시 섞기 사슬·섞기 증명을 꾸민 참가자(세 번째 다
     }
     const { net } = played;
     expect((await net.devices[0]?.shuffleCulprit(SEG3))?.device).toBe(1);
-    await vi.waitFor(() =>
-      expect(settled(net.incidents[0])).toMatchObject({ seat: 1 }),
-    );
+    expect(settled(net.incidents[0])).toMatchObject({ seat: 1 });
     expect(net.decks[0]?.roundDeal(1)).toBeNull();
   });
 
