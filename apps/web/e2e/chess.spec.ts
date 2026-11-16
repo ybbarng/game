@@ -438,7 +438,7 @@ test(
     await page.getByRole("button", { name: "처음" }).click();
     await expect(pieces(page)).toHaveCount(32);
     await expect(page.getByTitle("기보")).toHaveText(
-      "기보: 아직 둔 수가 없어요",
+      "기보: 아직 둔 수가 없어요.",
     );
     await page.getByRole("button", { name: "한 수 앞으로" }).click();
     await expect(page.getByTitle("기보")).toContainText("1. ");

@@ -26,6 +26,7 @@ import { createRng } from "@game/mighty-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";
+import { obj } from "@/lib/josa";
 import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 import { gostopFair } from "./fair";
@@ -142,7 +143,7 @@ export function explainGostop(
     return {
       situation,
       verdict: "good",
-      reasons: [`${mine}: 고수도 같은 수를 둔다`],
+      reasons: [`고수도 같은 수(${mine})를 둬요.`],
     };
   let verdict: Verdict = "slip";
   if (kind === "play") {
@@ -153,7 +154,10 @@ export function explainGostop(
   return {
     situation,
     verdict,
-    reasons: [`${mine}를 골랐다`, `고수라면 ${describeAction(suggested)}`],
+    reasons: [
+      `${obj(mine)} 골랐어요.`,
+      `고수라면 다른 수(${describeAction(suggested)})를 골라요.`,
+    ],
   };
 }
 
