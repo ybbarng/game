@@ -825,7 +825,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 크기마다 시간(`heroTiming(n)`: 2×2 섞기 11수·수 280ms, 큰 큐브 섞기 30~44수·수 100~120ms 등)도 `hero_show.rs` `hero_timing(n)`으로 옮겼다.
 - 축소법은 사이트 `solveReductionColors`의 앞 네 단계(흰·노랑 센터, 나머지 센터, 엣지 짝, 마지막 두 엣지)만 계산한다. 홈 시연은 그 뒤를 3×3 사람 해법으로 두고, 사이트도 패리티·3×3 단계의 수는 버린다. 막히면 돌려 쥐고 다시 풀기(`REGRIPS`)와 같은 섞기를 첫 면 색마다 여섯 번 풀 때 축소를 한 번만 하는 기억(최근 8개)도 같다.
 
-**공통 시험 자료**: `fixtures/hero-show.json`(2×2·3×3 해법 여섯 × 씨앗 8개 = 48판)과 `fixtures/hero-show-big.json`(4×4~7×7 둘씩, 4×4는 씨앗 둘 = 10판. OLL·PLL 패리티가 나오는 4×4 판과 PLL 패리티가 나오는 6×6 판이 든다). 씨앗 → 섞기·쥐는 방향, 첫 면 색, 보여 주기 변환 뒤 수·단계·꼬리표·살피는 자리·찾는 돌리기·쉬는 자리·강조, 연출 걸음 전부를 견주어 **어긋남 0**. 사이트 쪽 자료는 비동기 해법 표 대신 같은 해법을 바로 부르는 표(`HERO_SYNC`)로 만들고, 그 표가 해법 표와 id가 같고 `solveForHero`와 같은 첫 면 색·수를 내는지 시험이 본다(`core-fixtures-hero.test.ts`·`core-fixtures-hero-big.test.ts`. 큰 큐브는 사이트 엔진으로 6×6·7×7이 무거워 파일을 나눴다).
+**공통 시험 자료**: `fixtures/hero-show.json`(2×2·3×3 해법 여섯 × 씨앗 8개 = 48판)과 `fixtures/hero-show-big.json`(4×4~7×7 둘씩, 4×4는 씨앗 둘 = 10판. OLL·PLL 패리티가 나오는 4×4 판과 PLL 패리티가 나오는 6×6 판이 든다). 씨앗 → 섞기·쥐는 방향, 첫 면 색, 보여 주기 변환 뒤 수·단계·꼬리표·살피는 자리·찾는 돌리기·쉬는 자리·강조, 연출 걸음 전부를 견주어 **어긋남 0**. 사이트 쪽 자료는 비동기 해법 표 대신 같은 해법을 바로 부르는 표(`HERO_SYNC`)로 만들고, 그 표가 해법 표와 id가 같고 `solveForHero`와 같은 첫 면 색·수를 내는지 시험이 본다(`core-fixtures-hero.test.ts`·`core-fixtures-hero-big.test.ts`. 큰 큐브는 사이트 엔진으로 6×6·7×7이 무거워 파일을 나눴고, 크기마다도 `core-fixtures-hero-big-56`·`-7`로 나눠 판마다 줄을 견준다. 머리·판 차례는 `-big`이 본다).
 
 **계산 시간**(코어 `cargo test --release --test hero_show -- --ignored --nocapture`, 이 맥 M 시리즈, 해법마다 씨앗 5개, 축소 기억을 쓰지 않게 해법마다 다른 씨앗, 가운데 값 · 가장 오래)
 

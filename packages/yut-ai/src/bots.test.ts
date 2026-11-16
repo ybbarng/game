@@ -1,9 +1,11 @@
 import { createRng } from "@game/mighty-engine";
 import {
   chainCommit,
+  chainLink,
   createMatch,
   createYutScenario,
   derivedSeed,
+  derivedThrow,
   HOME,
   STANDARD_RULES,
   step,
@@ -107,13 +109,49 @@ describe("수 고르기", () => {
       }
     ).state;
     state = (
-      step(state, state.turn, { type: "throw" }) as {
+      step(state, state.turn, { type: "throw", seal: "cd".repeat(32) }) as {
         ok: true;
         state: typeof state;
       }
     ).state;
     expect(botKnowsChain(viewOf(state, 0))).toBe(false);
     expect(botKnowsChain(viewOf(state, 1))).toBe(true);
+  });
+
+  it("사람이 봉인한 몸짓은 대신 열지 않고, 컴퓨터가 봉인한 몸짓은 연다", () => {
+    // 모든 자리를 재료로 약속하고 고리까지 공개해 몸짓을 열 차례에 둔다.
+    const atOpen = (seal: (key: string) => string) => {
+      let { state } = createMatch(STANDARD_RULES, 4);
+      const ok = (r: ReturnType<typeof step>) =>
+        (r as { ok: true; state: typeof state }).state;
+      for (const seat of [0, 1])
+        state = ok(
+          step(state, seat, {
+            type: "commit",
+            hash: chainCommit(derivedSeed(state.keys[seat] as string, 0)),
+          }),
+        );
+      const thrower = state.turn;
+      state = ok(
+        step(state, thrower, {
+          type: "throw",
+          seal: seal(state.keys[thrower] as string),
+        }),
+      );
+      for (const seat of [0, 1])
+        state = ok(
+          step(state, seat, {
+            type: "reveal",
+            link: chainLink(derivedSeed(state.keys[seat] as string, 0), 1),
+          }),
+        );
+      expect(state.phase).toBe("open");
+      return viewOf(state, thrower);
+    };
+    expect(botKnowsChain(atOpen(() => "cd".repeat(32)))).toBe(false);
+    const bots = atOpen((key) => derivedThrow(key, 0).seal);
+    expect(botKnowsChain(bots)).toBe(true);
+    expect(yutBotFor(1).decide(bots, createRng(1)).type).toBe("open");
   });
 
   it("단계 번호로 고른다", () => {

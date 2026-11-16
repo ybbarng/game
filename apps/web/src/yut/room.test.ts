@@ -6,6 +6,9 @@ import { yutBotFor } from "@game/yut-ai";
 import {
   type Action,
   chainLink,
+  type Gesture,
+  gestureThrow,
+  OPEN_WAIT_MS,
   STANDARD_RULES,
   type YutRules,
   type YutView,
@@ -17,7 +20,15 @@ import { type AuditResult, GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { MemoryNetwork } from "@/net/transport";
 
-import { commitAction, mySeed, revealAction, type SeedBook } from "./chain";
+import {
+  commitAction,
+  mySeed,
+  openAction,
+  type PendingThrow,
+  revealAction,
+  type SeedBook,
+  sealGesture,
+} from "./chain";
 import { yutKit } from "./kit";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -33,11 +44,13 @@ async function until(condition: () => boolean): Promise<void> {
 }
 
 /**
- * 한 사람의 기기: 사슬 씨앗은 이 안에만 있다. 약속·공개는 화면 저장소처럼 자동으로,
- * 던지기는 바로, 움직이기는 중수 컴퓨터처럼
+ * 한 사람의 기기: 사슬 씨앗과 몸짓 소금은 이 안에만 있다. 약속·공개·몸짓 열기는 화면 저장소처럼 자동으로,
+ * 던지기는 몸짓을 봉인해 바로(던질 때마다 몸짓을 조금씩 바꾼다), 움직이기는 중수 컴퓨터처럼
  */
 class Device {
   readonly book: SeedBook;
+  /** 봉인해 던진 몸짓(소금은 이 기기에서 만든 값) */
+  readonly kept: PendingThrow[] = [];
   private readonly rng = createRng(7);
   /** 시험이 일부러 다르게 행동하게 할 때. null을 돌려주면 평소대로 한다 */
   lie: ((view: YutView) => Action | null) | null = null;
@@ -45,6 +58,7 @@ class Device {
   hold: ((view: YutView) => boolean) | null = null;
   constructor(
     readonly seed: string,
+    private readonly salt: (n: number) => string,
     private readonly host: () => MatchHost<YutView, Action, unknown> | null,
   ) {
     this.book = { 0: seed };
@@ -66,6 +80,21 @@ class Device {
         action = seed ? revealAction(view, seed) : null;
         break;
       }
+      case "throw": {
+        const n = this.kept.length;
+        const gesture: Gesture = {
+          height: 30 + (n % 40),
+          direction: (n % 9) - 4,
+          strength: 30 + (n % 30),
+        };
+        const pending = sealGesture(gesture, this.salt(n));
+        this.kept.push(pending);
+        action = { type: "throw", seal: pending.seal };
+        break;
+      }
+      case "open":
+        action = openAction(view, this.kept);
+        break;
       default:
         action = yutBotFor(1).decide(view, this.rng);
     }
@@ -75,6 +104,11 @@ class Device {
 
 const HOST_SEED = "1a".repeat(32);
 const GUEST_SEED = "9f".repeat(32);
+/** n번째 던지기의 소금(16진수 64자). 참가자 소금이 방장 쪽에 새는지 찾을 수 있게 알아보기 쉬운 꼴 */
+const hostSalt = (n: number) =>
+  `${n.toString(16).padStart(8, "0")}${"c3".repeat(28)}`;
+const guestSalt = (n: number) =>
+  `${n.toString(16).padStart(8, "0")}${"e7".repeat(28)}`;
 
 /**
  * 방 시험은 약속·공개·판 끝 검증 진행만 보므로 말 두 개로 짧게 둔다(말 수만큼 판이 길어질 뿐 진행 논리는 같다)
@@ -111,8 +145,8 @@ async function setup(rules: YutRules = ROOM_RULES) {
   guest.on("rejected", (e) => rejected.push(e));
   await host.start();
   await until(() => guest.match !== null);
-  const hostDevice = new Device(HOST_SEED, () => host.match);
-  const guestDevice = new Device(GUEST_SEED, () => guest.match);
+  const hostDevice = new Device(HOST_SEED, hostSalt, () => host.match);
+  const guestDevice = new Device(GUEST_SEED, guestSalt, () => guest.match);
   return {
     clock,
     net,
@@ -167,6 +201,68 @@ describe("윷놀이 온라인 방", () => {
     expect(checks).toBeGreaterThan(20);
     const end = room.host.match?.current();
     expect(end?.result?.kind).toBe("finish");
+    room.host.finish();
+    await until(() => room.audits.length === 1);
+    expect(room.audits).toEqual([{ ok: true }]);
+  });
+
+  it("참가자가 몸짓을 봉인해 던지면 방장은 몸짓을 모르고, 고리가 다 공개된 뒤 열어 두 기기가 같은 결과를 본다", async () => {
+    const room = await setup();
+    const seat = room.guest.seat as number;
+    // 참가자가 첫 몸짓을 열 차례까지(참가자 기기는 열기를 잠깐 미룬다).
+    room.guestDevice.hold = (view) => view.decision?.kind === "open";
+    await play(room, () => {
+      const v = room.host.match?.current();
+      return v?.phase === "open" && v.turn === seat;
+    });
+    const pending = room.guestDevice.kept.at(-1) as PendingThrow;
+    const before = room.host.match?.rawState();
+    const seen = `${JSON.stringify(before)}\n${room.hostInbox.join("\n")}`;
+    // 방장 쪽에는 봉인만 있고 소금은 없다(몸짓을 미리 알 수 없다).
+    expect(before?.seal).toBe(pending.seal);
+    expect(seen).not.toContain(pending.salt);
+    const links = before?.reveals as string[];
+    const index = before?.throwCount as number;
+    room.guestDevice.hold = null;
+    await until(() => room.guestDevice.act());
+    await until(
+      () =>
+        room.host.match?.current().throwCount === index + 1 &&
+        room.guest.match?.current().throwCount === index + 1,
+    );
+    const hostThrow = room.host.match?.current().lastThrow;
+    const guestThrow = room.guest.match?.current().lastThrow;
+    expect(guestThrow).toEqual(hostThrow);
+    expect(hostThrow?.gesture).toEqual(pending.gesture);
+    expect(hostThrow?.sticks).toEqual(
+      gestureThrow(index, pending.gesture, links, ROOM_RULES).sticks,
+    );
+  });
+
+  it("던진 사람이 몸짓을 열지 않으면 방장 시계가 정해진 시간 뒤 그 던지기를 무효로 하고, 판 끝 검증을 통과한다", async () => {
+    const room = await setup();
+    const seat = room.guest.seat as number;
+    room.guestDevice.hold = (view) => view.decision?.kind === "open";
+    await play(room, () => {
+      const v = room.host.match?.current();
+      return v?.phase === "open" && v.turn === seat;
+    });
+    const index = room.host.match?.current().throwCount as number;
+    // 시간이 되기 직전까지는 기다린다.
+    room.clock.advance(OPEN_WAIT_MS - 1);
+    await flush();
+    expect(room.host.match?.current().phase).toBe("open");
+    room.clock.advance(1);
+    await until(() => room.guest.match?.current().throwCount === index + 1);
+    expect(room.guest.match?.current().lastThrow).toMatchObject({
+      seat,
+      nak: "unopened",
+    });
+    expect(room.guest.match?.current().turn).not.toBe(seat);
+    room.guestDevice.hold = null;
+    room.hostDevice.act();
+    const resign = room.host.match?.submit({ type: "resign" });
+    expect(resign?.ok).toBe(true);
     room.host.finish();
     await until(() => room.audits.length === 1);
     expect(room.audits).toEqual([{ ok: true }]);

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Sticks, ThrowValue, YutView } from "@game/yut-engine";
+import type { NakReason, Sticks, ThrowValue, YutView } from "@game/yut-engine";
 import {
   clockTurn,
   sideCount,
@@ -185,11 +185,14 @@ function Stick({ flat, marked }: { flat: boolean; marked: boolean }) {
 export function YutSticks({
   sticks,
   value,
+  nak = null,
   throwKey,
   tossing,
 }: {
   sticks: Sticks | null;
   value: ThrowValue | null;
+  /** 낙이면 그 까닭(그 던지기는 무효) */
+  nak?: NakReason | null;
   throwKey: number;
   /** 던졌는데 아직 결과가 나오지 않았다(모두의 고리를 기다린다) */
   tossing: boolean;
@@ -206,7 +209,8 @@ export function YutSticks({
     return () => clearTimeout(id);
   }, [throwKey]);
   const spins = ["-540deg", "420deg", "-380deg", "620deg"];
-  const showFaces = sticks !== null && landed && !tossing;
+  const showFaces = sticks !== null && landed && !tossing && nak === null;
+  const showNak = nak !== null && landed && !tossing;
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div
@@ -232,7 +236,9 @@ export function YutSticks({
         ))}
       </div>
       <p
-        data-throw-result={showFaces && value !== null ? value : ""}
+        data-throw-result={
+          showNak ? "nak" : showFaces && value !== null ? value : ""
+        }
         className={cn(
           "min-h-8 font-black text-2xl tracking-wide drop-shadow",
           showFaces && value !== null && "yut-pop",
@@ -241,11 +247,15 @@ export function YutSticks({
       >
         {tossing
           ? "던지는 중…"
-          : showFaces && value !== null
-            ? `${throwName(value)}${value === 4 || value === 5 ? "! 한 번 더" : ""}`
-            : sticks === null
-              ? "윷을 던져 보세요"
-              : ""}
+          : showNak
+            ? nak === "unopened"
+              ? "무효"
+              : "낙"
+            : showFaces && value !== null
+              ? `${throwName(value)}${value === 4 || value === 5 ? "! 한 번 더" : ""}`
+              : sticks === null && nak === null
+                ? "윷을 던져 보세요"
+                : ""}
       </p>
     </div>
   );
