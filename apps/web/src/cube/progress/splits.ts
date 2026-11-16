@@ -25,6 +25,8 @@ export interface SplitGroup {
  * 루·ZZ·코너 먼저 단계를 비슷한 진행 자리에 끼웠다)
  */
 export const MILESTONE_RANK: Readonly<Record<string, number>> = {
+  centers2: 4,
+  cross3: 7,
   centers: 10,
   edges: 20,
   cross: 30,

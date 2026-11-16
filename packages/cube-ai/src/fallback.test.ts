@@ -3,7 +3,7 @@ import { ReductionStuckError } from "@game/cube-reduction";
 import { describe, expect, it } from "vitest";
 import { type SolveMethod, solveHuman } from "./methods";
 import { type BotPlanOptions, botPlan, botSpeed } from "./plan";
-import type { BotSkill } from "./skill";
+import { type BotSkill, levelMethod } from "./skill";
 
 /**
  * 대체 길: 고른 해법이 실패하면 2단계 해법 해(`expert`)를 그 단계 빠르기로 둔다.
@@ -43,18 +43,19 @@ describe("botPlan 대체 길", () => {
     expect(tps).toBeLessThan(botSpeed("novice", 4).tps * 1.4);
   });
 
+  /** 4×4 중수가 쓰는 해법(계획 표 4부터 야우) */
+  const club4 = levelMethod("club", 4);
+
   it("같은 입력이면 같은 대체 계획이다(다른 기기의 확인)", () => {
-    const { solve } = failing(["fourlook"], () => new Error("못 맞춤"));
+    expect(club4).toBe("yau");
+    const { solve } = failing([club4], () => new Error("못 맞춤"));
     const a = botPlan(club, 4, start4, 9, { solve });
     expect(botPlan(club, 4, start4, 9, { solve })).toEqual(a);
     expect(a.fallback).toBe(true);
   });
 
   it("대체 해도 실패하면 오류를 그대로 던진다", () => {
-    const { solve } = failing(
-      ["fourlook", "expert"],
-      () => new Error("못 맞춤"),
-    );
+    const { solve } = failing([club4, "expert"], () => new Error("못 맞춤"));
     expect(() => botPlan(club, 4, start4, 1, { solve })).toThrow("못 맞춤");
   });
 

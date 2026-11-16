@@ -15,7 +15,11 @@ const TERMS: OrderedTerm[] = [
   { term: "선공·후공", use: /선공|후공/, define: /\(\*\*선공\*\*\)/ },
   { term: "공정 규칙", use: /공정 규칙/, define: /\*\*공정 규칙\*\*이라고/ },
   { term: "방장", use: /방장/, define: /\(\*\*방장\*\*\)/ },
-  { term: "약속", use: /약속/, define: /약속은 내 수를 나중에/ },
+  {
+    term: "약속",
+    use: /약속/,
+    define: /\*\*약속\*\*만 가요\. 약속은 내 수를 나중에/,
+  },
 ];
 
 termOrderSuite("숫자야구", BASEBALL_LESSONS, TERMS);

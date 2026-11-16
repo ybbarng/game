@@ -10,7 +10,14 @@ import type { MilestoneId } from "@game/cube-engine";
 import type { SolveRecord, Split } from "../records";
 import { bestSegments } from "./gold";
 
-export type SolveMethod = "auto" | "layer" | "cfop" | "roux" | "zz" | "corners";
+export type SolveMethod =
+  | "auto"
+  | "layer"
+  | "cfop"
+  | "roux"
+  | "zz"
+  | "corners"
+  | "yau";
 
 export const SOLVE_METHODS: readonly SolveMethod[] = [
   "auto",
@@ -19,6 +26,7 @@ export const SOLVE_METHODS: readonly SolveMethod[] = [
   "roux",
   "zz",
   "corners",
+  "yau",
 ];
 
 export const METHOD_LABEL: Readonly<Record<SolveMethod, string>> = {
@@ -28,22 +36,43 @@ export const METHOD_LABEL: Readonly<Record<SolveMethod, string>> = {
   roux: "루",
   zz: "ZZ",
   corners: "코너 먼저",
+  yau: "야우",
 };
 
 /** 3×3 해법의 단계(맞추는 차례). 큰 큐브는 앞에 센터·엣지 짝이 붙는다 */
-const PATH_333: Readonly<Record<Exclude<SolveMethod, "auto">, MilestoneId[]>> =
-  {
-    layer: ["cross", "layer1", "layer2", "oll", "ll"],
-    cfop: ["cross", "f2l1", "f2l2", "f2l3", "layer2", "oll", "ll"],
-    roux: ["roux1", "roux2", "ll"],
-    zz: ["eoline", "layer2", "oll", "ll"],
-    corners: ["corners", "ll"],
-  };
+const PATH_333: Readonly<
+  Record<Exclude<SolveMethod, "auto" | "yau">, MilestoneId[]>
+> = {
+  layer: ["cross", "layer1", "layer2", "oll", "ll"],
+  cfop: ["cross", "f2l1", "f2l2", "f2l3", "layer2", "oll", "ll"],
+  roux: ["roux1", "roux2", "ll"],
+  zz: ["eoline", "layer2", "oll", "ll"],
+  corners: ["corners", "ll"],
+};
 
-/** 그 크기에서 고를 수 있는 해법(맨 앞이 자동). 큰 큐브의 3×3 단계는 층별·CFOP만 본다 */
+/**
+ * 4×4 야우(docs/47 8-6 단계 지도): 맞은편 센터 둘 → 그 면 쪽 십자 셋 → 옆 센터(센터 전부) → 마지막 십자 엣지(십자)
+ * → 엣지 짝 → 3×3처럼. 3×3처럼은 층별(첫 층 코너부터)로도 F2L로도 하므로 둘 다 지나는 둘째 층부터 본다(ZZ처럼)
+ */
+const PATH_YAU: readonly MilestoneId[] = [
+  "centers2",
+  "cross3",
+  "centers",
+  "cross",
+  "edges",
+  "layer2",
+  "oll",
+  "ll",
+];
+
+/**
+ * 그 크기에서 고를 수 있는 해법(맨 앞이 자동). 큰 큐브의 3×3 단계는 층별·CFOP만 본다. 야우는 야우 풀이(단원 규칙,
+ * `learn/yau-solve.ts`)가 있는 4×4만
+ */
 export function methodsFor(n: number): readonly SolveMethod[] {
   if (n === 2) return ["auto"];
-  if (n === 3) return SOLVE_METHODS;
+  if (n === 3) return SOLVE_METHODS.filter((m) => m !== "yau");
+  if (n === 4) return ["auto", "layer", "cfop", "yau"];
   return ["auto", "layer", "cfop"];
 }
 
@@ -60,6 +89,7 @@ export function methodPath(
   const m = usableMethod(n, method);
   if (n === 2) return ["layer1", "oll", "ll"];
   if (m === "auto") return null;
+  if (m === "yau") return PATH_YAU;
   const path = PATH_333[m];
   return n === 3 ? path : ["centers", "edges", ...path];
 }

@@ -24,7 +24,7 @@ const rec = (n: number, splits: string): SolveRecord => ({
 });
 
 describe("내 해법 고르기", () => {
-  it("3×3은 여섯 가지, 큰 큐브는 자동·층별·CFOP, 2×2는 자동만", () => {
+  it("3×3은 여섯 가지, 큰 큐브는 자동·층별·CFOP(4×4는 야우도), 2×2는 자동만", () => {
     expect(methodsFor(3)).toEqual([
       "auto",
       "layer",
@@ -33,7 +33,9 @@ describe("내 해법 고르기", () => {
       "zz",
       "corners",
     ]);
-    expect(methodsFor(4)).toEqual(["auto", "layer", "cfop"]);
+    expect(methodsFor(4)).toEqual(["auto", "layer", "cfop", "yau"]);
+    expect(methodsFor(5)).toEqual(["auto", "layer", "cfop"]);
+    expect(usableMethod(5, "yau")).toBe("auto");
     expect(methodsFor(2)).toEqual(["auto"]);
     expect(usableMethod(4, "roux")).toBe("auto");
     expect(usableMethod(5, "cfop")).toBe("cfop");

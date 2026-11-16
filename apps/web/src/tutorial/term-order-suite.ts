@@ -8,6 +8,7 @@ import {
   lessonPlaces,
   lessonSummaries,
   type OrderedTerm,
+  sentencePlaces,
 } from "./term-order";
 
 export function termOrderSuite(
@@ -20,6 +21,9 @@ export function termOrderSuite(
   describe(`${name} 튜토리얼 용어`, () => {
     it(`용어 ${terms.length}개: 모두 뜻을 알린 뒤에 쓴다`, () => {
       expect(earlyUses(places, terms)).toEqual([]);
+    });
+    it("한 단계 안에서도 뜻을 알린 문장 뒤에 쓴다(단계 제목은 예외)", () => {
+      expect(earlyUses(sentencePlaces(lessons, termText), terms)).toEqual([]);
     });
     it("단원 목록의 제목·요약은 그 단원까지 뜻을 알린 용어만 쓴다", () => {
       expect(earlySummaryUses(lessonSummaries(lessons), places, terms)).toEqual(

@@ -41,6 +41,7 @@ import {
   whiteUp,
   yellowCrossTaught,
 } from "./taught";
+import { solveYauHuman } from "./yau";
 
 /**
  * 사람 흉내 해법. 모두 상태 → 수 목록(WCA 표기)과 단계 경계. 같은 상태면 늘 같은 수가 나온다.
@@ -60,8 +61,13 @@ export type SolveMethod =
   | "intermediate"
   | "fourlook"
   | "advanced"
-  | "expert";
+  | "expert"
+  | "yau";
 
+/**
+ * 모든 크기가 쓰는 해법. `yau`(4×4만: 야우 앞 다섯 단계 + 4단계 마지막 층 CFOP 「3×3처럼」, `yau.ts`, docs/47 10-4)는
+ * 4×4 중수만 쓰므로 여기에 넣지 않는다
+ */
 export const SOLVE_METHODS: readonly SolveMethod[] = [
   "beginner",
   "intermediate",
@@ -761,6 +767,10 @@ export function solveHuman(
   opts: HumanOptions = {},
 ): HumanSolve {
   const first = opts.first ?? 0;
+  if (level === "yau") {
+    if (size !== 4) throw new RangeError(`${size}×${size} 야우는 없다`);
+    return solveYauHuman(FOURLOOK3_STEPS, state, opts.until);
+  }
   if (size === 3) {
     if (level === "beginner") return solveBeginner3(state, opts);
     if (level === "intermediate") return solveIntermediate3(state, opts);
