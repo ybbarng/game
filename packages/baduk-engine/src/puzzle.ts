@@ -227,6 +227,102 @@ export function bestDefense(
 }
 
 /**
+ * 축 읽기(긴 축·축머리 문제): `attacker`가 `at`에 두어 단수를 치고, 그 뒤로도 **단수만** 쳐서 노리는 무리를 따내면
+ * 공격하는 쪽이 둘 수(이 수 포함, 받는 쪽이 가장 오래 버틸 때). 축으로 못 잡으면 null.
+ * 받는 쪽은 `defenseCandidates`(활로로 뻗기, 붙은 공격 돌 따내기·단수 치기)와 쉬기를 모두 둬 본다.
+ * 공격하는 쪽을 단수로만 좁혔으니, 수가 나오면 정말 잡히고(받는 쪽은 어떻게 해도 못 빠져나간다),
+ * null이면 "축으로는" 안 잡힌다(장문 같은 다른 길은 `captureMoves`로 따로 본다).
+ * 공격 후보가 늘 둘 이하라 판 끝까지 가는 긴 축도 금방 읽는다. 같은 판 모양 금지를 지킨다
+ */
+export function ladderMoves(
+  board: Board,
+  attacker: Stone,
+  target: number,
+  at: number,
+  path: Set<string> = new Set([boardHash(board)]),
+  memo: Map<string, number | null> = new Map(),
+): number | null {
+  const next = place(board, at, attacker, path);
+  if (!next) return null;
+  if (next.board[target] !== other(attacker)) return 1;
+  if (libertyCount(next.board, target) !== 1) return null;
+  const known = memo.get(next.key);
+  if (known !== undefined) return known;
+  const defender = other(attacker);
+  path.add(next.key);
+  // 받는 쪽이 둔 판마다 공격하는 쪽이 가장 빨리 잡는 수. 하나라도 못 잡으면 null
+  let worst = 0;
+  const replies: Board[] = [next.board];
+  for (const d of defenseCandidates(next.board, target)) {
+    const reply = place(next.board, d, defender, path);
+    if (reply) replies.push(reply.board);
+  }
+  let result: number | null = null;
+  try {
+    for (const after of replies) {
+      if (after[target] !== defender) continue;
+      const key = boardHash(after);
+      path.add(key);
+      let best: number | null = null;
+      for (const l of groupOf(after, target).liberties) {
+        const n = ladderMoves(after, attacker, target, l, path, memo);
+        if (n !== null && (best === null || n < best)) best = n;
+      }
+      path.delete(key);
+      if (best === null) {
+        worst = -1;
+        break;
+      }
+      worst = Math.max(worst, best);
+    }
+    result = worst < 0 ? null : worst + 1;
+  } finally {
+    path.delete(next.key);
+  }
+  memo.set(next.key, result);
+  return result;
+}
+
+/**
+ * 축에서 받는 쪽의 응수: 공격하는 쪽이 축으로 잡는 데 가장 오래 걸리게 하는 후보(못 잡게 하는 수가 있으면 그것).
+ * `history`는 이번 판에 나왔던 판 지문이다. 같은 판은 늘 같은 수(후보 차례대로 첫 것). 둘 수가 없으면 null
+ */
+export function ladderDefense(
+  board: Board,
+  attacker: Stone,
+  target: number,
+  history: readonly string[] = [],
+): number | null {
+  const defender = other(attacker);
+  const seen = new Set(history);
+  let best: number | null = null;
+  let bestCost = -1;
+  for (const d of defenseCandidates(board, target)) {
+    const tried = tryPlace(board, d, defender);
+    if (!tried.ok || tried.board[target] !== defender) continue;
+    const key = boardHash(tried.board);
+    if (seen.has(key)) continue;
+    let cost: number | null = null;
+    for (const l of groupOf(tried.board, target).liberties) {
+      const n = ladderMoves(
+        tried.board,
+        attacker,
+        target,
+        l,
+        new Set([...seen, key]),
+      );
+      if (n !== null && (cost === null || n < cost)) cost = n;
+    }
+    const value = cost ?? Number.POSITIVE_INFINITY;
+    if (value > bestCost) {
+      bestCost = value;
+      best = d;
+    }
+  }
+  return best;
+}
+
+/**
  * 패 따내기인가: `stone`이 `at`에 두어 상대 돌 하나를 따내고, 놓은 돌이 혼자이며 그 따낸 자리 하나만 활로라
  * 상대가 바로 그 자리에 두면 되따낼 수 있는 모양이면 그 자리(되따낼 자리). 아니면 null.
  * 되따내면 판이 두기 전과 같아지므로 같은 판 모양 금지에 걸려 상대는 바로 되따낼 수 없다

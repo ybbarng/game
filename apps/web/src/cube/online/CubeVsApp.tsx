@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
 import { randomId } from "@/net/transport";
+import { MyMethodPick } from "../components/MethodSelect";
 import {
   type ShapePick,
   type ShapeStart,
@@ -226,6 +227,9 @@ export function CubeVsApp() {
                 ))}
               </select>
             </label>
+            {!practiceOn && !shapeNow && (
+              <MyMethodPick n={n} className="justify-between" />
+            )}
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">규칙</legend>
               <div className="flex flex-wrap gap-1">

@@ -14,6 +14,7 @@ import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
+import { BADUK_FUSEKI_SET } from "../fuseki";
 import { BADUK_JOSEKI_SET } from "../joseki";
 import { badukOnline } from "../online";
 import { useBadukStudyProgress, useBadukTutorialProgress } from "../progress";
@@ -27,11 +28,12 @@ import {
   useBadukSettings,
 } from "../settings";
 import { type BadukSaved, clearBaduk, loadBaduk, useBaduk } from "../store";
+import { BADUK_STUDY_LESSONS } from "../study-lessons";
 import { BADUK_LESSONS } from "../tutorial";
 import { BadukGame, StoneDot } from "./BadukGame";
 import { BadukLineScreen } from "./BadukLineScreen";
 import { BadukPuzzleScreen } from "./BadukPuzzleScreen";
-import { badukTutorial } from "./baduk-tutorial";
+import { badukStudyLessons, badukTutorial } from "./baduk-tutorial";
 
 /** 바둑 화면들의 배경(대국 화면의 짙은 색과 이어진다) */
 const BG = "bg-[radial-gradient(ellipse_at_center,#57534e_0%,#1c1917_80%)]";
@@ -366,7 +368,8 @@ type Screen =
   | { kind: "lesson"; lessonId: string }
   | { kind: "study"; reviewDone?: boolean | undefined }
   | { kind: "puzzle"; puzzleId: string; review?: Review }
-  | { kind: "line"; lineId: string; review?: Review };
+  | { kind: "line"; lineId: string; review?: Review }
+  | { kind: "studyLesson"; lessonId: string };
 
 /** 「오늘 복습」으로 연 문제의 복습 줄(없으면 보통으로 연 문제) */
 type Review = readonly string[] | undefined;
@@ -379,6 +382,35 @@ const STUDY_SETS = BADUK_PUZZLE_SETS.map((s) => ({
   puzzleIds: s.puzzles.map((p) => p.id),
 }));
 
+/** 수 배우기 단원(읽고 퀴즈 풀기). 끝내면 수 배우기 진행에도 끝냄으로 남긴다 */
+const LESSON_SET = {
+  id: "lessons",
+  title: "단원 읽기",
+  summary:
+    "패로 버티기, 긴 축과 축머리, 포석을 그림으로 읽고 퀴즈를 푼다. 읽은 뒤 아래 문제와 따라 두기로 익힌다.",
+  puzzleIds: BADUK_STUDY_LESSONS.map((l) => l.id),
+  labels: BADUK_STUDY_LESSONS.map((l) => l.title),
+};
+
+/** 수 배우기 목록 차례: 처음 배우던 문제, 단원, 단원을 익히는 문제, 따라 두기 */
+const FIRST_SETS = [
+  "atari",
+  "ladder",
+  "net",
+  "snapback",
+  "ko",
+  "live",
+  "kill",
+  "shapes",
+];
+const studySets = () => [
+  ...STUDY_SETS.filter((s) => FIRST_SETS.includes(s.id)),
+  LESSON_SET,
+  ...STUDY_SETS.filter((s) => !FIRST_SETS.includes(s.id)),
+  JOSEKI_SET,
+  FUSEKI_SET,
+];
+
 /** 수 배우기 목록에 보일 정석 수순 묶음(이름 목록) */
 const JOSEKI_SET = {
   id: BADUK_JOSEKI_SET.id,
@@ -388,11 +420,22 @@ const JOSEKI_SET = {
   labels: BADUK_JOSEKI_SET.lines.map((l) => l.name),
 };
 
-/** 목록에서 고른 것이 수순이면 수순 화면, 아니면 문제 화면 */
+/** 수 배우기 목록에 보일 포석 수순 묶음(이름 목록) */
+const FUSEKI_SET = {
+  id: BADUK_FUSEKI_SET.id,
+  title: BADUK_FUSEKI_SET.title,
+  summary: BADUK_FUSEKI_SET.summary,
+  puzzleIds: BADUK_FUSEKI_SET.lines.map((l) => l.id),
+  labels: BADUK_FUSEKI_SET.lines.map((l) => l.name),
+};
+
+/** 목록에서 고른 것이 수순이면 수순 화면, 단원이면 단원 화면, 아니면 문제 화면 */
 const studyScreen = (id: string, review?: Review): Screen =>
   id.startsWith("line-")
     ? { kind: "line", lineId: id, review }
-    : { kind: "puzzle", puzzleId: id, review };
+    : id.startsWith("lesson-")
+      ? { kind: "studyLesson", lessonId: id }
+      : { kind: "puzzle", puzzleId: id, review };
 
 /** 바둑(/baduk): 첫 화면, 옵션, 규칙, 배우기, 다함께 바둑 방, 대국 화면 */
 export function BadukApp() {
@@ -472,7 +515,7 @@ export function BadukApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `돌 잡기·살리기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 구석에서 흔히 두는 정해진 수 ${JOSEKI_SET.puzzleIds.length}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
+          detail: `돌 잡기·살리기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 읽는 단원 ${LESSON_SET.puzzleIds.length}개, 구석에서 흔히 두는 정해진 수 ${JOSEKI_SET.puzzleIds.length}개, 빈 판 첫 몇 수 ${FUSEKI_SET.puzzleIds.length}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />
@@ -482,11 +525,26 @@ export function BadukApp() {
       <StudyHome
         title="바둑 수 배우기"
         background={BG}
-        sets={[...STUDY_SETS, JOSEKI_SET]}
+        sets={studySets()}
         progress={useBadukStudyProgress}
         onOpen={(id, review) => setScreen(studyScreen(id, review))}
         onBack={() => setScreen({ kind: "tutorial" })}
         reviewDone={screen.reviewDone ?? false}
+      />
+    );
+  if (screen.kind === "studyLesson")
+    return (
+      <LessonPlayer
+        key={screen.lessonId}
+        tutorial={badukStudyLessons}
+        lessonId={screen.lessonId}
+        onExit={() => {
+          // 끝낸 단원은 수 배우기 목록에도 ✓로 남긴다
+          const id = screen.lessonId;
+          if (useBadukTutorialProgress.getState().completed.includes(id))
+            useBadukStudyProgress.getState().solve(id);
+          setScreen({ kind: "study" });
+        }}
       />
     );
   if (screen.kind === "line")
