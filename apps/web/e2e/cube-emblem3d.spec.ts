@@ -318,7 +318,7 @@ test("고른 티어의 3D는 미리 찍은 그림만큼 선명하다: 첫 장도
   await page.locator('[data-cube-ladder="master"]').click();
   const box = hero(page);
   await expect(box).toHaveAttribute("data-emblem3d", "master");
-  const poster = box.locator("[data-emblem3d-poster] img");
+  const poster = box.locator("[data-emblem3d-poster] img.emblem3d-sdr-poster");
   await expect
     .poll(() =>
       poster.evaluate((img: HTMLImageElement) =>
@@ -427,7 +427,9 @@ test("대기 그림과 3D는 같은 자리·같은 크기·같은 생김새: 3D 
     await page.goto("/cube/tiers");
     const box = hero(page);
     await expect(box).toHaveAttribute("data-emblem3d", tier);
-    const poster = box.locator("[data-emblem3d-poster] img");
+    const poster = box.locator(
+      "[data-emblem3d-poster] img.emblem3d-sdr-poster",
+    );
     await expect(poster).toBeVisible();
     await expect(box).toHaveAttribute("data-emblem3d-path", "loading");
     // 다른 모양 그림(평면·정지 그림)은 보이지 않는다
@@ -459,6 +461,67 @@ test("대기 그림과 3D는 같은 자리·같은 크기·같은 생김새: 3D 
     expect(diff, `${tier} 대기 그림과 3D 첫 장의 화소 차`).toBeLessThan(0.07);
     await context.close();
   }
+});
+
+test("HDR 길: 보석 티어는 HDR 대기 그림을 두되 SDR 화면에서는 숨기고 받지 않으며, HDR 길을 켜면 SDR 대기 그림과 같은 생김새로 그린다(WebGPU가 없으면 SDR 길)", {
+  tag: "@only-desktop",
+}, async ({ browser }) => {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    deviceScaleFactor: 1,
+    reducedMotion: "reduce",
+  });
+  const page = await context.newPage();
+  const hdrFetched: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("-hdr.avif")) hdrFetched.push(r.url());
+  });
+  await hold3d(page);
+  await seed(page, flat(7_000));
+  // 시험 고리: 이 화면(SDR)에서도 HDR 길을 켠다
+  await page.goto("/cube/tiers?emblem3d=hdr");
+  const box = hero(page);
+  await expect(box).toHaveAttribute("data-emblem3d", "grandmaster");
+  await expect(box).toHaveAttribute("data-emblem3d-has-hdr", "");
+  const sdrPoster = box.locator(
+    "[data-emblem3d-poster] img.emblem3d-sdr-poster",
+  );
+  const hdrPoster = box.locator("[data-emblem3d-poster-hdr]");
+  await expect(sdrPoster).toBeVisible();
+  // SDR 화면: HDR 그림은 숨고(display none) 받지 않는다(lazy)
+  await expect(hdrPoster).toHaveCount(1);
+  await expect(hdrPoster).toBeHidden();
+  await expect
+    .poll(() =>
+      sdrPoster.evaluate((img: HTMLImageElement) =>
+        img.complete ? img.naturalWidth : 0,
+      ),
+    )
+    .toBe(560);
+  const posterPng = await box.screenshot();
+  const gpu = await page.evaluate(
+    async () =>
+      !!(await (
+        navigator as { gpu?: { requestAdapter(): Promise<unknown> } }
+      ).gpu?.requestAdapter()),
+  );
+  await release3d(page);
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+    timeout: 60_000,
+  });
+  await expect(box).toHaveAttribute(
+    "data-emblem3d-path",
+    gpu ? "hdr" : "bloom",
+  );
+  const diff = await pngRmse(page, posterPng, await box.screenshot());
+  expect(diff, "SDR 대기 그림과 3D 첫 장의 화소 차").toBeLessThan(0.07);
+  expect(hdrFetched).toEqual([]);
+  // 금속 티어는 HDR 그림이 없다
+  await page.locator('[data-cube-ladder="gold"]').click();
+  await expect(box).toHaveAttribute("data-emblem3d", "gold");
+  await expect(box).not.toHaveAttribute("data-emblem3d-has-hdr", "");
+  await context.close();
 });
 
 /** WebGL을 못 얻는 기기처럼 */

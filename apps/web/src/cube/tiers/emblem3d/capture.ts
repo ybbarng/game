@@ -14,6 +14,7 @@ export function installCaptureHook(search: string): void {
           stage.captureShots(jobs, 0),
         print: ladder.lookPrint(),
         violations: ladder.ladderViolations,
+        hdrHeadroom: stage.HDR_HEADROOM,
       };
     },
   );

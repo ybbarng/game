@@ -1,9 +1,9 @@
 /**
  * 3D 엠블럼이 어느 길로 그릴지 가른다(docs/47 14-7). 브라우저 이름이 아니라 기능으로 본다.
  *
- * - `hdr`: WebGPU 캔버스에 흰색보다 밝은 값을 그대로 내보낸다. 티어별 생김새(열째 시안 확정)는 아직 이 길에 옮기지
- *   않아 지금은 `?emblem3d=hdr`로 강제할 때만 쓴다. 옮기면 HDR 화면(`canHdrCanvas`)에서 저절로 고르게 한다.
- * - `bloom`: 보석. SDR에 밝은 곳이 번지는 효과로 반짝임을 흉내 낸다.
+ * - `hdr`: 보석, HDR 화면(`hdrScreen`·`canHdrCanvas`). WebGPU 캔버스에 SDR 길과 같은 생김새를 그리고 반짝임만 흰색보다
+ *   밝게 내보낸다(`stage.ts` `HDR_HEADROOM`). `?emblem3d=hdr`면 SDR 화면에서도 켠다(시험·찍기).
+ * - `bloom`: 보석, 그 밖. SDR에 밝은 곳이 번지는 효과로 반짝임을 흉내 낸다.
  * - `plain`: 금속(골드). 번짐 없이 그린다.
  * - 3D를 못 그리면(WebGL2 없음, 시험의 3D 끄기) 지금 SVG 엠블럼을 보인다.
  */
@@ -47,9 +47,22 @@ interface GpuCanvasContext {
 }
 
 /**
- * HDR 캔버스(WebGPU, rgba16float, toneMapping extended)를 쓸 수 있는지. 티어별 생김새를 HDR 길로 옮긴 뒤 저절로 고를 때
- * 쓴다(지금은 부르는 곳 없음, docs/47 14-7 남은 일)
+ * HDR 화면이고 브라우저가 흰색보다 밝은 그림을 그대로 그리는지(`dynamic-range: high`와 `dynamic-range-limit` 지원,
+ * Chrome 136+·Safari 26+). HDR 대기 그림을 보이는 CSS 조건(`emblem.css` `.emblem3d-hdr-poster`)과 같다. 그래서 대기
+ * 그림과 3D 길이 같은 밝기를 고른다
  */
+export function hdrScreen(): boolean {
+  try {
+    return (
+      matchMedia("(dynamic-range: high)").matches &&
+      CSS.supports("dynamic-range-limit", "no-limit")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** HDR 캔버스(WebGPU, rgba16float, toneMapping extended)를 쓸 수 있는지. HDR 화면(`hdrScreen`)에서 보석 티어가 쓴다 */
 export async function canHdrCanvas(): Promise<boolean> {
   try {
     if (!matchMedia("(dynamic-range: high)").matches) return false;
