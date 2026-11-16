@@ -131,10 +131,10 @@ export function explainMate(pos: Position, move: Move): string[] {
       guarded.set(who, [...(guarded.get(who) ?? []), squareName(to)]);
     }
   if (blocked.length > 0)
-    lines.push(`킹 둘레 ${blocked.join("·")}는 흑 자기 기물이 막고 있다`);
+    lines.push(`킹 둘레 ${blocked.join("·")}는 흑 자기 기물이 막고 있어요.`);
   for (const [who, squares] of guarded)
-    lines.push(`킹이 피할 ${squares.join("·")}는 ${subj(who)} 노린다`);
-  lines.push("막거나 잡을 수도 없어 체크메이트다");
+    lines.push(`킹이 피할 ${squares.join("·")}는 ${subj(who)} 노려요.`);
+  lines.push("막거나 잡을 수도 없어 체크메이트예요.");
   return lines;
 }
 
@@ -150,27 +150,27 @@ export function explainEndgame(pos: Position, move: Move): string[] {
   const [bx, by] = [bk % 8, Math.floor(bk / 8)];
   const pawn = pos.board.indexOf("wP");
   const lines = [
-    `킹을 ${squareName(move.to)}로(${moveToSan(pos, move)}): 이 수만 이긴다`,
+    `킹을 ${squareName(move.to)}로(${moveToSan(pos, move)}): 이 수만 이겨요.`,
   ];
   const facing =
     (wx === bx && Math.abs(wy - by) === 2) ||
     (wy === by && Math.abs(wx - bx) === 2);
   if (facing)
     lines.push(
-      "킹끼리 한 칸 띄우고 마주 섰다(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아간다",
+      "킹끼리 한 칸 띄우고 마주 섰어요(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아가요.",
     );
   else if (wy < Math.floor(pawn / 8))
     lines.push(
-      "백 킹이 폰보다 앞 칸을 먼저 차지한다. 흑 킹은 폰 앞을 막지 못하고 밀려난다",
+      "백 킹이 폰보다 앞 칸을 먼저 차지해요. 흑 킹은 폰 앞을 막지 못하고 밀려나요.",
     );
   else
     lines.push(
-      "흑 킹이 막는 쪽을 피해 옆으로 돌아 나간다. 다음 수에 폰 앞 칸으로 들어가 흑 킹을 밀어낸다",
+      "흑 킹이 막는 쪽을 피해 옆으로 돌아 나가요. 다음 수에 폰 앞 칸으로 들어가 흑 킹을 밀어내요.",
     );
   const push = sanToMove(pos, squareName(pawn - 8));
   if (push)
     lines.push(
-      `폰부터 밀면(${moveToSan(pos, push)}) 흑 킹이 폰 앞을 막아 비긴다. 킹이 앞서고 폰은 뒤따라간다`,
+      `폰부터 밀면(${moveToSan(pos, push)}) 흑 킹이 폰 앞을 막아 비겨요. 킹이 앞서고 폰은 뒤따라가요.`,
     );
   return lines;
 }

@@ -130,7 +130,7 @@ export function OmokGame({
       ? aim !== null
         ? hint === aim
           ? `힌트 ${pointName(aim)}: 초록 고리가 고수가 고른 자리예요`
-          : `${pointName(aim)}: 한 번 더 누르면 둔다`
+          : `${pointName(aim)}: 한 번 더 누르면 둬요.`
         : "내 차례 — 판을 눌러 두세요"
       : online
         ? `${opponent}의 차례`

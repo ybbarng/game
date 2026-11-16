@@ -35,7 +35,7 @@ describe("킹과 폰 문제", () => {
       // 해설이 정답 수와 폰 밀기를 짚는다
       const lines = explainEndgame(pos, answer as never);
       expect(lines[0]).toContain(puzzle.solution);
-      expect(lines.at(-1)).toContain("비긴다");
+      expect(lines.at(-1)).toContain("비겨요");
     },
   );
 });
@@ -52,7 +52,7 @@ describe("킹과 폰 해설", () => {
   it("맞서기·폰 앞 칸 차지·옆으로 돌아 나가기를 가려 말한다", () => {
     expect(explain("king-pawn-1")).toContain("맞서기");
     expect(explain("king-pawn-6")).toContain("앞 칸을 먼저 차지");
-    expect(explain("king-pawn-7")).toContain("돌아 나간다");
-    expect(explain("king-pawn-8")).toContain("돌아 나간다");
+    expect(explain("king-pawn-7")).toContain("돌아 나가요");
+    expect(explain("king-pawn-8")).toContain("돌아 나가요");
   });
 });
