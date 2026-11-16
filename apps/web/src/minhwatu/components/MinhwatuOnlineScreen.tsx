@@ -129,7 +129,7 @@ export function MinhwatuOnlineScreen({
         ? `${who} — 문제없음 ✓`
         : own
           ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봅니다)`,
+          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봐요)`,
     });
     if (own) {
       if (!ok)
@@ -243,7 +243,7 @@ export function MinhwatuOnlineScreen({
         );
         guest.on("rejected", (e) => {
           useMinhwatu.setState({ notice: e });
-          if (e === "다른 게임의 방입니다") {
+          if (e === "다른 게임의 방이에요.") {
             setError(e);
             setPhase("error");
           }
@@ -251,7 +251,7 @@ export function MinhwatuOnlineScreen({
         guest.on("audit", (result) => {
           useMinhwatu.setState({
             notice: result.ok
-              ? "기록 확인: 진행에 문제가 없습니다"
+              ? "기록 확인: 진행에 문제가 없어요."
               : `기록 확인 실패: ${result.reason}`,
           });
           onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
@@ -351,7 +351,7 @@ export function MinhwatuOnlineScreen({
             {isHost && (
               <p className="text-white/60 text-xs">
                 {describeRules(rules)}. 빈자리는 컴퓨터(중수)가 앉고, 첫 판 선은
-                무작위, 그 뒤로는 앞 판 1등이 선입니다.
+                무작위, 그 뒤로는 앞 판 1등이 선이에요.
               </p>
             )}
             {isHost && <RoomKindPicker />}
@@ -375,8 +375,8 @@ export function MinhwatuOnlineScreen({
                 className="rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
               >
                 {hostLeft
-                  ? "방장이 방을 나갔습니다"
-                  : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+                  ? "방장이 방을 나갔어요."
+                  : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
               </p>
             )}
             {isHost && (
@@ -439,7 +439,7 @@ export function MinhwatuOnlineScreen({
                   ? "시작하는 중…"
                   : friendIn
                     ? "시작하기"
-                    : "친구가 들어오면 시작할 수 있어요"}
+                    : "친구가 들어오면 시작할 수 있어요."}
               </button>
             ) : (
               <p className="text-center text-sm opacity-80">
@@ -451,21 +451,21 @@ export function MinhwatuOnlineScreen({
 
         {phase === "full" && (
           <p className="text-center text-sm">
-            자리가 다 찼거나 이미 시작한 방입니다.
+            자리가 다 찼거나 이미 시작한 방이에요.
           </p>
         )}
         {phase === "kicked" && (
-          <p className="text-center text-sm">방장이 방에서 내보냈습니다.</p>
+          <p className="text-center text-sm">방장이 방에서 내보냈어요.</p>
         )}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다: {error}
+            연결하지 못했어요: {error}
           </p>
         )}
 
         <p className="text-center text-[11px] leading-relaxed opacity-50">
-          서버 없이 기기끼리 바로 잇습니다. 연결 문제를 고치려고 연결에 걸린
-          시간을 서버에 보냅니다(패·이름·채팅은 보내지 않습니다)
+          서버 없이 기기끼리 바로 이어요. 연결 문제를 고치려고 연결에 걸린
+          시간을 서버에 보내요(패·이름·채팅은 보내지 않아요).
         </p>
         <button
           type="button"
