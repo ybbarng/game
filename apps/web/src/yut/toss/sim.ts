@@ -577,7 +577,8 @@ export function planToss(input: TossInput): TossPlan {
   const baseFlight =
     (0.62 + Math.sqrt(g.height / 100) * 0.55) *
     (1.12 - (g.strength / 100) * 0.25);
-  const [lx, lz] = seatPoint(input.angle, 1.55);
+  // 손을 떠나는 자리: 그 사람 쪽 멍석 가장자리 바로 바깥(화면 안에 들어오게)
+  const [lx, lz] = seatPoint(input.angle, 1.28);
 
   const sticks: StickPlan[] = [];
   let tries = 0;
@@ -614,7 +615,7 @@ export function planToss(input: TossInput): TossPlan {
               (k - 1.5) * 0.4 +
               (r() - 0.5) * 0.12
             : away + (r() < 0.5 ? -1 : 1) * (0.5 + r() * 0.7);
-        const radius = 1.28 + (k % 2) * 0.1 + r() * 0.04;
+        const radius = 1.27 + (k % 2) * 0.06 + r() * 0.03;
         restX = Math.cos(toward) * radius;
         restZ = Math.sin(toward) * radius;
       } else {

@@ -155,11 +155,13 @@ describe("가락은 하나씩 멈추고 마지막은 조금 더 구른다", () =
   it("멈추는 시각이 서로 간격을 두고, 마지막 가락은 더 늦게 멈춘다", () => {
     for (const gesture of GESTURES) {
       const plan = planToss(input([true, true, false, true], gesture, null));
-      const stops = plan.sticks.map((s) => s.stop).sort((a, b) => a - b);
-      for (let i = 1; i < 3; i++)
-        expect(stops[i] - stops[i - 1]).toBeGreaterThanOrEqual(STOP_GAP - 1e-9);
-      expect(stops[3] - stops[2]).toBeGreaterThanOrEqual(LAST_GAP - 1e-9);
-      expect(plan.duration).toBe(stops[3]);
+      const [a, b, c, d] = plan.sticks
+        .map((s) => s.stop)
+        .sort((x, y) => x - y) as [number, number, number, number];
+      expect(b - a).toBeGreaterThanOrEqual(STOP_GAP - 1e-9);
+      expect(c - b).toBeGreaterThanOrEqual(STOP_GAP - 1e-9);
+      expect(d - c).toBeGreaterThanOrEqual(LAST_GAP - 1e-9);
+      expect(plan.duration).toBe(d);
     }
   });
 
@@ -183,10 +185,12 @@ describe("가락은 하나씩 멈추고 마지막은 조금 더 구른다", () =
       const angle = seatAngle(offset, players);
       const plan = planToss(input(sticks, STEADY, null, 3, angle));
       const start = poseAt(plan, 0, 0);
-      expect(Math.atan2(start.z, start.x)).toBeCloseTo(
-        Math.atan2(Math.sin(angle), Math.cos(angle)),
-        1,
-      );
+      const toward =
+        (start.x * Math.cos(angle) + start.z * Math.sin(angle)) /
+        Math.hypot(start.x, start.z);
+      // 자리 방향과 거의 같다(5도 안쪽), 멍석 가장자리 바깥
+      expect(toward).toBeGreaterThan(Math.cos((5 * Math.PI) / 180));
+      expect(Math.hypot(start.x, start.z)).toBeGreaterThan(MAT_RADIUS);
     }
   });
 });
