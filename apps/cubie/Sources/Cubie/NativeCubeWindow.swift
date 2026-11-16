@@ -664,17 +664,41 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   }
 
   /// 다시 볼 판이 없을 때 홈 시연(사이트 미니 `HeroLoop` 한 판): 맞춘 큐브에서 섞기 → 쥐는 방향 → 사람 해법 풀이,
-  /// 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다. 코어에 없는 해법·크기면 nil(조금 섞기로 넘어간다)
+  /// 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다. 코어에 없는 해법·크기면 nil(조금 섞기로 넘어간다).
+  /// 섞기는 바로 보이고, 풀이는 그동안 화면 스레드 밖에서 만든다(사이트도 섞는 동안 워커가 푼다). 큰 큐브 풀이는 수백 ms
+  /// (7×7 약 0.6초)라 섞기와 섞은 뒤 멈춤(7×7 약 6.5초) 안에 끝난다. 늦으면 풀이가 올 때까지 멈춘 채 기다린다
   private func startHero(_ done: @escaping @MainActor () -> Void) -> (() -> Void)? {
-    guard let id = settings.heroMethodId(n: cube.n), NativeCore.heroMethods.contains(id),
-      let show = NativeCore.heroSteps(method: id, seed: UInt32.random(in: 0...UInt32.max)),
-      let last = show.steps.last
-    else { return nil }
-    if Config.debug { print("[cubie] hero \(id) steps=\(show.steps.count) end=\(show.end)"); fflush(stdout) }
+    guard let id = settings.heroMethodId(n: cube.n), NativeCore.heroMethods.contains(id) else { return nil }
+    let seed = UInt32.random(in: 0...UInt32.max)
+    guard let pre = NativeCore.heroScramble(method: id, seed: seed), let lastPre = pre.steps.last else { return nil }
     cube.showJump(solved: true)
-    let steps = show.steps.map { IdleShow.Step(at: $0.at, moves: $0.move, scramble: false) }
-    return play(
-      steps, moveMs: { show.steps[$0].moveMs }, hold: show.end - last.at + IdleShow.endHoldMs, done: done)
+    let run = HeroRun()
+    let asked = Date()
+    DispatchQueue.global(qos: .userInitiated).async {
+      let show = NativeCore.heroSteps(method: id, seed: seed)
+      Task { @MainActor in run.arrive(show) }
+    }
+    run.solve = { [weak self, weak run] show in
+      guard let self, let run, !run.stopped else { return }
+      // 섞기가 다르면(못 풀어 다른 섞기로 다시 짠 판, 생기지 않는다) 이어 붙이지 않고 끝낸다
+      guard let show, show.steps.count > pre.steps.count,
+        zip(show.steps, pre.steps).allSatisfy({ $0.move == $1.move && $0.at == $1.at }),
+        let last = show.steps.last
+      else { return done() }
+      if Config.debug {
+        let ms = Int(Date().timeIntervalSince(asked) * 1000)
+        print("[cubie] hero \(id) steps=\(show.steps.count) end=\(show.end) ready=\(ms)ms"); fflush(stdout)
+      }
+      let rest = Array(show.steps[pre.steps.count...])
+      let steps = rest.map { IdleShow.Step(at: $0.at - pre.end, moves: $0.move, scramble: false) }
+      run.cancel = self.play(
+        steps, moveMs: { rest[$0].moveMs }, hold: show.end - last.at + IdleShow.endHoldMs, done: done)
+    }
+    let steps = pre.steps.map { IdleShow.Step(at: $0.at, moves: $0.move, scramble: false) }
+    run.cancel = play(
+      steps, moveMs: { pre.steps[$0].moveMs }, hold: pre.end - lastPre.at, done: { [weak run] in run?.scrambled() })
+    // `run`은 이 멈추는 함수(떠 있을 때 움직임이 쥐고 있다)만 붙잡는다. 걸음 함수들은 약하게 본다(서로 붙잡아 남지 않게)
+    return { run.stop() }
   }
 
   private func startJiggle(_ done: @escaping @MainActor () -> Void) -> () -> Void {
