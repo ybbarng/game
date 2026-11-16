@@ -65,7 +65,7 @@ describe("차례와 수 두기", () => {
     };
     expect(step(state, 1 - white, e4)).toEqual({
       ok: false,
-      error: "차례가 아니다",
+      error: "차례가 아니에요.",
     });
     expect(
       step(state, white, {
@@ -73,7 +73,7 @@ describe("차례와 수 두기", () => {
         from: squareAt("e2"),
         to: squareAt("e5"),
       }),
-    ).toEqual({ ok: false, error: "둘 수 없는 수다" });
+    ).toEqual({ ok: false, error: "둘 수 없는 수예요." });
     const after = must(state, white, e4);
     expect(after.events[0]).toMatchObject({ type: "moved", san: "e4" });
     expect(seatToMove(after.state)).toBe(1 - white);
@@ -96,7 +96,7 @@ describe("차례와 수 두기", () => {
         from: squareAt("e2"),
         to: squareAt("c3"),
       }),
-    ).toEqual({ ok: false, error: "킹이 잡히게 되는 수는 둘 수 없다" });
+    ).toEqual({ ok: false, error: "킹이 잡히게 되는 수는 둘 수 없어요." });
   });
 
   it("승급은 기물을 골라야 하고, 고른 기물로 바뀐다", () => {
@@ -110,7 +110,7 @@ describe("차례와 수 두기", () => {
     };
     expect(step(state, 0, base)).toEqual({
       ok: false,
-      error: "폰이 끝줄에 닿으면 바꿀 기물을 골라야 한다",
+      error: "폰이 끝줄에 닿으면 바꿀 기물을 골라야 해요.",
     });
     const after = must(state, 0, { ...base, promotion: "R" });
     expect(after.state.position.board[squareAt("e8")]).toBe("wR");
@@ -123,7 +123,7 @@ describe("차례와 수 두기", () => {
     };
     expect(step(state, 0, { ...king, promotion: "Q" })).toEqual({
       ok: false,
-      error: "승급할 수 없는 수다",
+      error: "승급할 수 없는 수예요.",
     });
   });
 });
@@ -191,7 +191,7 @@ describe("판 끝", () => {
     state = must(state, 0, { type: "continue" }).state;
     expect(step(state, 0, { type: "continue" })).toEqual({
       ok: false,
-      error: "이미 눌렀다",
+      error: "이미 눌렀어요.",
     });
     const next = must(state, 1, { type: "continue" });
     expect(next.events[0]).toEqual({
@@ -223,7 +223,7 @@ describe("무승부 제안", () => {
     // 아직 아무도 두지 않았으면 제안할 수 없다.
     expect(step(s, black, { type: "offerDraw" })).toEqual({
       ok: false,
-      error: "한 수라도 둔 뒤에 제안한다",
+      error: "한 수라도 둔 뒤에 제안할 수 있어요.",
     });
     expect(viewOf(s, white).canOfferDraw).toBe(false);
     s = san(s, "e4").state;

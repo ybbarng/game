@@ -34,10 +34,10 @@ export function decodeChessRules(
   text: string,
 ): { ok: true; rules: ChessRules } | { ok: false; reason: string } {
   const match = /^c1-w([1-5])(-t\d)?$/.exec(text.trim());
-  if (!match) return { ok: false, reason: "체스 규칙 문자열 형식이 아니다" };
+  if (!match) return { ok: false, reason: "체스 규칙 문자열 형식이 아니에요." };
   const [, wins, tail] = match;
   const time = decodeTimePreset(tail);
-  if (time === null) return { ok: false, reason: "모르는 시간 규칙이다" };
+  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요." };
   return {
     ok: true,
     rules: {
