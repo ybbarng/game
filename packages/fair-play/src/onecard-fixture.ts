@@ -44,7 +44,10 @@ export interface OnecardNet extends TestNetwork {
  * `drop`은 보내지 않을 메시지(시험이 붙잡았다가 나중에 `receive`로 넣어 순서를 바꾼다)
  */
 export function onecardNet(
-  options: { drop?: (message: FairWire, from: number) => boolean } = {},
+  options: {
+    drop?: (message: FairWire, from: number) => boolean;
+    rewrite?: (message: FairWire, from: number) => FairWire;
+  } = {},
 ): OnecardNet {
   const net = network([0, 1], options);
   const incidents: Incident[][] = [[], []];
