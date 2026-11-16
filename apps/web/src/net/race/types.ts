@@ -243,3 +243,33 @@ export interface RaceSnapshot {
   lateMoves: Record<string, number>;
   result?: RaceResult;
 }
+
+/**
+ * 새로고침 뒤 내 자리에서 같은 판을 이어 가려고 이 기기가 남겨 두는 내 몫(`RaceSession.resumeData`, docs/47 9-11).
+ * 시각은 모두 그 세션 시계 기준 ms다(다른 시계로 옮기는 것은 부르는 쪽 몫). 남이 보낸 것은 남지 않는다:
+ * 돌아오면 다른 기기가 이 판에 보냈던 메시지를 다시 보낸다(끊겼다 돌아온 사람과 같은 길)
+ */
+export interface RaceResume {
+  attempt: number;
+  /** 이 기기가 본 기권(아이디 → 까닭) */
+  out: [string, string][];
+  /** 내 약속의 재료. 새로 만들면 첫 약속과 달라 「공개가 약속과 다름」이 된다 */
+  nonce: string;
+  salt: string;
+  /**
+   * 받아 둔 약속(아이디 → 약속). 공개한 뒤에는 새 약속을 받지 않으므로(내 공개값을 본 뒤 고른 약속 막기) 공개 전에 받은 것을
+   * 그대로 되살린다
+   */
+  commits: [string, string][];
+  /** 내 공개값을 보낸 시각(s) */
+  revealedAt?: number;
+  seed?: string;
+  /** 풀림 시각. 씨앗을 안 뒤에만 */
+  releaseAt?: number;
+  /** 내가 둔 수(글)와 시각(풀림 기준 ms) */
+  moves: { m: string; t: number }[];
+  /** 맞췄다고 알린 것 */
+  done?: { n: number; t: number };
+  /** 스스로 그만둔 까닭(섞기를 정한 뒤) */
+  retired?: string;
+}
