@@ -32,6 +32,7 @@ export const baseballOnline: BoardOnlineGame<
   useStore: useBaseball,
   botFor: baseballBotFor,
   rulesSummary(rules) {
-    return `${rules.digits}자리 · ${rules.zero ? "0~9" : "1~9"} · ${rules.fair ? "후공에게 한 번 더(공정 규칙)" : "먼저 맞히면 승"}. 첫 판 선은 무작위, 판마다 바꿉니다. 비밀 수는 각자 기기에만 있고 방장도 모릅니다.`;
+    return `${rules.digits}자리 · ${rules.zero ? "0~9" : "1~9"} · ${rules.fair ? "후공에게 한 번 더(공정 규칙)" : "먼저 맞히면 승"} · 첫 판 선은 무작위 · 판마다 선 바꿈`;
   },
+  rulesNote: () => "비밀 수는 각자 기기에만 있고 방장도 몰라요.",
 };

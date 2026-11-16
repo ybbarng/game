@@ -71,18 +71,18 @@ export const BASEBALL_LEVELS: readonly {
     value: 0,
     label: "입문",
     description:
-      "지금까지 받은 답과 맞는 수를 아무거나 묻고, 가끔 받은 답을 잊는다.",
+      "지금까지 받은 답과 맞는 수를 아무거나 묻고, 가끔 받은 답을 잊어요.",
   },
   {
     value: 1,
     label: "중수",
-    description: "늘 지금까지 받은 답과 맞는 수만 묻는다.",
+    description: "늘 지금까지 받은 답과 맞는 수만 물어요.",
   },
   {
     value: 2,
     label: "고수",
     description:
-      "어떤 답이 와도 후보가 가장 많이 줄어드는 수를 골라 빨리 좁힌다.",
+      "어떤 답이 와도 후보가 가장 많이 줄어드는 수를 골라 빨리 좁혀요.",
   },
 ];
 

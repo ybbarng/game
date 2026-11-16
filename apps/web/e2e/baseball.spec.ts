@@ -534,7 +534,7 @@ test(
     await expect(status(page)).toContainText(/내 차례|마지막 기회/);
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(status(page)).toHaveText("기권했어요");
+    await expect(status(page)).toHaveText("기권했어요.");
     await expect
       .poll(() => page.evaluate(finishedBaseballGames), { intervals: [50] })
       .toBe(1);
