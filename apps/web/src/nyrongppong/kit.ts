@@ -78,13 +78,13 @@ export const nyrongppongStats: KitStats<NyrongppongView, GameEvent> = {
     anyRound<NyrongppongRound>(
       "ppong-3",
       "뽕 셋",
-      "한 판에 뽕을 세 번 합니다.",
+      "한 판에 뽕을 세 번 해요.",
       (r) => r.ppongs >= 3,
     ),
     anyRound<NyrongppongRound>(
       "yak-end",
       "약으로 끝냄",
-      "약을 이루어 판을 끝냅니다.",
+      "약을 이루어 판을 끝내요.",
       (r) => r.end === "yak" && r.mine,
     ),
   ],
