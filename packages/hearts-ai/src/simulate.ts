@@ -24,9 +24,12 @@ export function simulateHearts(options: {
   seed: number;
   bots: readonly HeartsBot[];
   rounds: number;
+  /** 시작 점수(게임 끝이 가까운 장면을 재 볼 때). 없으면 모두 0 */
+  scores?: readonly number[];
 }): HeartsSimulationResult {
   const rng = createRng(options.seed ^ 0x2545f491);
   let { state } = createMatch({ rules: options.rules, seed: options.seed });
+  if (options.scores) state = { ...state, scores: [...options.scores] };
   let rounds = 0;
   for (let guard = 0; guard < 100_000 && rounds < options.rounds; guard++) {
     const seat = pendingSeats(state)[0];

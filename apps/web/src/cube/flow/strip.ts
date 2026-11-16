@@ -5,8 +5,10 @@
 // - 흐름 콤보(docs/51 2-1)는 `combo.ts`의 규칙을 그대로 쓴다(이어 치기·되돌리는 수·진행 없음).
 import { type CubeMove, formatMove, isRotation } from "@game/cube-engine";
 
+import { type ChunkRun, EMPTY_CHUNK, pushChunk } from "./chunk";
 import { type ComboState, EMPTY_COMBO, pushCombo } from "./combo";
 
+export { chunkNow } from "./chunk";
 export { COMBO_GAP_MS, COMBO_SHOW, comboLevel, comboNow } from "./combo";
 
 export interface FlowItem {
@@ -30,6 +32,8 @@ export interface FlowStrip extends ComboState {
   readonly next: number;
   /** 면 돌리기를 둔 시각(ms, 빠르기 계산). 큐브 돌리기는 빼고, 최근 것만 */
   readonly times: readonly number[];
+  /** 공식 덩어리 ×n을 셀 이어 친 수(`chunk.ts`, 합치지 않은 친 차례 그대로) */
+  readonly chunk: ChunkRun;
 }
 
 /** 남기는 수 */
@@ -41,6 +45,7 @@ export const EMPTY_FLOW: FlowStrip = {
   items: [],
   next: 1,
   times: [],
+  chunk: EMPTY_CHUNK,
   ...EMPTY_COMBO,
 };
 
@@ -69,6 +74,7 @@ export function pushFlow(
     ? strip.times
     : [...strip.times.filter((t) => at - t <= FLOW_SPEED_WINDOW), at];
   const c = pushCombo(strip, n, move, at, progress);
+  const chunk = pushChunk(strip.chunk, formatMove(n, move), at, rotation);
   const flow: ComboState = {
     combo: c.combo,
     turnAt: c.turnAt,
@@ -80,7 +86,8 @@ export function pushFlow(
   if (last && sameLayers(last.move, move)) {
     const turns = (last.move.turns + move.turns) % 4;
     const rest = strip.items.slice(0, -1);
-    if (turns === 0) return { items: rest, next: strip.next, times, ...flow };
+    if (turns === 0)
+      return { items: rest, next: strip.next, times, chunk, ...flow };
     const merged: CubeMove = { ...last.move, turns: turns as 1 | 2 | 3 };
     return {
       items: [
@@ -89,6 +96,7 @@ export function pushFlow(
       ],
       next: strip.next,
       times,
+      chunk,
       ...flow,
     };
   }
@@ -104,6 +112,7 @@ export function pushFlow(
     items: [...strip.items, item].slice(-FLOW_KEEP),
     next: strip.next + 1,
     times,
+    chunk,
     ...flow,
   };
 }

@@ -2,6 +2,7 @@ import {
   type Action,
   type BadukScenarioOptions,
   type BadukView,
+  type BoardSize,
   type GameEvent,
   pointAt,
   STANDARD_RULES,
@@ -9,9 +10,10 @@ import {
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 
-/** 튜토리얼 장면: 놓인 돌에 더해 그림에만 쓰는 표시(자리 → 글자) */
+/** 튜토리얼 장면: 놓인 돌에 더해 그림에만 쓰는 표시(자리 → 글자). 판 크기는 없으면 9줄(포석 그림은 19줄) */
 export type BadukScene = Omit<BadukScenarioOptions, "rules"> & {
   marks?: Readonly<Record<string, string>>;
+  size?: BoardSize;
 };
 export type BadukLesson = Lesson<BadukView, GameEvent, BadukScene, Action>;
 type Context = MissionContext<BadukView, GameEvent>;

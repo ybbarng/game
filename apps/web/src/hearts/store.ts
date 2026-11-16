@@ -1,4 +1,4 @@
-import type { BusyReason } from "@game/fair-play";
+import { type BusyReason, realClock } from "@game/fair-play";
 import {
   type Action,
   type CompletedTrick,
@@ -375,10 +375,12 @@ export const useHearts = create<HeartsStore>((set, get) => {
         kit: heartsKit,
         rules,
         seed,
-        bot: heartsBotFor(useHeartsSettings.getState().level),
+        // 혼자 하기만 고수의 시간 상한을 켠다(다시 계산해 맞춰 보는 일이 없다, hearts/bots.ts).
+        bot: heartsBotFor(useHeartsSettings.getState().level, realClock),
         ...workerBotOption({
           game: "hearts",
           level: useHeartsSettings.getState().level,
+          timed: true,
         }),
         pace: browserPace,
       },

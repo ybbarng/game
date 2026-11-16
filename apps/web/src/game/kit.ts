@@ -3,6 +3,7 @@ import type { RngState } from "@game/mighty-engine";
 
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
 import type { ClaimRaceSpec } from "@/net/claim-race";
+import type { AchievementSpec, KitResult } from "@/stats/outcome";
 
 /** 컴퓨터 플레이어. 자기 자리에서 보이는 정보만 받는다(마이티·하트 공통 모양) */
 export interface KitBot<View, Action, Event = unknown> {
@@ -71,6 +72,10 @@ export interface KitStats<View, Event> {
   round(start: View | null, end: View, events: readonly Event[]): unknown;
   /** 게임 기록. `events`는 게임이 끝난 걸음의 사건 */
   game(view: View, events: readonly Event[]): unknown;
+  /** 승패를 세는 단위와 기록 하나의 승패(같이 한 사람별 기록, 모든 게임에 같은 업적) */
+  readonly result: KitResult;
+  /** 그 게임만의 업적(첫 승·연승처럼 모든 게임에 같은 것은 `stats/achievements.ts`가 더한다) */
+  readonly achievements: readonly AchievementSpec[];
 }
 
 /**

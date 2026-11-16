@@ -1,6 +1,7 @@
 import type { GameEvent, PlayerView } from "@game/hearts-engine";
 
 import type { KitStats } from "@/game/kit";
+import { anyRound, countRounds } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
 
 /** 하트 판 기록(내 자리에서 본 것) */
@@ -29,6 +30,29 @@ export interface HeartsGame {
 const QUEEN = "SQ";
 
 export const heartsStats: KitStats<PlayerView, GameEvent> = {
+  result: {
+    unit: "game",
+    outcome: (data) => {
+      const g = data as HeartsGame;
+      if (g.retired) return null;
+      return g.won ? "win" : "loss";
+    },
+  },
+  achievements: [
+    anyRound<HeartsRound>(
+      "moon",
+      "문 슛",
+      "문 슛을 해냅니다.",
+      (r) => r.moon === "me",
+    ),
+    countRounds<HeartsRound>(
+      "clean-10",
+      "깨끗한 손",
+      "0점으로 끝낸 판이 열 번 쌓입니다.",
+      10,
+      (r) => r.points === 0,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundScored"),
   gameEnded: (events) => events.some((e) => e.type === "gameOver"),

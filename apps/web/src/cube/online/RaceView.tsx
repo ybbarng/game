@@ -22,6 +22,7 @@ import type { RaceSnapshot } from "@/net/race/types";
 import type { StickerMarks } from "../bridge";
 import { CubePlay, playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
+import { useSolveMethod } from "../components/MethodSelect";
 import { useMoveKeys } from "../components/MoveChip";
 import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
@@ -29,6 +30,7 @@ import type { CubeLook } from "../item-look";
 import { SHAPE_START_LABELS, shapeGoal, shapeProgress } from "../patterns/race";
 import { ShapeFormula } from "../patterns/ShapeFormula";
 import { ShapeGoal } from "../patterns/ShapeGoal";
+import { methodSplits } from "../progress/methods";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
@@ -189,6 +191,8 @@ function CubeRaceView({
 }) {
   const settings = useCubeSettings();
   const n = room.state?.settings.n ?? 3;
+  // 내 칸의 칩은 고른 해법 차례로(docs/51 1-2). 톡·1등 판정·결과 상자 구간 표는 모두의 칩 그대로
+  const { method } = useSolveMethod(n);
   const session = room.anySession();
   const mine = room.session();
   const snap = session?.snapshot();
@@ -382,6 +386,8 @@ function CubeRaceView({
     [syncKey, n, start !== undefined, !shape],
   );
   const stages = new Map<string, { splits: Split[]; groups: SplitGroup[] }>();
+  const myMethodGroups = (splits: readonly Split[] | undefined) =>
+    groupSplits(methodSplits(n, method, splits ?? []));
   if (tracker && session && snap)
     for (const p of snap.peers) {
       const splits = [...tracker.update(p.id, session.moveLog(p.id))];
@@ -602,7 +608,11 @@ function CubeRaceView({
         botPlanned={room.botPlanned(p.id)}
         peerStatus={p.status}
         hp={hp}
-        groups={stages.get(p.id)?.groups ?? []}
+        groups={
+          p.id === room.me
+            ? myMethodGroups(stages.get(p.id)?.splits)
+            : (stages.get(p.id)?.groups ?? [])
+        }
         toast={toasts[p.id]}
         handicap={handicap}
         n={n}
@@ -620,7 +630,9 @@ function CubeRaceView({
     );
   };
   // 가리고 맞추는 동안은 내 단계·진행을 보이지 않는다
-  const myGroups = helpNow.hidden ? [] : (stages.get(room.me)?.groups ?? []);
+  const myGroups = helpNow.hidden
+    ? []
+    : myMethodGroups(stages.get(room.me)?.splits);
   const myStatus = me ? statusOf(me) : "";
   const myToast = toasts[room.me];
 
