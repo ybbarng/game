@@ -59,7 +59,7 @@ import {
 } from "./time-witness";
 import { connectionFingerprints, type Transport } from "./transport";
 
-/** 다른 게임의 방에 들어가면 나오는 거절 사유. 온라인 화면이 이 글로 오류 화면을 띄운다 */
+/** 다른 게임의 방에 들어왔을 때 알리는 글. 화면들이 이 글로 오류 화면을 고른다(글을 바꾸면 함께 바뀌게 상수 하나) */
 export const OTHER_GAME_ROOM = "다른 게임의 방이에요.";
 
 /**

@@ -4,7 +4,7 @@ import { heartsIntermediateBot, heartsNormalBot } from "@game/hearts-ai";
 import { WINDOWS_RULES } from "@game/hearts-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { type AuditResult, GuestRoom } from "@/net/guest-room";
+import { type AuditResult, GuestRoom, OTHER_GAME_ROOM } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { MemoryNetwork } from "@/net/transport";
 
@@ -89,6 +89,6 @@ describe("하트 온라인 방", () => {
     const errors: string[] = [];
     guest.on("rejected", (e) => errors.push(e));
     await until(() => errors.length > 0);
-    expect(errors).toEqual(["다른 게임의 방이에요."]);
+    expect(errors).toEqual([OTHER_GAME_ROOM]);
   });
 });
