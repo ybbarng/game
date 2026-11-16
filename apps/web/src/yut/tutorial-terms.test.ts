@@ -1,5 +1,7 @@
 // 윷놀이 튜토리얼이 용어의 뜻을 먼저 알리고 쓰는지 본다(tutorial/term-order.ts).
-import type { OrderedTerm } from "@/tutorial/term-order";
+import { describe, expect, it } from "vitest";
+
+import { lessonPlaces, type OrderedTerm } from "@/tutorial/term-order";
 import { termOrderSuite } from "@/tutorial/term-order-suite";
 
 import { YUT_LESSONS } from "./tutorial";
@@ -28,13 +30,26 @@ const TERMS: OrderedTerm[] = [
   { term: "업다", use: /업/, define: /\*\*업는다\*\*고/ },
   { term: "빽도", use: /빽도/, define: /\*\*빽도\*\*, 한 칸/ },
   { term: "도 자리", use: /도 자리/, define: /\(\*\*도 자리\*\*\)/ },
+  { term: "멍석", use: /멍석/, define: /둥근 깔개 \*\*멍석\*\*/ },
+  { term: "낙", use: /낙/, define: /\*\*낙\*\*이라고/ },
   { term: "방장", use: /방장/, define: /\(\*\*방장\*\*\)/ },
   {
-    term: "해시 사슬·약속·고리",
-    use: /사슬|약속|고리/,
-    define: /\(\*\*해시 사슬\*\*\)/,
+    term: "비밀 값",
+    use: /비밀 값|모두의 값|다음 값/,
+    define: /\*\*비밀 값\*\*을/,
   },
+  { term: "봉인", use: /봉인|봉한/, define: /\*\*봉인\*\*해 .*봉인은 봉투/ },
+  { term: "몸짓", use: /몸짓/, define: /\*\*몸짓\*\*\(/ },
   { term: "입문 컴퓨터", use: /입문/, define: /가장 쉬운 단계인 입문/ },
 ];
 
 termOrderSuite("윷놀이", YUT_LESSONS, TERMS);
+
+describe("윷놀이 튜토리얼 낱말", () => {
+  it("공정한 던지기는 기술 말(해시·사슬·고리·커밋·약속) 없이 설명한다", () => {
+    const found = lessonPlaces(YUT_LESSONS)
+      .filter((p) => /해시|사슬|고리|커밋|약속/.test(p.text))
+      .map((p) => p.where);
+    expect(found).toEqual([]);
+  });
+});

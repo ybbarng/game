@@ -105,6 +105,14 @@ interface YutStore {
   practice: boolean;
   /** 세대마다 내 사슬 씨앗(온라인만, 이 기기에만 있다) */
   seeds: SeedBook;
+  /** 던진 윷이 3D 멍석에서 굴러가는 중(다음 화면을 보이지 않고 기다린다) */
+  tossing: boolean;
+  /** 굴러가던 윷이 다 멈춰 결과를 보이는 중(`tossing`은 아직 참) */
+  landed: boolean;
+  /** 3D 윷이 다 멈췄다: 결과를 보이는 동안 상태 줄도 결과로 */
+  landToss(): void;
+  /** 3D 연출이 끝났다: 기다리던 화면을 이어 보인다 */
+  finishToss(): void;
   newGame(options: { rules: YutRules; level: number; seed?: number }): void;
   resume(saved: YutSaved): void;
   /** 튜토리얼 미션: 이 장면에서 입문 컴퓨터와 한다(나는 0번 자리) */
@@ -129,13 +137,21 @@ interface YutStore {
   clearNotice(): void;
 }
 
-/** 사건에 맞춰 소리를 낸다: 던지기, 말 놓기·잡기·나기, 판 끝 */
-function cuesFor(events: readonly GameEvent[], view: YutView): void {
+/**
+ * 사건에 맞춰 소리를 낸다: 던지기, 말 놓기·잡기·나기, 판 끝.
+ * 3D 연출이 그 던지기를 맡았으면(`tossed`) 떨어지는 소리는 연출이 가락이 닿을 때마다 낸다
+ */
+function cuesFor(
+  events: readonly GameEvent[],
+  view: YutView,
+  tossed: boolean,
+): void {
   const mySide = sideOf(view.rules, view.mySeat);
   for (const e of events) {
     if (e.type === "thrown") playUiCue("yutThrow");
-    if (e.type === "result") playUiCue(e.bonus ? "yutBonus" : "yutLand");
-    if (e.type === "nak") playUiCue("yutLand");
+    if (e.type === "result" && !tossed)
+      playUiCue(e.bonus ? "yutBonus" : "yutLand");
+    if (e.type === "nak" && !tossed) playUiCue("yutLand");
     if (e.type === "moved")
       playUiCue(
         e.captured > 0 ? "yutCapture" : e.finished ? "yutHome" : "yutPiece",
@@ -146,6 +162,26 @@ function cuesFor(events: readonly GameEvent[], view: YutView): void {
     }
   }
 }
+
+/**
+ * 던진 윷을 3D로 굴려 보일 화면(멍석). 결과가 나온 화면을 받으면 그 던지기를 연출할지 답한다. 연출하면 store는
+ * 가락이 모두 멈출 때까지(`finishToss`) 다음 화면(컴퓨터의 말 옮기기 등)을 보이지 않고 기다린다(docs/37 14절).
+ * 3D를 못 그리거나 움직임 줄이기면 화면이 맡지 않아(null) 예전처럼 바로 이어 간다
+ */
+export type TossDirector = (
+  view: YutView,
+  events: readonly GameEvent[],
+) => boolean;
+
+let tossDirector: TossDirector | null = null;
+
+export function setTossDirector(director: TossDirector | null): void {
+  tossDirector = director;
+}
+
+/** 연출이 끝났다는 소식이 끝내 오지 않을 때의 안전장치(ms): 가장 긴 연출(약 4초)보다 넉넉히 */
+const TOSS_SAFETY_MS = 9000;
+let tossTimer: ReturnType<typeof setTimeout> | null = null;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribe: (() => void) | null = null;
@@ -159,6 +195,8 @@ let kept: PendingThrow[] = [];
 function stop(): void {
   if (timer !== null) clearTimeout(timer);
   timer = null;
+  if (tossTimer !== null) clearTimeout(tossTimer);
+  tossTimer = null;
   unsubscribe?.();
   unsubscribe = null;
   lastAuto = null;
@@ -204,7 +242,7 @@ export const useYut = create<YutStore>((set, get) => {
 
   /** 쌓인 화면을 차례로 보인다. 컴퓨터가 던지거나 움직인 것은 조금 기다렸다가 */
   const advance = (): void => {
-    if (timer !== null) return;
+    if (timer !== null || get().tossing) return;
     const next = get().queue[0];
     if (next === undefined) return;
     const host = get().host;
@@ -219,12 +257,21 @@ export const useYut = create<YutStore>((set, get) => {
       );
     const show = () => {
       timer = null;
+      const landed = next.events.some(
+        (e) => e.type === "result" || e.type === "nak",
+      );
+      const tossed =
+        landed && (tossDirector?.(next.view, next.events) ?? false);
       set({
         queue: get().queue.slice(1),
         view: next.view,
         events: next.events,
+        tossing: tossed,
+        landed: false,
       });
-      cuesFor(next.events, next.view);
+      if (tossed)
+        tossTimer = setTimeout(() => get().finishToss(), TOSS_SAFETY_MS);
+      cuesFor(next.events, next.view, tossed);
       autoAct();
       advance();
     };
@@ -276,6 +323,8 @@ export const useYut = create<YutStore>((set, get) => {
       notice: null,
       practice,
       seeds: options.seeds,
+      tossing: false,
+      landed: false,
     });
     persist();
     for (const snapshot of first) {
@@ -347,6 +396,20 @@ export const useYut = create<YutStore>((set, get) => {
     notice: null,
     practice: false,
     seeds: {},
+    tossing: false,
+    landed: false,
+
+    landToss() {
+      if (get().tossing) set({ landed: true });
+    },
+
+    finishToss() {
+      if (tossTimer !== null) clearTimeout(tossTimer);
+      tossTimer = null;
+      if (!get().tossing) return;
+      set({ tossing: false, landed: false });
+      advance();
+    },
 
     newGame({ rules, level, seed: given }) {
       track("game-start", { game: "yut", mode: "solo", level });
@@ -413,8 +476,10 @@ export const useYut = create<YutStore>((set, get) => {
     submit(action) {
       const host = get().host;
       if (!host) return { ok: false, error: "게임이 없다" };
-      // 컴퓨터 수를 보여 주기 전에는 두지 않는다.
+      // 컴퓨터 수를 보여 주기 전에는 두지 않는다. 던진 윷이 구르는 동안에는 말을 옮기지 않는다.
       if (get().queue.length > 0) return { ok: false, error: "잠깐만요" };
+      if (get().tossing && action.type === "move")
+        return { ok: false, error: "잠깐만요" };
       const result = host.submit(action);
       if (!result.ok) {
         set({ notice: result.error });
@@ -470,6 +535,8 @@ export const useYut = create<YutStore>((set, get) => {
         offlineSeats: [],
         practice: false,
         seeds: {},
+        tossing: false,
+        landed: false,
       });
     },
 

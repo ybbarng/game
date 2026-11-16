@@ -33,6 +33,23 @@ export interface TestNetwork {
   settle(): Promise<void>;
 }
 
+/**
+ * 할 일을 다 마치고, 걸린 기다림(미룬 섞기 증명, 증명 응답 기다리기 등)을 하나씩 그 시각에 지나게 한다.
+ * 기다림 하나가 지날 때마다 기기가 할 일을 마칠 때까지 기다린다. 시계를 한 번에 크게 옮기면 미룬 증명이
+ * 시작만 하고 계산이 끝나기 전에 그 뒤 기다림(응답 30초 등)까지 지나, 정직한 기기가 늦은 것처럼 된다
+ * (실제 시간에서는 계산이 먼저 끝난다). 안전장치: 기다림이 끝없이 다시 걸리면 멈춘다
+ */
+export async function passWaits(net: {
+  clock: ManualClock;
+  settle(): Promise<void>;
+}): Promise<void> {
+  await net.settle();
+  for (let i = 0; net.clock.advanceToNext(); i++) {
+    if (i > 200) throw new Error("기다림이 끝나지 않는다");
+    await net.settle();
+  }
+}
+
 /** 기기들을 메모리로 잇는다(메시지는 비동기로, 보낸 기기 번호와 함께) */
 export function network(
   ids: number[],
