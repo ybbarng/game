@@ -12,11 +12,12 @@
 
 use std::collections::HashSet;
 
-use crate::hero::hero_cfop;
-use crate::human::{HumanSolve, SolveError};
+use crate::hero::solve_with_cheapest_first;
+use crate::human::{solve_cfop_first, solve_intermediate2, HumanSolve, SolveError, StageName};
 use crate::notation::{format_move, parse_moves, CubeMove};
+use crate::roux_zz::{solve_roux, solve_zz};
 use crate::state::{apply_alg, apply_move, apply_moves, face_colors, solved_cube, State};
-use crate::taught::solve_beginner3_taught;
+use crate::taught::{solve_beginner2_taught, solve_beginner3_taught};
 use crate::topology::{cube_topology, PieceKind};
 
 // ── 조각 강조(사이트 `piece-marks.ts`) ─────────────────────
@@ -1212,7 +1213,7 @@ fn finish(
 
 // ── 연출 차례(사이트 `hero/loop.ts`) ─────────────────────────
 
-/// 시간(ms, 사이트 `heroTiming`). 지금은 3×3만
+/// 시간(ms, 사이트 `heroTiming`). 크기마다 다르다(큰 큐브는 풀이가 길어 수를 빠르게 둔다)
 #[derive(Clone, Copy, Debug)]
 pub struct HeroTiming {
     pub scramble_move: f64,
@@ -1227,8 +1228,9 @@ pub struct HeroTiming {
     pub scramble_length: usize,
 }
 
-pub fn hero_timing3() -> HeroTiming {
-    HeroTiming {
+/// 크기 `n`(2~7)의 시간(사이트 `heroTiming(n)`. 워커 기다림 상한 `workerWait`·`solveWait`는 앱이 쓰지 않는다)
+pub fn hero_timing(n: usize) -> HeroTiming {
+    let base = HeroTiming {
         scramble_move: 110.0,
         after_scramble: 3000.0,
         solve_move: 240.0,
@@ -1239,7 +1241,36 @@ pub fn hero_timing3() -> HeroTiming {
         order: 250.0,
         solved: 1800.0,
         scramble_length: 20,
+    };
+    match n {
+        2 => HeroTiming {
+            scramble_move: 120.0,
+            solve_move: 280.0,
+            search_move: 180.0,
+            scramble_length: 11,
+            ..base
+        },
+        3 => base,
+        _ => HeroTiming {
+            stage: 350.0,
+            look: 120.0,
+            order: 150.0,
+            scramble_move: 80.0,
+            solve_move: if n == 4 { 120.0 } else { 100.0 },
+            search_move: 80.0,
+            scramble_length: match n {
+                4 => 30,
+                5 => 36,
+                6 => 40,
+                _ => 44,
+            },
+            ..base
+        },
     }
+}
+
+pub fn hero_timing3() -> HeroTiming {
+    hero_timing(3)
 }
 
 pub const SCRAMBLING_LABEL: &str = "섞는 중";
@@ -1550,39 +1581,97 @@ pub fn hero_move_ms(step_ms: f64, parsed: &[CubeMove]) -> f64 {
     (step_ms * HERO_ANIM_SHARE / longest).floor().min(200.0)
 }
 
-// ── 해법 표(사이트 `hero/methods.ts` 가운데 3×3) ─────────────
+// ── 해법 표(사이트 `hero/methods.ts` `HERO_METHODS`) ─────────────
 
 /// 시연 해법(사이트 `HERO_METHODS`의 id)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HeroMethod {
+    /// `2-beginner` 초보자 해법(배우는 방식, 첫 면 늘 흰색)
+    Beginner2,
+    /// `2-algs` 공식 해법(첫 면은 첫 층이 가장 싼 색)
+    Algs2,
     /// `3-beginner` 초보자 해법(배우는 방식, 첫 면 늘 흰색)
     Beginner3,
     /// `3-cfop` 프리드리히(첫 면은 십자가 가장 싼 색)
     Cfop3,
+    /// `3-roux` 루(첫 면은 첫 블록이 가장 싼 색)
+    Roux3,
+    /// `3-zz` ZZ(첫 면은 EO라인이 가장 싼 색)
+    Zz3,
+    /// `n-beginner` 축소법(초보자): 축소 뒤 배우는 방식 3×3 초보자(첫 면 흰색), 4~7
+    BigBeginner(u8),
+    /// `n-cfop` 축소법(프리드리히): 축소 뒤 3×3 프리드리히(첫 면은 십자가 가장 싼 색), 4~7
+    BigCfop(u8),
+}
+
+/// 첫 면 색 고르기(사이트 `HeroMethodDef.first`)
+enum FirstRule {
+    White,
+    Cheapest(StageName),
 }
 
 impl HeroMethod {
+    /// 표 차례(사이트 `HERO_METHODS`): 크기마다 「번갈아」 차례도 이 차례다
+    pub fn all() -> Vec<HeroMethod> {
+        let mut out = vec![
+            HeroMethod::Beginner2,
+            HeroMethod::Algs2,
+            HeroMethod::Beginner3,
+            HeroMethod::Cfop3,
+            HeroMethod::Roux3,
+            HeroMethod::Zz3,
+        ];
+        for n in 4..=7 {
+            out.push(HeroMethod::BigBeginner(n));
+            out.push(HeroMethod::BigCfop(n));
+        }
+        out
+    }
+
     pub fn from_id(id: &str) -> Option<Self> {
-        match id {
-            "3-beginner" => Some(HeroMethod::Beginner3),
-            "3-cfop" => Some(HeroMethod::Cfop3),
-            _ => None,
-        }
+        HeroMethod::all().into_iter().find(|m| m.id() == id)
     }
-    pub fn id(self) -> &'static str {
+
+    pub fn id(self) -> String {
         match self {
-            HeroMethod::Beginner3 => "3-beginner",
-            HeroMethod::Cfop3 => "3-cfop",
+            HeroMethod::Beginner2 => "2-beginner".into(),
+            HeroMethod::Algs2 => "2-algs".into(),
+            HeroMethod::Beginner3 => "3-beginner".into(),
+            HeroMethod::Cfop3 => "3-cfop".into(),
+            HeroMethod::Roux3 => "3-roux".into(),
+            HeroMethod::Zz3 => "3-zz".into(),
+            HeroMethod::BigBeginner(n) => format!("{n}-beginner"),
+            HeroMethod::BigCfop(n) => format!("{n}-cfop"),
         }
     }
+
+    pub fn size(self) -> usize {
+        match self {
+            HeroMethod::Beginner2 | HeroMethod::Algs2 => 2,
+            HeroMethod::Beginner3 | HeroMethod::Cfop3 | HeroMethod::Roux3 | HeroMethod::Zz3 => 3,
+            HeroMethod::BigBeginner(n) | HeroMethod::BigCfop(n) => n as usize,
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
-            HeroMethod::Beginner3 => "초보자 해법",
+            HeroMethod::Beginner2 | HeroMethod::Beginner3 => "초보자 해법",
+            HeroMethod::Algs2 => "공식 해법",
             HeroMethod::Cfop3 => "프리드리히",
+            HeroMethod::Roux3 => "루",
+            HeroMethod::Zz3 => "ZZ",
+            HeroMethod::BigBeginner(_) => "축소법(초보자)",
+            HeroMethod::BigCfop(_) => "축소법(프리드리히)",
         }
     }
+
     pub fn view(self) -> HeroView {
         match self {
+            HeroMethod::Beginner2 => HeroView {
+                up: vec!["first-layer"],
+                ..HeroView::default()
+            },
+            HeroMethod::Algs2 => HeroView::default(),
             HeroMethod::Beginner3 => HeroView {
                 up: vec!["cross", "corners"],
                 search: true,
@@ -1595,12 +1684,59 @@ impl HeroMethod {
                 search: true,
                 ..HeroView::default()
             },
+            // 첫 블록·왼쪽 블록은 왼쪽 아래라 카메라에서 가려진다: y2로 돌려 오른쪽에 보이고 되돌린다
+            HeroMethod::Roux3 => HeroView {
+                mirror: vec!["fb"],
+                ..HeroView::default()
+            },
+            HeroMethod::Zz3 => HeroView {
+                mirror: vec!["zz-left"],
+                ..HeroView::default()
+            },
+            HeroMethod::BigBeginner(_) => HeroView {
+                up: vec!["cross", "corners"],
+                ..HeroView::default()
+            },
+            HeroMethod::BigCfop(_) => HeroView {
+                up: vec!["cross"],
+                ..HeroView::default()
+            },
         }
     }
-    fn solve(self, state: &State) -> Result<(HumanSolve, usize), SolveError> {
+
+    fn first_rule(self) -> FirstRule {
         match self {
-            HeroMethod::Beginner3 => Ok((solve_beginner3_taught(state)?, 0)),
-            HeroMethod::Cfop3 => hero_cfop(state),
+            HeroMethod::Beginner2 | HeroMethod::Beginner3 | HeroMethod::BigBeginner(_) => {
+                FirstRule::White
+            }
+            HeroMethod::Algs2 => FirstRule::Cheapest(StageName::FirstLayer),
+            HeroMethod::Cfop3 | HeroMethod::BigCfop(_) => FirstRule::Cheapest(StageName::Cross),
+            HeroMethod::Roux3 => FirstRule::Cheapest(StageName::Fb),
+            HeroMethod::Zz3 => FirstRule::Cheapest(StageName::Eoline),
+        }
+    }
+
+    /// 첫 면 색 `first`로 푼다(사이트 `def.solve(state, first)`)
+    fn solve_first(self, state: &State, first: usize) -> Result<HumanSolve, SolveError> {
+        match self {
+            HeroMethod::Beginner2 => solve_beginner2_taught(state),
+            HeroMethod::Algs2 => solve_intermediate2(state, first),
+            HeroMethod::Beginner3 => solve_beginner3_taught(state),
+            HeroMethod::Cfop3 => solve_cfop_first(state, first),
+            HeroMethod::Roux3 => solve_roux(state, first),
+            HeroMethod::Zz3 => solve_zz(state, first),
+            HeroMethod::BigBeginner(n) => crate::big::solve_big_beginner(n as usize, state),
+            HeroMethod::BigCfop(n) => crate::big::solve_big_cfop(n as usize, state, first),
+        }
+    }
+
+    /// 첫 면 색을 골라 푼다(사이트 `solveWithFirst`)
+    fn solve(self, state: &State) -> Result<(HumanSolve, usize), SolveError> {
+        match self.first_rule() {
+            FirstRule::White => Ok((self.solve_first(state, 0)?, 0)),
+            FirstRule::Cheapest(stage) => {
+                solve_with_cheapest_first(state, stage, |s, f| self.solve_first(s, f))
+            }
         }
     }
 }
@@ -1628,7 +1764,7 @@ pub fn solve_for_hero(method: HeroMethod, state: &State) -> Result<HeroSolve, So
         .map(|s| (s.name.id().to_string(), s.start, s.end))
         .collect();
     let presented = present_solve(
-        3,
+        method.size(),
         state,
         &raw.moves,
         &stages,
@@ -1657,20 +1793,28 @@ pub struct HeroShow {
     pub steps: Vec<HeroStep>,
 }
 
+/// 한 판의 섞기와 쥐는 방향(풀이 전, 사이트 `beginCycle`): 섞기 글, 쥐는 돌리기, 풀 상태
+pub fn hero_scramble(n: usize, rng: &mut dyn FnMut() -> f64) -> (Vec<String>, Vec<String>, State) {
+    let t = hero_timing(n);
+    let scramble = random_scramble(rng, t.scramble_length, n);
+    let mut state = solved_cube(n);
+    for m in &scramble {
+        state = apply_alg(n, &state, m).expect("섞기 수");
+    }
+    let orient = orient_for_solve(n, &state);
+    if !orient.is_empty() {
+        state = apply_alg(n, &state, &orient.join(" ")).expect("쥐는 방향");
+    }
+    (scramble, orient, state)
+}
+
 /// 맞춘 큐브에서 한 판을 짠다. 못 풀면(생기지 않는다) 다른 섞기로 몇 번 더 해 본다(사이트도 그 판을 건너뛰고 다시 섞는다)
 pub fn hero_show(method: HeroMethod, rng: &mut dyn FnMut() -> f64) -> Result<HeroShow, SolveError> {
-    let t = hero_timing3();
+    let n = method.size();
+    let t = hero_timing(n);
     let mut last = SolveError("풀지 못했다");
     for _ in 0..5 {
-        let scramble = random_scramble(rng, t.scramble_length, 3);
-        let mut state = solved_cube(3);
-        for m in &scramble {
-            state = alg(&state, m);
-        }
-        let orient = orient_for_solve(3, &state);
-        if !orient.is_empty() {
-            state = alg(&state, &orient.join(" "));
-        }
+        let (scramble, orient, state) = hero_scramble(n, rng);
         match solve_for_hero(method, &state) {
             Ok(solve) => {
                 let mut steps = scramble_steps(&scramble, method.label(), &t);
@@ -1699,7 +1843,7 @@ pub struct HeroCue {
 
 /// 걸음 → 시각표와 「맞춤」 멈춤이 시작하는 시각. 미니 화면은 그 멈춤에 들어서면 1.5초 보이고 끝낸다
 /// (사이트 `MiniCubeApp` hero: 꼬리표가 「… · 맞춤」이 되면 1500ms 뒤 멈춤)
-pub fn hero_timeline(steps: &[HeroStep]) -> (Vec<HeroCue>, f64) {
+pub fn hero_timeline(n: usize, steps: &[HeroStep]) -> (Vec<HeroCue>, f64) {
     let mut at = 0.0;
     let mut cues = vec![];
     for s in steps {
@@ -1707,7 +1851,7 @@ pub fn hero_timeline(steps: &[HeroStep]) -> (Vec<HeroCue>, f64) {
             return (cues, at);
         }
         if let Some(m) = &s.mv {
-            let parsed = parse_moves(3, m).expect("연출 수");
+            let parsed = parse_moves(n, m).expect("연출 수");
             cues.push(HeroCue {
                 at,
                 mv: m.clone(),
@@ -1726,18 +1870,19 @@ mod tests {
 
     #[test]
     fn timeline_ends_solved_and_moves_match_steps() {
-        for method in [HeroMethod::Beginner3, HeroMethod::Cfop3] {
+        for method in HeroMethod::all().into_iter().filter(|m| m.size() <= 3) {
+            let n = method.size();
             let mut rng = Rng::new(7);
             let show = hero_show(method, &mut || rng.next_float()).expect("한 판");
-            let (cues, end) = hero_timeline(&show.steps);
+            let (cues, end) = hero_timeline(method.size(), &show.steps);
             let moves = show.steps.iter().filter(|s| s.mv.is_some()).count();
             assert_eq!(cues.len(), moves);
             assert!(cues.windows(2).all(|w| w[0].at < w[1].at));
             assert!(end > cues.last().expect("수").at);
             // 맞춘 큐브에서 모든 수를 두면 다시 맞춘 큐브(초보자는 흰 면이 아래인 채로 끝난다, 사이트와 같다)
             let all: Vec<&str> = cues.iter().map(|c| c.mv.as_str()).collect();
-            let s = apply_alg(3, &solved_cube(3), &all.join(" ")).expect("표기");
-            assert!(crate::state::is_solved(3, &s), "{}", method.id());
+            let s = apply_alg(n, &solved_cube(n), &all.join(" ")).expect("표기");
+            assert!(crate::state::is_solved(n, &s), "{}", method.id());
         }
         // 반 바퀴는 회전을 줄여 걸음 시간의 3/4 안에, 상한 200ms
         assert_eq!(

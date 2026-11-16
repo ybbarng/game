@@ -51,7 +51,11 @@ import {
   WCA_PEOPLE,
   WCA_RESULTS_URL,
 } from "../tiers/table";
-import { buildHero, buildHeroShow } from "./core-fixtures-hero";
+import {
+  buildHero,
+  buildHeroShow,
+  buildHeroShowBig,
+} from "./core-fixtures-hero";
 import {
   buildHint,
   buildRustHumanData,
@@ -766,6 +770,7 @@ export const BUILDERS = {
   "fixtures/keypaint.json": buildKeyPaint,
   "fixtures/hero.json": buildHero,
   "fixtures/hero-show.json": buildHeroShow,
+  "fixtures/hero-show-big.json": buildHeroShowBig,
   "fixtures/keymap-editor.json": buildKeymapEditor,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,

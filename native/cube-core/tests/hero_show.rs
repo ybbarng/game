@@ -4,7 +4,7 @@
 mod json;
 
 use cube_core::hero_show::{
-    hero_timing3, orient_for_solve, orient_steps, random_scramble, scramble_steps, solve_for_hero,
+    hero_timing, orient_for_solve, orient_steps, random_scramble, scramble_steps, solve_for_hero,
     solve_steps, HeroMethod,
 };
 use cube_core::rng::Rng;
@@ -18,13 +18,18 @@ fn nums(j: &Json) -> Vec<f64> {
 
 #[test]
 fn hero_show_matches_site() {
-    let text = include_str!("../fixtures/hero-show.json");
+    check(include_str!("../fixtures/hero-show.json"));
+}
+
+fn check(text: &str) {
     let cases = json::parse(text).get("cases").arr().to_vec();
     let mut bad: Vec<String> = vec![];
-    let t = hero_timing3();
     for c in &cases {
         let method = HeroMethod::from_id(c.get("method").str()).expect("해법");
         let seed = c.get("seed").num() as u32;
+        let n = method.size();
+        assert_eq!(n, c.get("size").num() as usize);
+        let t = hero_timing(n);
         let what = format!("{} 씨앗 {seed}", method.id());
         let mut check = |name: &str, have: String, want: String| {
             if have != want {
@@ -34,13 +39,13 @@ fn hero_show_matches_site() {
             }
         };
         let mut rng = Rng::new(seed);
-        let scramble = random_scramble(&mut || rng.next_float(), t.scramble_length, 3);
+        let scramble = random_scramble(&mut || rng.next_float(), t.scramble_length, n);
         check("섞기", scramble.join(" "), c.get("scramble").str().into());
-        let mut state = apply_alg(3, &solved_cube(3), &scramble.join(" ")).expect("섞기");
-        let orient = orient_for_solve(3, &state);
+        let mut state = apply_alg(n, &solved_cube(n), &scramble.join(" ")).expect("섞기");
+        let orient = orient_for_solve(n, &state);
         check("방향", orient.join(" "), c.get("orient").str().into());
         if !orient.is_empty() {
-            state = apply_alg(3, &state, &orient.join(" ")).expect("방향");
+            state = apply_alg(n, &state, &orient.join(" ")).expect("방향");
         }
         let solve = match solve_for_hero(method, &state) {
             Ok(s) => s,

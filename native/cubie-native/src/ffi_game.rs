@@ -649,7 +649,7 @@ pub unsafe extern "C" fn cubie_replay_steps(
     unsafe { write_str(&lines.join("\n"), out, len) }
 }
 
-/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(`3-beginner`·`3-cfop`)와 씨앗으로 섞기 →
+/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(사이트 `HERO_METHODS`, `2-beginner`~`7-cfop`)와 씨앗으로 섞기 →
 /// 쥐는 방향 → 풀이의 시각표를 줄마다 「시각 표기 회전ms」로, 끝 줄은 「end 시각」(「맞춤」 멈춤이 시작하는 때)으로
 /// `out`에 쓴다. 맞춘 큐브(흰 위·초록 앞)에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수를 돌려준다
 ///
@@ -667,10 +667,10 @@ pub unsafe extern "C" fn cubie_hero_steps(
         .and_then(HeroMethod::from_id)
         .and_then(|m| {
             let mut rng = cube_core::rng::Rng::new(seed);
-            hero_show(m, &mut || rng.next_float()).ok()
+            hero_show(m, &mut || rng.next_float()).ok().map(|s| (m.size(), s))
         })
-        .map(|show| {
-            let (cues, end) = hero_timeline(&show.steps);
+        .map(|(show_n, show)| {
+            let (cues, end) = hero_timeline(show_n, &show.steps);
             let mut lines: Vec<String> = cues
                 .iter()
                 .map(|c| format!("{} {} {}", c.at, c.mv, c.move_ms))
@@ -1080,7 +1080,7 @@ mod tests {
             let mut again = vec![0u8; need];
             cubie_hero_steps(m.as_ptr(), 5, again.as_mut_ptr(), need as u32);
             assert_eq!(buf, again);
-            let roux = CString::new("3-roux").unwrap();
+            let roux = CString::new("3-petrus").unwrap();
             assert_eq!(
                 cubie_hero_steps(roux.as_ptr(), 5, std::ptr::null_mut(), 0),
                 0

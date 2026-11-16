@@ -25,6 +25,7 @@
 
 #[rustfmt::skip]
 pub mod data;
+pub mod big;
 pub mod combo;
 pub mod groups;
 pub mod hero;
@@ -45,6 +46,7 @@ pub mod practice_data;
 pub mod progress;
 pub mod replay;
 pub mod rng;
+pub mod roux_zz;
 pub mod scramble;
 pub mod session;
 pub mod solver;
