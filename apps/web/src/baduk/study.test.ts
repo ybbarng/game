@@ -10,7 +10,7 @@ import {
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
-import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
+import { BADUK_PUZZLE_SETS, type BadukPuzzle, LADDER_THEMES } from "./puzzles";
 import {
   defenseFor,
   explainSolved,
@@ -24,7 +24,10 @@ import {
 type Capture = Extract<BadukPuzzle, { kind: "capture" }>;
 
 const all = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles);
-const captures = all.filter((p): p is Capture => p.kind === "capture");
+// 긴 축·축머리는 축 읽기로 따로 본다(ladder.test.ts). 판 전체 읽기로는 너무 오래 걸린다
+const captures = all.filter(
+  (p): p is Capture => p.kind === "capture" && !LADDER_THEMES.includes(p.theme),
+);
 const snapbacks = captures.filter((p) => p.theme === "snapback");
 const kos = captures.filter((p) => p.theme === "ko");
 const rows = <T extends { id: string }>(ps: T[]) =>
@@ -47,9 +50,10 @@ describe("바둑 문제 데이터", () => {
         if (cell)
           expect(groupOf(state.board, at).liberties.length).toBeGreaterThan(0);
       });
-      expect(state.board[targetOf(p)]).toBe(
-        p.kind === "life" && p.goal === "live" ? 1 : 2,
-      );
+      const mine =
+        (p.kind === "life" && p.goal === "live") ||
+        (p.kind === "kofight" && p.mode === "answer");
+      expect(state.board[targetOf(p)]).toBe(mine ? 1 : 2);
       expect(state.board[solutionOf(p)]).toBe(0);
     },
   );

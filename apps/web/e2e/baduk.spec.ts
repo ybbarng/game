@@ -1,3 +1,13 @@
+import {
+  groupOf,
+  ladderMoves,
+  step as playStep,
+  pointAt,
+  pointName,
+} from "@game/baduk-engine";
+
+import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "../src/baduk/puzzles";
+import { defenseFor, puzzleState, targetOf } from "../src/baduk/study";
 import { useTestSpeed } from "./fast";
 import { expect, type Page, ready, test } from "./test";
 
@@ -373,7 +383,7 @@ test(
 
     // 축: 계속 단수로 몰아 따낸다(백은 늘 같은 수로 버틴다).
     await page
-      .getByRole("region", { name: "축" })
+      .getByRole("region", { name: "축", exact: true })
       .getByRole("button", { name: "풀기 시작" })
       .click();
     for (const name of ["C3", "C6", "B6", "A6"]) {
@@ -415,6 +425,164 @@ async function placeAt19(page: Page, name: string, touch: boolean) {
     await page.touchscreen.tap(px, py);
   } else await page.mouse.click(px, py);
 }
+
+/**
+ * 긴 축 문제에서 흑이 둘 수: 화면과 같은 백 응수(`defenseFor`)를 받으며, 축으로 가장 빨리 잡는 단수를 고른다.
+ * 화면이 쓰는 규칙 자료를 그대로 읽으니, 자료가 바뀌어도 시험을 고칠 일이 없다
+ */
+function ladderLine(id: string): string[] {
+  const p = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles).find(
+    (q) => q.id === id,
+  ) as BadukPuzzle;
+  const target = targetOf(p);
+  let state = puzzleState(p);
+  let move = p.solution;
+  const moves: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    moves.push(move);
+    const mine = playStep(state, 0, {
+      type: "place",
+      at: pointAt(move, SIZE),
+    });
+    if (!mine.ok) throw new Error(mine.error);
+    state = mine.state;
+    if (state.board[target] === 0) return moves;
+    const theirs = playStep(state, 1, defenseFor(p, state, i));
+    if (!theirs.ok) throw new Error(theirs.error);
+    state = theirs.state;
+    let best: { at: number; n: number } | null = null;
+    for (const l of groupOf(state.board, target).liberties) {
+      const n = ladderMoves(
+        state.board,
+        1,
+        target,
+        l,
+        new Set(state.positions),
+      );
+      if (n !== null && (best === null || n < best.n)) best = { at: l, n };
+    }
+    if (!best) throw new Error("축이 끊겼다");
+    move = pointName(best.at, SIZE);
+  }
+  throw new Error("따내지 못했다");
+}
+
+test(
+  "바둑 수 배우기 단원: 패로 버티기를 읽고, 팻감을 써 되따내고, 팻감을 받고, 긴 축을 끝까지 몰고, 삼연성을 따라 둔다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 풀이 진행은 크기와 상관없다(공통 문제·단원 화면의 배치는 다른 시험이 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baduk");
+    await page.getByRole("button", { name: /바둑 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+
+    // 단원: 설명 셋(둘째에서 팻감 그림) → 퀴즈 둘 → 끝
+    const lessons = page.getByRole("region", { name: "단원 읽기" });
+    await lessons.getByRole("button", { name: "패로 버티기" }).click();
+    await expect(
+      page.getByRole("heading", { name: "패를 따인 쪽" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "팻감을 쓴다" }),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-lesson-ko.png") });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page
+      .getByRole("button", { name: /없다\. 먼저 다른 곳에 팻감을/ })
+      .click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: /두 점을 살려 받는다/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+    await page.getByRole("button", { name: "단원 목록으로" }).click();
+    await expect(
+      lessons.getByRole("button", { name: "패로 버티기 (끝냄)" }),
+    ).toBeVisible();
+
+    // 팻감 쓰기: × 자리는 둘 수 없다 → 팻감 → 백이 받는다 → 되따낸다
+    const threat = page.getByRole("region", { name: "팻감 쓰기" });
+    await threat.getByRole("button", { name: "풀기 시작" }).click();
+    const status = page.getByRole("status");
+    await expect(status).toHaveText(
+      "× 자리는 지금 되따낼 수 없어요. 팻감을 쓰세요.",
+    );
+    await placeAt(page, "E6", touch);
+    await expect(page.locator('[data-point="E6"]')).toHaveCount(0);
+    await placeAt(page, "J2", touch);
+    await expect(status).toHaveText("백이 받았어요. 이제 패를 되따내세요.", {
+      timeout: 10_000,
+    });
+    await expect(
+      page.locator('[data-point="J5"][data-stone="white"]'),
+    ).toHaveCount(1);
+    await placeAt(page, "E6", touch);
+    await expect(status).toHaveText("되따냈어요!");
+    await expect(page.getByText(/팻감이에요/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-ko-threat.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 팻감 받기: 노림받은 흑 두 점을 잇는다
+    await page
+      .getByRole("region", { name: "팻감 받기" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "백이 팻감을 썼어요. △ 흑 돌을 살려 받으세요.",
+    );
+    await placeAt(page, "A6", touch);
+    await expect(status).toHaveText("받았어요!");
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 긴 축: 판 끝까지 몬다
+    await page
+      .getByRole("region", { name: "긴 축" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    const line = ladderLine("long-ladder-1");
+    expect(line.length).toBeGreaterThanOrEqual(10);
+    for (const [i, name] of line.entries()) {
+      await placeAt(page, name, touch);
+      if (i < line.length - 1)
+        await expect(status).toHaveText("계속 몰아 따내세요", {
+          timeout: 10_000,
+        });
+    }
+    await expect(status).toHaveText("따냈어요!");
+    await page.screenshot({ path: info.outputPath("baduk-long-ladder.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 축머리: 첫 문제 그림
+    await page
+      .getByRole("region", { name: "축머리" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "□ 축머리를 피해 축으로 △ 백 돌을 잡으세요.",
+    );
+    await page.screenshot({ path: info.outputPath("baduk-breaker.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 포석 따라 두기: 삼연성
+    await page
+      .getByRole("region", { name: "포석 따라 두기" })
+      .getByRole("button", { name: "삼연성(흑)" })
+      .click();
+    await placeAt19(page, "Q16", touch);
+    await expect(
+      page.locator('[data-point="D4"][data-stone="white"]'),
+    ).toHaveCount(1);
+    await placeAt19(page, "Q4", touch);
+    await expect(
+      page.locator('[data-point="D16"][data-stone="white"]'),
+    ).toHaveCount(1);
+    await placeAt19(page, "Q10", touch);
+    await expect(status).toHaveText("수순을 끝까지 두었어요!");
+    await page.screenshot({ path: info.outputPath("baduk-fuseki.png") });
+  },
+);
 
 test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘모 붙임을 끝까지 둔다", async ({
   page,
