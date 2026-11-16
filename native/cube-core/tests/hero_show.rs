@@ -1,5 +1,5 @@
-//! Cubie 홈 시연 한 판(`fixtures/hero-show.json`·`hero-show-big.json`, 사이트
-//! `apps/web/src/cube/native/core-fixtures-hero.ts` `buildHeroShow`·`buildHeroShowBig`): 해법(사이트 `HERO_METHODS` 전부)
+//! Cubie 홈 시연 한 판(`fixtures/hero-show.json`·`hero-show-big.json`·`hero-show-yau.json`, 사이트
+//! `apps/web/src/cube/native/core-fixtures-hero.ts` `buildHeroShow`·`buildHeroShowBig`·`buildHeroShowYau`): 해법(사이트 `HERO_METHODS` 전부)
 //! × 씨앗 → 섞기·쥐는 방향, 풀이의 보여 주기 변환, 연출 걸음. 어긋난 사례는 모두 모아 찍는다.
 
 mod json;
@@ -25,6 +25,11 @@ fn hero_show_matches_site() {
 #[test]
 fn hero_show_big_matches_site() {
     check(include_str!("../fixtures/hero-show-big.json"));
+}
+
+#[test]
+fn hero_show_yau_matches_site() {
+    check(include_str!("../fixtures/hero-show-yau.json"));
 }
 
 /// 해법마다 한 판 계산 시간(앱이 시연 풀이를 만드는 데 드는 시간). 평소 시험에서는 건너뛴다:

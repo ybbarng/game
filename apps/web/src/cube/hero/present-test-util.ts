@@ -51,6 +51,7 @@ export const CASES: Case[] = [
   { id: "3-zz", seeds: [1, 2] },
   { id: "4-beginner", seeds: [7] },
   { id: "4-cfop", seeds: [7] },
+  { id: "4-yau", seeds: [7, 8] },
   { id: "5-beginner", seeds: [7] },
   { id: "5-cfop", seeds: [7] },
 ];
