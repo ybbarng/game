@@ -851,7 +851,7 @@ test("장기 수 배우기: 외통 문제를 틀렸다 다시 풀고, 진행이 
   const mate1 = page.getByRole("region", { name: "한 수 외통" });
   await expect(mate1.getByText("0/13")).toBeVisible();
   await mate1.getByRole("button", { name: "풀기 시작" }).click();
-  await expect(page.getByRole("status")).toHaveText("한 수로 외통을 만드세요");
+  await expect(page.getByRole("status")).toHaveText("한 수로 외통을 만드세요.");
 
   // 궁을 한 칸 옮기는 수는 외통이 아니다.
   await tapPoint(page, "96", touch);
@@ -860,7 +860,7 @@ test("장기 수 배우기: 외통 문제를 틀렸다 다시 풀고, 진행이 
     .first()
     .getAttribute("data-target");
   await tapPoint(page, to as string, touch);
-  await expect(page.getByRole("status")).toHaveText("외통이 아니에요");
+  await expect(page.getByRole("status")).toHaveText("외통이 아니에요.");
   await page.getByRole("button", { name: "다시 하기" }).click();
 
   // 정답: 차 48 → 44
@@ -883,12 +883,12 @@ test("장기 수 배우기: 외통 문제를 틀렸다 다시 풀고, 진행이 
     .getByRole("button", { name: "풀기 시작" })
     .click();
   await expect(page.getByRole("status")).toHaveText(
-    "한 수로 두 곳을 함께 노리세요",
+    "한 수로 두 곳을 함께 노리세요.",
   );
   await tapPoint(page, "77", touch);
   await tapPoint(page, "56", touch);
   await expect(page.getByRole("status")).toHaveText("양수겸장!");
-  await expect(page.getByText(/함께 노린다/)).toBeVisible();
+  await expect(page.getByText(/함께 노려요/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("janggi-fork.png") });
   await page.getByRole("button", { name: "← 목록" }).click();
 
@@ -896,11 +896,11 @@ test("장기 수 배우기: 외통 문제를 틀렸다 다시 풀고, 진행이 
   const mate2 = page.getByRole("region", { name: "두 수 외통" });
   await mate2.getByRole("button", { name: "풀기 시작" }).click();
   await expect(page.getByRole("status")).toHaveText(
-    "두 수 만에 외통: 첫 수를 두세요",
+    "두 수 만에 외통: 첫 수를 두세요.",
   );
   await tapPoint(page, "62", touch);
   await tapPoint(page, "65", touch);
-  await expect(page.getByRole("status")).toHaveText("이제 외통을 만드세요", {
+  await expect(page.getByRole("status")).toHaveText("이제 외통을 만드세요.", {
     timeout: 10_000,
   });
 });
@@ -918,7 +918,7 @@ test(
     await expect(cannon.getByText("0/10")).toBeVisible();
     await cannon.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "포 길을 열어 큰 기물을 노리세요",
+      "포 길을 열어 큰 기물을 노리세요.",
     );
 
     // 궁을 옮기는 수는 포 길을 열지 않는다.
@@ -929,7 +929,7 @@ test(
       .getAttribute("data-target");
     await tapPoint(page, to as string, touch);
     await expect(page.getByRole("status")).toHaveText(
-      "그 수로는 포 길이 열리지 않아요",
+      "그 수로는 포 길이 열리지 않아요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
 
@@ -960,12 +960,12 @@ test(
       .getByRole("button", { name: "풀기 시작" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
-      "세 수 만에 외통: 첫 수를 두세요",
+      "세 수 만에 외통: 첫 수를 두세요.",
     );
     await tapPoint(page, "19", touch);
     await tapPoint(page, "14", touch);
     await expect(page.getByRole("status")).toHaveText(
-      "외통까지 두 수 남았어요",
+      "외통까지 두 수 남았어요.",
       {
         timeout: 10_000,
       },
@@ -1010,7 +1010,7 @@ test(
     await expect(escapeSet.getByText("0/15")).toBeVisible();
     await escapeSet.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "장군을 손해 없이 푸세요",
+      "장군을 손해 없이 푸세요.",
     );
 
     // 첫 문제(escape-1)의 정답은 차 59 → 54(장군 부른 차를 잡기). 궁을 비키면 손해다.
@@ -1021,14 +1021,14 @@ test(
       .getAttribute("data-target");
     await tapPoint(page, to as string, false);
     await expect(page.getByRole("status")).toHaveText(
-      "그 풀기로는 손해를 봐요",
+      "그 풀기로는 손해를 봐요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
 
     await tapPoint(page, "59", false);
     await tapPoint(page, "54", false);
     await expect(page.getByRole("status")).toHaveText("잘 풀었어요!");
-    await expect(page.getByText(/장군 부른 차를 잡는다/)).toBeVisible();
+    await expect(page.getByText(/장군 부른 차를 잡아요/)).toBeVisible();
     await page.screenshot({ path: info.outputPath("janggi-escape.png") });
   },
 );
@@ -1045,21 +1045,21 @@ test(
     await expect(defendSet.getByText("0/10")).toBeVisible();
     await defendSet.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "노림을 받는 기물을 지키세요",
+      "노림을 받는 기물을 지키세요.",
     );
 
     // 첫 문제(defend-1): 한 상이 차(39)를 노린다. 49로 비키면 손해이고, 29가 정답이다.
     await tapPoint(page, "39", false);
     await tapPoint(page, "49", false);
     await expect(page.getByRole("status")).toHaveText(
-      "그 수로는 기물을 잃어요",
+      "그 수로는 기물을 잃어요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
 
     await tapPoint(page, "39", false);
     await tapPoint(page, "29", false);
     await expect(page.getByRole("status")).toHaveText("잘 지켰어요!");
-    await expect(page.getByText(/차를 29로 비킨다/)).toBeVisible();
+    await expect(page.getByText(/차를 29로 비켜요/)).toBeVisible();
     await page.screenshot({ path: info.outputPath("janggi-defend.png") });
   },
 );

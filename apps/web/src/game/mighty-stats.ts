@@ -2,6 +2,8 @@ import {
   type Card,
   type GameEvent,
   isJoker,
+  type JokerCallVerdict,
+  judgeJokerCall,
   type Kiruda,
   mightyOf,
   type PlayerView,
@@ -59,6 +61,23 @@ export interface JokerCallRecord {
   won: boolean;
   /** 그 턴의 점수 카드 */
   points: number;
+}
+
+/**
+ * 남긴 조커콜 기록 하나가 효과가 있었는지(엔진 `judgeJokerCall`, 기준은 docs/04 8.3절).
+ * 조커콜한 사람은 나이므로 내 편은 그 판의 역할로 안다.
+ */
+export function jokerCallVerdict(
+  role: MightyRound["role"],
+  call: JokerCallRecord,
+): JokerCallVerdict {
+  const caller = role === "opposition" ? "opposition" : "ruling";
+  const other = caller === "ruling" ? "opposition" : "ruling";
+  return judgeJokerCall({
+    caller,
+    joker: call.fromSide,
+    winner: call.won ? caller : other,
+  });
 }
 
 export interface MightyGame {
@@ -258,6 +277,8 @@ export interface MightySummary {
     jokerCallHits: number;
     /** 조커콜 한 턴을 내 편이 먹었다 */
     jokerCallWins: number;
+    /** 효과 있는 조커콜: 상대 조커를 끌어내고 그 턴을 내 편이 먹었다 */
+    jokerCallEffective: number;
   };
   /** 명장면 횟수 */
   moments: {
@@ -371,6 +392,13 @@ export function summarizeMighty(
       ),
       jokerCallWins: full.reduce(
         (n, r) => n + (r.calls?.filter((c) => c.won).length ?? 0),
+        0,
+      ),
+      jokerCallEffective: full.reduce(
+        (n, r) =>
+          n +
+          (r.calls?.filter((c) => jokerCallVerdict(r.role, c) === "effective")
+            .length ?? 0),
         0,
       ),
     },

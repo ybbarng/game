@@ -10,13 +10,19 @@ import {
   faceColors,
   invertMoves,
   isSolved,
+  moveTable,
   NotationError,
   OPPOSITE_FACE,
   parseMoves,
   solvedCube,
   U,
 } from "@game/cube-engine";
-import type { PuzzleState } from "@game/puzzle-core";
+import {
+  applyTable,
+  composeTables,
+  type MoveTable,
+  type PuzzleState,
+} from "@game/puzzle-core";
 
 import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import { centersSolved, goalMet, unpairedEdgeLines } from "../learn/judge";
@@ -373,6 +379,33 @@ export function shortName(c: AlgCase): string {
   return c.name.replace(/\s*\(.*\)\s*$/, "");
 }
 
+/**
+ * 앞 윗면 돌리기 `pre` + 공식 `moves`를 묶은 수 표 하나(`composeTables`, 차례로 둔 것과 같은 상태가 된다).
+ * 상황 알아보기(spot.ts)는 같은 공식을 쥐기 넷 × 윗면 돌리기 넷에 해 보므로 공식마다 한 번만 묶는다
+ */
+const algTables = new WeakMap<readonly CubeMove[], Map<string, MoveTable>>();
+
+function algTable(
+  n: number,
+  pre: string,
+  moves: readonly CubeMove[],
+): MoveTable | null {
+  let byPre = algTables.get(moves);
+  if (!byPre) {
+    byPre = new Map();
+    algTables.set(moves, byPre);
+  }
+  const key = `${n}|${pre}`;
+  let t = byPre.get(key);
+  if (t === undefined) {
+    const list = [...(pre ? parseMoves(n, pre) : []), ...moves];
+    if (list.length === 0) return null;
+    t = list.map((m) => moveTable(n, m)).reduce((a, b) => composeTables(a, b));
+    byPre.set(key, t);
+  }
+  return t;
+}
+
 function solvesWith(
   c: AlgCase,
   moves: readonly CubeMove[],
@@ -381,7 +414,8 @@ function solvesWith(
   const n = setOf(c).size;
   const role = roleOf(c);
   for (const pre of role.auf ? AUF : [""]) {
-    const s = engineApply(n, pre ? apply(n, start, pre) : start, moves);
+    const t = algTable(n, pre, moves);
+    const s = t ? applyTable(start, t) : start;
     if (role.met(s)) return pre;
   }
   return null;

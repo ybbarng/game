@@ -7,6 +7,7 @@ import { friendLabel, goalLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";
 
 import { CardChip } from "./CardChip";
+import { JOKER_CALL_MARK, jokerCallVerdicts } from "./joker-call-mark";
 import type { RoundSpan } from "./rounds";
 import { TrickTable } from "./TrickTable";
 
@@ -39,6 +40,12 @@ export function MightyRound({
   const declarer = round?.declarer ?? null;
   const seats = start.order;
   const mighty = goal ? mightyOf(start.rules, goal.kiruda) : null;
+  const verdicts =
+    round && declarer !== null
+      ? jokerCallVerdicts(round.tricks, declarer, round.friend ?? null)
+      : [];
+  const calls = verdicts.filter((v) => v !== null);
+  const effective = calls.filter((v) => v === "effective").length;
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/35 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -95,6 +102,14 @@ export function MightyRound({
                 {round.discarded.map((c) => (
                   <CardChip key={c} card={c} />
                 ))}
+              </dd>
+            </>
+          )}
+          {calls.length > 0 && (
+            <>
+              <dt className="text-white/60">조커콜</dt>
+              <dd>
+                {calls.length}번 · 효과 {effective}번
               </dd>
             </>
           )}
@@ -158,7 +173,12 @@ export function MightyRound({
               tricks={round.tricks}
               seats={seats}
               name={name}
-              mark={(card) => (card === mighty ? "마이티" : null)}
+              mark={(card, s, i) => {
+                const verdict = verdicts[i];
+                if (verdict && s === round.tricks[i]?.leader)
+                  return JOKER_CALL_MARK[verdict];
+                return card === mighty ? "마이티" : null;
+              }}
             />
           </div>
         </details>

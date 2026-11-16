@@ -462,7 +462,11 @@ function MightyStats({ book }: { book: StatsBook }) {
             { label: "먹은 턴", value: c.tricks },
             { label: "딴 점수 카드", value: c.points },
             { label: "조커 낸 판", value: c.jokerPlays },
-            { label: "조커콜", value: c.jokerCalls },
+            {
+              label: "조커콜",
+              value: c.jokerCalls,
+              sub: `효과 ${c.jokerCallEffective}`,
+            },
             { label: "조커콜로 조커 끌어냄", value: c.jokerCallHits },
             { label: "조커콜 턴 먹음", value: c.jokerCallWins },
           ]}

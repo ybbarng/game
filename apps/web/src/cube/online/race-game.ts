@@ -47,6 +47,12 @@ import {
 export const BOT_NO_PLAN = "컴퓨터가 맞출 길을 찾지 못함";
 
 /**
+ * 판이 풀린 뒤 방장이 새로 고쳐 그 판의 컴퓨터가 그만두는 까닭(docs/47 9-11 「방장 되찾기」). 컴퓨터는 방장 기기가 돌리므로
+ * 새 페이지가 계획대로 이어 두면 비운 동안의 수를 한꺼번에 몰아 보내게 되어, 그 판은 그만두게 한다
+ */
+export const BOT_HOST_RELOAD = "방장이 새로 고침";
+
+/**
  * 큐브 맞추기를 대결 틀(`net/race`)에 붙이는 어댑터(docs/47 9절).
  *
  * 씨앗(모두의 약속 후 공개로 정한 글) → 해시로 uint32 → 대회 규칙 섞기(웹 워커) → 섞인 시작 상태.
@@ -185,6 +191,8 @@ export function createCubeRaceGame(
     shape && goal
       ? `|shape:${shape.id}:${shape.start}:${stateHash(goal.target)}`
       : "";
+  /** 상태 객체마다 진행(상태는 고치지 않고 수마다 새로 만든다) */
+  const progressOf = new WeakMap<PuzzleState, number>();
   return {
     id: `cube-${event}`,
     n,
@@ -237,11 +245,19 @@ export function createCubeRaceGame(
         : player !== undefined && Object.hasOwn(goals, player)
           ? goalReached(n, state, goals[player])
           : isSolved(n, state),
-    progress: (state) =>
-      goal && shape
-        ? shapeProgress(goal, state, shape.start)
-        : solvedPieceRatio(n, state),
-    retireReasons: [BOT_NO_PLAN, ...PARTY_REASONS],
+    progress: (state) => {
+      // 판 상태를 찍을 때(snapshot)마다 모든 참가자의 진행을 묻는데, 상태는 수를 둘 때만 새 객체로 바뀐다
+      let p = progressOf.get(state);
+      if (p === undefined) {
+        p =
+          goal && shape
+            ? shapeProgress(goal, state, shape.start)
+            : solvedPieceRatio(n, state);
+        progressOf.set(state, p);
+      }
+      return p;
+    },
+    retireReasons: [BOT_NO_PLAN, BOT_HOST_RELOAD, ...PARTY_REASONS],
     ...(mode
       ? {
           checkpointsOf: (state: PuzzleState) =>
