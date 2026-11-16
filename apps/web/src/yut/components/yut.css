@@ -63,3 +63,85 @@
     animation: none;
   }
 }
+
+/*
+ * 두 장면(docs/37 15절): 던지는 장면은 멍석이 크고 윷판이 오른쪽 위 구석에 작게, 말 옮기는 장면은 윷판이 크다.
+ * 휴대폰 세로는 같은 자리에서 한 차례 한 번 1.1초 남짓 바뀐다(윷판이 구석에서 커지고 멍석이 흐려진다).
+ * 던지는 동안에는 크기를 바꾸지 않는다. 움직임 줄이기면 바로 바뀐다.
+ * PC·눕힌 휴대폰(split)은 바꾸지 않고 윷판과 멍석을 나란히 두며, 지금 장면 쪽만 테두리로 강조한다.
+ */
+.yut-stage {
+  position: relative;
+  aspect-ratio: 1 / 1;
+}
+.yut-stage > .yut-layer {
+  position: absolute;
+  inset: 0;
+}
+.yut-board-layer {
+  z-index: 10;
+  transform-origin: 50% 50%;
+}
+.yut-stage[data-scene="throw"] .yut-board-layer {
+  transform: translate(35%, -35%) scale(0.3);
+  pointer-events: none;
+}
+.yut-stage[data-scene="move"] .yut-mat-layer {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .yut-stage > .yut-layer {
+    transition:
+      transform 1.1s cubic-bezier(0.65, 0, 0.35, 1),
+      opacity 0.7s ease 0.2s;
+  }
+  .yut-stage[data-scene="throw"] .yut-mat-layer {
+    transition-delay: 0s;
+  }
+}
+/* 멍석을 그리지 못하는 기기(2D): 짚 빛 둥근 깔개 */
+.yut-mat-2d {
+  background:
+    repeating-radial-gradient(
+      circle at 50% 50%,
+      rgba(90, 55, 20, 0.35) 0 2px,
+      transparent 2px 13px
+    ),
+    radial-gradient(circle at 50% 45%, #d1a95e, #a87a36 70%, #6e4615);
+  box-shadow:
+    inset 0 0 0 6px #5b3712,
+    0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+@media (orientation: landscape) and (max-height: 600px), (min-width: 1024px) {
+  .yut-stage {
+    display: contents;
+  }
+  /* 장면마다 바꾸던 자리·흐림을 모두 푼다(위 장면 규칙보다 구체적인 선택자) */
+  .yut-stage[data-scene] > .yut-layer.yut-board-layer,
+  .yut-stage[data-scene] > .yut-layer.yut-mat-layer {
+    position: relative;
+    inset: auto;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    border-radius: 1.25rem;
+    transition: box-shadow 0.4s ease;
+  }
+  .yut-board-layer {
+    grid-column-start: 1;
+    grid-row: 2 / span 6;
+  }
+  .yut-mat-layer {
+    grid-column-start: 2;
+    grid-row-start: 2;
+    aspect-ratio: 1 / 1;
+    width: min(100%, 46dvh);
+    justify-self: center;
+  }
+  .yut-stage[data-scene="throw"] .yut-mat-layer,
+  .yut-stage[data-scene="move"] .yut-board-layer {
+    box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.75);
+  }
+}
