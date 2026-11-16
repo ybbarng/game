@@ -455,7 +455,7 @@ three.js(이미 의존성, 큐브 화면에서만 늦게 불러오기).
 - **판정은 지금 들고 있는 방향의 자리로 본다.** 루 블록 = 왼쪽(오른쪽) 면에 닿고 윗면에 닿지 않는 자리(옆 센터 포함), 색은 큐브 전체 방향 24가지 중 하나라도 맞으면 된다(루는 M을 돌려 센터가 움직이므로). CMLL 뒤 단계는 윗면 돌리기 하나를 봐준다. LSE의 EO는 「위·아래 센터가 흰·노랑이고 엣지 여섯의 흰·노랑 칸이 위나 아래」. ZZ의 EO만 센터 색 기준이고 앞·뒤 축(F·B를 4분의 1 돌릴 때만 바뀜, Kociemba 엣지 방향과 같은 정의)이다. 그래서 L·Uw처럼 블록·십자를 통째로 돌리는 수는 그 목표를 깨지 않는다.
 - **시연·해 보기의 수는 풀이 함수가 실제로 푼 것**이다: 루·ZZ는 `@game/cube-ai`의 `solveRoux`·`solveZZ`가 대회 섞기(3×3 씨앗 21은 시연, 7은 해 보기)를 푼 단계별 수를 옮겨 적었다. 시험(`judge-methods.test.ts`)이 시연 뒤에 다음 해 보기의 목표가 되는지, 풀이 함수의 단계 경계마다 판정이 맞는지(두 쪽을 서로) 확인한다. 해 보기는 기존처럼 `judge.test.ts`가 「상황에서는 아직 목표가 아니고, 모범 답을 두면 목표」를 엔진으로 본다.
 - **야우 공식**: 엣지 묶기 `Uw' R U R' F R' F' R Uw`(흰 면 아래에서 흰 십자·센터를 지키고 엣지 두 줄만 바꿈), 옆 센터 `2U R2 2U' R2`(흰·노랑 센터와 흰 십자를 지킴). 둘 다 엔진 판정으로 확인했다. 패리티는 축소법 공식(`algs-big.ts`)을 그대로 쓴다.
-- **컴퓨터(`@game/cube-ai`)**: `solveRoux`(첫 블록은 y 돌려 쥐기 넷 × 사각형 둘 중 가장 짧은 것, 둘째 블록은 R·r·M·U, CMLL 2단계, LSE는 M·U 탐색), `solveZZ`(EO라인은 돌려 쥐기 넷 중 가장 짧은 것, 블록은 R·U·L, 윗면 7 + PLL). 단계 이름 `fb`·`sb`·`cmll`·`lse-eo`·`lse-ulur`·`lse-ep`·`eoline`·`zz-left`·`zz-right`와 `STAGE_LABELS`. 가운데 층까지 다루는 조각 탐색은 `piece-search.ts`. 첫 화면 연출(`hero/methods.ts`)에도 3×3 「루」(`3-roux`)·「ZZ」(`3-zz`)로 나온다. 4×4 야우 풀이 함수(`solveYau`)는 아직 없어(센터·엣지 묶기를 야우 차례로 하는 탐색이 필요) 첫 화면에도 없다.
+- **컴퓨터(`@game/cube-ai`)**: `solveRoux`(첫 블록은 y 돌려 쥐기 넷 × 사각형 둘 중 가장 짧은 것, 둘째 블록은 R·r·M·U, CMLL 2단계, LSE는 M·U 탐색), `solveZZ`(EO라인은 돌려 쥐기 넷 중 가장 짧은 것, 블록은 R·U·L, 윗면 7 + PLL). 단계 이름 `fb`·`sb`·`cmll`·`lse-eo`·`lse-ulur`·`lse-ep`·`eoline`·`zz-left`·`zz-right`와 `STAGE_LABELS`. 가운데 층까지 다루는 조각 탐색은 `piece-search.ts`. 첫 화면 연출(`hero/methods.ts`)에도 3×3 「루」(`3-roux`)·「ZZ」(`3-zz`)로 나온다. 4×4 야우 풀이 함수(`solveYau`, 2026-11-17)는 탐색 대신 배우기 단원의 경우별 정해진 길을 야우 차례로 잇는다(`apps/web/src/cube/learn/yau-solve.ts`): 흰·노랑 센터(축소법 센터 규칙 `runCenters`를 두 색만) → 흰 십자 셋(`runYauCross`) → 쥐기(흰 면 아래, 비운 십자 자리 오른쪽) 뒤 옆 센터(`runYauSideCenters`) → 마지막 십자 엣지(`runYauLastCross`) → 엣지 여덟(`runEdges444`) → 3×3처럼(`solveReduced`, 패리티 포함). 결정적이고, 대회 섞기 200판을 모두 맞춘다(한 판 약 4ms, 면 돌리기 236~396수, 사람이 단원대로 할 때와 같은 수). 단계 지도 「4×4 야우」 시연이 이 함수의 수다(8-6). 첫 화면 연출과 컴퓨터 대결에는 아직 넣지 않았다: 첫 화면 해법 표는 Cubie 코어(`hero_show.rs`·`big.rs`)가 같은 값을 내야 해서(5절) 야우 단계 함수 다섯을 Rust로 옮겨야 하고, 컴퓨터 대결의 4×4는 축소법 계획(10-3 티어 자리)에 맞춰 두었다.
 - 공식 표기 기준: WCA 표기(Rw = 바깥 두 층, 2R = 둘째 층 하나, M은 L과 같은 쪽). 해법 이름과 단계 이름은 speedsolving.com 위키의 「Roux method」「ZZ method」「Petrus method」「Yau method」 쪽을 따랐다.
 
 ### 8-3. 핑거 트릭(실물)
@@ -519,7 +519,7 @@ three.js(이미 의존성, 큐브 화면에서만 늦게 불러오기).
 | ZZ | EO라인 → 블록(F2L) → 마지막 층 | `solveZZ`: eoline · zz-left·zz-right · oll·pll |
 | 4×4 축소법 | 센터 → 엣지 짝 → 3×3처럼(패리티) | `solveHuman(beginner, 4)`: centers-* · edges·last-edges · 나머지 |
 | 5×5 축소법 | 센터 → 엣지 셋 묶기 → 3×3처럼 | `solveHuman(beginner, 5)`: 같은 묶음 |
-| 4×4 야우 | 흰·노랑 센터 → 흰 십자 셋 → 옆 센터 → 엣지 묶기 → 3×3처럼 | 없음(풀이 함수 없음) |
+| 4×4 야우 | 흰·노랑 센터 → 흰 십자 셋 → 옆 센터 → 엣지 묶기 → 3×3처럼 | `solveYau`(4×4 씨앗 3, 2026-11-17): centers-ud · cross3 · centers-rest · last-cross·edges · three |
 | 블라인드 | 외우기 → 엣지 → 코너 | 없음 |
 
 - 페트루스는 소개 단원 하나라 지도를 달지 않았다. 오르테가는 2×2 초보자 과정 안의 단원이라 따로 지도가 없다.
