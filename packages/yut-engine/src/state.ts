@@ -2,14 +2,25 @@ import type { PlayerClock } from "@game/mighty-engine";
 
 import type { Position } from "./board";
 import type { Sticks } from "./chain";
+import type { Gesture } from "./gesture";
 import type { ThrowValue, YutRules } from "./rules";
 
 /**
  * 게임의 흐름.
- * commit 자리마다 사슬 약속 → throw 던질 차례 → reveal 모든 자리가 고리 공개(결과가 정해진다)
- * → move 모아 둔 결과로 말 움직이기 → (throw·reveal·move 되풀이) → gameOver
+ * commit 자리마다 사슬 약속 → throw 던질 차례(규칙 판 2는 몸짓 봉인을 낸다) → reveal 모든 자리가 고리 공개
+ * → (판 2만) open 던진 사람이 몸짓을 연다 → 결과가 정해진다
+ * → move 모아 둔 결과로 말 움직이기 → (throw·reveal·open·move 되풀이) → gameOver
  */
-export type Phase = "commit" | "throw" | "reveal" | "move" | "gameOver";
+export type Phase =
+  | "commit"
+  | "throw"
+  | "reveal"
+  | "open"
+  | "move"
+  | "gameOver";
+
+/** 낙의 까닭: 몸짓의 낙 확률로 떨어짐, 멍석 밖으로 쓸어 던짐(일부러), 정해진 시간 안에 몸짓을 열지 않음 */
+export type NakReason = "chance" | "sweep" | "unopened";
 
 /** 말 하나. 업힌 말은 같은 자리(point·trail)를 함께 가진다 */
 export interface Piece extends Position {
@@ -41,8 +52,14 @@ export type GameResult =
 export interface LastThrow {
   seat: number;
   index: number;
-  sticks: Sticks;
-  value: ThrowValue;
+  /** 가락 넷. 몸짓을 열지 않아 무효면 null */
+  sticks: Sticks | null;
+  /** 결과. 낙이면 null */
+  value: ThrowValue | null;
+  /** 낙(그 던지기는 무효, 차례가 넘어간다) */
+  nak?: NakReason;
+  /** 연 몸짓(규칙 판 2). 다른 기기도 같은 궤적을 그릴 수 있게 남긴다 */
+  gesture?: Gesture;
 }
 
 export interface YutState {
@@ -65,6 +82,8 @@ export interface YutState {
   chains: ChainState[];
   /** 이번 던지기에 공개한 고리(공개 전 null) */
   reveals: (string | null)[];
+  /** 이번 던지기의 몸짓 봉인(규칙 판 2, 던진 뒤 열 때까지). 없으면 null */
+  seal?: string | null;
   lastThrow: LastThrow | null;
   result: GameResult | null;
   /** 끊긴 사람을 기다리지 않기로 해 중간에 끝났다 */
@@ -78,10 +97,17 @@ export interface YutState {
 export type Action =
   /** 사슬 약속(x_0, 16진수 64자) */
   | { type: "commit"; hash: string }
-  /** 던질 차례인 사람이 던진다. `spent`는 던지기까지 쓴 시간(ms, 시간 규칙이 있을 때 방장 시계가 적는다) */
-  | { type: "throw"; spent?: number }
+  /**
+   * 던질 차례인 사람이 던진다. `spent`는 던지기까지 쓴 시간(ms, 시간 규칙이 있을 때 방장 시계가 적는다).
+   * 규칙 판 2는 몸짓 봉인 `seal`(`sealOf`, 16진수 64자)을 함께 낸다
+   */
+  | { type: "throw"; seal?: string; spent?: number }
   /** 이번 던지기에 내 사슬 다음 고리를 공개한다 */
   | { type: "reveal"; link: string }
+  /** (판 2) 모든 고리가 공개된 뒤 던진 사람이 봉인한 몸짓과 소금을 연다 */
+  | { type: "open"; gesture: Gesture; salt: string }
+  /** (판 2) 던진 사람이 정해진 시간 안에 몸짓을 열지 않았다(방장 시계가 낸다, `index`는 그 던지기 번호) */
+  | { type: "unopened"; index: number }
   /**
    * 모아 둔 결과 하나(`value`)로 말을 움직인다. `from`은 움직일 말이 있는 점, 새 말은 HOME(-1).
    * 그 점의 내 말(업힌 말)이 함께 움직인다
@@ -98,6 +124,13 @@ export type GameEvent =
   | { type: "committed"; seat: number }
   | { type: "thrown"; seat: number }
   | { type: "revealed"; seat: number }
+  /** 낙: 그 던지기는 무효, 더 던지지 않는다(모아 둔 결과는 그대로 쓴다) */
+  | {
+      type: "nak";
+      seat: number;
+      index: number;
+      reason: NakReason;
+    }
   | {
       type: "result";
       seat: number;
@@ -150,6 +183,7 @@ export type Decision =
   | { kind: "commit" }
   | { kind: "throw" }
   | { kind: "reveal" }
+  | { kind: "open" }
   | { kind: "move"; options: MoveOption[] };
 
 /** 한 자리에서 본 화면. 남의 사슬 재료(`keys`)는 빼고 내 것만 `botKey`로 둔다 */

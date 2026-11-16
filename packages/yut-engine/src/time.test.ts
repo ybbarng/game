@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { chainCommit, chainLink, derivedSeed } from "./chain";
+import { derivedThrow } from "./gesture";
 import { clockTurn, createMatch, legalMoves, replay, step } from "./match";
 import {
   decodeYutRules,
@@ -21,6 +22,15 @@ function chainAction(state: YutState, seat: number): Action {
   return { type: "reveal", link: chainLink(seed, used + 1) };
 }
 
+/** 던질 차례인 사람의 봉인한 던지기(재료로 만든 몸짓) */
+function throwOf(state: YutState, spent?: number): Action {
+  const { seal } = derivedThrow(
+    state.keys[state.turn] as string,
+    state.throwCount,
+  );
+  return { type: "throw", seal, ...(spent === undefined ? {} : { spent }) };
+}
+
 function must(state: YutState, seat: number, action: Action): YutState {
   const result = step(state, seat, action);
   if (!result.ok) throw new Error(`${result.error}: ${JSON.stringify(action)}`);
@@ -35,19 +45,23 @@ function started(rules: YutRules, seed: number): YutState {
   return state;
 }
 
-/** 모든 자리가 고리를 공개한다 */
+/** 모든 자리가 고리를 공개하고, 던진 사람이 몸짓을 연다 */
 function revealAll(state: YutState): YutState {
   let next = state;
   for (let s = 0; s < next.rules.players; s++)
     next = must(next, s, chainAction(next, s));
-  return next;
+  const { gesture, salt } = derivedThrow(
+    next.keys[next.turn] as string,
+    next.throwCount,
+  );
+  return must(next, next.turn, { type: "open", gesture, salt });
 }
 
 /** 첫 던지기가 윷·모로 나오는 시드(결정적으로 찾는다) */
 function bonusSeed(): number {
   for (let seed = 1; seed < 500; seed++) {
     const state = started(FAST, seed);
-    const thrown = revealAll(must(state, state.turn, { type: "throw" }));
+    const thrown = revealAll(must(state, state.turn, throwOf(state)));
     if (thrown.phase === "throw" && thrown.turn === state.turn) return seed;
   }
   throw new Error("윷·모로 시작하는 시드가 없다");
@@ -55,14 +69,14 @@ function bonusSeed(): number {
 
 describe("윷놀이 개인 시간", () => {
   it("시간 규칙은 규칙 문자열 꼬리(-t1)로 오가고, 없으면 예전 문자열 그대로다", () => {
-    expect(encodeYutRules(FAST)).toBe("y1-2s4b6p-t1");
-    expect(decodeYutRules("y1-2s4b6p-t1")).toEqual({ ok: true, rules: FAST });
-    expect(encodeYutRules(STANDARD_RULES)).toBe("y1-2s4b6p");
-    expect(decodeYutRules("y1-2s4b6p")).toEqual({
+    expect(encodeYutRules(FAST)).toBe("y2-2s4b6pk-t1");
+    expect(decodeYutRules("y2-2s4b6pk-t1")).toEqual({ ok: true, rules: FAST });
+    expect(encodeYutRules(STANDARD_RULES)).toBe("y2-2s4b6pk");
+    expect(decodeYutRules("y2-2s4b6pk")).toEqual({
       ok: true,
       rules: STANDARD_RULES,
     });
-    expect(decodeYutRules("y1-2s4b6p-t9").ok).toBe(false);
+    expect(decodeYutRules("y2-2s4b6pk-t9").ok).toBe(false);
   });
 
   it("시간 규칙이 없으면 시계가 없다", () => {
@@ -77,7 +91,7 @@ describe("윷놀이 개인 시간", () => {
     const state = started(FAST, 3);
     const seat = state.turn;
     expect(clockTurn(state)).toEqual({ seat, left: 180_000 + 90_000 });
-    const thrown = must(state, seat, { type: "throw", spent: 40_000 });
+    const thrown = must(state, seat, throwOf(state, 40_000));
     expect(thrown.clocks?.[seat]).toEqual({ main: 140_000, periods: 3 });
     expect(thrown.clocks?.[1 - seat]).toEqual({ main: 180_000, periods: 3 });
     expect(clockTurn(thrown)).toBeNull();
@@ -87,11 +101,11 @@ describe("윷놀이 개인 시간", () => {
     const state = started(FAST, 3);
     const seat = state.turn;
     // 기본 시간을 다 쓰고 초읽기 10초 안쪽에 던진다.
-    const thrown = must(state, seat, { type: "throw", spent: 190_000 });
+    const thrown = must(state, seat, throwOf(state, 190_000));
     expect(thrown.clocks?.[seat]).toEqual({ main: 0, periods: 3 });
     let next = revealAll(thrown);
     if (next.phase === "throw")
-      next = revealAll(must(next, seat, { type: "throw" }));
+      next = revealAll(must(next, seat, throwOf(next)));
     expect(next.phase).toBe("move");
     expect(clockTurn(next)).toEqual({ seat, left: 90_000 });
     const option = legalMoves(next)[0];
@@ -109,12 +123,10 @@ describe("윷놀이 개인 시간", () => {
   it("윷·모로 한 번 더 던질 때도 같은 사람의 시계가 이어서 간다", () => {
     const state = started(FAST, bonusSeed());
     const seat = state.turn;
-    const again = revealAll(
-      must(state, seat, { type: "throw", spent: 20_000 }),
-    );
+    const again = revealAll(must(state, seat, throwOf(state, 20_000)));
     expect(again.phase).toBe("throw");
     expect(clockTurn(again)).toEqual({ seat, left: 160_000 + 90_000 });
-    const second = must(again, seat, { type: "throw", spent: 15_000 });
+    const second = must(again, seat, throwOf(again, 15_000));
     expect(second.clocks?.[seat]).toEqual({ main: 145_000, periods: 3 });
   });
 
@@ -135,7 +147,7 @@ describe("윷놀이 개인 시간", () => {
 
   it("공개를 기다리는 동안에는 시간패를 받지 않는다", () => {
     const state = started(FAST, 3);
-    const thrown = must(state, state.turn, { type: "throw" });
+    const thrown = must(state, state.turn, throwOf(state));
     expect(
       step(thrown, state.turn, { type: "timeout", spent: 999_999 }).ok,
     ).toBe(false);
@@ -144,7 +156,7 @@ describe("윷놀이 개인 시간", () => {
   it("시간을 넘겨 던지면 던지지 않고 시간패로 끝낸다", () => {
     const state = started(FAST, 3);
     const seat = state.turn;
-    const after = must(state, seat, { type: "throw", spent: 999_999 });
+    const after = must(state, seat, throwOf(state, 999_999));
     expect(after.result).toEqual({ kind: "time", seat, side: 1 - seat });
     expect(after.throwCount).toBe(0);
   });
@@ -166,8 +178,13 @@ describe("윷놀이 개인 시간", () => {
       log.push({ seat, action });
     };
     for (let s = 0; s < 2; s++) act(s, chainAction(state, s));
-    act(state.turn, { type: "throw", spent: 12_345 });
+    act(state.turn, throwOf(state, 12_345));
     for (let s = 0; s < 2; s++) act(s, chainAction(state, s));
+    const { gesture, salt } = derivedThrow(
+      state.keys[state.turn] as string,
+      state.throwCount,
+    );
+    act(state.turn, { type: "open", gesture, salt });
     const again = replay(FAST, 3, log);
     expect(again.ok && again.state).toEqual(state);
   });
