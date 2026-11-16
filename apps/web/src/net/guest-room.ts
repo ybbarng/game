@@ -31,6 +31,7 @@ import type { GameKit, KitLoggedAction, VerifyContext } from "@/game/kit";
 import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
+import { botCheckFor, lobbyBotPlan } from "./bot-plan";
 import type { ClaimsResolved } from "./claim";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
@@ -58,7 +59,13 @@ import {
 } from "./time-witness";
 import { connectionFingerprints, type Transport } from "./transport";
 
-export type AuditResult = { ok: true } | { ok: false; reason: string };
+/**
+ * 판 끝 검증 결과. `unchecked`는 통과했지만 맞춰 보지 못한 것(방장과 컴퓨터 계획 판 번호가 달라 컴퓨터 수를 다시
+ * 계산하지 못함 등, net/bot-plan.ts). 부정이 아니라 「확인 못 함」으로 보인다
+ */
+export type AuditResult =
+  | { ok: true; unchecked?: string }
+  | { ok: false; reason: string };
 
 /** 참가자 화면이 아는 대국. 행동은 방장에게 보내고, 방장이 보낸 스냅숏을 받는다 */
 export class RemoteMatch<
@@ -432,6 +439,14 @@ export class GuestRoom<
   private pendingArchive: ArchiveSource | null = null;
 
   /** 멘탈 포커 판: 검증을 통과한 기록과 판별 실제 패를 복기용으로 알린다 */
+  /** 복기용 기록에 남길 방장 컴퓨터의 계획 판 번호(컴퓨터가 있는 방만) */
+  private archiveBotPlan(): { botPlan?: number } {
+    const lobby = this.lobby;
+    return lobby?.botLevel !== undefined
+      ? { botPlan: lobbyBotPlan(lobby) }
+      : {};
+  }
+
   private emitArchive(
     rules: unknown,
     seed: number,
@@ -442,6 +457,7 @@ export class GuestRoom<
       rules,
       seed,
       log: [...log] as KitLoggedAction<unknown>[],
+      ...this.archiveBotPlan(),
       deals: serializeDeals(
         this.fair.deals as ReadonlyMap<
           number,
@@ -872,9 +888,14 @@ export class GuestRoom<
     if (this.fairSeed === null) return null;
     const rules = this.kit.decodeRules(lobby.ruleCode);
     if (!rules.ok) return null;
-    const level = lobby.botLevel;
-    const bot =
-      level !== undefined && this.kit.botFor ? this.kit.botFor(level) : null;
+    const botSeats = new Set(
+      lobby.seats.filter((s) => s.kind === "bot").map((s) => s.seat),
+    );
+    const { bot, unchecked } = botCheckFor(
+      this.kit,
+      lobby,
+      log.some((e) => e.bot === true || botSeats.has(e.seat)),
+    );
     return {
       ...(this.kit.cardTable
         ? { game: this.cardReplay(complete) }
@@ -886,10 +907,9 @@ export class GuestRoom<
       seat: this.seat,
       log,
       deals: this.fair.deals,
-      botSeats: new Set(
-        lobby.seats.filter((s) => s.kind === "bot").map((s) => s.seat),
-      ),
+      botSeats,
       bot: bot as never,
+      unchecked,
       sent: this.match.sent,
       seen: this.match.seen,
     };
@@ -1286,7 +1306,11 @@ export class GuestRoom<
             seat: this.seat,
             name: this.name,
             ok: result.ok,
-            ...(result.ok ? {} : { reason: result.reason }),
+            ...(result.ok
+              ? result.unchecked
+                ? { unchecked: result.unchecked }
+                : {}
+              : { reason: result.reason }),
           } satisfies AuditReport);
         break;
       }
@@ -1332,7 +1356,10 @@ export class GuestRoom<
     // 끝까지 하지 못한 판(그만두기 등)은 열쇠가 다 모이지 않아 그 앞까지만 본다(verifyFairLog).
     const verdict = await verifyFairLog(input);
     if (verdict.ok) this.emitArchive(input.rules, input.seed, log);
-    return verdict.ok ? { ok: true } : { ok: false, reason: verdict.reason };
+    if (!verdict.ok) return { ok: false, reason: verdict.reason };
+    return input.unchecked
+      ? { ok: true, unchecked: input.unchecked }
+      : { ok: true };
   }
 
   /** 첫 화면을 받아 대국이 생길 때까지 기다린다. `ms`가 지나면 false(`HwatuGuestSeat.whenOpened`와 같은 상한) */
@@ -1417,15 +1444,19 @@ export class GuestRoom<
       rules: rules.rules,
       seed: seed.seed,
       log: log as KitLoggedAction<unknown>[],
+      ...this.archiveBotPlan(),
     };
     // 기록을 한 걸음씩 다시 돌리며 매 걸음 내 자리 화면을 만든다.
     // 컴퓨터 수는 같은 컴퓨터·같은 난수로 다시 계산해 기록과 맞춰 본다(방장의 컴퓨터 조종, 모의 침투 A4).
-    const level = this.lobby.botLevel;
-    const bot =
-      level !== undefined && this.kit.botFor ? this.kit.botFor(level) : null;
+    // 방장과 컴퓨터 계획 판 번호가 다르면 맞춰 보지 않고 「확인 못 함」으로 알린다(net/bot-plan.ts).
     const botRng = createRng(seed.seed ^ 0x2545f491);
     const botSeats = new Set(
       this.lobby.seats.filter((s) => s.kind === "bot").map((s) => s.seat),
+    );
+    const { bot, unchecked } = botCheckFor(
+      this.kit,
+      this.lobby,
+      log.some((e) => e.bot === true || botSeats.has(e.seat)),
     );
     let { state } = this.kit.createMatch(rules.rules, seed.seed);
     const replayedViews = [JSON.stringify(this.kit.viewOf(state, this.seat))];
@@ -1562,7 +1593,7 @@ export class GuestRoom<
       });
       if (problem) return { ok: false, reason: problem };
     }
-    return { ok: true };
+    return unchecked ? { ok: true, unchecked } : { ok: true };
   }
 }
 
