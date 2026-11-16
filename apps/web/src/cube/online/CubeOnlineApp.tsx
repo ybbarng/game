@@ -11,6 +11,7 @@ import { useChat } from "@/net/chat";
 import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
+import { MyMethodPick } from "../components/MethodSelect";
 import { shapeSupports } from "../patterns/race";
 import { ShapeRulePicker } from "../patterns/ShapeRulePicker";
 import { stageById } from "../practice/stages";
@@ -316,6 +317,11 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
               </li>
             ))}
           </ul>
+          {!s.practice && !s.shape && (
+            <div className="mt-3">
+              <MyMethodPick n={s.n} />
+            </div>
+          )}
           {host && bots && state.players.length < MAX_PLAYERS && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
               <select
