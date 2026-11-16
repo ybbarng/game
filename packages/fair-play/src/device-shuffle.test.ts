@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { FairDevice } from "./device";
-import { network, TEST_DECK, TEST_OWNERS } from "./device-fixture";
+import { network, passWaits, TEST_DECK, TEST_OWNERS } from "./device-fixture";
 import { type Party, Party as PartyClass } from "./protocol";
-
-/** 기기가 기다리는 시간(증명 미루기 10초, 응답 30초의 두 배)을 넉넉히 넘긴다 */
-const PROOF_WAIT_MS = 120_000;
 
 describe("메시지로 하는 멘탈 포커", () => {
   describe("섞기 증명: 섞을 때 카드를 바꾸면 그 기기를 짚는다", () => {
@@ -30,7 +27,12 @@ describe("메시지로 하는 멘탈 포커", () => {
       ).deals
         .get(1)
         ?.shuffles.get("0:shuffle");
-    async function run(cheater: number | null, hideNonce = false) {
+    async function run(
+      cheater: number | null,
+      hideNonce = false,
+      /** 정직한 기기가 할 일을 마치고 기다리는 시간이 지나기 전(속인 기기의 증명을 기다리는 중)에 부른다 */
+      waiting?: (devices: FairDevice[]) => void,
+    ) {
       // 고친 프로그램이 nonce를 숨기면(남의 nonce를 보고 도전값이 불리하다고 보고 멈춘다) 보내지 않는다.
       const { devices, clock, settle } = network([0, 1, 2], {
         drop: (m, from) =>
@@ -61,14 +63,9 @@ describe("메시지로 하는 멘탈 포커", () => {
         }
         // 정직한 기기는 할 수 있는 일(섞기 증명 계산·확인까지)을 모두 마친다.
         await settle();
-        // 그 뒤에 기다리는 시간이 다 지나게 한다. 정직한 기기의 증명은 이미 와 있어 늦은 것으로 몰리지 않는다.
-        // 미룬 증명(PROOF_DEFER_MS)은 시계를 옮기는 중에 시작돼 계산이 끝난 뒤 새 기다림을 건다.
-        // 메시지·계산 순서에 따라 이 길로 갈 수 있으니, 걸린 기다림이 없어질 때까지 옮기고 정리한다.
-        for (let round = 0; clock.pending() > 0; round++) {
-          if (round > 10) throw new Error("기다림이 끝나지 않는다");
-          clock.advance(PROOF_WAIT_MS);
-          await settle();
-        }
+        waiting?.(devices);
+        // 그 뒤에 기다리는 시간이 하나씩 지나게 한다. 정직한 기기의 증명은 이미 와 있어 늦은 것으로 몰리지 않는다.
+        await passWaits({ clock, settle });
       } finally {
         PartyClass.prototype.lockAndShuffle = real;
       }
@@ -105,6 +102,19 @@ describe("메시지로 하는 멘탈 포커", () => {
         expect(culprit?.device).toBe(1);
         expect(culprit?.reason).toMatch(/섞기 증명/);
       }
+    });
+
+    it("섞기 증명을 기다리는 중에 범인을 물으면, 기다림이 지나고 기기가 한가해졌을 때 이미 답이 나와 있다", async () => {
+      // 조작이 드러나는 때가 증명 주고받기가 끝나기보다 빠를 수 있다. 그때 답(확정 알림)을 기기 일 밖에서
+      // 실제 시간으로 되물어 늦게 내면, 한가해진 기기를 본 쪽은 「확인하는 중」만 보게 된다.
+      const answers: (number | null)[] = [];
+      await run(1, false, (devices) => {
+        for (const d of [devices[0], devices[2]])
+          void d
+            ?.shuffleCulprit(1)
+            .then((culprit) => answers.push(culprit?.device ?? null));
+      });
+      expect(answers).toEqual([1, 1]);
     });
   });
 });

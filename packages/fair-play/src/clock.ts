@@ -53,6 +53,19 @@ export class ManualClock implements Clock {
     this.time = end;
   }
 
+  /**
+   * 가장 먼저 닿을 일의 시각까지만 옮겨 그 시각의 일을 부른다. 걸린 일이 없으면 옮기지 않고 false.
+   * 기다림 사이에 기기가 할 일(계산)을 마치게 하려고 쓴다: 한 번에 크게 옮기면 실제로는 계산이 끝난 뒤에 올
+   * 기다림까지 계산 전에 다 지나 버린다
+   */
+  advanceToNext(): boolean {
+    let at = Number.POSITIVE_INFINITY;
+    for (const timer of this.timers.values()) at = Math.min(at, timer.at);
+    if (at === Number.POSITIVE_INFINITY) return false;
+    this.advance(Math.max(0, at - this.time));
+    return true;
+  }
+
   /** 걸려 있는 일의 수 */
   pending(): number {
     return this.timers.size;
