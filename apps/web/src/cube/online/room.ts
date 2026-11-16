@@ -1746,11 +1746,15 @@ export class CubeRoom {
       return;
     }
     if (outcome.items) this.itemStep(c, id, session, outcome.items);
-    // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 그때 다시 본다. 메시지가 없어도 시간은 흐른다
+    // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 메시지가 없어도 시간이 흘러 풀린다.
+    // 판정이 바뀌는 것은 내 시각이 아직 판정하지 못한 첫 일(`next`)을 지날 때라 그때 다시 본다
+    // (예전에는 막는 시각 + 1ms마다 다시 보아, 판 도중 1ms마다 판 전체를 다시 판정했다)
     const elapsed = session.snapshot().elapsed ?? 0;
     let wake =
-      Number.isFinite(outcome.until) && outcome.until >= elapsed
-        ? outcome.until - elapsed + 1
+      Number.isFinite(outcome.until) &&
+      outcome.until >= elapsed &&
+      Number.isFinite(outcome.next)
+        ? outcome.next - elapsed + 1
         : Number.POSITIVE_INFINITY;
     // 컴퓨터가 아이템을 쓸 때를 기다린다
     const held = c.seen.get(`held|${id}`);
