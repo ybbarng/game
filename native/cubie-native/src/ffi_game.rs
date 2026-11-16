@@ -663,7 +663,7 @@ fn hero_lines(cues: &[cube_core::hero_show::HeroCue], end: f64) -> String {
 /// 풀이(7×7 약 0.6초)를 두 번 하지 않게 기억해 둔다
 static LAST_HERO: std::sync::Mutex<Option<(String, u32, String)>> = std::sync::Mutex::new(None);
 
-/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(사이트 `HERO_METHODS`, `2-beginner`~`7-cfop`)와
+/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(사이트 `HERO_METHODS`, `2-beginner`~`7-cfop`·`4-yau`)와
 /// 씨앗으로 섞기 → 쥐는 방향 → 풀이의 시각표를 줄마다 「시각 표기 회전ms」로, 끝 줄은 「end 시각」(「맞춤」 멈춤이
 /// 시작하는 때)으로 `out`에 쓴다. 맞춘 큐브(흰 위·초록 앞)에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수를
 /// 돌려준다. 큰 큐브는 풀이에 수백 ms가 들어 앱은 화면 스레드 밖에서 부른다(섞기는 [`cubie_hero_scramble`]로 먼저)

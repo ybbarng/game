@@ -35,7 +35,7 @@ public struct CubeSettings: Equatable, Sendable {
   /// 사이트 `HERO_METHODS`의 id(크기마다 표 차례)
   public static let heroMethods: [Int: [String]] = [
     2: ["2-beginner", "2-algs"], 3: ["3-beginner", "3-cfop", "3-roux", "3-zz"],
-    4: ["4-beginner", "4-cfop"], 5: ["5-beginner", "5-cfop"], 6: ["6-beginner", "6-cfop"], 7: ["7-beginner", "7-cfop"],
+    4: ["4-beginner", "4-cfop", "4-yau"], 5: ["5-beginner", "5-cfop"], 6: ["6-beginner", "6-cfop"], 7: ["7-beginner", "7-cfop"],
   ]
 
   /// 떠 있을 때 홈 시연이 쓸 해법(사이트 미니 `heroRotation(n, heroMethod)`의 첫 해법: 연출을 한 판마다 새로 시작한다).
