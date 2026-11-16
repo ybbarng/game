@@ -8,6 +8,8 @@ export interface StatsTarget {
   game: string;
   mode: StatsMode;
   key: string;
+  /** 친구와 할 때 같이 앉은 사람 이름(나와 컴퓨터 빼고). 판·게임이 끝날 때 불러 그때 이름을 남긴다 */
+  people?: () => readonly string[];
 }
 
 /**
@@ -23,6 +25,12 @@ export class StatsRecorder<View, Event> {
     private readonly spec: KitStats<View, Event>,
     private readonly target: StatsTarget,
   ) {}
+
+  /** 같이 한 사람이 있으면 `with` 칸 */
+  private withPeople(): { with: string[] } | Record<string, never> {
+    const names = this.target.people?.() ?? [];
+    return names.length > 0 ? { with: [...names] } : {};
+  }
 
   observe(snapshot: Snapshot<View, Event>): void {
     if (this.done) return;
@@ -41,6 +49,7 @@ export class StatsRecorder<View, Event> {
           at: Date.now(),
           mode: this.target.mode,
           ...(this.start === null ? { partial: true as const } : {}),
+          ...this.withPeople(),
           data,
         });
       this.start = null;
@@ -53,6 +62,7 @@ export class StatsRecorder<View, Event> {
         game: this.target.game,
         at: Date.now(),
         mode: this.target.mode,
+        ...this.withPeople(),
         data: this.spec.game(view, events),
       });
     }
