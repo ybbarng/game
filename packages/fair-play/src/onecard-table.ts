@@ -769,6 +769,12 @@ export type OnecardReplayCheck<State> =
  * 그때의 버린 더미가 방장이 알린 카드와 같은지 본다. `requests`(판 → 방장이 연 더미 자리)가 있으면
  * 더미를 엔진이 뽑은 대로만(같은 차례, 같은 사람에게) 열었는지도 본다.
  * 한 걸음에 다시 섞기는 많아야 한 번이다(다시 섞으면 버린 더미에 맨 위 한 장만 남는다)
+ *
+ * `complete`(게임 끝 검증, 모든 조각을 연 뒤): 덱 사슬 전체를 끝까지 잇는다. 처음 덱 → 뽑기 → 버린 더미 = 다음
+ * 다시 섞기 입력 → … 마지막 조각까지 이어지지 않으면 방장 탓이다.
+ * - 기록 끝까지 다시 계산해야 한다(엔진이 다시 섞었는데 그 조각이 없으면, 예전에는 거기서 조용히 멈췄다)
+ * - 마지막 판의 덱 조각 수 = 엔진이 다시 섞은 횟수 + 1(엔진이 쓰지 않은 다시 섞기를 열지 않았다)
+ * - 방장이 연 더미 자리를 엔진이 모두 썼다(마지막 판 끝의 남는 뽑기로 더미를 엿보지 않았다)
  */
 export function checkOnecardReplay<Rules, State, Action, Event>(
   spec: OnecardFairSpec<Rules, State, Action, Event>,
@@ -780,7 +786,9 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
     of(round: number): readonly OnecardDraw[];
     deviceOf(seat: number): number;
   },
+  options: { complete?: boolean } = {},
 ): OnecardReplayCheck<State> {
+  const complete = options.complete === true;
   const first = deals.get(1);
   if (!first)
     return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없다" };
@@ -809,7 +817,13 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
   for (const [index, entry] of log.entries()) {
     round = spec.roundOf(state);
     const deal = deals.get(round);
-    if (!deal) return { ok: true, state, states, upTo: index };
+    if (!deal)
+      return complete
+        ? host(
+            index,
+            `판 끝인데 ${round}판 패를 몰라 기록 끝까지 다시 계산하지 못했다`,
+          )
+        : { ok: true, state, states, upTo: index };
     const k = spec.reshufflesOf(state);
     const pool = spec.reshufflePool(state);
     const next = deals.get(round + 1);
@@ -821,7 +835,15 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
     try {
       result = spec.step(input, entry.seat, realOnecardAction(entry.action));
     } catch {
-      // 다음 판 패나 다시 섞은 더미를 아직 모른다.
+      // 다음 판 패나 다시 섞은 더미를 아직 모른다. 게임 끝 검증에서는 모든 조각을 열었으니, 엔진이 다시 섞은
+      // 차례에 조각이 없다는 뜻이다(방장이 다시 섞기를 알리지 않고 진행했다).
+      if (complete)
+        return host(
+          index,
+          deal.refills[k]
+            ? "판 끝인데 다음 판 패를 몰라 기록 끝까지 다시 계산하지 못했다"
+            : `엔진은 ${k + 1}번째로 다시 섞었는데 방장이 그 덱 조각을 열지 않았다`,
+        );
       return { ok: true, state, states, upTo: index };
     }
     if (!result.ok)
@@ -859,6 +881,18 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
     }
     state = spec.withRefill(spec.withPreset(after, null), null);
     states.push(state);
+  }
+  if (complete) {
+    round = spec.roundOf(state);
+    const deal = deals.get(round);
+    const made = spec.reshufflesOf(state);
+    if (deal && deal.refills.length !== made)
+      return host(
+        log.length,
+        `방장이 엔진이 쓰지 않은 다시 섞기를 열었다(덱 조각 ${deal.refills.length + 1}개, 엔진 다시 섞기 ${made}번)`,
+      );
+    if (requests && requests.of(round).length > used)
+      return host(log.length, "방장이 엔진이 쓰지 않은 더미 카드를 열었다");
   }
   return { ok: true, state, states, upTo: log.length };
 }

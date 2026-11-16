@@ -82,7 +82,8 @@ type Prepared<Action> =
 
 /**
  * 판 끝 검증: 처음 펼칠 때 모두에게 연 더미 자리(특수 카드 다시 펴기)를 엔진이 다시 편 것과 맞춰 본 뒤,
- * 나머지를 `checkOnecardReplay`로 본다(그 함수는 걸음마다의 뽑기만 센다)
+ * 나머지를 `checkOnecardReplay`로 본다(그 함수는 걸음마다의 뽑기만 센다). 게임 끝에만 부른다: 기록 끝까지,
+ * 모든 덱 조각을 이어 본다(`complete`)
  */
 export function checkOnecardTable<Rules, State, Action, Event>(
   spec: OnecardFairSpec<Rules, State, Action, Event>,
@@ -109,11 +110,21 @@ export function checkOnecardTable<Rules, State, Action, Event>(
       seat: 0,
       reason: "방장이 처음 카드를 엔진과 다르게 다시 폈다",
     };
-  return checkOnecardReplay(spec, rules, seed, log, deals, {
-    of: (round) =>
-      (round === ROUND ? asked.slice(flips) : requests.of(round)) as never,
-    deviceOf: requests.deviceOf,
-  });
+  return checkOnecardReplay(
+    spec,
+    rules,
+    seed,
+    log,
+    deals,
+    {
+      of: (round) =>
+        (round === ROUND ? asked.slice(flips) : requests.of(round)) as never,
+      deviceOf: requests.deviceOf,
+    },
+    // 원카드는 한 게임이 한 판이고, 이 검증은 게임이 끝나 모든 덱 조각을 연 뒤에만 돈다(방장 `verify`,
+    // 참가자 `tryVerify`). 그래서 덱 사슬을 기록 끝까지 잇는다.
+    { complete: true },
+  );
 }
 
 export interface OnecardHostHooks<State, Action> {
