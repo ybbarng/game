@@ -97,6 +97,8 @@ export function hasBatchim(word: string): boolean {
   return code >= 0 && code <= 11171 && code % 28 !== 0;
 }
 export const obj = (word: string) => `${word}${hasBatchim(word) ? "을" : "를"}`;
+/** 「이·가」: 받침에 맞춘다(「졸이」·「마가」) */
+const subj = (word: string) => `${word}${hasBatchim(word) ? "이" : "가"}`;
 
 /**
  * 「로·으로」: 받침이 없거나 ㄹ이면 로, 다른 받침이면 으로. 자리 이름 숫자는 읽는 소리로 본다
@@ -127,7 +129,7 @@ export function explainMate(board: Board, move: Move): string[] {
   ];
   const checkers = attackers(after, king);
   if (checkers.length > 1)
-    lines.push(`${names(checkers)}가 함께 궁을 노린다(양수겸장)`);
+    lines.push(`${subj(names(checkers))} 함께 궁을 노려요(양수겸장).`);
   const escapes = pseudoTargets(after, king);
   const guarded = new Map<string, string[]>();
   for (const to of escapes) {
@@ -137,9 +139,10 @@ export function explainMate(board: Board, move: Move): string[] {
     guarded.set(who, [...(guarded.get(who) ?? []), pointName(to)]);
   }
   for (const [who, squares] of guarded)
-    lines.push(`궁이 피할 ${squares.join("·")}는 ${who}가 지킨다`);
-  if (escapes.length === 0) lines.push("궁 둘레가 막혀 궁이 움직일 곳이 없다");
-  lines.push("막거나 잡을 수도 없어 외통이다");
+    lines.push(`궁이 피할 ${squares.join("·")}는 ${subj(who)} 지켜요.`);
+  if (escapes.length === 0)
+    lines.push("궁 둘레가 막혀 궁이 움직일 곳이 없어요.");
+  lines.push("막거나 잡을 수도 없어 외통이에요.");
   return lines;
 }
 
@@ -169,10 +172,10 @@ export function explainFork(board: Board, move: Move): string[] {
     .join(" ");
   const check = targets.some((t) => t.kind === "K");
   return [
-    `${obj(KIND_NAMES[mover[1] as Kind])} ${ro(pointName(move.to))}: ${list} 함께 노린다`,
+    `${obj(KIND_NAMES[mover[1] as Kind])} ${ro(pointName(move.to))}: ${list} 함께 노려요.`,
     check
-      ? "장군이라 한은 궁부터 피해야 하고, 그사이 다른 기물을 잡는다"
-      : "한이 하나를 지키거나 피하면 다른 하나를 잡는다",
+      ? "장군이라 한은 궁부터 피해야 하고, 그사이 다른 기물을 잡아요."
+      : "한이 하나를 지키거나 피하면 다른 하나를 잡아요.",
   ];
 }
 
@@ -188,8 +191,8 @@ export function explainTrade(board: Board, move: Move, trap: Move): string[] {
   const recapture = names(attackers(after, move.to, "h"));
   const lines = [
     recapture
-      ? `${ro(mover)} ${obj(taken)} 잡는다(${PIECE_VALUE[takenKind]}점). ${recapture}가 다시 잡아도 이득이다`
-      : `${ro(mover)} ${obj(taken)} 잡는다(${PIECE_VALUE[takenKind]}점). 지키는 기물이 없어 공짜다`,
+      ? `${ro(mover)} ${obj(taken)} 잡아요(${PIECE_VALUE[takenKind]}점). ${subj(recapture)} 다시 잡아도 이득이에요.`
+      : `${ro(mover)} ${obj(taken)} 잡아요(${PIECE_VALUE[takenKind]}점). 지키는 기물이 없어 공짜예요.`,
   ];
   const trapKind = (board[trap.to] as string)[1] as Kind;
   const trapAfter = applyMove(board, trap);
@@ -197,8 +200,8 @@ export function explainTrade(board: Board, move: Move, trap: Move): string[] {
   const guard = names(attackers(trapAfter, trap.to, "h"));
   lines.push(
     guard
-      ? `${pointName(trap.to)}의 ${obj(KIND_NAMES[trapKind])} ${ro(trapper)} 잡으면 ${guard}가 다시 잡아 ${trapper}를 잃는다`
-      : `${pointName(trap.to)}의 ${obj(KIND_NAMES[trapKind])} 잡으면 그사이 더 큰 기물을 잃는다`,
+      ? `${pointName(trap.to)}의 ${obj(KIND_NAMES[trapKind])} ${ro(trapper)} 잡으면 ${subj(guard)} 다시 잡아 ${obj(trapper)} 잃어요.`
+      : `${pointName(trap.to)}의 ${obj(KIND_NAMES[trapKind])} 잡으면 그사이 더 큰 기물을 잃어요.`,
   );
   return lines;
 }
@@ -220,12 +223,12 @@ export function explainEscape(board: Board, move: Move): string[] {
     target !== "" && pseudoTargets(board, move.to).includes(king);
   if (move.from === king)
     how = takenKind
-      ? `궁으로 ${obj(KIND_NAMES[takenKind])} 잡으며 ${ro(pointName(move.to))} 비킨다(${PIECE_VALUE[takenKind]}점)`
-      : `궁을 ${ro(pointName(move.to))} 비킨다`;
+      ? `궁으로 ${obj(KIND_NAMES[takenKind])} 잡으며 ${ro(pointName(move.to))} 비켜요(${PIECE_VALUE[takenKind]}점)`
+      : `궁을 ${ro(pointName(move.to))} 비켜요`;
   else if (takenKind && takesChecker)
-    how = `${ro(mover)} 장군 부른 ${obj(KIND_NAMES[takenKind])} 잡는다(${PIECE_VALUE[takenKind]}점)`;
+    how = `${ro(mover)} 장군 부른 ${obj(KIND_NAMES[takenKind])} 잡아요(${PIECE_VALUE[takenKind]}점)`;
   else if (takenKind)
-    how = `${ro(mover)} ${obj(KIND_NAMES[takenKind])} 잡으며 장군 길을 막는다(${PIECE_VALUE[takenKind]}점)`;
+    how = `${ro(mover)} ${obj(KIND_NAMES[takenKind])} 잡으며 장군 길을 막아요(${PIECE_VALUE[takenKind]}점)`;
   else {
     // 장군 부른 포와 궁 사이에서 비킨 기물이면 포의 다리를 치운 것이다.
     const bridge = board.some(
@@ -235,12 +238,12 @@ export function explainEscape(board: Board, move: Move): string[] {
         between(at, king, move.from),
     );
     how = bridge
-      ? `${obj(mover)} ${ro(pointName(move.to))} 옮겨 포의 다리를 치운다`
-      : `${obj(mover)} ${pointName(move.to)}에 놓아 길을 막는다`;
+      ? `${obj(mover)} ${ro(pointName(move.to))} 옮겨 포의 다리를 치워요`
+      : `${obj(mover)} ${pointName(move.to)}에 놓아 길을 막아요`;
   }
   return [
-    `${by}${hasBatchim(by) ? "이" : "가"} 장군을 불렀다`,
-    `${how}. 다른 풀기는 두 수 안에 기물을 잃거나 몰린다`,
+    `${subj(by)} 장군을 불렀어요.`,
+    `${how}. 다른 풀기는 두 수 안에 기물을 잃거나 몰려요.`,
   ];
 }
 
@@ -275,16 +278,16 @@ export function explainPalace(board: Board, move: Move): string[] {
       ? `가운데 ${obj(KIND_NAMES[jumped[1] as Kind])} 넘어`
       : "";
   const lines = [
-    `${obj(mover)} ${pointName(move.from)}에서 ${ro(pointName(move.to))}: 궁성 대각선을 따라 ${path ? `${path} ` : ""}간다`,
+    `${obj(mover)} ${pointName(move.from)}에서 ${ro(pointName(move.to))}: 궁성 대각선을 따라 ${path ? `${path} ` : ""}가요.`,
   ];
   const taken = board[move.to] ?? "";
   const check = attackers(after, after.indexOf("hK")).length > 0;
   if (isCheckmate(after, "h")) {
-    lines.push("장군! 궁이 피할 곳도, 막거나 잡을 길도 없어 외통이다");
+    lines.push("장군! 궁이 피할 곳도, 막거나 잡을 길도 없어 외통이에요.");
   } else if (taken !== "") {
     const kind = taken[1] as Kind;
     lines.push(
-      `${obj(KIND_NAMES[kind])} 잡는다(${PIECE_VALUE[kind]}점)${check ? ". 장군도 함께 부른다" : ""}`,
+      `${obj(KIND_NAMES[kind])} 잡아요(${PIECE_VALUE[kind]}점).${check ? " 장군도 함께 불러요." : ""}`,
     );
   } else {
     const next = pseudoTargets(after, move.to)
@@ -296,11 +299,11 @@ export function explainPalace(board: Board, move: Move): string[] {
     const word = [...new Set(next)].join("·");
     lines.push(
       word
-        ? `장군! ${obj(word)} 함께 노려서, 한이 궁을 지키는 사이 잡는다`
-        : "장군! 한이 궁을 지키는 사이 다른 기물을 얻는다",
+        ? `장군! ${obj(word)} 함께 노려서, 한이 궁을 지키는 사이 잡아요.`
+        : "장군! 한이 궁을 지키는 사이 다른 기물을 얻어요.",
     );
   }
-  lines.push("차·포·졸은 궁성 안에서 선이 그어진 대각선으로도 다닌다");
+  lines.push("차·포·졸은 궁성 안에서 선이 그어진 대각선으로도 다녀요.");
   return lines;
 }
 
@@ -328,12 +331,12 @@ export function explainDefend(board: Board, move: Move): string[] {
     threat.attackers.map((at) => (board[at] as string)[1] as Kind),
   );
   const lines = [
-    `한 ${by}${hasBatchim(by) ? "이" : "가"} ${pieceAt(board, threat.at, "을")} 공짜로 노린다`,
+    `한 ${subj(by)} ${pieceAt(board, threat.at, "을")} 공짜로 노려요.`,
   ];
   const after = applyMove(board, move);
   const mover = KIND_NAMES[(board[move.from] as string)[1] as Kind];
   if (move.from === threat.at) {
-    lines.push(`${obj(mover)} ${ro(pointName(move.to))} 비킨다`);
+    lines.push(`${obj(mover)} ${ro(pointName(move.to))} 비켜요.`);
   } else {
     const still = threat.attackers.some((from) =>
       pseudoTargets(after, from).includes(threat.at),
@@ -344,16 +347,16 @@ export function explainDefend(board: Board, move: Move): string[] {
     );
     lines.push(
       still
-        ? `${obj(mover)} ${ro(pointName(move.to))} 옮겨 지킨다. 잡으면 다시 잡아 한이 손해다`
+        ? `${obj(mover)} ${ro(pointName(move.to))} 옮겨 지켜요. 잡으면 다시 잡아 한이 손해예요.`
         : bridge
-          ? `${obj(mover)} ${ro(pointName(move.to))} 옮겨 포의 다리를 치운다`
-          : `${obj(mover)} ${pointName(move.to)}에 놓아 노리는 길을 막는다`,
+          ? `${obj(mover)} ${ro(pointName(move.to))} 옮겨 포의 다리를 치워요.`
+          : `${obj(mover)} ${pointName(move.to)}에 놓아 노리는 길을 막아요.`,
     );
   }
   lines.push(
     move.from === threat.at
-      ? "다른 곳으로 비키면 또 잡히거나 다른 기물을 잃는다. 비킬 곳이 안전한지 살핀다"
-      : "다른 수는 두 수 안에 기물을 잃는다",
+      ? "다른 곳으로 비키면 또 잡히거나 다른 기물을 잃어요. 비킬 곳이 안전한지 살펴요."
+      : "다른 수는 두 수 안에 기물을 잃어요.",
   );
   return lines;
 }
@@ -477,11 +480,11 @@ export function explainCannon(board: Board, move: Move): string[] {
   const cannon = pieceAt(after, open.cannon, "이");
   return [
     open.bridge
-      ? `${obj(mover)} ${ro(pointName(move.to))}: ${mover}${hasBatchim(mover) ? "이" : "가"} 다리가 되어 ${cannon} ${target} 노린다`
-      : `${obj(mover)} ${ro(pointName(move.to))} 비키면 다리가 하나만 남아 ${cannon} ${target} 노린다`,
+      ? `${obj(mover)} ${ro(pointName(move.to))}: ${subj(mover)} 다리가 되어 ${cannon} ${target} 노려요.`
+      : `${obj(mover)} ${ro(pointName(move.to))} 비키면 다리가 하나만 남아 ${cannon} ${target} 노려요.`,
     after[open.target] === "hK"
-      ? "포 장군이다. 한은 궁부터 지켜야 해서 그사이 다른 기물을 얻는다"
-      : "포는 꼭 하나를 넘어야 움직인다. 다리를 놓거나 치우면 길이 열린다",
+      ? "포 장군이에요. 한은 궁부터 지켜야 해서 그사이 다른 기물을 얻어요."
+      : "포는 꼭 하나를 넘어야 움직여요. 다리를 놓거나 치우면 길이 열려요.",
   ];
 }
 
@@ -496,9 +499,9 @@ export function explainBlock(board: Board, move: Move): string[] {
     pieceAt(after, t, i === block.saved.length - 1 ? "을" : ""),
   );
   return [
-    `${obj(mover)} ${ro(pointName(move.to))}: 한 ${pieceAt(after, block.attacker, "의")} 멱을 막아 ${saved.join("·")} 지킨다`,
+    `${obj(mover)} ${ro(pointName(move.to))}: 한 ${pieceAt(after, block.attacker, "의")} 멱을 막아 ${saved.join("·")} 지켜요.`,
     attackerKind === "N"
-      ? "마는 곧게 한 칸 간 뒤 비스듬히 간다. 곧게 가는 첫 칸(멱)이 막히면 못 간다"
-      : "상은 곧게 한 칸, 비스듬히 두 칸 간다. 지나는 칸 하나라도 막히면 못 간다",
+      ? "마는 곧게 한 칸 간 뒤 비스듬히 가요. 곧게 가는 첫 칸(멱)이 막히면 못 가요."
+      : "상은 곧게 한 칸, 비스듬히 두 칸 가요. 지나는 칸 하나라도 막히면 못 가요.",
   ];
 }

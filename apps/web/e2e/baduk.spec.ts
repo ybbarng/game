@@ -32,7 +32,7 @@ async function placeAt(page: Page, name: string, touch: boolean) {
   if (touch) {
     await page.touchscreen.tap(px, py);
     await expect(page.getByRole("status")).toContainText(
-      `${name}: 한 번 더 누르면 둔다`,
+      `${name}: 한 번 더 누르면 둬요.`,
     );
     await page.touchscreen.tap(px, py);
   } else await page.mouse.click(px, py);
@@ -362,16 +362,16 @@ test(
     const atari = page.getByRole("region", { name: "단수 방향" });
     await expect(atari.getByText("0/8")).toBeVisible();
     await atari.getByRole("button", { name: "풀기 시작" }).click();
-    await expect(page.getByRole("status")).toHaveText("△ 백 돌을 따내세요");
+    await expect(page.getByRole("status")).toHaveText("△ 백 돌을 따내세요.");
 
     // G1에서 단수 치면 백이 F2로 뻗어 달아난다.
     await placeAt(page, "G1", touch);
-    await expect(page.getByRole("status")).toHaveText("그 수로는 못 따내요");
+    await expect(page.getByRole("status")).toHaveText("그 수로는 못 따내요.");
     await page.getByRole("button", { name: "다시 하기" }).click();
 
     // 정답: F2에서 단수 → 백이 받고(달아날 곳이 없어 쉰다) → 따낸다.
     await placeAt(page, "F2", touch);
-    await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요", {
+    await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요.", {
       timeout: 10_000,
     });
     await placeAt(page, "G1", touch);
@@ -388,7 +388,7 @@ test(
       .click();
     for (const name of ["C3", "C6", "B6", "A6"]) {
       await placeAt(page, name, touch);
-      await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요", {
+      await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요.", {
         timeout: 10_000,
       });
     }
@@ -402,7 +402,7 @@ test(
       .getByRole("region", { name: "눈 빼앗기" })
       .getByRole("button", { name: "풀기 시작" })
       .click();
-    await expect(page.getByRole("status")).toHaveText("△ 백 무리를 잡으세요");
+    await expect(page.getByRole("status")).toHaveText("△ 백 무리를 잡으세요.");
     await placeAt(page, "A8", touch);
     await expect(page.getByRole("status")).toHaveText("잡았어요!");
     await expect(page.getByText(/급소/)).toBeVisible();
@@ -546,7 +546,7 @@ test(
     for (const [i, name] of line.entries()) {
       await placeAt(page, name, touch);
       if (i < line.length - 1)
-        await expect(status).toHaveText("계속 몰아 따내세요", {
+        await expect(status).toHaveText("계속 몰아 따내세요.", {
           timeout: 10_000,
         });
     }
@@ -599,7 +599,7 @@ test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘
   await expect(
     page.locator('[data-point="F17"][data-stone="white"]'),
   ).toHaveCount(1);
-  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요.");
 
   await placeAt19(page, "A1", touch);
   await expect(page.getByRole("status")).toHaveText(

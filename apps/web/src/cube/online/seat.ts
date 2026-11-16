@@ -26,13 +26,19 @@ export function seatProof(token: string, device: string, n: number): string {
 /** 토큰 글자 수 상한(받는 쪽이 엉뚱하게 긴 글을 쌓아 두지 않게) */
 export const SEAT_TOKEN_MAX = 64;
 
-/** 탭에 남기는 자리 정보. 방장·손님 모두 남기고, 되찾기는 손님만 한다 */
+/** 탭에 남기는 자리 정보. 방장·손님 모두 남기고 모두 되찾는다(방장은 방장 자리, docs/47 9-11 「방장 되찾기」) */
 export interface SavedSeat {
   v: 1;
   /** 내 참가자 아이디(처음 들어온 연결 아이디) */
   me: string;
-  /** 방장 연결 아이디 */
+  /** 손님: 들어올 때 쓴 초대 링크의 방장 아이디(`k`, 새로고침 뒤 같은 링크인지 견준다). 방장: 내 참가자 아이디 */
   host: string;
+  /** 지금 방장 연결(방장이 새로 고쳐 바뀌었으면 이 기기가 확인한 새 연결). 없으면 `host` */
+  hostAt?: string;
+  /** 방장 참가자 아이디(방장이 새로 고쳐도 그대로). 없으면 아직 방 상태를 받지 못했다 */
+  hostPeer?: string;
+  /** 이 탭이 확인한 남의 되찾기: 참가자 → 새 연결·번호(새로 고쳐도 다시 확인할 길이 없어서 남긴다) */
+  claims?: Record<string, { device: string; n: number }>;
   /** 마지막으로 쓴 되찾기 번호(처음 들어올 때 0) */
   n: number;
   /** 내가 남에게 준 토큰: 받은 참가자 → 토큰 */
@@ -58,10 +64,24 @@ export interface SavedRace {
   resume: RaceResume;
 }
 
+/**
+ * 방장 탭에 남기는 컴퓨터의 지금 판 몫(컴퓨터 → 몫). 방장이 새로 고치면 풀리기 전이면 같은 약속으로 이어 가고, 풀린 뒤면
+ * 그 판을 그만둔다(`BOT_HOST_RELOAD`)
+ */
+export interface SavedBots {
+  v: 1;
+  race: string;
+  at: number;
+  bots: Record<string, RaceResume>;
+}
+
+/** 탭에 남기는 것의 이름 */
+export type SeatKey = "seat" | "match" | "race" | "bots";
+
 /** 자리 정보를 남기는 곳(제품은 탭의 sessionStorage, 시험은 메모리) */
 export interface SeatStore {
-  get(key: "seat" | "match" | "race"): string | null;
-  set(key: "seat" | "match" | "race", value: string): void;
+  get(key: SeatKey): string | null;
+  set(key: SeatKey, value: string): void;
 }
 
 /** 방 하나의 자리 정보를 이 탭의 sessionStorage에. 탭을 닫으면 사라진다(닫은 탭 다시 열기는 브라우저가 되살린다) */
@@ -100,13 +120,30 @@ export function readSeat(raw: string | null): SavedSeat | null {
       !Number.isInteger(s.n) ||
       s.n < 0 ||
       !records(s.given) ||
-      !records(s.got)
+      !records(s.got) ||
+      (s.hostAt !== undefined && typeof s.hostAt !== "string") ||
+      (s.hostPeer !== undefined && typeof s.hostPeer !== "string") ||
+      !claimsOk(s.claims)
     )
       return null;
     return s;
   } catch {
     return null;
   }
+}
+
+function claimsOk(c: unknown): boolean {
+  if (c === undefined) return true;
+  if (typeof c !== "object" || c === null) return false;
+  return Object.values(c).every((x) => {
+    const r = x as { device?: unknown; n?: unknown } | null;
+    return (
+      typeof r === "object" &&
+      r !== null &&
+      typeof r.device === "string" &&
+      Number.isInteger(r.n)
+    );
+  });
 }
 
 export function readJson<T extends { v: 1 }>(raw: string | null): T | null {

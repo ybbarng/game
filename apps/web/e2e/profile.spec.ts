@@ -47,13 +47,91 @@ const BOOK = {
   games: [],
 };
 
-async function openProfile(page: Page, game: string) {
+async function openProfile(page: Page, game: string, book: unknown = BOOK) {
   await page.clock.install({ time: NOW });
-  await page.addInitScript((book) => {
-    localStorage.setItem("mighty-stats", JSON.stringify(book));
-  }, BOOK);
+  await page.addInitScript((saved) => {
+    localStorage.setItem("mighty-stats", JSON.stringify(saved));
+  }, book);
   await page.goto(`/profile?game=${game}`);
 }
+
+/** 마이티 판 기록 하나. 조커콜마다 [끌려 나온 조커의 편, 그 턴을 내 편이 먹었나] */
+function mightyRound(
+  i: number,
+  at: number,
+  role: "declarer" | "friend" | "opposition",
+  calls: ["ruling" | "opposition" | null, boolean][],
+) {
+  return {
+    id: `solo:3:${i}`,
+    game: "mighty",
+    at,
+    mode: "solo",
+    data: {
+      players: 5,
+      role,
+      won: true,
+      goal: { kiruda: "S", score: 14 },
+      friend: "card",
+      multipliers: [],
+      rulingPoints: 15,
+      money: 2,
+      moneyAfter: 2 * i,
+      bid: role === "declarer" ? 14 : null,
+      tricks: 3,
+      points: 5,
+      mighty: false,
+      joker: false,
+      jokerCall: calls.length > 0,
+      calls: calls.map(([fromSide, won], k) => ({
+        trick: k + 2,
+        from: fromSide === null ? null : 2,
+        fromSide,
+        won,
+        points: 1,
+      })),
+      killed: false,
+      killer: false,
+    },
+  };
+}
+
+/**
+ * 최근 이틀: 야당으로 여당 조커를 끌어내 먹음(효과), 주공으로 조커가 안 나옴(효과 없음).
+ * 두 달 전: 프렌드로 야당 조커를 끌어내 먹음(효과), 같은 편 조커를 끌어냄(효과 없음).
+ */
+const MIGHTY_BOOK = {
+  version: 1,
+  since: NOW.getTime() - 60 * DAY,
+  rounds: [
+    mightyRound(1, NOW.getTime() - 60 * DAY, "friend", [["opposition", true]]),
+    mightyRound(2, NOW.getTime() - 60 * DAY + 60_000, "opposition", [
+      ["opposition", true],
+    ]),
+    mightyRound(3, NOW.getTime() - 2 * DAY, "opposition", [["ruling", true]]),
+    mightyRound(4, NOW.getTime() - DAY, "declarer", [[null, false]]),
+  ],
+  games: [],
+};
+
+test(
+  "내 기록 마이티: 조커콜 수 옆에 효과 있는 조커콜 수가 보이고, 기간을 따른다",
+  { tag: NO_PHONE_LANDSCAPE },
+  async ({ page }, info) => {
+    await openProfile(page, "mighty", MIGHTY_BOOK);
+    // 「숫자로 보기」의 조커콜 칸: 값 4, 곁글 「효과 2」
+    const callCount = page.locator("dt:text-is('조커콜') + dd");
+    await expect(callCount).toHaveText("4효과 2");
+    await page.screenshot({
+      path: info.outputPath("profile-mighty-joker-call.png"),
+      fullPage: true,
+    });
+
+    const period = page.getByRole("group", { name: "기간" });
+    await period.getByRole("button", { name: "최근 7일" }).click();
+    await expect(callCount).toHaveText("2효과 1");
+  },
+);
 
 test(
   "내 기록: 기간을 고르면 그 기간 판만 세고, 같이 한 사람과 업적이 보인다",

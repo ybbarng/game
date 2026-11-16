@@ -348,3 +348,100 @@ test(
     await shot(host, "online-rejoin-host", info.project.name);
   },
 );
+
+/**
+ * 방장 새로고침 뒤 방 되찾기(docs/47 9-11 「방장 되찾기」). 두 탭(`?net=local`), `CUBE_MULTI=1`일 때만.
+ * 대기실에서 방장이 새로 고쳐도 손님 탭은 같은 방에 남고(방장을 기다리다 새 연결을 받는다) 방장이 다음 판을 연다.
+ * 판 도중 방장이 두 수를 두고 새로 고치면 같은 방장 자리·같은 큐브에서 이어 맞추고, 손님 탭도 방장을 「맞춤」으로 본다
+ */
+test(
+  "온라인 대결: 방장이 새로 고쳐도 손님은 같은 방에 남고, 판 도중이면 같은 큐브에서 이어 맞춘다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
+    await no3d(context);
+    const host = await context.newPage();
+    await useNotationKeys(host);
+    await host.goto("/cube/online?net=local");
+    await host.locator("[data-cube-enter]").click();
+    const link = await host.locator("input[readonly]").inputValue();
+    const room = new URL(link).searchParams.get("room");
+    const guest = await context.newPage();
+    await useNotationKeys(guest);
+    await guest.goto(link);
+    await guest.locator("[data-cube-enter]").click();
+    await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
+    await host.getByLabel("종목").selectOption("2");
+    await host.getByLabel("살펴보기").selectOption("0");
+
+    // 대기실에서 방장이 새로 고친다: 이름 화면 없이 같은 방(같은 방 코드·설정)으로 돌아온다
+    await host.reload();
+    await expect(host.locator("main[data-cube-online]")).toHaveAttribute(
+      "data-cube-online",
+      "lobby",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    await expect(host.locator("[data-cube-enter]")).toHaveCount(0);
+    expect(
+      new URL(
+        await host.locator("input[readonly]").inputValue(),
+      ).searchParams.get("room"),
+    ).toBe(room);
+    await expect(host.getByLabel("종목")).toHaveValue("2");
+    // 손님 탭은 같은 방에 남고, 방장 자리를 확인한 새 연결을 받는다(끊김 표시 없음)
+    await expect(guest.locator("[data-cube-host-away]")).toHaveCount(0);
+    await expect(guest.locator("main[data-cube-online]")).toHaveAttribute(
+      "data-cube-online",
+      "lobby",
+    );
+    await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
+    await expect(
+      host.locator("[data-cube-players] li", { hasText: "끊김" }),
+    ).toHaveCount(0);
+    await shot(guest, "online-host-reload-lobby", info.project.name);
+
+    // 새로 고친 방장이 판을 연다
+    await host.locator("[data-cube-start]").click();
+    for (const p of [host, guest])
+      await expect(p.locator("[data-cube-race-phase]")).toHaveAttribute(
+        "data-cube-race-phase",
+        "race",
+        { timeout: SCRAMBLE_TIMEOUT },
+      );
+    await inputReady(host);
+    const scramble = (await host
+      .locator("[data-cube-scramble]")
+      .getAttribute("data-cube-scramble")) as string;
+    const mySeat = host.locator("[data-cube-my-log]");
+    const me = (await mySeat.getAttribute("data-cube-peer")) as string;
+    await host.keyboard.press("KeyR");
+    await host.keyboard.press("KeyU");
+    await expect(mySeat).toHaveAttribute("data-cube-my-log", "R U");
+
+    // 판 도중 방장이 새로 고친다
+    await host.reload();
+    await expect(host.locator("[data-cube-race-phase]")).toHaveAttribute(
+      "data-cube-race-phase",
+      "race",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    await inputReady(host);
+    await expect(mySeat).toHaveAttribute("data-cube-peer", me);
+    await expect(mySeat).toHaveAttribute("data-cube-my-log", "R U");
+    await expect(host.locator("[data-cube-scramble]")).toHaveAttribute(
+      "data-cube-scramble",
+      scramble,
+    );
+    await expect(guest.locator("[data-cube-host-away]")).toHaveCount(0);
+    await shot(host, "online-host-reload-race", info.project.name);
+    for (const key of keysFor(`U' R' ${inverseAlg(scramble)}`))
+      await host.keyboard.press(key);
+    await expect(mySeat).toHaveAttribute("data-cube-peer-status", "done");
+    await expect(guest.locator(`[data-cube-peer="${me}"]`)).toHaveAttribute(
+      "data-cube-peer-status",
+      "done",
+      { timeout: 10_000 },
+    );
+    await shot(guest, "online-host-reload-guest", info.project.name);
+  },
+);

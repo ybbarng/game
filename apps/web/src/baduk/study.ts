@@ -152,28 +152,29 @@ const SHAPE_TEXT: Record<
 > = {
   "straight-three": {
     name: `${LIFE_SHAPE_NAMES["straight-three"]}(곧은 세 집)`,
-    vital: "가운데가 급소다",
+    vital: "가운데가 급소예요.",
   },
   "bent-three": {
     name: `${LIFE_SHAPE_NAMES["bent-three"]}(구부러진 세 집)`,
-    vital: "꺾인 자리가 급소다",
+    vital: "꺾인 자리가 급소예요.",
   },
   "pyramid-four": {
     name: LIFE_SHAPE_NAMES["pyramid-four"],
-    vital: "세 집에 붙은 가운데가 급소다",
-    note: "곧은 네 집(직사)·구부러진 네 집(곡사)은 상대가 한 곳을 막아도 다른 곳에 두면 두 눈이 되어 그대로 살고, 네모 네 집은 그대로 죽는다",
+    vital: "세 집에 붙은 가운데가 급소예요.",
+    note: "곧은 네 집(직사)·구부러진 네 집(곡사)은 상대가 한 곳을 막아도 다른 곳에 두면 두 눈이 되어 그대로 살고, 네모 네 집은 그대로 죽어요.",
   },
   "flower-five": {
     name: `${LIFE_SHAPE_NAMES["flower-five"]}(십자 다섯 집)`,
-    vital: "네 집에 붙은 한가운데가 급소다",
+    vital: "네 집에 붙은 한가운데가 급소예요.",
   },
   "bulky-five": {
     name: LIFE_SHAPE_NAMES["bulky-five"],
-    vital: "네모 네 집에 한 집이 붙은 모양. 세 집에 붙은 자리가 급소다",
+    vital:
+      "네모 네 집에 한 집이 붙은 모양이에요. 세 집에 붙은 자리가 급소예요.",
   },
   "rabbity-six": {
     name: `${LIFE_SHAPE_NAMES["rabbity-six"]}(꽃 여섯 집)`,
-    vital: "네 집에 붙은 가운데가 급소다",
+    vital: "네 집에 붙은 가운데가 급소예요.",
   },
 };
 
@@ -193,13 +194,13 @@ export function explainSolved(
         puzzle.goal === "live"
           ? [
               `${text.name}: ${text.vital}`,
-              `${named(move)}에 두면 눈 자리가 떨어진 두 눈 이상으로 나뉘어 산다`,
-              "백이 먼저 이 급소를 차지하면 한 눈뿐이라 잡힌다",
+              `${named(move)}에 두면 눈 자리가 떨어진 두 눈 이상으로 나뉘어 살아요.`,
+              "백이 먼저 이 급소를 차지하면 한 눈뿐이라 잡혀요.",
             ]
           : [
               `${text.name}: ${text.vital}`,
-              `${named(move)}에 두면 백은 눈을 둘로 나눌 수 없다. 안을 채워 가면 끝내 따낸다`,
-              "백이 먼저 이 급소를 차지하면 두 눈이 되어 산다",
+              `${named(move)}에 두면 백은 눈을 둘로 나눌 수 없어요. 안을 채워 가면 끝내 따내요.`,
+              "백이 먼저 이 급소를 차지하면 두 눈이 되어 살아요.",
             ];
       return text.note ? [...lines, text.note] : lines;
     }
@@ -208,15 +209,15 @@ export function explainSolved(
     if (puzzle.goal === "live")
       return [
         took > 0
-          ? `${named(move)}: 안쪽 백 돌을 따내며 눈 자리를 둘로 나눈다`
-          : `${named(move)}: 눈 자리를 둘로 나눈다`,
-        "떨어진 두 눈이 있으면 백은 어느 눈에도 들어올 수 없어 잡히지 않는다",
-        "다른 자리에 두면 백이 먼저 그 자리를 차지해 한 눈뿐이 된다",
+          ? `${named(move)}: 안쪽 백 돌을 따내며 눈 자리를 둘로 나눠요.`
+          : `${named(move)}: 눈 자리를 둘로 나눠요.`,
+        "떨어진 두 눈이 있으면 백은 어느 눈에도 들어올 수 없어 잡히지 않아요.",
+        "다른 자리에 두면 백이 먼저 그 자리를 차지해 한 눈뿐이 돼요.",
       ];
     return [
-      `${named(move)}: 백 눈 자리의 급소에 둔다`,
-      "백은 눈을 둘로 나눌 수 없어 한 눈뿐이다. 결국 따낼 수 있다",
-      "다른 자리에 두면 백이 그 자리를 차지해 두 눈을 만든다",
+      `${named(move)}: 백 눈 자리의 급소에 둬요.`,
+      "백은 눈을 둘로 나눌 수 없어 한 눈뿐이에요. 결국 따낼 수 있어요.",
+      "다른 자리에 두면 백이 그 자리를 차지해 두 눈을 만들어요.",
     ];
   }
   if (puzzle.kind === "kofight") return explainKoFight(puzzle);
@@ -225,24 +226,24 @@ export function explainSolved(
   const first = named(solutionOf(puzzle));
   const lines: Record<typeof puzzle.theme, string[]> = {
     atari: [
-      `${first}에서 단수: 백이 넓은 쪽으로 달아날 길을 먼저 막는다`,
-      "반대쪽에서 단수를 치면 백이 뻗어 활로가 늘어난다",
+      `${first}에서 단수를 쳐요. 백이 넓은 쪽으로 달아날 길을 먼저 막아요.`,
+      "반대쪽에서 단수를 치면 백이 뻗어 활로가 늘어나요.",
     ],
     ladder: [
-      `${first}에서 단수를 시작해 계속 단수로 몬다(축)`,
-      "백은 한쪽으로만 뻗을 수 있고, 끝내 판 끝이나 흑 돌에 막혀 잡힌다",
+      `${first}에서 단수를 시작해 계속 단수로 몰아요(축).`,
+      "백은 한쪽으로만 뻗을 수 있고, 끝내 판 끝이나 흑 돌에 막혀 잡혀요.",
     ],
     net: [
-      `${first}: 바로 단수 치지 않고 한 칸 떨어져 길을 막는다(장문)`,
-      "백이 어느 쪽으로 나와도 다음 단수에 잡힌다",
+      `${first}: 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문).`,
+      "백이 어느 쪽으로 나와도 다음 단수에 잡혀요.",
     ],
     snapback: [
-      `${first}: 일부러 한 점을 내준다(먹여치기). 백 무리는 단수가 된다`,
-      `백이 이 돌을 따내도 활로가 하나뿐이라, 흑이 ${first}에 다시 두어 되따낸다(환격)`,
+      `${first}: 일부러 한 점을 내줘요(먹여치기). 백 무리는 단수가 돼요.`,
+      `백이 이 돌을 따내도 활로가 하나뿐이라, 흑이 ${first}에 다시 두어 되따내요(환격).`,
     ],
     ko: [
-      `${first}: 패를 따내며 단수를 친다`,
-      "백은 바로 되따낼 수 없다(같은 판 모양 금지). 한 번 다른 곳에 두어야 해서 달아날 틈이 없다",
+      `${first}: 패를 따내며 단수를 쳐요.`,
+      "백은 바로 되따낼 수 없어요(같은 판 모양 금지). 한 번 다른 곳에 두어야 해서 달아날 틈이 없어요.",
     ],
     "long-ladder": [
       `${first}에서 단수를 쳐 백을 판 끝까지 몰았어요(긴 축).`,
@@ -253,15 +254,12 @@ export function explainSolved(
       `${first}에서 단수를 치면 백이 뻗어 가는 길에 축머리가 없어 잡혀요.`,
     ],
   };
-  // 긴 축·축머리는 해요체·마침표로 쓴다(2026-11-17 단원 글과 맞춤). 아홉 수부터는 숫자로
+  // 아홉 수부터는 숫자로. 「돌을」·「돌 2개를」처럼 조사는 끝 낱말에 맞춘다
   const count = COUNT[movesPlayed]
     ? `${COUNT[movesPlayed]} 수`
     : `${movesPlayed}수`;
-  const tail = `${count} 만에 백 돌${size > 1 ? ` ${size}개` : ""}을 따냈`;
-  return [
-    ...lines[puzzle.theme],
-    LADDER_THEMES.includes(puzzle.theme) ? `${tail}어요.` : `${tail}다`,
-  ];
+  const stones = size > 1 ? `백 돌 ${size}개를` : "백 돌을";
+  return [...lines[puzzle.theme], `${count} 만에 ${stones} 따냈어요.`];
 }
 
 /** 패로 버티기의 해설. 노림받은 무리의 돌 수는 처음 판에서 센다 */
