@@ -35,3 +35,46 @@ export function mateInTwoMoves(pos: Position): Move[] {
     );
   });
 }
+
+/**
+ * 둘 차례인 편이 이 판에서 `n`수 안에 메이트를 만들 수 있나(상대가 무엇을 두든)
+ */
+export function forcesMate(pos: Position, n: number): boolean {
+  if (n <= 0) return false;
+  return legalMoves(pos).some((m) => forcesMateAfter(applyMove(pos, m), n - 1));
+}
+
+/**
+ * 방금 둔 편이 이 판(상대 차례)에서 남은 `n`수 안에 메이트를 만드나(지금 메이트면 참).
+ * 상대가 둘 수가 없는데 체크가 아니면(스테일메이트) 비기므로 거짓이다
+ */
+export function forcesMateAfter(after: Position, n: number): boolean {
+  if (isCheckmate(after)) return true;
+  if (n <= 0) return false;
+  const replies = legalMoves(after);
+  if (replies.length === 0) return false;
+  return replies.every((reply) => {
+    const next = applyMove(after, reply);
+    return n === 1 ? mateInOneMoves(next).length > 0 : forcesMate(next, n);
+  });
+}
+
+/**
+ * `n`수 안 메이트의 첫 수들: 이 수 뒤 상대가 무엇을 두든 남은 수 안에 메이트가 된다.
+ * 더 빠른 메이트가 되는 수도 함께 나온다(문제는 더 빠른 메이트가 없는 판만 고른다)
+ */
+export function mateInMoves(pos: Position, n: number): Move[] {
+  return legalMoves(pos).filter((first) =>
+    forcesMateAfter(applyMove(pos, first), n - 1),
+  );
+}
+
+/**
+ * 세 수 메이트의 첫 수들. 한 수·두 수 메이트가 되는 수는 뺀다.
+ * 판에 기물이 많으면 무거우니 문제처럼 기물이 적은 판에서 쓴다
+ */
+export function mateInThreeMoves(pos: Position): Move[] {
+  return mateInMoves(pos, 3).filter(
+    (m) => !forcesMateAfter(applyMove(pos, m), 1),
+  );
+}
