@@ -20,7 +20,7 @@ test(
   async ({ page }, info) => {
     await page.goto("/review");
     await page.getByLabel("복기 기록 파일").setInputFiles(ARCHIVE);
-    await expect(page.getByText("1게임을 가져왔습니다")).toBeVisible();
+    await expect(page.getByText("1게임을 가져왔어요.")).toBeVisible();
     await page.getByRole("button", { name: /마이티 · 혼자/ }).click();
 
     const first = roundCard(page, 1);

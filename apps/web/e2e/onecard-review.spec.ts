@@ -23,7 +23,7 @@ test("원카드 복기: 판 위에서 한 걸음씩 앞뒤로 넘기고, 헛외�
   await prepareFast(page);
   await page.goto("/review");
   await page.getByLabel("복기 기록 파일").setInputFiles(ARCHIVE);
-  await expect(page.getByText("1게임을 가져왔습니다")).toBeVisible();
+  await expect(page.getByText("1게임을 가져왔어요.")).toBeVisible();
   await page.getByRole("button", { name: /원카드 · 혼자/ }).click();
 
   // 판 한눈에 보기: 순위와 외침·잡기·헛외침 수

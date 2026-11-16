@@ -45,7 +45,7 @@ function BaseballSceneView({ scenario }: { scenario: BaseballScene }) {
         entries={entries}
         digits={digits}
         wrongAt={null}
-        empty="아직 묻지 않았어요"
+        empty="아직 묻지 않았어요."
         seat={0}
       />
     </div>

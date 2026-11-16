@@ -78,8 +78,8 @@ export function ReviewPage() {
     const count = await importArchives(await f.text());
     setNotice(
       count === null
-        ? "복기 기록 파일이 아닙니다"
-        : `${count}게임을 가져왔습니다`,
+        ? "복기 기록 파일이 아니에요."
+        : `${count}게임을 가져왔어요.`,
     );
     setList(await listArchives());
   };
