@@ -252,7 +252,7 @@ test(
     await expect(page.getByRole("status")).toContainText("내 차례");
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(page.getByRole("status")).toHaveText("기권했어요");
+    await expect(page.getByRole("status")).toHaveText("기권했어요.");
     // 복기 기록은 IndexedDB에 비동기로 쓴다. 끝난 판이 실제로 쓰인 뒤에 떠난다(바로 떠나면 쓰기가 끊긴다).
     await expect
       .poll(() => page.evaluate(finishedOmokGames), { intervals: [50] })
@@ -374,7 +374,7 @@ test(
 
     // 남은 2분 40초 + 초읽기 30초×3을 넘기면 시간패
     await page.clock.runFor(250_001);
-    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
+    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요.");
     await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
     await page.screenshot({ path: info.outputPath("omok-time.png") });
   },

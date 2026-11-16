@@ -129,27 +129,27 @@ export function OmokGame({
     status = myTurn
       ? aim !== null
         ? hint === aim
-          ? `힌트 ${pointName(aim)}: 초록 고리가 고수가 고른 자리예요`
+          ? `힌트 ${pointName(aim)}: 초록 고리가 고수가 고른 자리예요.`
           : `${pointName(aim)}: 한 번 더 누르면 둬요.`
-        : "내 차례 — 판을 눌러 두세요"
+        : "내 차례 — 판을 눌러 두세요."
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
-  else if (result?.kind === "draw") status = "비겼어요";
+  else if (result?.kind === "draw") status = "비겼어요.";
   else if (result?.seat === me)
     status =
       result.kind === "resign"
-        ? "상대가 기권했어요"
+        ? "상대가 기권했어요."
         : result.kind === "time"
           ? "상대 시간이 다 돼 이겼어요!"
           : "이겼어요!";
   else
     status =
       result?.kind === "resign"
-        ? "기권했어요"
+        ? "기권했어요."
         : result?.kind === "time"
-          ? "시간이 다 돼 졌어요"
-          : "졌어요";
+          ? "시간이 다 돼 졌어요."
+          : "졌어요.";
 
   // 판이 막 끝난 장면이면 마이티·하트처럼 가운데에 크게 띄운다(미션은 결과 창이 따로 있다).
   const ended = events.find((e) => e.type === "roundEnded");
@@ -213,8 +213,8 @@ export function OmokGame({
             className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
           >
             {hostLeft
-              ? "방장이 방을 나갔습니다"
-              : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+              ? "방장이 방을 나갔어요."
+              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
           </p>
         )
       }
