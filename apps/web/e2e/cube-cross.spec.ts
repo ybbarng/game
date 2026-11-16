@@ -90,6 +90,12 @@ test("십자 훈련: 최적 해로 성공, 계획 후 가리고는 큐브를 가
   await expect(result).toHaveAttribute("data-cross-result", "ok");
   await expect(page.locator("[data-cross-moves]")).toHaveText("5");
   await expect(page.locator("[data-cross-records] li")).toHaveCount(1);
+  // X십자(십자 + 짝 하나) 최적은 십자 최적 5수보다 짧지 않고, 해 하나를 시연과 함께 보인다
+  const xcross = result.locator("[data-cross-xcross]");
+  expect(
+    Number(await xcross.getAttribute("data-cross-xcross")),
+  ).toBeGreaterThanOrEqual(5);
+  await expect(xcross.locator("[data-cross-demo]")).toHaveCount(1);
   await shot(page, "result", info.project.name);
 
   // 계획 후 가리고: 첫 면 돌리기에서 가리고, 십자 없이 「끝」이면 실패
