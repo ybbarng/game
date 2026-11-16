@@ -3,7 +3,7 @@ import Foundation
 /// 설정 창의 글과 저장 글 고치기(사이트 `apps/web/src/cube/components/CubeSettingsApp.tsx`, `settings.ts`, `input/storage.ts`).
 /// 네이티브 설정 창(`NativeSettingsWindow`)은 사이트 설정 가운데 Cubie 큐브 창·F1 표가 읽는 칸(`CubeSettings.parse`)만 같은 글·차례로
 /// 보인다: 키 배치(두 손·표기·사용자), 색, 회전 속도, 섞기 연출, 가린 스티커, 스티커 없는 모양, 큐브 소리, 키 그림에 면 색.
-/// 「뒷면 보기」는 Cubie가 읽지 않는다(Cubie 거울은 메뉴 「거울」, `cube.mini.v1`의 `mirror`). 사용자 배치 편집과 Cubie가 쓰지 않는 설정(그리기 품질·첫 화면 큐브 등)은
+/// 「뒷면 보기」는 Cubie가 읽지 않는다(Cubie 거울은 메뉴 「거울」, `cube.mini.v1`의 `mirror`). 「사용자」 배치 편집기와 내보내기·가져오기도 같은 글로 그린다(`KeymapEditorView`). Cubie가 쓰지 않는 설정(그리기 품질·첫 화면 큐브 등)만
 /// 「모든 설정…」이 여는 사이트 창이 맡는다. 저장 글은 사이트와 같은 키·같은 JSON이고 모르는 칸은 그대로 둔다
 public enum SettingsSheet {
   // MARK: 글(사이트와 같다)
@@ -34,9 +34,27 @@ public enum SettingsSheet {
   public static let sound = "큐브 소리"
   /// F1 단축키 표 칸에 면 색(사이트 `keyColors`)
   public static let keyColors = "키 그림에 면 색"
-  /// 앱에만 있는 단추: 사용자 배치 편집·나머지 설정은 사이트 설정 창에서
-  public static let editCustom = "사용자 배치 편집…"
+  /// 앱에만 있는 단추: Cubie가 쓰지 않는 나머지 설정은 사이트 설정 창에서
   public static let allSettings = "모든 설정…"
+
+  // MARK: 사용자 배치 편집(사이트 `KeymapSection`, 판단·알림 글은 코어 `keys/editor.rs`)
+
+  public static let mouseRotate = "마우스로 끌어 큐브 전체 돌리기(x·y·z)"
+  public static let listSize = "동작 목록 크기"
+  public static let resetTo = "기본으로 되돌리기:"
+  public static let conflictYes = "바꾸기"
+  public static let conflictNo = "그만두기"
+  public static let noKey = "키 없음"
+  public static let assign = "키 지정"
+  public static let waiting = "키 기다리는 중"
+  public static let clear = "비우기"
+  public static let unbindTip = "이 키 빼기"
+  public static let clearTip = "이 동작의 키 모두 지우기"
+  public static let port = "내보내기·가져오기(JSON)"
+  public static let exportLabel = "지금 배치"
+  public static let copy = "복사"
+  public static let importLabel = "가져올 배치"
+  public static let importButton = "가져오기"
 
   // MARK: 설정 글(`cube.settings.v1`)
 

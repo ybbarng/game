@@ -5,7 +5,8 @@
 //   apps/cubie/build.sh
 //   node apps/cubie/scripts/window-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr] [앱 실행 파일]
 //
-// 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-tiers.png·compare-settings.png(비교판).
+// 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-tiers.png·compare-settings.png(비교판,
+// 설정은 기본·「사용자」 겹친 키 묻기·바꾼 뒤 셋).
 // 문서 그림은 `cwebp -q 82`로 docs/cubie-native/compare-windows-*.webp에 둔다.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -152,7 +153,8 @@ const WINDOWS = [
     name: "settings",
     path: "/cube/settings",
     size: { width: 760, height: 720 },
-    shots: ["settings"],
+    // 「사용자」를 누르고 R에 J를 지정: 겹친 키 묻기 → 바꾸기 뒤(알림·키 없음, 내보내기·가져오기 펼침)
+    shots: ["settings", "settings-ask", "settings-custom"],
     full: true,
   },
 ];
@@ -173,6 +175,21 @@ try {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(500);
     for (const shot of w.shots) {
+      if (shot === "settings-ask") {
+        await page
+          .locator("[data-settings-keymap] button", { hasText: "사용자" })
+          .click();
+        await page.locator("[data-assign='R']").click();
+        await page.keyboard.press("KeyJ");
+        await page.waitForSelector("[data-keymap-conflict]");
+      }
+      if (shot === "settings-custom") {
+        await page.locator("[data-conflict-yes]").click();
+        await page
+          .locator("summary", { hasText: "내보내기·가져오기(JSON)" })
+          .click();
+        await page.waitForSelector("[data-keymap-message]");
+      }
       if (shot === "records-replay") {
         await page.locator("[data-mini-replay-open]").first().click();
         await page.waitForSelector("[data-cube-ready]");

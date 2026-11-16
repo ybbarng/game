@@ -153,6 +153,37 @@ enum NativeShot {
       }
     }
 
+    // 홈 시연(docs/52 5-6): `CUBIE_NATIVE_SHOT_HERO=<해법>:<씨앗>`이면 그 판의 멈춤 자리 몇 곳(앞 걸음과 0.4초 넘게 떨어진 수
+    // 바로 앞)을 native-hero-<i>.png로, 자리를 hero-frames.txt(첫 줄 「해법 씨앗」, 그다음 줄마다 「수 번호 시각」)로 쓴다.
+    // `scripts/hero-compare.mjs <폴더>`가 같은 판을 웹 미니 화면에서 같은 시각에 찍어 나란히 얹는다
+    if n == 3, let spec = ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT_HERO"] {
+      let parts = spec.split(separator: ":")
+      if parts.count == 2, let seed = UInt32(parts[1]),
+        let show = NativeCore.heroSteps(method: String(parts[0]), seed: seed)
+      {
+        let gaps = (1..<show.steps.count).filter { show.steps[$0].at - show.steps[$0 - 1].at >= 400 }
+        let want = 10
+        let picks = gaps.isEmpty ? [] : (0..<min(want, gaps.count)).map { gaps[$0 * gaps.count / min(want, gaps.count)] }
+        var lines = ["\(parts[0]) \(seed)"]
+        for (i, k) in picks.enumerated() {
+          lines.append("\(k) \(show.steps[k].at)")
+          ok =
+            shoot("native-hero-\(i)", after: 1) { v in
+              v.showJump(solved: true)
+              for j in 0..<k { _ = show.steps[j].move.withCString { cubie_game_show_push(v.game, $0, 0) } }
+              var t = CubieTurn()
+              while cubie_game_take_turn(v.game, &t) {}
+              v.paintShown()
+            } && ok
+        }
+        try? (lines.joined(separator: "\n") + "\n").write(
+          toFile: URL(fileURLWithPath: dir).appendingPathComponent("hero-frames.txt").path, atomically: true, encoding: .utf8)
+      } else {
+        print("[shot] 홈 시연을 만들지 못했다: \(spec)")
+        ok = false
+      }
+    }
+
     // 힌트 말풍선: 3×3 섞기(F2L 전, 사람 해법의 다음 단계)와 마지막 층(코어가 쓰는 같은 판)
     let hintView = CACubeView(frame: NSRect(x: 0, y: 0, width: side, height: side), n: n)
     hintView.scramble(seed: 42, show: Int32(CUBIE_SHOW_INSTANT))
