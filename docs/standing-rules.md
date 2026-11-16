@@ -59,6 +59,7 @@
 - 화면 시험은 **nice 없이** 바꾼 spec 하나를 `--workers=1`로 돌린다(2026-11-09 사용자 결정, nice로 감싸면 자동 권한 판정에 막힌다). 전체 화면 시험은 CI가 맡는다.
 - 단위 시험·빌드는 바꾼 것만(`pnpm test:changed`). 백그라운드 작업은 한 번에 하나씩.
 - main 보호: PR 필수·CI 통과(`ci-ok`)·최신 main 반영 필수. main에서는 화면 시험을 다시 돌리지 않는다(main push는 빠른 검사만, 매일 한 번은 전부). docs/38 17절.
+- **3D 재질에 반사 세기(`envMapIntensity`)를 따로 두지 않는다(2026-11-16).** 이 사이트의 3D 장면은 모두 장면 반사 지도(`scene.environment`)를 쓰고, 그러면 three(r169)는 재질 값 대신 장면의 `environmentIntensity`를 쓴다. 세기는 장면 값으로 바꾸고, 재질 하나만 다르게 하려면 그 재질에 `envMap`도 건다. docs/47 14-7 「반사 세기 정리」. 점검: `apps/web/src/lib/three-env-intensity.test.ts`.
 - **새 CSS를 `globals.css`에 넣지 않는다.** 한 게임(또는 몇 화면)만 쓰는 규칙은 그 게임 layout이나 그 클래스를 쓰는 컴포넌트가 import하는 CSS 파일에 둔다. globals.css는 모든 화면이 쓰는 것만이고, 바뀌면 화면 시험이 전부 돈다. 큐브 화면 코드는 `cube/learn` 묶음(index) 대신 필요한 모듈을 바로 부른다. docs/38 17절. 점검: `scripts/affected-e2e.test.mjs` 「게임별 CSS」.
 ## 5. 기능 범위와 사이트 목적
 
