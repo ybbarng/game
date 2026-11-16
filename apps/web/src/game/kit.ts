@@ -110,6 +110,14 @@ export interface KitReview<State, Extra> {
     seed: number,
     name: (seat: number) => string,
   ): Commentary;
+  /**
+   * 그 걸음에 일어난 게임 고유의 일(원카드 외침·잡기·벌칙 장 등) 한 줄씩. 판 위 다시 보기 막대 아래에
+   * 그 걸음 동안 남는다(화면의 말풍선은 잠깐이라 앞뒤로 넘길 때 다시 보이지 않는다). 없으면 그 줄을 두지 않는다
+   */
+  stepNotes?(
+    events: readonly unknown[],
+    name: (seat: number) => string,
+  ): string[];
 }
 
 /** 평가: 좋은 수·괜찮은 수·아쉬운 수·나쁜 수 */

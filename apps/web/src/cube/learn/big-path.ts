@@ -301,12 +301,14 @@ export function runCenters(
   n: 4 | 5,
   start: PuzzleState,
   pick: Pick = FIRST,
+  /** 넣을 색(앞에서부터 차례대로). 야우는 흰·노랑 둘만 먼저(`yau-solve.ts`) */
+  colors: readonly number[] = CENTER_ORDER,
 ): CenterRun {
   const steps: BigPathStep[] = [];
   let s = start;
   let turns = "";
   const done: number[] = [];
-  for (const color of CENTER_ORDER) {
+  for (const color of colors) {
     // 그 색 면을 위로: 지금 쥔 방향에서 바로 쥐는 돌리기를 찾는다
     const rot = firstTurnRot(n, (fc) => holdOk(fc, color), turns);
     s = playN(n, s, rot);

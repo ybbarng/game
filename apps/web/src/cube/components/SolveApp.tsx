@@ -927,19 +927,6 @@ export function SolveApp({
           data-cube-daily-attempt={daily ? (attempt?.kind ?? "") : undefined}
         >
           <section className="relative flex flex-col items-center gap-2">
-            {alertOn && spotted && phase === "solving" && (
-              <div
-                data-case-alert={spotted.id}
-                className="pointer-events-none absolute right-0 bottom-0 z-10 flex max-w-64 flex-col gap-0.5 rounded-lg bg-black/60 px-2 py-1 text-xs"
-              >
-                <span className="font-semibold">{shortName(spotted)}</span>
-                <AlgChips
-                  alg={usedAlg(algBook, spotted)}
-                  keysOf={keysOf}
-                  className="font-mono text-[11px] text-white/80"
-                />
-              </div>
-            )}
             <div className="flex w-full flex-wrap items-baseline justify-center gap-x-6 gap-y-1">
               <span
                 data-cube-clock
@@ -1101,6 +1088,23 @@ export function SolveApp({
                 viewRef.current = v;
               }}
               flow={mode === "solo" ? "large" : undefined}
+              stageCorner={
+                alertOn &&
+                spotted &&
+                phase === "solving" && (
+                  <div
+                    data-case-alert={spotted.id}
+                    className="flex max-w-64 flex-col gap-0.5 rounded-lg bg-black/60 px-2 py-1 text-xs"
+                  >
+                    <span className="font-semibold">{shortName(spotted)}</span>
+                    <AlgChips
+                      alg={usedAlg(algBook, spotted)}
+                      keysOf={keysOf}
+                      className="font-mono text-[11px] text-white/80"
+                    />
+                  </div>
+                )
+              }
               combo={mode === "solo"}
               comboProgress={
                 mode === "solo" ? () => session.flowScore : undefined
