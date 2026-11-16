@@ -59,6 +59,9 @@ import {
 } from "./time-witness";
 import { connectionFingerprints, type Transport } from "./transport";
 
+/** 다른 게임의 방에 들어왔을 때 알리는 글. 화면들이 이 글로 오류 화면을 고른다(글을 바꾸면 함께 바뀌게 상수 하나) */
+export const OTHER_GAME_ROOM = "다른 게임의 방이에요.";
+
 /**
  * 판 끝 검증 결과. `unchecked`는 통과했지만 맞춰 보지 못한 것(방장과 컴퓨터 계획 판 번호가 달라 컴퓨터 수를 다시
  * 계산하지 못함 등, net/bot-plan.ts). 부정이 아니라 「확인 못 함」으로 보인다
@@ -1212,7 +1215,7 @@ export class GuestRoom<
         if (message.lobby.game && message.lobby.game !== this.kit.id) {
           this.kicked = true;
           this.transport.leave();
-          for (const l of this.listeners.rejected) l("다른 게임의 방입니다");
+          for (const l of this.listeners.rejected) l(OTHER_GAME_ROOM);
           return;
         }
         this.lobby = message.lobby;
