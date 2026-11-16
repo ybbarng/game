@@ -112,21 +112,25 @@ export function reduceWithRegrip(
 /**
  * `limits`는 시험이 축소법을 일부러 막히게 할 때만 넣는다. 그때는 기억을 건너뛴다(기본
  * 상한으로 푼 해를 돌려주거나, 막힌 결과로 다른 시험을 흐리지 않게).
+ * `pairsOnly`면 가운데·엣지 짝 네 단계까지만 푼다(사람 흉내는 패리티·3×3 단계를 쓰지 않는다. 앞 네 단계 수는 같다).
  */
 function reduction(
   n: number,
   state: PuzzleState,
   limits?: ReductionLimits,
+  pairsOnly = false,
 ): ReductionSolution {
   if (limits) {
     return reduceWithRegrip(n, state, (size, s) =>
-      solveReductionState(size, s, limits),
+      solveReductionState(size, s, { ...limits, pairsOnly }),
     );
   }
-  const key = `${n}:${faceColors(n, state).join("")}`;
+  const key = `${n}:${pairsOnly ? "pairs" : "all"}:${faceColors(n, state).join("")}`;
   const hit = reductionCache.get(key);
   if (hit) return hit;
-  const red = reduceWithRegrip(n, state);
+  const red = reduceWithRegrip(n, state, (size, s) =>
+    solveReductionState(size, s, { pairsOnly }),
+  );
   reductionCache.set(key, red);
   if (reductionCache.size > REDUCTION_CACHE_SIZE) {
     reductionCache.delete(reductionCache.keys().next().value as string);
@@ -142,7 +146,7 @@ export function solveBigHuman(
   first = 0,
   until?: StageName,
 ): HumanSolve {
-  const red = reduction(n, state, limits);
+  const red = reduction(n, state, limits, true);
   const redMoves = red.moves.split(/\s+/).filter(Boolean);
   const moves: string[] = [];
   const stages: HumanSolve["stages"] = [];
