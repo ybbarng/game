@@ -21,6 +21,10 @@ export interface TextPlace {
   /** 단원 번호. 단원 요약은 그 단원 안에서 뜻을 알린 용어까지 써도 된다 */
   group: number;
   text: string;
+  /** 문장으로 나눈 자리(sentencePlaces)에서: 그 자리가 속한 단계 이름 */
+  step?: string;
+  /** 문장으로 나눈 자리에서: 단계 제목. 제목은 그 단계가 뜻을 알리는 말을 미리 불러도 된다 */
+  heading?: boolean;
 }
 
 export interface GroupSummary {
@@ -32,6 +36,22 @@ export interface GroupSummary {
 const firstAt = (places: readonly TextPlace[], re: RegExp) =>
   places.findIndex((p) => re.test(p.text));
 
+/**
+ * 뜻을 알린 자리. 문장으로 나눈 자리에서는 같은 단계의 바로 다음 문장까지 이어 본다: 「**봉인**해 보내요. 봉인은 봉투에…」처럼
+ * 굵게 이름을 내놓고 바로 다음 문장에서 푸는 꼴은 이름을 내놓은 문장이 뜻을 알린 자리다.
+ */
+function defineAt(places: readonly TextPlace[], re: RegExp): number {
+  return places.findIndex((p, i) => {
+    if (re.test(p.text)) return true;
+    const next = places[i + 1];
+    return (
+      p.step !== undefined &&
+      next?.step === p.step &&
+      re.test(`${p.text} ${next.text}`)
+    );
+  });
+}
+
 /** 뜻을 알리기 전에 쓴 용어(없으면 빈 배열). 뜻을 알리는 자리 안에서는 함께 써도 된다 */
 export function earlyUses(
   places: readonly TextPlace[],
@@ -39,12 +59,17 @@ export function earlyUses(
 ): string[] {
   const early: string[] = [];
   for (const t of terms) {
-    const def = firstAt(places, t.define);
+    const def = defineAt(places, t.define);
     if (def < 0) {
       early.push(`${t.term}: 뜻을 알린 곳이 없다`);
       continue;
     }
-    const use = firstAt(places, t.use);
+    const defStep = places[def]?.step;
+    const use = places.findIndex(
+      (p) =>
+        t.use.test(p.text) &&
+        !(p.heading && defStep !== undefined && p.step === defStep),
+    );
     if (use >= 0 && use < def)
       early.push(
         `${t.term}: ${places[use]?.where}에서 먼저 씀(뜻은 ${places[def]?.where})`,
@@ -106,4 +131,55 @@ export function lessonSummaries(lessons: readonly AnyLesson[]): GroupSummary[] {
     group: li,
     text: `${l.title}\n${l.summary}`,
   }));
+}
+
+/** 글을 문장으로 나눈다(마침표·물음표·느낌표 뒤 빈칸, 줄바꿈) */
+export function splitSentences(text: string): string[] {
+  return text
+    .split(/\n|(?<=[.?!])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * lessonPlaces를 문장 하나씩으로 더 잘게 펼친다. 한 단계 안에서도 뜻을 알리는 문장보다 앞 문장에서 쓰면 잡는다
+ * (2026-11-17 윷놀이 「업혀서」가 「업는다」 풀이보다 한 문장 앞이던 것). 단계 제목은 그 단계가 뜻을 알리는 말을
+ * 미리 불러도 된다(제목은 이 단계에서 무엇을 배우는지 알리는 이름이다).
+ */
+export function sentencePlaces(
+  lessons: readonly AnyLesson[],
+  termText: (id: string) => string = () => "",
+): TextPlace[] {
+  return lessons.flatMap((l, li) =>
+    l.steps.flatMap((s, si) => {
+      const step = `${l.title} ${si + 1}번`;
+      const title = s.kind === "quiz" ? undefined : s.title;
+      const rest =
+        s.kind === "explain"
+          ? [...s.body, ...(s.terms ?? []).map(termText)]
+          : s.kind === "quiz"
+            ? [s.question, ...s.options, s.explain]
+            : [s.objective, s.hint, s.success, s.fail];
+      const sentences = rest.flatMap(splitSentences);
+      return [
+        ...(title
+          ? [
+              {
+                where: `${step} 제목`,
+                group: li,
+                text: title,
+                step,
+                heading: true,
+              },
+            ]
+          : []),
+        ...sentences.map((text, i) => ({
+          where: `${step} ${i + 1}째 문장`,
+          group: li,
+          text,
+          step,
+        })),
+      ];
+    }),
+  );
 }
