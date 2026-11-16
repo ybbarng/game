@@ -15,6 +15,7 @@ import { TIER_IDS, type TierId } from "../table";
 import { polyFromPlanes, stepCutPlanes } from "./cutGeometry";
 import type { GemPhysics, GemShape } from "./gem";
 import {
+  GEM_FRONT_ENV,
   type GemSee,
   gemMaterialGL,
   gemMaterialNode,
@@ -108,8 +109,6 @@ type Rgb = readonly [number, number, number];
 interface MetalLook {
   color: Rgb;
   roughness: number;
-  /** 반사 지도 세기(없으면 보석 티어 틀 0.7, 그 밖 1) */
-  env?: number;
 }
 
 interface TierLook {
@@ -646,8 +645,6 @@ export function buildEmblemScene(
       color: linear(T, look.frame.color),
       metalness: 1,
       roughness: look.frame.roughness,
-      // 보석 티어는 틀이 보석보다 튀지 않게(밝은 반사가 번짐으로 퍼졌다)
-      envMapIntensity: look.frame.env ?? (gem ? 0.7 : 1),
     }),
   );
   // 배경판 그림: 장면 뒤에 깔고(opt.backdrop), 보석이 꿰뚫어 볼 때도 같은 그림을 읽는다
@@ -695,16 +692,12 @@ export function buildEmblemScene(
       color: linear(T, (look.block ?? look.frame).color),
       metalness: 1,
       roughness: (look.block ?? look.frame).roughness,
-      envMapIntensity: 1.3,
     }),
   );
   /** 큐브 조각(상자 보석, 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수된다) */
   const blockMat = look.gem
     ? gemMat(look.gem, sl?.shape ?? "box", true)
     : metalBlock;
-  // 겉 반사 세기(그랜드마스터 계단 컷: 깎은 면에 조명이 흰 쐐기로 비치게)
-  if (sl?.frontEnv)
-    (blockMat as THREE_NS.MeshStandardMaterial).envMapIntensity = sl.frontEnv;
   /** 왕관 상자(홀로 놓인 상자 보석) */
   const crownMat = look.gem ? gemMat(look.gem, "box") : metalBlock;
   /** 날개 조각(얇은 판 보석) */
@@ -1003,6 +996,8 @@ export function buildEmblemScene(
     },
     applyEnvironment(env) {
       scene.environment = env;
+      // 반사 세기는 재질이 아니라 장면 값을 쓴다(gemMaterial.ts `GEM_FRONT_ENV`)
+      scene.environmentIntensity = GEM_FRONT_ENV;
       // WebGPU: 보석 빛길 노드는 반사 지도를 직접 읽으므로 지도가 생긴 뒤 붙인다(WebGL은 셰이더가 envMap을 읽는다)
       if (node)
         for (const x of gems) {

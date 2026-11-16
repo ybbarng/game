@@ -95,8 +95,6 @@ export interface GemStyleLook {
   steps?: number;
   /** 조각 안 결정 구조: 칸 수, 경계 면 반사 몫, 꺾임 */
   voro?: { count: number; reflect: number; bend: number };
-  /** 겉 반사 세기(반사 지도, 기본 1): 깎은 면에 조명이 흰 쐐기로 비치게 */
-  frontEnv?: number;
   /**
    * 분산 흉내: 빛길을 빨강·초록·파랑 세 번 따라가는 대신 한 번 따라가고, 나가는 방향에 따라 스펙트럼 색을 이만큼
    * 곱한다(평균 밝기는 그대로). 계산이 약 1/3
@@ -155,7 +153,6 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     shape: "poly",
     steps: 7,
     studio: "step",
-    frontEnv: 1.8,
     envGain: 2.4,
     frontLights: 1.8,
     bloom: { strength: 0.5, radius: 0.12, threshold: 3 },

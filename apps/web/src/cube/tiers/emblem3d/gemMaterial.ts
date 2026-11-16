@@ -33,7 +33,11 @@ type Three = typeof THREE_NS;
 
 /**
  * 겉 반사 세기(반사 지도). 1이면 물리 그대로: 정면 반사율이 굴절률대로 에메랄드 5.0%, 사파이어 7.6%, 루비 7.7%,
- * 다이아몬드 17%. 예전 1.5는 정면에서도 반사가 커서 금속처럼 보이는 데 한몫했다
+ * 다이아몬드 17%. 예전 1.5는 정면에서도 반사가 커서 금속처럼 보이는 데 한몫했다.
+ *
+ * 장면 반사 지도(`scene.environment`)를 쓰면 three는 WebGL·WebGPU 모두 재질의 `envMapIntensity`를 읽지 않고 장면의
+ * `environmentIntensity`를 모든 재질에 쓴다(r169). 그래서 이 값은 장면에 건다(`scene.ts` `applyEnvironment`). 재질마다
+ * 세기를 따로 두던 값(보석 티어 틀 0.7, 금속 조각 1.3, 그랜드마스터 `frontEnv` 1.8)은 효과가 없어 지웠다(2026-11-16)
  */
 export const GEM_FRONT_ENV = 1;
 
@@ -384,7 +388,6 @@ function frontParams(g: GemPhysics) {
     ior: Math.min(2.333, g.ior),
     specularIntensity: 1,
     specularColor: 0xffffff,
-    envMapIntensity: GEM_FRONT_ENV,
   };
 }
 
