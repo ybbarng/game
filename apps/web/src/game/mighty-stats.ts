@@ -7,9 +7,8 @@ import {
   type PlayerView,
   type ScoreMultiplier,
 } from "@game/mighty-engine";
-
+import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
-
 import type { KitStats } from "./kit";
 
 /** 마이티 판 기록(내 자리에서 본 것) */
@@ -74,6 +73,40 @@ export interface MightyGame {
 
 /** 마이티 내 기록 */
 export const mightyStats: KitStats<PlayerView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => {
+      const r = data as MightyRound;
+      if (r.role === "out") return null;
+      return r.won ? "win" : "loss";
+    },
+  },
+  achievements: [
+    anyRound<MightyRound>(
+      "run",
+      "첫 런",
+      "런으로 이깁니다.",
+      (r) => r.won && r.multipliers.includes("run"),
+    ),
+    anyRound<MightyRound>(
+      "reverse-run",
+      "백런",
+      "백런으로 이깁니다.",
+      (r) => r.won && r.multipliers.includes("reverseRun"),
+    ),
+    anyRound<MightyRound>(
+      "no-friend",
+      "혼자서도",
+      "주공이 되어 노프렌드로 공약을 지킵니다.",
+      (r) => r.role === "declarer" && r.won && r.friend === "none",
+    ),
+    anyRound<MightyRound>(
+      "big-goal",
+      "큰 공약",
+      "주공이 되어 공약 18 이상을 지킵니다.",
+      (r) => r.role === "declarer" && r.won && r.goal.score >= 18,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundScored"),
   gameEnded: (events) => events.some((e) => e.type === "gameOver"),
