@@ -512,7 +512,8 @@ export class CubeView {
           // 광택은 얇게: 맑은 막(clearcoat)이 세면 비스듬한 면에서 방 반사가 색을 덮는다
           clearcoat: 0.35,
           clearcoatRoughness: 0.22,
-          envMapIntensity: 0.5,
+          // 반사 세기는 재질이 아니라 위 장면 값(environmentIntensity 0.45)을 쓴다. 재질에 두던 0.5는 효과가 없어 지웠다
+          // (three r169, docs/47 14-7 「반사 세기 정리」)
         })
       : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
     this.disposables.push(boxGeo, this.bodyMaterial, this.stickerMaterial);
