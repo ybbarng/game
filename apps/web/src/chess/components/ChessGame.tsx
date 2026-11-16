@@ -409,7 +409,7 @@ export function ChessGame({
             className="w-full overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs"
           >
             {view.played.length === 0
-              ? "기보: 아직 둔 수가 없어요"
+              ? "기보: 아직 둔 수가 없어요."
               : moveListText(view.played, view.played[0]?.side === "w")}
           </p>
         </div>

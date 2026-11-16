@@ -6,6 +6,7 @@ import {
   viewOf,
 } from "@game/mighty-engine";
 
+import { copula, subj } from "@/lib/josa";
 import { mean, signed, verdictOf } from "@/review/commentary";
 
 import type { Commentary, Verdict } from "./kit";
@@ -57,7 +58,7 @@ export function explainMighty(
     situation.push(
       goal && bidder !== null
         ? `공약 단계 · 지금 최고 ${goalLabel(goal)} (${name(bidder)})`
-        : "공약 단계 · 아직 아무도 출마하지 않았다",
+        : "공약 단계 · 아직 출마한 사람 없음",
     );
     if (decision.canDealMiss || decision.bids.length === 0)
       return { situation, verdict, reasons };
@@ -68,21 +69,21 @@ export function explainMighty(
     const bid = action.type === "bid";
     if (a.hopeless) {
       reasons.push(
-        `어림값이 가장 낮은 공약보다 ${SEARCH_TUNING.hopelessGap}장 넘게 모자란다. 마이티·조커·높은 기루다가 모자라 출마할 패가 아니다`,
+        `어림값이 가장 낮은 공약보다 ${SEARCH_TUNING.hopelessGap}장 넘게 모자라요. 마이티·조커·높은 기루다가 모자라 출마할 패가 아니에요.`,
       );
       verdict = bid ? "bad" : "good";
     } else if (a.bid) {
       const bidMean = mean(a.bid.samples);
       const stayMean = mean(a.stay);
       reasons.push(
-        `남의 패를 ${a.stay.length}가지로 추측해 둬 보면 출마(${goalLabel(a.bid.goal)}) 평균 ${money(bidMean)}, 포기 평균 ${money(stayMean)}`,
+        `남의 패를 ${a.stay.length}가지로 추측해 둬 보면 출마(${goalLabel(a.bid.goal)})는 평균 ${money(bidMean)}, 포기는 평균 ${subj(money(stayMean))} 나와요.`,
       );
       const chosen = bid ? bidMean : stayMean;
       const other = bid ? stayMean : bidMean;
       reasons.push(
         chosen >= other
-          ? `${bid ? "출마" : "포기"} 쪽이 낫다`
-          : `${bid ? "포기" : "출마"} 쪽이 평균 돈 ${((other - chosen) * 10).toFixed(0)}만큼 낫다`,
+          ? `${bid ? "출마" : "포기"} 쪽이 나아요.`
+          : `${bid ? "포기" : "출마"} 쪽이 평균 돈 ${((other - chosen) * 10).toFixed(0)}만큼 나아요.`,
       );
       verdict = verdictOf(Math.max(0, other - chosen), STEPS);
     }
@@ -107,13 +108,13 @@ export function explainMighty(
         const loss = Math.max(0, best.mean - chosen.mean);
         verdict = verdictOf(loss, STEPS);
         reasons.push(
-          `남의 패를 ${PLAY_WORLDS}가지로 추측해 끝까지 둬 보면 이 수(${playLabel(action)})는 평균 ${money(chosen.mean)}`,
+          `남의 패를 ${PLAY_WORLDS}가지로 추측해 끝까지 둬 보면 이 수(${playLabel(action)})는 평균 ${copula(money(chosen.mean))}.`,
         );
         if (samePlay(best.action, action))
-          reasons.push("계산상 가장 좋은 수다");
+          reasons.push("계산상 가장 좋은 수예요.");
         else
           reasons.push(
-            `가장 좋은 수는 ${playLabel(best.action)}(평균 ${money(best.mean)})`,
+            `가장 좋은 수는 ${copula(playLabel(best.action))}(평균 ${money(best.mean)}).`,
           );
         reasons.push(
           `다른 후보: ${sorted
@@ -124,7 +125,7 @@ export function explainMighty(
         );
       }
     } else if (values?.length === 1)
-      reasons.push("낼 수 있는 카드가 하나뿐이다");
+      reasons.push("낼 수 있는 카드가 하나뿐이에요.");
     const done = after?.round.tricks[state.round.tricks.length];
     if (done) {
       const points = done.plays.filter((p) => isPointCard(p.card)).length;
@@ -132,7 +133,7 @@ export function explainMighty(
         done.winner === after.round.declarer ||
         done.winner === after.round.friend;
       reasons.push(
-        `이 턴은 ${name(done.winner)}이(가) 먹었다${points > 0 ? ` · 점수 카드 ${points}장이 ${ruling ? "여당" : "야당"}으로` : ""}`,
+        `이 턴은 ${subj(name(done.winner))} 먹었어요.${points > 0 ? ` 점수 카드 ${points}장이 ${ruling ? "여당" : "야당"}으로 갔어요.` : ""}`,
       );
     }
     return { situation, verdict, reasons };

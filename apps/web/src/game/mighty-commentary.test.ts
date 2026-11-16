@@ -10,6 +10,8 @@ import {
 } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
+import { commentaryLines, commentaryProblems } from "@/review/tone";
+
 import { explainMighty } from "./mighty-commentary";
 
 const rules = presetRules("standard5");
@@ -57,7 +59,8 @@ describe("마이티 다시 보기 해설", () => {
     );
     expect(bid.verdict).toBe("bad");
     expect(bid.situation.join(" ")).toContain("공약 단계");
-    expect(bid.reasons.join(" ")).toContain("출마할 패가 아니다");
+    expect(bid.reasons.join(" ")).toContain("출마할 패가 아니에요.");
+    expect(commentaryProblems(commentaryLines(bid))).toEqual([]);
     const pass = explainMighty(
       state,
       { seat: 3, action: { type: "pass" } },

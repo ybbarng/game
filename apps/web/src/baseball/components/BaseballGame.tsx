@@ -369,7 +369,7 @@ export function BaseballGame({
             entries={myGuesses}
             digits={digits}
             wrongAt={wrongTheirs}
-            empty="아직 묻지 않았어요"
+            empty="아직 묻지 않았어요."
             seat={me}
             side="mine"
             batting={batting === me}
@@ -404,7 +404,7 @@ export function BaseballGame({
             entries={theirGuesses}
             digits={digits}
             wrongAt={wrongMine}
-            empty="아직 묻지 않았어요"
+            empty="아직 묻지 않았어요."
             seat={opp}
             side="theirs"
             batting={batting === opp}

@@ -28,6 +28,7 @@ import {
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";
+import { obj } from "@/lib/josa";
 import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
 import { nyrongppongFair } from "./fair";
@@ -187,8 +188,8 @@ export function explainNyrongppong(
       situation,
       verdict: wise ? "good" : p > 0.6 ? "fine" : "slip",
       reasons: [
-        `짐작해 보면 스톱해서 가장 낮을 확률 ${Math.round(p * 100)}%`,
-        stop ? "스톱했다" : "스톱하지 않고 가져왔다",
+        `짐작해 보면 지금 스톱해서 가장 낮을 확률은 ${Math.round(p * 100)}%예요.`,
+        stop ? "스톱했어요." : "스톱하지 않고 가져왔어요.",
       ],
     };
   }
@@ -198,12 +199,12 @@ export function explainNyrongppong(
       verdict: action.type === "call" ? "good" : "fine",
       reasons: [
         action.type === "call"
-          ? "뽕으로 손패 두 장을 내려놓았다"
-          : "뽕할 수 있었지만 넘겼다(두 장을 줄일 기회)",
+          ? "뽕으로 손패 두 장을 내려놓았어요."
+          : "뽕할 수 있었지만 넘겼어요(두 장을 줄일 기회).",
       ],
     };
   if (action.type === "declare")
-    return { situation, verdict: "good", reasons: ["약으로 판을 끝냈다"] };
+    return { situation, verdict: "good", reasons: ["약으로 판을 끝냈어요."] };
   if (action.type !== "discard")
     return { situation, verdict: null, reasons: [] };
   const suggested = nyrongppongExpertBot.decide(view, { seed: seed + 1 });
@@ -211,7 +212,7 @@ export function explainNyrongppong(
     return {
       situation,
       verdict: "bad",
-      reasons: ["약이 있었는데 내지 않았다"],
+      reasons: ["약이 있었는데 내지 않았어요."],
     };
   const pick =
     view.hand.length === 3
@@ -223,14 +224,14 @@ export function explainNyrongppong(
     return {
       situation,
       verdict: "good",
-      reasons: [`${cardName(action.card)}: 고수도 같은 달을 버린다`],
+      reasons: [`고수도 같은 달(${cardName(action.card)})을 버려요.`],
     };
   return {
     situation,
     verdict: "fine",
     reasons: [
-      `${cardName(action.card)}를 버렸다`,
-      `고수라면 ${cardName(pick)}`,
+      `${obj(cardName(action.card))} 버렸어요.`,
+      `고수라면 다른 카드(${cardName(pick)})를 버려요.`,
     ],
   };
 }

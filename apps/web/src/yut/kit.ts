@@ -26,6 +26,7 @@ import {
 } from "@game/yut-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { ro } from "@/lib/josa";
 import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 
@@ -198,7 +199,7 @@ export function explainYut(
     return {
       situation,
       verdict: "good",
-      reasons: ["둘 수 있는 수가 이것뿐이다"],
+      reasons: ["둘 수 있는 수가 이것뿐이에요."],
     };
   const values = expertValues(viewOf(state, next.seat), options);
   const mineAt = options.findIndex(
@@ -210,14 +211,14 @@ export function explainYut(
   const best = options[bestAt];
   const gap = (values[bestAt] as number) - (values[mineAt] as number);
   const describeOption = (o: (typeof options)[number]) =>
-    `${throwName(o.value)}로 ${pointLabel(o.from)} → ${o.finished ? "남" : pointLabel(o.to)}${o.captures > 0 ? `(${o.captures}개 잡음)` : ""}${o.stacks > 0 ? "(업음)" : ""}`;
+    `${ro(throwName(o.value))} ${pointLabel(o.from)} → ${o.finished ? "남" : pointLabel(o.to)}${o.captures > 0 ? `(${o.captures}개 잡음)` : ""}${o.stacks > 0 ? "(업음)" : ""}`;
   const mine = options[mineAt];
   const reasons = mine ? [`둔 수: ${describeOption(mine)}`] : [];
   if (best && bestAt !== mineAt)
     reasons.push(
-      `고수라면 ${describeOption(best)}(기댓값 차이 ${gap.toFixed(2)}번 던지기)`,
+      `고수라면 다른 수(${describeOption(best)})를 둬요(기댓값 차이 ${gap.toFixed(2)}번 던지기).`,
     );
-  else reasons.push("고수도 같은 수를 둔다");
+  else reasons.push("고수도 같은 수를 둬요.");
   return {
     situation,
     verdict: bestAt === mineAt ? "good" : verdictOf(gap),

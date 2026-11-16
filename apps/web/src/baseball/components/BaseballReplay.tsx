@@ -156,7 +156,7 @@ export function BaseballReplay({
               entries={asked(seat)}
               digits={digits}
               wrongAt={state.reveals[1 - seat]?.wrongAt ?? null}
-              empty="아직 묻지 않았다"
+              empty="아직 묻지 않았어요."
               seat={seat}
             />
           ))}
