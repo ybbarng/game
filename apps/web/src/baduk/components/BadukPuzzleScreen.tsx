@@ -32,6 +32,8 @@ import {
   PUZZLE_SIZE,
   puzzleState,
   solutionOf,
+  spotMoveOf,
+  spotsOf,
   targetOf,
 } from "../study";
 import { BadukBoard } from "./BadukBoard";
@@ -67,6 +69,10 @@ const CAPTURE_TEXT: Record<
     prompt: "축으로 △ 백 돌을 판 끝까지 몰아 잡으세요.",
     hint: "단수를 치면 백은 남은 활로로 뻗어요. 그 자리의 위·아래·왼쪽·오른쪽에 흑 돌이 있어야 뻗어도 활로가 둘뿐이라 다시 단수를 칠 수 있어요.",
   },
+  "blocked-net": {
+    prompt: "□ 축머리가 두 쪽에 있어요. 장문으로 △ 백 돌을 잡으세요.",
+    hint: "두 쪽 단수 모두 축머리에 막혀요. 바로 단수 치지 않고 한 칸 떨어져 백이 나올 길을 막아 봐요.",
+  },
   breaker: {
     prompt: "□ 축머리를 피해 축으로 △ 백 돌을 잡으세요.",
     hint: "단수와 뻗기를 번갈아 둔다고 생각하며 두 쪽 길을 따라가 봐요. 길 위나 바로 옆에 □ 돌이 나오는 쪽은 안 돼요.",
@@ -88,6 +94,29 @@ const KO_FIGHT_TEXT = {
     hint: "△ 흑 돌은 활로가 하나뿐이에요. 그 활로에 두어 이웃 흑 돌과 이어요.",
     solved: "받았어요!",
     wrong: "그 수로는 △ 흑 돌을 잃어요.",
+  },
+  connect: {
+    prompt: "백이 팻감을 썼어요. 받을지, 패를 이을지 골라 두세요.",
+    follow: "",
+    hint: "△ 흑 돌 수와, 백이 패를 되따내면 잃는 흑 돌 수를 세어 봐요. 잃는 돌이 더 많으면 패를 이어요.",
+    solved: "패를 이었어요!",
+    wrong: "그 수로는 패를 지고 돌을 더 많이 잃어요.",
+  },
+} as const;
+
+/** 끝내기 글. `follow`는 선수에 백이 받은 뒤 */
+const ENDGAME_TEXT = {
+  bigger: {
+    prompt: "끝내기가 두 곳(A·B) 남았어요. 큰 곳에 두세요.",
+    follow: "",
+    hint: "A·B에 흑이 먼저 둘 때와 백이 먼저 둘 때를 견줘, 점수 차가 더 많이 나는 곳을 골라요.",
+    wrong: "그곳은 작은 끝내기예요.",
+  },
+  sente: {
+    prompt: "끝내기가 두 곳(A·B) 남았어요. 먼저 둘 곳에 두세요.",
+    follow: "백이 받았어요. 남은 곳에 두세요.",
+    hint: "두면 백 돌이 단수가 되는 곳이 있나 봐요. 백이 받아야 하는 수(선수)부터 둬요.",
+    wrong: "그 수는 후수라 백이 남은 곳을 먼저 둬요.",
   },
 } as const;
 
@@ -174,12 +203,14 @@ function BadukPuzzleRun({
   const legal = status === "play" ? legalPoints(state) : [];
   const capture = puzzle.kind === "capture" ? CAPTURE_TEXT[puzzle.theme] : null;
   const ko = puzzle.kind === "kofight" ? KO_FIGHT_TEXT[puzzle.mode] : null;
+  const endgame = puzzle.kind === "endgame" ? ENDGAME_TEXT[puzzle.mode] : null;
   const live = puzzle.kind === "life" && puzzle.goal === "live";
   const shape = puzzle.kind === "life" ? puzzle.shape : undefined;
-  const goal = ko
+  const turnText = ko ?? endgame;
+  const goal = turnText
     ? run.step === 0
-      ? ko.prompt
-      : ko.follow
+      ? turnText.prompt
+      : turnText.follow
     : capture
       ? run.step === 0
         ? capture.prompt
@@ -188,17 +219,28 @@ function BadukPuzzleRun({
         ? "△ 흑 무리를 살리세요."
         : "△ 백 무리를 잡으세요.";
   const marks: Record<number, string> = {};
-  if (puzzle.kind === "kofight") {
+  if (puzzle.kind === "endgame") {
+    // 끝내기 두 곳에서 흑이 둘 자리를 A·B로(처음 판에서 엔진이 고른다). 두어진 곳은 지운다
+    const first = puzzleState(puzzle).board;
+    spotsOf(puzzle).forEach((spot, i) => {
+      const p = spotMoveOf(first, spot);
+      if (state.board[p] === 0) marks[p] = i === 0 ? "A" : "B";
+    });
+  } else if (puzzle.kind === "kofight") {
     // 팻감 쓰기: 첫 수 앞에는 되따낼 수 없는 자리를 ×로. 팻감 받기: 노림받은 흑 돌을 △로
     if (puzzle.mode === "threat" && run.step === 0 && status !== "solved")
       marks[koPointOf(puzzle)] = "×";
-    if (puzzle.mode === "answer" && state.board[target]) marks[target] = "△";
+    if (puzzle.mode !== "threat" && state.board[target]) marks[target] = "△";
   } else {
     if (state.board[target]) marks[target] = "△";
-    if (puzzle.kind === "capture" && puzzle.breaker) {
-      const breaker = pointAt(puzzle.breaker, PUZZLE_SIZE);
-      if (state.board[breaker]) marks[breaker] = "□";
-    }
+    if (puzzle.kind === "capture")
+      for (const name of [
+        ...(puzzle.breaker ? [puzzle.breaker] : []),
+        ...(puzzle.breakers ?? []),
+      ]) {
+        const breaker = pointAt(name, PUZZLE_SIZE);
+        if (state.board[breaker]) marks[breaker] = "□";
+      }
   }
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   const prompt =
@@ -234,33 +276,39 @@ function BadukPuzzleRun({
       prompt={prompt}
       waitingText="백이 받는 중…"
       solvedText={
-        ko
-          ? ko.solved
-          : capture
-            ? "따냈어요!"
-            : live
-              ? "살았어요!"
-              : "잡았어요!"
+        endgame
+          ? "끝내기를 잘 골랐어요!"
+          : ko
+            ? ko.solved
+            : capture
+              ? "따냈어요!"
+              : live
+                ? "살았어요!"
+                : "잡았어요!"
       }
       wrongText={
-        ko
-          ? ko.wrong
-          : capture
-            ? "그 수로는 못 따내요."
-            : live
-              ? "그 수로는 살 수 없어요."
-              : "그 수로는 백이 살아요."
+        endgame
+          ? endgame.wrong
+          : ko
+            ? ko.wrong
+            : capture
+              ? "그 수로는 못 따내요."
+              : live
+                ? "그 수로는 살 수 없어요."
+                : "그 수로는 백이 살아요."
       }
       wrongHint={
-        ko
-          ? ko.hint
-          : capture
-            ? capture.hint
-            : shape
-              ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요.`
-              : live
-                ? "눈 자리를 둘로 나누는 곳을 찾아요."
-                : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요."
+        endgame
+          ? endgame.hint
+          : ko
+            ? ko.hint
+            : capture
+              ? capture.hint
+              : shape
+                ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요.`
+                : live
+                  ? "눈 자리를 둘로 나누는 곳을 찾아요."
+                  : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요."
       }
       shown={shown !== null}
       explain={run.explain}

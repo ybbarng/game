@@ -52,8 +52,10 @@ describe("바둑 문제 데이터", () => {
       });
       const mine =
         (p.kind === "life" && p.goal === "live") ||
-        (p.kind === "kofight" && p.mode === "answer");
-      expect(state.board[targetOf(p)]).toBe(mine ? 1 : 2);
+        (p.kind === "kofight" && p.mode !== "threat");
+      // 끝내기는 노리는 돌이 없다(endgame.test.ts가 두 곳을 본다)
+      if (p.kind !== "endgame")
+        expect(state.board[targetOf(p)]).toBe(mine ? 1 : 2);
       expect(state.board[solutionOf(p)]).toBe(0);
     },
   );
@@ -78,7 +80,8 @@ describe("잡기 문제(단수 방향·축·장문)", () => {
     (_id, p) => {
       const { board } = puzzleState(p);
       const libs = groupOf(board, targetOf(p)).liberties;
-      if (p.theme === "net") expect(libs).not.toContain(solutionOf(p));
+      if (p.theme === "net" || p.theme === "blocked-net")
+        expect(libs).not.toContain(solutionOf(p));
       else expect(libs).toContain(solutionOf(p));
     },
   );

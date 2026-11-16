@@ -17,6 +17,7 @@ import {
   defenseFor,
   explainSolved,
   judgeMove,
+  koLossOf,
   koPointOf,
   PUZZLE_SIZE,
   puzzleState,
@@ -30,6 +31,7 @@ const setOf = (id: string) =>
   (BADUK_PUZZLE_SETS.find((s) => s.id === id)?.puzzles ?? []) as KoFight[];
 const threats = setOf("ko-threat");
 const answers = setOf("ko-answer");
+const connects = setOf("ko-connect");
 const rows = (ps: KoFight[]) => ps.map((p) => [p.id, p] as const);
 const name = (at: number) => pointName(at, PUZZLE_SIZE);
 const at = (n: string) => pointAt(n, PUZZLE_SIZE);
@@ -199,7 +201,97 @@ describe("팻감 받기", () => {
       expect(rescues.map(name)).toEqual([p.solution]);
       expect(judgeMove(p, state, solutionOf(p), 0)).toBe("solved");
       expect(judgeMove(p, state, koPointOf(p), 0)).toBe("wrong");
+      // 패를 지면 잃는 돌은 패에 걸린 한 점뿐이라, 노리는 돌(두 점)이 더 많다
+      expect(koLossOf(p)).toBe(1);
       expect(explainSolved(p, state.board, solutionOf(p), 1)).toHaveLength(3);
+    },
+  );
+});
+
+describe("패 잇기", () => {
+  it("묶음에 문제가 다섯 개 이상이다", () => {
+    expect(connects.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it.each(rows(connects))(
+    "%s: 흑이 패를 따냈을 때 백은 바로 되따낼 수 없었고, 백 팻감이 흑 돌을 단수로 몰았다",
+    (_id, p) => {
+      const scene = puzzleState({ ...p, setup: [] });
+      const [take = "", threat = ""] = p.setup;
+      const taken = play(scene, at(take));
+      expect(taken.prisoners[1]).toBe(1);
+      expect(legal(taken, koPointOf(p))).toBe(false);
+      const state = play(taken, at(threat));
+      expect(state).toEqual(puzzleState(p));
+      expect(groupOf(state.board, targetOf(p)).liberties).toHaveLength(1);
+    },
+  );
+
+  it.each(rows(connects))(
+    "%s: 패를 지면 잃는 돌이 팻감이 노리는 돌보다 많다",
+    (_id, p) => {
+      const state = puzzleState(p);
+      const threatened = groupOf(state.board, targetOf(p)).stones.length;
+      expect(koLossOf(p)).toBeGreaterThan(threatened);
+    },
+  );
+
+  it.each(rows(connects))(
+    "%s: 패를 이으면 백은 되따낼 수 없고, 흑은 노린 돌만 잃으며 이은 무리는 세 수 안에 잡히지 않는다",
+    (_id, p) => {
+      const state = puzzleState(p);
+      const threatened = groupOf(state.board, targetOf(p));
+      const ko = koPointOf(p);
+      const connected = play(state, ko);
+      expect(connected.board[ko]).toBe(1);
+      expect(canCapture(connected.board, 2, ko, 3)).toBe(false);
+      const took = play(connected, threatened.liberties[0] as number);
+      expect(took.prisoners[2] - connected.prisoners[2]).toBe(
+        threatened.stones.length,
+      );
+      expect(canCapture(took.board, 2, ko, 3)).toBe(false);
+    },
+  );
+
+  it.each(rows(connects))(
+    "%s: 받으면(노린 돌을 살리면) 백이 패를 되따내고, 흑은 패를 지면 잃는 돌을 모두 잃는다",
+    (_id, p) => {
+      const state = puzzleState(p);
+      const target = targetOf(p);
+      const rescues = legalPoints(state).filter((q) => saves(state, q, target));
+      expect(rescues).toHaveLength(1);
+      const answered = play(state, rescues[0] as number);
+      const ko = koPointOf(p);
+      expect(legal(answered, ko)).toBe(true);
+      const retaken = play(answered, ko);
+      // 흑이 어디에 두든(쉬기 포함) 백은 단수가 된 흑 돌을 따낸다. 쉬었다고 보고 따낸 돌을 센다
+      let board = retaken.board;
+      let lost = retaken.prisoners[2] - answered.prisoners[2];
+      for (let q = 0; q < board.length; q++) {
+        if (board[q] !== 1) continue;
+        const g = groupOf(board, q);
+        if (g.liberties.length !== 1) continue;
+        const cap = tryPlace(board, g.liberties[0] as number, 2);
+        if (cap.ok) {
+          lost += cap.captured.length;
+          board = cap.board;
+        }
+      }
+      expect(lost).toBe(koLossOf(p));
+    },
+  );
+
+  it.each(rows(connects))(
+    "%s: 화면 흐름: 패 잇기만 푼 것이고, 받기는 틀린 것이다",
+    (_id, p) => {
+      const state = puzzleState(p);
+      expect(solutionOf(p)).toBe(koPointOf(p));
+      expect(judgeMove(p, state, koPointOf(p), 0)).toBe("solved");
+      const rescue = legalPoints(state).find((q) =>
+        saves(state, q, targetOf(p)),
+      );
+      expect(judgeMove(p, state, rescue as number, 0)).toBe("wrong");
+      expect(explainSolved(p, state.board, koPointOf(p), 1)).toHaveLength(3);
     },
   );
 });
