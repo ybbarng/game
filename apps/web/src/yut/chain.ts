@@ -3,6 +3,8 @@ import {
   chainCommit,
   chainLink,
   derivedSeed,
+  type Gesture,
+  sealOf,
   type YutView,
 } from "@game/yut-engine";
 
@@ -14,7 +16,7 @@ import {
 /** 세대(사슬을 다 써서 다시 약속한 횟수) → 그 세대 내 씨앗 */
 export type SeedBook = Record<number, string>;
 
-/** 씨앗 32바이트(브라우저의 안전한 난수) */
+/** 씨앗·소금 32바이트(브라우저의 안전한 난수) */
 export function newSeed(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
@@ -73,5 +75,47 @@ export function saveSeedBook(key: string, book: SeedBook): void {
     sessionStorage.setItem(`yut-seed:${key}`, JSON.stringify(book));
   } catch {
     // 남길 수 없으면 새로고침 뒤에 공개할 수 없을 뿐이다(그때는 끝내기).
+  }
+}
+
+/**
+ * 봉인해 던진 내 몸짓(docs/37 13절). 모든 고리가 공개되면 이 기기가 자동으로 연다.
+ * 소금은 이 기기에서 만든 비밀이라 방장 엔진에는 봉인만 간다
+ */
+export interface PendingThrow {
+  gesture: Gesture;
+  salt: string;
+  seal: string;
+}
+
+/** 이 몸짓을 새 소금으로 봉인한다 */
+export function sealGesture(gesture: Gesture, salt = newSeed()): PendingThrow {
+  return { gesture, salt, seal: sealOf(gesture, salt) };
+}
+
+/** 봉인해 둔 몸짓 가운데 지금 열 차례의 봉인과 맞는 것으로 낼 열기 행동. 없으면 null */
+export function openAction(
+  view: YutView,
+  kept: readonly PendingThrow[],
+): Action | null {
+  const mine = kept.find((p) => p.seal === view.seal);
+  return mine ? { type: "open", gesture: mine.gesture, salt: mine.salt } : null;
+}
+
+/** 봉인한 몸짓은 그 탭에만 남긴다(새로고침해도 열 수 있게). 마지막 몇 개만 둔다 */
+export function loadPendingThrows(key: string): PendingThrow[] {
+  try {
+    const raw = sessionStorage.getItem(`yut-gesture:${key}`);
+    return raw ? (JSON.parse(raw) as PendingThrow[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePendingThrows(key: string, kept: PendingThrow[]): void {
+  try {
+    sessionStorage.setItem(`yut-gesture:${key}`, JSON.stringify(kept));
+  } catch {
+    // 남길 수 없으면 새로고침 뒤에 열 수 없을 뿐이다(그 던지기는 시간이 지나면 무효).
   }
 }

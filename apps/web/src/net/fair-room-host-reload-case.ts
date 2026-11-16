@@ -16,6 +16,7 @@ import {
 import type { AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import { memoryHostStore } from "./host-store";
+import { reloadTab } from "./reload-tab";
 
 /** 행동 기록이 `count`개가 될 때까지 모두 봇처럼 둔다(방장은 공약을 가장 높게 걸어 다시 나누기가 없게) */
 async function advance(host: HostRoom, guests: GuestRoom[], count: number) {
@@ -54,10 +55,11 @@ export async function hostReloadCase(
 ): Promise<void> {
   const rules = presetRules(preset);
   const store = memoryHostStore();
+  let tab = reloadTab(store);
   const { net, host, guests, incidents, clock } = await setup(
     rules,
     guestCount,
-    store,
+    tab.store,
   );
   const audits: AuditResult[] = [];
   for (const g of guests) g.on("audit", (r) => audits.push(r));
@@ -71,13 +73,16 @@ export async function hostReloadCase(
     const before = current.match?.actionLog().length ?? 0;
     // 새로고침: 방장 기기 메모리는 사라지고, 남긴 것으로 새 연결에서 방을 다시 연다.
     net.disconnect(k === 0 ? "host" : `host${k}`);
+    // 옛 탭은 사라진다: 더 남기지 못하고 계산도 멈춘다(reload-tab.ts)
+    tab.reload(current);
+    tab = reloadTab(store);
     // 메모리 네트워크는 끊김 알림을 마이크로태스크로 보내므로, 다음 차례 하나만 양보하면 모두에게 닿는다
     await new Promise((resolve) => setTimeout(resolve, 0));
     const restore = store.load();
     expect(restore?.saved.match).not.toBeNull();
     current = new HostRoom({
       transport: net.join(`host${k + 1}`),
-      ...hostOptions(rules, clock, store),
+      ...hostOptions(rules, clock, tab.store),
       ...(restore ? { restore } : {}),
     });
     current.onIncident((n) => incidents.push(n));

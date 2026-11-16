@@ -1,0 +1,420 @@
+{
+  "rules": "y1-2s2b6p",
+  "seed": 21,
+  "log": [
+    {
+      "seat": 0,
+      "action": {
+        "type": "commit",
+        "hash": "6d5954647f9cc5777990e9386e85f42dfc7e819ce214747817a89d3e8fce8a99"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "commit",
+        "hash": "4875bc3364c7be67f32ffd0cce1ff09b16828b26fdf9f5e0d03624fbfcc8fade"
+      }
+    },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "6de835543a7d75a45cc12783e0314f33110d348f7b2cf167d6d1c8671c64bf24"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "d6a027e1ba7f683ce6884f19b0f1b33bd7d8ec2def0deab28ef9dadf62304ac3"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 2, "from": -1 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "7980bf54599f149cf85d61369c84cd2565a988e4a4197df93fe0d65a37393ef3"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "1a8fcc6222a1592ec37aae30419b288c6bcfaad5a4031a212c230a7a90c977a6"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": -1 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "9a171d81824698c54c508043a4ea31316d6693b14733ad09cd70318dc0aa9eb5"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "4c1f89d8ac56969f41cd77c4401b3c6c27b3c5e0117fdd20d952c12b855adf4c"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": -1, "from": 2 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "6d1d60b37443d5378039b82cb56036f756b6c80faef85758c8360ba6e2edff12"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "c630bc43c9339bf81564c690c967c32945215907480ee1dc8603e70d8d5338c7"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 2, "from": -1 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "68d50b6f984a74a352e2fa3fd305af6fde710ce236637a2dfa25c7b1fe54715b"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "05cda6c792e98c57398e1d0583271c2b13d4a2cd2840101f39d905eba0f987a7"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 3, "from": 1 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "f0ddf695c0dc5c8918f508394ef31d10b0b9335be3d31899817f0ead9fe59186"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "c7701f60fcd03ecea526358eb1100761407d7a6e0b14dc819b1269d16c95fd8b"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 3, "from": -1 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "346ab8f4c6fb514441e7535d4230adbba19928765e3ce7a02dd9259e5e52bc8a"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "a2ff29b055f120bcedaad0a9576d5b3b6db0f323a923fb20b9a6d55ad99c2a84"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": 4 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "52d645b6ee0c7fa0f903622f54cbca1d291c7efd080b6855d61c808270e13074"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "b38f3e63e0d3b8da58dd12393bded381f5240f03d2b654870f151c92ddafc3f9"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 2, "from": 3 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "92c26f5b1040972d85956540d7ddad072727665886ead91fe5ea8df446cd4c24"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "8e140747af6a442541db7c9286f957028582d5f59d1dd7d11245ceb02b819a5c"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": -1 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "acf15588db0d2016013fb157cb610c91416a11514843c8b01e414e555eb7a32a"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "37e0f866e31109461fddedc283f78f912c4c513f4936f66b5227b3cb4142bc75"
+      }
+    },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "f04a90d9028bc967dd499d1e775d465652a9fda9278767fefcd933c0509dd44b"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "37aad618cb1e11f795492669dfc7dd269a806f818bc77012079d9ef07fcbc7b1"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 4, "from": 6 } },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": 10 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "b97e017373b56a5bea0e08dec858e6133f5091f5508089e1804c9854c7e48c2b"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "88fd6ca0a7467dc52cb6478186c05b6ce2933dec588f96017e78b278bf39b522"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 3, "from": -1 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "c2b896b4afe0ec978a76dbca331d3953d8d5e83a292cad0b7b00d8d6c9aff61d"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "e1472a364fd19ca9f46cce40ef5fd7c16cbb4b4bf9d3ae232c9359b2743fd071"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 3, "from": 26 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "54e3760889c88570873501984c7f37f321500b11af70a21c73040180fc17b1b1"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "eddcfc3dd58033fd35eba6cf5183427dd754ffda06f57fc3c0e334e3444b3fa4"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 2, "from": 3 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "35ff93dc2f771d556b426b58a27c87e07a84f705f263e54b29aebbfcca80f9e2"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "b0332cb002ed1e4b0edc032a5f683e55698a4754b24708961c55535f39e8c7ce"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": 28 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "4ccf612596fe60e7e53d8d109193a567b63a9e39f188457961741e3c29c84c38"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "5fdc76ca4cf17afe45546ac5cede6f160e03fa392eacfe89127b76744895d7f1"
+      }
+    },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "fd70afaf1ac6469151df24a1092837bf19ed913bcfc6c9ba03f5667a86bf78c1"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "5beada98a6b7c99ae62a9527d3dc28d478d60da50ad7272395d344031c88f446"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 2, "from": 5 } },
+    { "seat": 0, "action": { "type": "move", "value": 4, "from": 21 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "7fd8d44bf1cf1255e9f02b976ae4a4f64355d4d893a8c2a1bb8190824eddb7b3"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "26c27f9324d359b48f4ce517504ce0e4ac3995fb4d5f9f3f222dfcd246d06a41"
+      }
+    },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "5094bdd5d5cdde862a0b6e499727f0e22645a41edc86ffcd2ab44dd7b0790bb0"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "fe88c632fb831c8d022f175c406a2068d2e7eb47256aebe81f2953f36b0a2ee6"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": 2 } },
+    { "seat": 1, "action": { "type": "move", "value": 4, "from": 4 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "4a12b8bfb19012e11e76591cd761f86ed5efc9f42bd0733f477af178be4c78a9"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "4e9d3a725fefc277ea915c381841745ac58a7857a675685fcb10cc09c58706c5"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 3, "from": 15 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "04bdb6cfe19cfe2e6fcdaae7773dc2fa01e7d511ab5cf64e1b0481a05f7137c3"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "1cde79bd9afb5ebac189f669f86e50093de3a93bb028b265d9122352242dcc71"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 1, "from": 8 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "28d6324254fc9b0077f1dc91d591de6742dc1badcbbdfa3baa9eda3ad6e541a9"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "7927b8779dd2bae5eb709f4c243b09f9a685891d9b5a83d609a59df7b8fb0a04"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 2, "from": 18 } },
+    { "seat": 1, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "45dcc319ae46479de1566b4914de630958082ed4978a1e9530a3b4c51ab06bad"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "b85de8701eccd7bac6c0a550f1aa98152fa3a004559cd41f36a0350baa087279"
+      }
+    },
+    { "seat": 1, "action": { "type": "move", "value": 2, "from": 9 } },
+    { "seat": 0, "action": { "type": "throw" } },
+    {
+      "seat": 0,
+      "action": {
+        "type": "reveal",
+        "link": "39577109f0887bd7c5bbfb35f9b5c60d70034bcf6ad8db617a3e06073849e113"
+      }
+    },
+    {
+      "seat": 1,
+      "action": {
+        "type": "reveal",
+        "link": "f85f2e0f33614d4bc97c78d46e60e6491016a07d5a017c2bb1b75e31629aab08"
+      }
+    },
+    { "seat": 0, "action": { "type": "move", "value": 1, "from": 0 } }
+  ],
+  "end": {
+    "throwCount": 24,
+    "result": { "kind": "finish", "side": 0 },
+    "lastThrow": {
+      "seat": 0,
+      "index": 23,
+      "sticks": [false, true, false, false],
+      "value": 1
+    },
+    "pieces": [
+      { "side": 0, "point": -2, "trail": [] },
+      { "side": 0, "point": -2, "trail": [] },
+      { "side": 1, "point": -2, "trail": [] },
+      { "side": 1, "point": 11, "trail": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+    ]
+  }
+}

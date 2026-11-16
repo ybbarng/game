@@ -16,6 +16,8 @@ interface YutSettings {
   backDo: boolean;
   flatPercent: 50 | 60;
   landOnHome: boolean;
+  /** 낙(docs/37 13절). 기본 켬 */
+  nak: boolean;
   /** 개인 시간(docs/24·docs/37 4절). 기본은 없음 */
   time: TimePreset;
   level: YutLevel;
@@ -30,6 +32,7 @@ export const useYutSettings = create<YutSettings>()(
       backDo: true,
       flatPercent: 60,
       landOnHome: false,
+      nak: true,
       time: "none",
       level: 0,
       set: (patch) => set(patch),
@@ -46,7 +49,13 @@ export const useYutSettings = create<YutSettings>()(
 export function rulesFromSettings(
   s: Pick<
     YutSettings,
-    "lineup" | "pieces" | "backDo" | "flatPercent" | "landOnHome" | "time"
+    | "lineup"
+    | "pieces"
+    | "backDo"
+    | "flatPercent"
+    | "landOnHome"
+    | "nak"
+    | "time"
   >,
 ): YutRules {
   return {
@@ -56,6 +65,9 @@ export function rulesFromSettings(
     backDo: s.backDo,
     flatPercent: s.flatPercent,
     landOnHome: s.landOnHome,
+    // 규칙 판 2: 몸짓을 봉인해 던진다(docs/37 13절). 옛 저장값에 낙이 없으면 켠다.
+    version: 2,
+    nak: s.nak ?? true,
     ...(s.time && s.time !== "none" ? { time: s.time } : {}),
   };
 }
