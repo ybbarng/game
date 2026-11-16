@@ -1,7 +1,16 @@
 "use client";
 
+import { useState } from "react";
+
 import { cn } from "@/lib/cn";
 import { nextPuzzle, type StudyProgressStore } from "@/study/progress";
+import {
+  dayLabel,
+  dueToday,
+  localDay,
+  nextReviewDay,
+  type PuzzleRecord,
+} from "@/study/review";
 
 export interface StudySetSummary {
   id: string;
@@ -32,6 +41,8 @@ export function StudyHome({
   onBack: () => void;
 }) {
   const records = progress((s) => s.records);
+  // 저장값을 읽기 전(미리 그린 HTML)에는 기록이 비어 복습 칸이 없으니 이때 때를 읽어도 첫 화면이 같다.
+  const [now] = useState(Date.now);
   return (
     <main
       className={cn("flex min-h-dvh justify-center p-4 text-white", background)}
@@ -47,6 +58,12 @@ export function StudyHome({
             처음으로
           </button>
         </div>
+        <ReviewSection
+          sets={sets}
+          records={records}
+          now={now}
+          onOpen={onOpen}
+        />
         {sets.map((set) => {
           const solved = set.puzzleIds.filter(
             (id) => records[id]?.solvedAt,
@@ -144,5 +161,83 @@ export function StudyHome({
         })}
       </div>
     </main>
+  );
+}
+
+/** 문제 하나의 이름: 번호 묶음은 「묶음 이름 n번」, 수순 묶음은 수순 이름 */
+function puzzleName(set: StudySetSummary, index: number): string {
+  return set.labels?.[index] ?? `${set.title} ${index + 1}번`;
+}
+
+/**
+ * 오늘 복습(docs/23 「날짜 간격 복습」): 모든 묶음에서 다시 낼 날이 된 문제를 늦은 것부터 모은다.
+ * 손댄 문제가 하나도 없으면 칸을 보이지 않는다
+ */
+function ReviewSection({
+  sets,
+  records,
+  now,
+  onOpen,
+}: {
+  sets: readonly StudySetSummary[];
+  records: Readonly<Record<string, PuzzleRecord>>;
+  now: number;
+  onOpen: (puzzleId: string) => void;
+}) {
+  const names = new Map<string, string>();
+  for (const set of sets)
+    set.puzzleIds.forEach((id, i) => {
+      names.set(id, puzzleName(set, i));
+    });
+  const ids = [...names.keys()];
+  const due = dueToday(ids, records, now, localDay);
+  const next =
+    due.length === 0 ? nextReviewDay(ids, records, now, localDay) : null;
+  if (due.length === 0 && next === null) return null;
+  const first = due[0];
+  return (
+    <section
+      aria-label="오늘 복습"
+      className="flex flex-col gap-3 rounded-3xl border border-amber-300/40 bg-black/40 p-4 shadow-xl"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="font-bold text-lg">오늘 복습</h2>
+        {first && (
+          <span className="text-sm tabular-nums opacity-80">
+            {due.length}문제
+          </span>
+        )}
+      </div>
+      {first ? (
+        <>
+          <p className="text-sm opacity-70">
+            틀렸거나 푼 지 오래된 문제를 다시 풀어요.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {due.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onOpen(id)}
+                className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+              >
+                {names.get(id)}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpen(first)}
+            className="rounded-xl bg-amber-400 py-2 font-semibold text-black"
+          >
+            복습 시작
+          </button>
+        </>
+      ) : (
+        <p className="text-sm opacity-70">
+          {`오늘은 복습할 문제가 없어요. 다음 복습은 ${dayLabel(next as number)}이에요.`}
+        </p>
+      )}
+    </section>
   );
 }
