@@ -21,7 +21,7 @@ import {
 import type { BadukLesson, BadukScene } from "./tutorial";
 
 /*
- * 바둑 수 배우기의 단원(docs/23 바둑): 패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초.
+ * 바둑 수 배우기의 단원(docs/23 바둑): 패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초, 정석(돌 모양 이름).
  * 규칙 배우기(tutorial.ts)를 마친 사람이 읽는다. 그래서 거기서 뜻을 알린 말(활로·단수·따내기·패·팻감·귀·변·집 등)은 그냥 쓰고,
  * 새 말은 여기서 처음 쓸 때 뜻을 먼저 알린다(study-lessons-terms.test.ts가 두 글을 이어 읽어 본다).
  * 패·축 그림은 문제 자료에서 판을 만들고 글의 자리 이름도 자료에서 읽는다. 그래서 그림·글·문제가 어긋나지 않는다.
@@ -309,9 +309,33 @@ export const CORNER_POINTS = { star: "D16", komoku: "C16", sansan: "C17" };
 /** 굳힘·벌림 그림(오른쪽 위 귀): 소목 흑 돌, 굳힘 자리, 벌림 자리(소목에서 변을 따라 세 칸 건너) */
 export const SHIMARI_POINTS = { stone: "R16", shimari: "P17", extend: "R12" };
 
+/**
+ * 정석 낱말 그림(왼쪽 위 귀). 수는 정석 자료(joseki.ts)의 수순에서 왔다.
+ * 낮은 걸침: 화점 D16에 백 F17(가로 두 칸·세로 한 칸, 셋째 줄). 높은 걸침: 소목 C16에 백 E16(한 칸 건너 넷째 줄).
+ * 붙임·젖힘: 흑 E17이 백 E16에 붙고 백 F17이 젖힘, D15는 흑 C16의 마늘모 자리. 끊는 자리: 흑 D17로 물러선 뒤 백 F16.
+ * study-lessons.test.ts가 자리 관계를 엔진 좌표로 확인한다.
+ */
+export const JOSEKI_POINTS = {
+  star: "D16",
+  lowApproach: "F17",
+  komoku: "C16",
+  highApproach: "E16",
+  attach: "E17",
+  hane: "F17",
+  diagonal: "D15",
+  drawBack: "D17",
+  cut: "F16",
+} as const;
+
+/** 삼삼 침입 기본 정석이 끝난 모양 */
+export const JOSEKI_WALL = {
+  black: ["D17", "D16", "C15", "C14", "C13"],
+  white: ["C17", "C16", "B15", "B14"],
+} as const;
+
 /** 수 배우기 목록의 「단원 읽기」 소개 */
 export const BADUK_STUDY_LESSON_SUMMARY =
-  "패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초를 그림으로 읽고 퀴즈를 풀어요. 읽은 뒤 아래 문제와 따라 두기로 익혀요.";
+  "패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초, 정석의 돌 모양 이름을 그림으로 읽고 퀴즈를 풀어요. 읽은 뒤 아래 문제와 따라 두기로 익혀요.";
 
 export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
   {
@@ -673,6 +697,126 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         answer: 0,
         explain:
           "선수를 두면 상대가 받아야 해서 다시 내 차례예요. 그다음 후수도 내가 둬요.",
+      },
+    ],
+  },
+  {
+    id: "lesson-joseki",
+    title: "정석: 귀에서 주고받기",
+    summary:
+      "상대가 내 귀에 다가올 때 서로 두는 정해진 수순과, 그 설명에 나오는 돌 모양 이름을 배워요.",
+    steps: [
+      {
+        kind: "explain",
+        title: "정석이란",
+        body: [
+          "포석에서 빈 귀부터 차지한다고 배웠어요. 이번에는 내가 차지한 귀에 상대가 다가올 때, 두 사람이 어떻게 주고받는지 배워요.",
+          "귀에서 흑과 백이 서로 알맞게 두어, 어느 쪽도 크게 손해 보지 않게 나누는 정해진 수순을 **정석**이라고 해요.",
+          "정석 설명에는 돌 모양을 부르는 이름이 자주 나와요. 이 단원에서 그 이름을 먼저 익혀요. 그림은 모두 19줄 판의 왼쪽 위 귀예요.",
+        ],
+        scene: { black: [JOSEKI_POINTS.star], white: [], size: 19 },
+      },
+      {
+        kind: "explain",
+        title: "걸침과 날일자",
+        body: [
+          "상대 돌이 있는 귀에 다가가, 상대가 귀를 혼자 차지하지 못하게 두는 수를 **걸침**이라고 해요. 그림의 백이 흑 화점에 걸쳤어요.",
+          `백 ${JOSEKI_POINTS.lowApproach}은 흑 ${JOSEKI_POINTS.star}에서 가로로 두 칸, 세로로 한 칸 떨어졌어요. 이렇게 떨어진 자리를 **날일자**라고 해요.`,
+          `셋째 줄에 두는 걸침을 **낮은 걸침**, 넷째 줄에 두는 걸침을 **높은 걸침**이라고 해요. 백 ${JOSEKI_POINTS.lowApproach}은 셋째 줄이라 낮은 걸침이에요.`,
+        ],
+        scene: {
+          black: [JOSEKI_POINTS.star],
+          white: [JOSEKI_POINTS.lowApproach],
+          size: 19,
+        },
+      },
+      {
+        kind: "explain",
+        title: "한 칸 뛰기",
+        body: [
+          "같은 줄에서 한 칸을 비우고 곧게 두는 것을 **한 칸 뛴다**고 해요.",
+          `그림은 흑 소목 ${JOSEKI_POINTS.komoku}에 백이 ${JOSEKI_POINTS.highApproach}에 걸친 모양이에요. 흑 돌에서 한 칸 뛴 넷째 줄이라 한 칸 높은 걸침이라고 불러요.`,
+        ],
+        scene: {
+          black: [JOSEKI_POINTS.komoku],
+          white: [JOSEKI_POINTS.highApproach],
+          size: 19,
+        },
+      },
+      {
+        kind: "explain",
+        title: "붙임, 젖힘, 마늘모",
+        body: [
+          `상대 돌의 위·아래·왼쪽·오른쪽 바로 옆에 맞닿게 두는 것을 **붙인다**고 해요. 흑 ${JOSEKI_POINTS.attach}이 백 ${JOSEKI_POINTS.highApproach}에 붙였어요.`,
+          `맞붙은 상대 돌이 나아갈 앞을 내 돌의 대각선 자리에서 막는 것을 **젖힌다**고 해요. 백 ${JOSEKI_POINTS.hane}이 흑 ${JOSEKI_POINTS.attach}의 오른쪽을 막아 젖혔어요. 젖힘을 한 번 더 이어 두는 것은 **양 젖힘**이라고 해요.`,
+          `내 돌에서 대각선으로 바로 옆 자리에 두는 것을 **마늘모**라고 해요. 그림의 A가 흑 ${JOSEKI_POINTS.komoku}의 마늘모 자리 가운데 하나예요.`,
+        ],
+        scene: {
+          black: [JOSEKI_POINTS.komoku, JOSEKI_POINTS.attach],
+          white: [JOSEKI_POINTS.highApproach, JOSEKI_POINTS.hane],
+          size: 19,
+          marks: { [JOSEKI_POINTS.diagonal]: "A" },
+        },
+      },
+      {
+        kind: "explain",
+        title: "끊는 자리, 서기, 기기",
+        body: [
+          "대각선으로 놓인 상대 돌 둘 사이의 빈 자리에 두어 둘을 갈라놓는 것을 **끊는다**고 해요. 그 빈 자리를 **끊는 자리**라고 해요.",
+          `그림의 백 ${JOSEKI_POINTS.highApproach}과 ${JOSEKI_POINTS.hane}은 대각선으로 놓여, ×(${JOSEKI_POINTS.cut})가 백의 끊는 자리예요. 백이 여기에 두어 이으면 끊기지 않아요.`,
+          "내 돌 바로 옆에 판 가운데 쪽으로 곧게 이어 두는 것을 **선다**고 해요.",
+          "판 끝에서 둘째 줄을 **2선**이라고 해요. 2선을 따라 한 칸씩 이어 두는 것을 **긴다**고 해요. 2선을 기면 살기는 쉽지만 집이 작아요.",
+        ],
+        scene: {
+          black: [
+            JOSEKI_POINTS.komoku,
+            JOSEKI_POINTS.attach,
+            JOSEKI_POINTS.drawBack,
+          ],
+          white: [JOSEKI_POINTS.highApproach, JOSEKI_POINTS.hane],
+          size: 19,
+          marks: { [JOSEKI_POINTS.cut]: "×" },
+        },
+      },
+      {
+        kind: "explain",
+        title: "벽과 두터움",
+        body: [
+          "그림은 흑 화점에 백이 삼삼으로 들어온 정석이 끝난 모양이에요. 백은 2선을 기어 귀에 살았고, 흑은 바깥에 이어진 돌을 늘어세웠어요.",
+          "돌이 튼튼하게 이어져 상대가 잡거나 깨기 어려운 것을 **두텁다**고 해요. 흑은 귀를 내주었지만, 가운데와 변을 바라보는 두터운 벽을 얻었어요.",
+          "정석이 끝나면 한쪽은 귀 집, 다른 쪽은 바깥 두터움처럼 서로 다른 것을 나눠 가져요.",
+        ],
+        scene: {
+          black: [...JOSEKI_WALL.black],
+          white: [...JOSEKI_WALL.white],
+          size: 19,
+        },
+      },
+      {
+        kind: "explain",
+        title: "따라 둘 정석",
+        body: [
+          "「정석 따라 두기」에서 정석을 처음부터 둬 봐요. 내가 두는 편이 아닌 수는 저절로 둬요.",
+          "화점 정석은 삼삼에 들어오는 수와 날일자 걸침을 받는 수순이에요. 소목 정석은 날일자 걸침과 한 칸 높은 걸침을 받는 수순이에요.",
+          "수마다 왜 두는지 설명이 나와요. 이 단원에서 배운 이름이 나오면 그림을 떠올려 보세요.",
+        ],
+      },
+      {
+        kind: "quiz",
+        question: "상대 돌이 있는 귀에 다가가 두는 수를 뭐라고 할까요?",
+        options: ["걸침", "굳힘", "벌림"],
+        answer: 0,
+        explain:
+          "걸침은 상대가 귀를 혼자 차지하지 못하게 다가가는 수예요. 굳힘과 벌림은 내 귀를 지키거나 넓히는 수예요.",
+      },
+      {
+        kind: "quiz",
+        question:
+          "대각선으로 놓인 상대 돌 둘 사이의 빈 자리에 두어 둘을 갈라놓는 것을 뭐라고 할까요?",
+        options: ["끊는다", "붙인다", "젖힌다"],
+        answer: 0,
+        explain:
+          "끊으면 상대 돌 둘이 따로 떨어져요. 그래서 끊는 자리가 있으면 이어 둘지 먼저 살펴요.",
       },
     ],
   },
