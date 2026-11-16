@@ -53,6 +53,26 @@ describe("4×4 야우 풀이 함수", () => {
     expect(solveYau(start).stages[0]?.moves).not.toBe("");
   });
 
+  it("걸음을 이으면 그 단계의 수, 「3×3처럼」 작은 단계를 이으면 그 단계의 수다(첫 화면 연출이 걸음마다 살핀다)", () => {
+    const parity: Record<number, string> = { 1: "oll-parity", 5: "pll-parity" };
+    for (const seed of [1, 5]) {
+      const r = solveYau(play(scramble("444", seed).text));
+      for (const st of r.stages) {
+        expect(st.steps.join(" "), `${seed} ${st.id}`).toBe(st.moves);
+        expect(st.steps.every((x) => x.trim() !== "")).toBe(true);
+      }
+      const three = r.stages.find((st) => st.id === "three");
+      expect(
+        three?.parts
+          ?.map((p) => p.moves)
+          .filter(Boolean)
+          .join(" "),
+      ).toBe(three?.moves);
+      // 씨앗 1은 OLL 패리티, 씨앗 5는 PLL 패리티가 작은 단계로 나온다
+      expect(three?.parts?.map((p) => p.id)).toContain(parity[seed]);
+    }
+  });
+
   it("맞춘 큐브는 칠 수가 없다", () => {
     const r = solveYau(solvedCube(n));
     expect(r.moves.replace(/\b[xyz]['2]?\b/g, "").trim()).toBe("");

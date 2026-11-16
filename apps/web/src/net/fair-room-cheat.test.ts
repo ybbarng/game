@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { Party } from "@game/fair-play";
+import { FairGuestSeat, Party } from "@game/fair-play";
 import { presetRules, suitOf } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 import {
@@ -96,33 +96,27 @@ describe("멘탈 포커 온라인 대전", () => {
       const cheater = guest.seat as number;
       await host.start();
       await until(() => guests.every((g) => g.match !== null));
-      let sent = false;
-      const cheat: Cheat = (view, key) => {
-        if (key !== "g0" || sent || view.decision?.kind !== "play") return null;
-        const real = view.decision.cards[0];
-        const outgoing = guest.fair?.outgoing({
-          type: "play",
-          card: real as never,
-        });
-        if (outgoing?.type !== "play") return null;
-        // 열쇠는 진짜 카드 자리 것을 공개하고, 카드 이름만 마이티로 바꿔 보낸다.
-        sent = true;
-        const hostPeer = (guest as unknown as { hostId: string }).hostId;
-        guest.transport.send(
-          {
-            t: "action",
-            action: {
-              ...outgoing,
-              card: view.hand.includes("SA") ? "D2" : "SA",
-            },
-          },
-          hostPeer,
-        );
-        return null;
+      // 0번 참가자 프로그램: 처음 낼 때 열쇠는 진짜로 낼 카드 자리 것을 공개하고, 카드 이름만 마이티로
+      // 바꿔 보낸다(진짜 카드가 마이티면 D2). 가짜 행동 하나만 보내고 진짜 행동은 보내지 않는다.
+      // 낸다고 한 카드는 늘 연 카드와 달라야 한다. 예전에는 따로 보낸 가짜 뒤에 진짜 행동까지 나갔고,
+      // 가짜가 우연히 진짜와 같으면(손에 SA, 첫 카드 D2) 방장이 받아들여, 자기가 보낸 기록과 다르다며
+      // 부정한 기기가 방장을 짚었다.
+      const fair = guest.fair;
+      if (!(fair instanceof FairGuestSeat))
+        throw new Error("참가자 멘탈 포커 진행이 없다");
+      const honest = fair.outgoing.bind(fair);
+      let faked = false;
+      fair.outgoing = (action) => {
+        const out = honest(action);
+        if (faked || out?.type !== "play" || action.type !== "play") return out;
+        faked = true;
+        return { ...out, card: action.card === "SA" ? "D2" : "SA" };
       };
-      await playRounds(host, guests, 1, incidents, cheat);
+      await playRounds(host, guests, 1, incidents);
       await until(() => incidents.length > 0);
+      expect(faked).toBe(true);
       const own = incidents.find((i) => i.own);
+      expect(own?.reporter).toBe(0);
       expect(own?.seat).toBe(cheater);
       expect(own?.reason).toMatch(/열쇠로 연 카드/);
     });
