@@ -61,7 +61,7 @@ export function GalaxySources() {
           >
             iau.org
           </a>
-          ). HR 번호와 이름만 뽑아 옮겼습니다.
+          ). HR 번호와 이름만 뽑아 옮겼어요.
         </li>
         <li>
           밝기·색: Hoffleit &amp; Warren(1991), Yale Bright Star Catalogue
@@ -84,7 +84,7 @@ export function GalaxySources() {
         </li>
         <li>
           우리말 별자리 이름은 한국천문연구원 표기, 별 이야기는 사실만 골라 새로
-          썼습니다.
+          썼어요.
         </li>
       </ul>
     </details>

@@ -212,7 +212,7 @@ test(
     for (let i = 0; i < 3; i++) await playStep(page);
     await untilMyRoll(page);
     await resign(page);
-    await expect(status(page)).toHaveText("기권했어요");
+    await expect(status(page)).toHaveText("기권했어요.");
     await expect
       .poll(() => page.evaluate(finishedGalaxyGames), { intervals: [50] })
       .toBe(1);

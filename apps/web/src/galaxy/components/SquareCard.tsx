@@ -190,8 +190,8 @@ export function SquareCard({
 function takeoverText(view: GalaxyView, square: number): string {
   if (canTakeOver(view, view.mySeat, square))
     return `멈추면 사들이기 ${money(takeoverPriceOf(view.board, square))}`;
-  if (view.mortgaged[square]) return "맡긴 별이라 사들일 수 없어요";
-  return "주인이 별자리를 완성해 사들일 수 없어요";
+  if (view.mortgaged[square]) return "맡긴 별이라 사들일 수 없어요.";
+  return "주인이 별자리를 완성해 사들일 수 없어요.";
 }
 
 function StarBody({

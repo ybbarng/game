@@ -690,12 +690,12 @@ function FxOverlay({
         <div className={cn(box, "items-start pt-[4%]")}>
           <NoticePaper
             heading="카노푸스 우주국 공문"
-            title={`${SEASON_NAMES[step.season]} 하늘이 떠오릅니다`}
+            title={`${SEASON_NAMES[step.season]} 하늘이 떠올라요`}
             dur={step.dur}
           >
             <p>
               이제 {SEASON_NAMES[step.season]} 별자리 별의 정거장 이용료가
-              1.5배입니다.
+              1.5배예요.
             </p>
           </NoticePaper>
         </div>
@@ -718,8 +718,8 @@ function FxOverlay({
               )}
             >
               {step.done
-                ? `이루었습니다 · ${money(NUMBERS.requestBonus)}`
-                : "이루지 못했습니다"}
+                ? `이뤘어요. 상금: ${money(NUMBERS.requestBonus)}`
+                : "이루지 못했어요."}
             </p>
           </NoticePaper>
         </div>
@@ -730,10 +730,10 @@ function FxOverlay({
         <div className={cn(box, "items-start pt-[4%]")}>
           <NoticePaper
             heading="카노푸스 우주국 공문"
-            title="유성우의 밤이 찾아옵니다"
+            title="유성우의 밤이 찾아와요"
             dur={step.dur}
           >
-            <p>판이 끝날 때까지 모든 별의 정거장 이용료가 2배입니다.</p>
+            <p>판이 끝날 때까지 모든 별의 정거장 이용료가 2배예요.</p>
           </NoticePaper>
         </div>
       );
@@ -745,7 +745,7 @@ function FxOverlay({
             title="운항 중단"
             dur={step.dur}
           >
-            <p>{name(step.seat)} 우주선이 별빛이 모자라 운항을 멈춥니다.</p>
+            <p>{name(step.seat)} 우주선이 별빛이 모자라 운항을 멈춰요.</p>
           </NoticePaper>
         </div>
       );
