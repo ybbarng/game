@@ -1,4 +1,6 @@
 import {
+  areaOwners,
+  areaScore,
   type Board,
   boardHash,
   type Cell,
@@ -627,4 +629,99 @@ export function lifeWrongMovesFail(
     if (!fails) return false;
   }
   return true;
+}
+
+/** 끝내기 읽기 결과: 두 편이 가장 좋게 둘 때 끝난 판의 점수 차(흑 − 백, 덤 빼고)와, 그 점수 차를 내는 첫 수들(null은 쉬기) */
+export interface EndgameResult {
+  score: number;
+  best: (number | null)[];
+}
+
+/**
+ * 끝내기 읽기(수 배우기 끝내기, docs/23): `toPlay`가 둘 차례에, 정한 빈 자리(`area`) 안에서만 두거나 쉰다.
+ * 두 편이 잇달아 쉬면 판 위 그대로 센다(`areaScore`, 돌 수 + 집 수). 흑은 점수 차를 크게, 백은 작게 둔다.
+ * 판 나머지는 이미 다 막혔다고 보고 두지 않는다(그래서 정한 자리가 적으면 끝까지 읽는다).
+ * 다만 정한 자리에 붙은 무리가 단수가 되면 두 가지를 더 둔다. 그 활로가 자기 집(`areaOwners`가 그 편 것으로 센 빈 점)이면 그 편은 거기에 이어 받을 수 있다.
+ * 자기 집을 자기 돌로 채우는 것은 점수(돌 수 + 집 수)를 바꾸지 않으니 셈이 어긋나지 않는다.
+ * 또 그 무리가 상대 무리면 마지막 활로에 두어 따낼 수 있다(받지 않은 선수를 벌하는 수).
+ * 정한 자리에 붙지 않은 무리는 보지 않는다(끝내기 한 곳만 셀 때 다른 곳이 섞이지 않게)
+ * 읽는 길 위에서 같은 판 모양이 다시 나오는 수(패 되따내기)는 두지 않는다.
+ * `passed`는 바로 앞 수가 쉬기였는지(이번에도 쉬면 끝난다)
+ */
+export function solveEndgame(
+  board: Board,
+  area: readonly number[],
+  toPlay: Stone,
+  passed = false,
+): EndgameResult {
+  const memo = new Map<string, number>();
+  const path = new Set([boardHash(board)]);
+  /** 이 편이 둘 수 있는 자리: 정한 자리, 단수인 자기 무리의 활로 가운데 자기 집, 단수인 상대 무리를 따내는 자리 */
+  const size = sizeOf(board);
+  const touching = new Set(area.flatMap((a) => [...neighbors(a, size)]));
+  const movesFor = (b: Board, turn: Stone): number[] => {
+    const owners = areaOwners(b);
+    const extra = new Set<number>();
+    for (let p = 0; p < b.length; p++) {
+      if (!b[p] || !(touching.has(p) || area.includes(p))) continue;
+      const libs = groupOf(b, p).liberties;
+      if (libs.length !== 1) continue;
+      const lib = libs[0] as number;
+      if (b[p] !== turn) extra.add(lib);
+      else if (owners[lib] === turn) extra.add(lib);
+    }
+    return [...area, ...[...extra].filter((p) => !area.includes(p))];
+  };
+  const scoreOf = (b: Board) => {
+    const s = areaScore(b);
+    return s.black - s.white;
+  };
+  const value = (b: Board, turn: Stone, afterPass: boolean): number => {
+    const key = `${boardHash(b)}:${turn}:${afterPass ? 1 : 0}`;
+    const known = memo.get(key);
+    if (known !== undefined) return known;
+    const better = (a: number, c: number) =>
+      turn === 1 ? Math.max(a, c) : Math.min(a, c);
+    let result = afterPass ? scoreOf(b) : value(b, other(turn), true);
+    for (const at of movesFor(b, turn)) {
+      const next = place(b, at, turn, path);
+      if (!next) continue;
+      path.add(next.key);
+      result = better(result, value(next.board, other(turn), false));
+      path.delete(next.key);
+    }
+    memo.set(key, result);
+    return result;
+  };
+  const after = (at: number | null): number | null => {
+    if (at === null)
+      return passed ? scoreOf(board) : value(board, other(toPlay), true);
+    const next = place(board, at, toPlay, path);
+    if (!next) return null;
+    path.add(next.key);
+    const v = value(next.board, other(toPlay), false);
+    path.delete(next.key);
+    return v;
+  };
+  let score: number | null = null;
+  let best: (number | null)[] = [];
+  for (const at of [...movesFor(board, toPlay), null]) {
+    const v = after(at);
+    if (v === null) continue;
+    if (score === null || (toPlay === 1 ? v > score : v < score)) {
+      score = v;
+      best = [at];
+    } else if (v === score) best.push(at);
+  }
+  return { score: score ?? scoreOf(board), best };
+}
+
+/**
+ * 끝내기 한 곳의 크기: 그 자리들 안에서만 둘 때, 흑이 먼저 둔 결과와 백이 먼저 둔 결과의 점수 차(흑 − 백) 차이.
+ * 「이 끝내기는 n점짜리」의 n이다(먼저 두는 편이 n점을 더 얻는다)
+ */
+export function endgameSize(board: Board, area: readonly number[]): number {
+  return (
+    solveEndgame(board, area, 1).score - solveEndgame(board, area, 2).score
+  );
 }
