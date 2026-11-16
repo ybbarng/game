@@ -11,6 +11,9 @@ import {
  * - backDo 빽도(표시한 가락 하나만 평평하면 한 칸 뒤로)
  * - flatPercent 한 가락이 평평한 면으로 떨어질 확률(%). 60이 실제 윷에 가깝고 50은 고르게
  * - landOnHome 참먹이에 정확히 서도 나나(끄면 지나야 난다)
+ * - version 규칙 판 번호(기록 형식). 없으면 1: 던지기를 모두의 사슬 고리로만 정한다(2026-11-17 전 기록).
+ *   2: 던지는 사람의 몸짓을 봉인해 보내고 「몸짓 + 모두의 값」으로 정한다(docs/37 13절)
+ * - nak 낙(판 2만). 던진 방향·세기로 낙 확률이 정해지고, 낙이면 그 던지기는 무효·차례가 넘어간다
  */
 export type Mode = "solo" | "team";
 
@@ -23,6 +26,10 @@ export interface YutRules {
   landOnHome: boolean;
   /** 개인 시간(기본 시간 + 초읽기, docs/24·docs/37 4절). 없으면 시간 없음 */
   time?: TimePreset;
+  /** 규칙 판 번호. 없으면 1(옛 기록) */
+  version?: 2;
+  /** 낙(판 2만, 기본 켬) */
+  nak?: boolean;
 }
 
 export const STANDARD_RULES: YutRules = {
@@ -32,7 +39,14 @@ export const STANDARD_RULES: YutRules = {
   backDo: true,
   flatPercent: 60,
   landOnHome: false,
+  version: 2,
+  nak: true,
 };
+
+/** 던지는 사람의 몸짓으로 던지나(규칙 판 2) */
+export function usesGesture(rules: Pick<YutRules, "version">): boolean {
+  return rules.version === 2;
+}
 
 /** 2:2 편 놀이 기본 규칙 */
 export const TEAM_RULES: YutRules = {
@@ -43,23 +57,28 @@ export const TEAM_RULES: YutRules = {
 
 /*
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
- * 형식: `y1-` + 인원(2·3·4) + 방식(s 각자 / t 편) + 말 수(2~5) + 빽도(b 있음 / n 없음)
- *       + 확률(6 60% / 5 50%) + 참먹이(p 지나야 남 / l 서면 남)
- *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본 `y1-2s4b6p`, 2:2 편 놀이 `y1-4t4b6p`, 빠른 시간이면 `y1-2s4b6p-t1`
+ * 형식: 판 번호(`y1-` 사슬만 / `y2-` 몸짓) + 인원(2·3·4) + 방식(s 각자 / t 편) + 말 수(2~5)
+ *       + 빽도(b 있음 / n 없음) + 확률(6 60% / 5 50%) + 참먹이(p 지나야 남 / l 서면 남)
+ *       + 낙(판 2만: k 있음 / x 없음) + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
+ * 예: 기본 `y2-2s4b6pk`, 2:2 편 놀이 `y2-4t4b6pk`, 빠른 시간이면 `y2-2s4b6pk-t1`, 옛 기본 `y1-2s4b6p`
  */
 export function encodeYutRules(rules: YutRules): string {
-  return `y1-${rules.players}${rules.mode === "team" ? "t" : "s"}${rules.pieces}${rules.backDo ? "b" : "n"}${rules.flatPercent === 60 ? "6" : "5"}${rules.landOnHome ? "l" : "p"}${encodeTimePreset(rules.time ?? "none")}`;
+  const gesture = usesGesture(rules);
+  return `y${gesture ? 2 : 1}-${rules.players}${rules.mode === "team" ? "t" : "s"}${rules.pieces}${rules.backDo ? "b" : "n"}${rules.flatPercent === 60 ? "6" : "5"}${rules.landOnHome ? "l" : "p"}${gesture ? (rules.nak ? "k" : "x") : ""}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
 export function decodeYutRules(
   text: string,
 ): { ok: true; rules: YutRules } | { ok: false; reason: string } {
-  const match = /^y1-([234])([st])([2-5])([bn])([56])([pl])(-t\d)?$/.exec(
-    text.trim(),
-  );
+  const match =
+    /^y(?:1-([234])([st])([2-5])([bn])([56])([pl])|2-([234])([st])([2-5])([bn])([56])([pl])([kx]))(-t\d)?$/.exec(
+      text.trim(),
+    );
   if (!match) return { ok: false, reason: "윷놀이 규칙 문자열 형식이 아니다" };
-  const [, players, mode, pieces, backDo, flat, home, tail] = match;
+  const second = match[7] !== undefined;
+  const parts = second ? match.slice(7, 14) : match.slice(1, 7);
+  const [players, mode, pieces, backDo, flat, home, nak] = parts;
+  const tail = match[14];
   if (mode === "t" && players !== "4")
     return { ok: false, reason: "편 놀이는 넷이서만 한다" };
   const time = decodeTimePreset(tail);
@@ -73,6 +92,8 @@ export function decodeYutRules(
       backDo: backDo === "b",
       flatPercent: flat === "6" ? 60 : 50,
       landOnHome: home === "l",
+      // 판 번호·낙을 시간보다 앞에 둔다(기본 규칙에 시간을 더한 꼴과 같은 순서라야 화면을 JSON으로 견줄 때 같다).
+      ...(second ? { version: 2 as const, nak: nak === "k" } : {}),
       ...(time === "none" ? {} : { time }),
     },
   };

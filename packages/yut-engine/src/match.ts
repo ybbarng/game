@@ -12,17 +12,20 @@ import { DONE, HOME, travel } from "./board";
 import {
   CHAIN_LENGTH,
   chainHash,
+  gestureThrow,
   LINK_PATTERN,
   type Sticks,
   seatKey,
   sticksFrom,
   valueOfSticks,
 } from "./chain";
+import { type Gesture, isGesture, sealOf } from "./gesture";
 import {
   isBonusThrow,
   sideCount,
   sideOf,
   type ThrowValue,
+  usesGesture,
   type YutRules,
 } from "./rules";
 import type {
@@ -31,10 +34,14 @@ import type {
   GameEvent,
   GameResult,
   MoveOption,
+  NakReason,
   Piece,
   YutState,
   YutView,
 } from "./state";
+
+/** (판 2) 던진 사람이 몸짓을 열 때까지 기다리는 시간. 넘기면 방장 시계가 `unopened`를 낸다 */
+export const OPEN_WAIT_MS = 20_000;
 
 export type StepResult =
   | { ok: true; state: YutState; events: GameEvent[] }
@@ -63,6 +70,7 @@ export function createMatch(
     generation: 0,
     chains: seats.map(() => ({ commit: null, last: null, used: 0 })),
     reveals: seats.map(() => null),
+    ...(usesGesture(rules) ? { seal: null } : {}),
     lastThrow: null,
     result: null,
     clocks: startClocks(rules),
@@ -112,6 +120,8 @@ export function pendingSeats(state: YutState): number[] {
       return [state.turn];
     case "reveal":
       return seats.filter((s) => state.reveals[s] === null);
+    case "open":
+      return [state.turn];
     default:
       return [];
   }
@@ -179,7 +189,15 @@ function clone(state: YutState): YutState {
     chains: state.chains.map((c) => ({ ...c })),
     reveals: [...state.reveals],
     lastThrow: state.lastThrow
-      ? { ...state.lastThrow, sticks: [...state.lastThrow.sticks] as Sticks }
+      ? {
+          ...state.lastThrow,
+          sticks: state.lastThrow.sticks
+            ? ([...state.lastThrow.sticks] as Sticks)
+            : null,
+          ...(state.lastThrow.gesture
+            ? { gesture: { ...state.lastThrow.gesture } }
+            : {}),
+        }
       : null,
     clocks: state.clocks ? state.clocks.map((c) => ({ ...c })) : null,
     keys: [...state.keys],
@@ -303,7 +321,9 @@ function retire(state: YutState): StepResult {
   const events: GameEvent[] = [];
   const pending = pendingSeats(state);
   const waiting =
-    (state.phase === "commit" || state.phase === "reveal") &&
+    (state.phase === "commit" ||
+      state.phase === "reveal" ||
+      state.phase === "open") &&
     pending.length === 1;
   if (waiting) {
     const seat = pending[0] as number;
@@ -325,18 +345,68 @@ function retire(state: YutState): StepResult {
   return { ok: true, state: next, events };
 }
 
-/** 모든 자리 고리가 모였다: 가락을 정하고 결과를 모은다 */
-function resolveThrow(state: YutState, events: GameEvent[]): void {
+/**
+ * 낙(또는 몸짓을 열지 않음): 그 던지기는 무효, 더 던지지 않는다. 이번 차례에 모아 둔 결과는 그대로 쓰고,
+ * 그 결과로 상대 말을 잡으면 잡기의 한 번 더는 그대로 받는다
+ */
+function voidThrow(
+  state: YutState,
+  reason: NakReason,
+  sticks: Sticks | null,
+  gesture: Gesture | null,
+  events: GameEvent[],
+): void {
+  const index = state.throwCount;
+  state.throwCount += 1;
+  state.reveals = state.reveals.map(() => null);
+  state.seal = null;
+  state.throwsLeft = 0;
+  state.lastThrow = {
+    seat: state.turn,
+    index,
+    sticks,
+    value: null,
+    nak: reason,
+    ...(gesture ? { gesture } : {}),
+  };
+  events.push({ type: "nak", seat: state.turn, index, reason });
+  settle(state, events);
+}
+
+/**
+ * 모든 자리 고리가 모였다(판 2는 몸짓까지 열렸다): 가락을 정하고 결과를 모은다.
+ * 판 1은 고리만으로(`sticksFrom`), 판 2는 「몸짓 + 모두의 값」으로(`gestureThrow`) 정한다
+ */
+function resolveThrow(
+  state: YutState,
+  events: GameEvent[],
+  gesture: Gesture | null = null,
+): void {
   const links = state.reveals as string[];
   const index = state.throwCount;
-  const sticks = sticksFrom(index, links, state.rules.flatPercent);
+  let sticks: Sticks;
+  if (gesture) {
+    const thrown = gestureThrow(index, gesture, links, state.rules);
+    if (thrown.nak) {
+      voidThrow(state, thrown.nak, thrown.sticks, gesture, events);
+      return;
+    }
+    sticks = thrown.sticks;
+  } else sticks = sticksFrom(index, links, state.rules.flatPercent);
   const value = valueOfSticks(sticks, state.rules);
   const bonus = isBonusThrow(value);
   state.throwCount += 1;
   state.reveals = state.reveals.map(() => null);
+  if (gesture) state.seal = null;
   state.pending.push(value);
   state.throwsLeft += bonus ? 0 : -1;
-  state.lastThrow = { seat: state.turn, index, sticks, value };
+  state.lastThrow = {
+    seat: state.turn,
+    index,
+    sticks,
+    value,
+    ...(gesture ? { gesture } : {}),
+  };
   events.push({
     type: "result",
     seat: state.turn,
@@ -401,10 +471,17 @@ export function step(
     case "throw": {
       if (state.phase !== "throw") return fail("던질 때가 아니다");
       if (state.turn !== seat) return fail("차례가 아니다");
+      const gesture = usesGesture(state.rules);
+      if (
+        gesture &&
+        (typeof action.seal !== "string" || !LINK_PATTERN.test(action.seal))
+      )
+        return fail("몸짓 봉인이 없다");
       const next = clone(state);
       const events: GameEvent[] = [];
       if (charge(next, seat, action.spent, events))
         return { ok: true, state: next, events };
+      if (gesture) next.seal = action.seal as string;
       next.phase = "reveal";
       next.reveals = next.reveals.map(() => null);
       events.push({ type: "thrown", seat });
@@ -427,7 +504,35 @@ export function step(
         used: chain.used + 1,
       };
       const events: GameEvent[] = [{ type: "revealed", seat }];
-      if (next.reveals.every((r) => r !== null)) resolveThrow(next, events);
+      if (next.reveals.every((r) => r !== null)) {
+        // 판 2는 모든 고리가 공개된 뒤에야 던진 사람이 몸짓을 연다.
+        if (usesGesture(state.rules)) next.phase = "open";
+        else resolveThrow(next, events);
+      }
+      return { ok: true, state: next, events };
+    }
+    case "open": {
+      if (state.phase !== "open") return fail("몸짓을 열 때가 아니다");
+      if (state.turn !== seat) return fail("던진 사람이 아니다");
+      if (!isGesture(action.gesture)) return fail("몸짓 값이 규칙에 맞지 않다");
+      if (typeof action.salt !== "string" || !LINK_PATTERN.test(action.salt))
+        return fail("소금 형식이 아니다");
+      if (sealOf(action.gesture, action.salt) !== state.seal)
+        return fail("봉인한 몸짓이 아니다");
+      const next = clone(state);
+      const events: GameEvent[] = [];
+      const { height, direction, strength } = action.gesture;
+      resolveThrow(next, events, { height, direction, strength });
+      return { ok: true, state: next, events };
+    }
+    case "unopened": {
+      if (state.phase !== "open") return fail("몸짓을 기다릴 때가 아니다");
+      if (state.turn !== seat) return fail("던진 사람이 아니다");
+      if (action.index !== state.throwCount)
+        return fail("기다리던 던지기가 아니다");
+      const next = clone(state);
+      const events: GameEvent[] = [];
+      voidThrow(next, "unopened", null, null, events);
       return { ok: true, state: next, events };
     }
     case "move": {
@@ -510,6 +615,8 @@ function decisionFor(state: YutState, seat: number): Decision | null {
       return state.turn === seat ? { kind: "throw" } : null;
     case "reveal":
       return state.reveals[seat] === null ? { kind: "reveal" } : null;
+    case "open":
+      return state.turn === seat ? { kind: "open" } : null;
     case "move":
       return state.turn === seat
         ? { kind: "move", options: legalMoves(state) }

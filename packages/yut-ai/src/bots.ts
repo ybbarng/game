@@ -6,12 +6,14 @@ import {
   chainCommit,
   chainLink,
   derivedSeed,
+  derivedThrow,
   legalMoves,
   MO,
   type MoveOption,
   sideOf,
   step,
   throwOdds,
+  usesGesture,
   type YutState,
   type YutView,
 } from "@game/yut-engine";
@@ -31,11 +33,20 @@ export function botSeedOf(
   return derivedSeed(view.botKey, view.generation);
 }
 
+/** 이 자리 재료로 만든 이번 던지기의 무작위 몸짓·소금·봉인(컴퓨터 자리, docs/37 13절) */
+export function botThrowOf(
+  view: Pick<YutView, "botKey" | "throwCount">,
+): ReturnType<typeof derivedThrow> {
+  return derivedThrow(view.botKey, view.throwCount);
+}
+
 /**
- * 컴퓨터가 이 자리의 사슬을 아는가. 사람이 만든 씨앗(끊긴 사람 대신 둘 때)은 모르므로 공개는 그 사람을 기다린다.
- * 약속하기·던지기·움직이기는 언제든 할 수 있다
+ * 컴퓨터가 이 자리의 사슬과 몸짓을 아는가. 사람이 만든 씨앗·몸짓(끊긴 사람 대신 둘 때)은 모르므로
+ * 공개·몸짓 열기는 그 사람을 기다린다(몸짓 열기는 방장 시계가 끝낸다). 약속하기·던지기·움직이기는 언제든 할 수 있다
  */
 export function botKnowsChain(view: YutView): boolean {
+  if (view.decision?.kind === "open")
+    return view.seal === botThrowOf(view).seal;
   if (view.decision?.kind !== "reveal") return true;
   return view.chains[view.mySeat]?.commit === chainCommit(botSeedOf(view));
 }
@@ -82,7 +93,14 @@ function makeBot(
       if (!decision) throw new Error("둘 차례가 아니다");
       const chain = derivedChainAction(view);
       if (chain) return chain;
-      if (decision.kind === "throw") return { type: "throw" };
+      if (decision.kind === "throw")
+        return usesGesture(view.rules)
+          ? { type: "throw", seal: botThrowOf(view).seal }
+          : { type: "throw" };
+      if (decision.kind === "open") {
+        const { gesture, salt } = botThrowOf(view);
+        return { type: "open", gesture, salt };
+      }
       if (decision.kind !== "move") throw new Error("모르는 결정이다");
       return moveAction(chooseMove(view, decision.options, rng));
     },

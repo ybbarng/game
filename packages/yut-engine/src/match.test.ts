@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { CENTER, DONE, HOME, MO } from "./board";
 import { CHAIN_LENGTH, chainCommit, chainLink, derivedSeed } from "./chain";
+import { derivedThrow } from "./gesture";
 import {
   createMatch,
   legalMoves,
@@ -15,13 +16,28 @@ import { STANDARD_RULES, TEAM_RULES, type YutRules } from "./rules";
 import { createYutScenario } from "./scenario";
 import type { Action, GameEvent, YutState } from "./state";
 
-/** 그 자리 기기가 낼 사슬 행동(재료로 만든 씨앗, 실제 기기·컴퓨터와 같은 방식) */
+/** 그 자리 기기가 낼 사슬 행동과 몸짓 열기(재료로 만든 씨앗·몸짓, 컴퓨터와 같은 방식) */
 function chainAction(state: YutState, seat: number): Action {
   const seed = derivedSeed(state.keys[seat] as string, state.generation);
   if (state.phase === "commit")
     return { type: "commit", hash: chainCommit(seed) };
+  if (state.phase === "open") {
+    const { gesture, salt } = derivedThrow(
+      state.keys[seat] as string,
+      state.throwCount,
+    );
+    return { type: "open", gesture, salt };
+  }
   const used = state.chains[seat]?.used ?? 0;
   return { type: "reveal", link: chainLink(seed, used + 1) };
+}
+
+/** 던질 차례인 사람의 던지기(재료로 만든 몸짓의 봉인) */
+function throwOf(state: YutState): Action {
+  return {
+    type: "throw",
+    seal: derivedThrow(state.keys[state.turn] as string, state.throwCount).seal,
+  };
 }
 
 function must(state: YutState, seat: number, action: Action) {
@@ -46,9 +62,13 @@ function playOut(
     if (guard > 20000) throw new Error("게임이 끝나지 않는다");
     const seat = pendingSeats(state)[0] as number;
     let action: Action;
-    if (state.phase === "commit" || state.phase === "reveal")
+    if (
+      state.phase === "commit" ||
+      state.phase === "reveal" ||
+      state.phase === "open"
+    )
       action = chainAction(state, seat);
-    else if (state.phase === "throw") action = { type: "throw" };
+    else if (state.phase === "throw") action = throwOf(state);
     else {
       const options = legalMoves(state);
       const pick = options[nextInt(rng, options.length)];
@@ -78,14 +98,17 @@ describe("게임 진행", () => {
     expect(pendingSeats(state)).toEqual([state.turn]);
   });
 
-  it("던지면 모든 자리가 공개하고, 결과가 모인다", () => {
+  it("봉인해 던지면 모든 자리가 공개하고, 던진 사람이 몸짓을 열면 결과가 모인다", () => {
     let state = started();
     const thrower = state.turn;
-    state = must(state, thrower, { type: "throw" }).state;
+    state = must(state, thrower, throwOf(state)).state;
     expect(state.phase).toBe("reveal");
     expect(pendingSeats(state)).toEqual([0, 1]);
     state = must(state, 0, chainAction(state, 0)).state;
-    const last = must(state, 1, chainAction(state, 1));
+    state = must(state, 1, chainAction(state, 1)).state;
+    expect(state.phase).toBe("open");
+    expect(pendingSeats(state)).toEqual([thrower]);
+    const last = must(state, thrower, chainAction(state, thrower));
     const result = last.events.find((e) => e.type === "result");
     expect(result).toBeDefined();
     expect(last.state.throwCount).toBe(1);
@@ -140,12 +163,17 @@ describe("잘못된 행동 거절", () => {
   it("차례가 아닌 사람은 던질 수 없다", () => {
     const state = started();
     const other = 1 - state.turn;
-    expect(step(state, other, { type: "throw" }).ok).toBe(false);
+    expect(step(state, other, throwOf(state)).ok).toBe(false);
+    // 판 2는 봉인 없이 던질 수 없다.
+    expect(step(state, state.turn, { type: "throw" })).toEqual({
+      ok: false,
+      error: "몸짓 봉인이 없다",
+    });
   });
 
   it("약속한 사슬의 다음 고리가 아니면 받지 않는다", () => {
     let state = started();
-    state = must(state, state.turn, { type: "throw" }).state;
+    state = must(state, state.turn, throwOf(state)).state;
     const seed = derivedSeed(state.keys[0] as string, 0);
     // 한 칸 건너뛴 고리, 다른 씨앗의 고리
     expect(
@@ -279,7 +307,7 @@ describe("업기·잡기·버리기", () => {
 describe("끝내기·기권·사슬 다시 약속", () => {
   it("공개를 기다리던 사람이 하나뿐이면 그 사람의 편이 진다", () => {
     let state = started();
-    state = must(state, state.turn, { type: "throw" }).state;
+    state = must(state, state.turn, throwOf(state)).state;
     state = must(state, 0, chainAction(state, 0)).state;
     const { state: ended } = must(state, 0, { type: "retire" });
     expect(ended.result).toEqual({ kind: "forfeit", seat: 1, side: 0 });
