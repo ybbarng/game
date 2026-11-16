@@ -289,6 +289,121 @@ test(
   },
 );
 
+/** 공식 덩어리 ×n(docs/51 2-1). 시계를 멈춰 두어 수 사이가 늘 1초 안쪽이다 */
+test(
+  "공식 덩어리: R U R′ U′를 이어 치면 띠 끝에 ×2, ×3, 멈추면 사라진다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await installClock(page);
+    await page.goto("/cube/solo");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    await pauseClock(page);
+    const chunk = page.locator("[data-cube-chunk]");
+    const sexy = async () => {
+      for (const k of ["KeyR", "KeyU", "Shift+KeyR", "Shift+KeyU"]) {
+        await page.clock.fastForward(200);
+        await page.keyboard.press(k);
+      }
+    };
+    await sexy();
+    await expect(chunk).toHaveCount(0);
+    await sexy();
+    await expect(chunk).toHaveAttribute("data-cube-chunk", "2");
+    await expect(chunk).toHaveText("×2");
+    await sexy();
+    await expect(chunk).toHaveAttribute("data-cube-chunk", "3");
+    await shot(page, "solo-chunk", info.project.name);
+    await page.clock.fastForward(1_100);
+    await expect(chunk).toHaveCount(0);
+  },
+);
+
+/**
+ * 내 해법 고르기·이론 최고(docs/51 1-2·2-2). 옛 기록 둘(CFOP 단계 구간)을 넣어 두고 CFOP을 고르면 기록 칸에 구간마다의
+ * 최고를 더한 이론 최고가 뜬다(2.00 + 3.00 + 3.00 + 3.00 + 4.00 + 4.00 + 2.00 = 21.00). 맞추는 동안 칩은 CFOP 단계만.
+ */
+test(
+  "내 해법: CFOP을 고르면 칩은 CFOP 단계만, 기록 칸에 이론 최고",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem("cube.records.v1")) return;
+      const rec = (at: number, ms: number, splits: string) => ({
+        at,
+        n: 3,
+        mode: "solo",
+        ms,
+        penalty: 0,
+        moves: 55,
+        scramble: "R U R' U'",
+        splits,
+      });
+      localStorage.setItem(
+        "cube.records.v1",
+        JSON.stringify({
+          "solo-3": [
+            rec(
+              2,
+              25_000,
+              "cross@2000 f2l1@6000 roux1@6000 f2l2@10000 f2l3@14000 layer1@18000 layer2@18000 oll@22000 ll@25000",
+            ),
+            rec(
+              1,
+              23_000,
+              "cross@3000 f2l1@6000 f2l2@9000 f2l3@12000 layer1@16000 layer2@16000 oll@21000 ll@23000",
+            ),
+          ],
+        }),
+      );
+    });
+    await installClock(page);
+    await page.goto("/cube/solo");
+    const main = page.locator("main[data-cube-phase]");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    await pauseClock(page);
+
+    // 자동은 판마다 길이 달라 이론 최고가 없다
+    const theory = page.locator("[data-cube-theory]");
+    await expect(theory).toHaveCount(0);
+    const method = page.locator("select[data-cube-method]");
+    await method.selectOption("cfop");
+    await expect(theory).toHaveAttribute("data-cube-theory", "21000");
+    await expect(theory).toContainText("21.00");
+    await expect(page.locator("[data-cube-theory-part]")).toHaveCount(7);
+
+    // 맞추는 동안 칩은 CFOP 단계만(첫 블록·EOLine·코너 8·첫 층은 숨는다)
+    await page.locator("[data-cube-scramble-button]").click();
+    await expect(main).toHaveAttribute("data-cube-phase", "inspect", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const text =
+      (await page
+        .locator("[data-cube-scramble]")
+        .getAttribute("data-cube-scramble")) ?? "";
+    const keys = inverseKeys(text);
+    for (const k of keys.slice(0, -1)) await page.keyboard.press(k);
+    const chips = page.locator("[data-milestone]");
+    await expect(chips.first()).toBeVisible();
+    for (const id of await chips.evaluateAll((els) =>
+      els.map((e) => e.getAttribute("data-milestone") ?? ""),
+    ))
+      expect(id).not.toMatch(/roux|eoline|corners|layer1/);
+    await shot(page, "solo-method", info.project.name);
+    await page.keyboard.press(keys.at(-1) as string);
+    await expect(main).toHaveAttribute("data-cube-phase", "done");
+
+    // 고른 해법은 새로 고쳐도 남고, 2×2는 고를 것이 하나라 고르기가 없다
+    await page.reload();
+    await expect(page.locator("select[data-cube-method]")).toHaveValue("cfop");
+    await page.locator("[data-cube-size]").selectOption("2");
+    await expect(page.locator("select[data-cube-method]")).toHaveCount(0);
+  },
+);
+
 test(
   "블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF",
   { tag: "@only-desktop" },

@@ -128,6 +128,16 @@ function sessionScenarios(): { n: number; ops: SessionOp[] }[] {
       ops: [begin(sc, 0), ...playOps(rng, invertText(n, sc), 0)],
     });
   }
+  // 큰 큐브: 센터·엣지 짝을 맞춘 뒤 3×3처럼(십자·F2L·둘째 층·윗면이 차례로 켜진다, docs/51 1-2)
+  for (const [n, sc] of [
+    [4, "R U R' U' F R F' U2 R U R'"],
+    [5, "R U2 R' U' F' U F R U R'"],
+  ] as const) {
+    out.push({
+      n,
+      ops: [begin(sc, 0), ...playOps(rng, invertText(n, sc), 0)],
+    });
+  }
   // 섞기 전에 돌림, 판 버리기(reset) 뒤 다시, 다 맞춘 뒤에 돌림
   {
     const sc = "R U R' U'";
