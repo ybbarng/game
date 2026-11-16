@@ -50,6 +50,9 @@ const TACTIC_PROMPT: Record<Tactic, string> = {
   discovered: "앞을 막던 기물을 비켜 뒤 기물의 길을 여세요(발견 공격)",
 };
 
+/** 메이트까지 남은 수를 말로 */
+const MATE_IN_WORDS: Record<number, string> = { 2: "두 수", 3: "세 수" };
+
 /** 체스 문제 하나. 백이 둘 차례다 */
 export function ChessPuzzleScreen({
   puzzleId,
@@ -148,9 +151,11 @@ function ChessPuzzleRun({
       ? "백이 이기는 단 하나의 수를 찾으세요"
       : puzzle.kind === "mate" && puzzle.mateIn === 1
         ? "한 수로 체크메이트하세요"
-        : run.step === 0
-          ? "두 수 만에 메이트: 첫 수를 두세요"
-          : "이제 체크메이트하세요";
+        : puzzle.kind === "mate" && run.step === 0
+          ? `${MATE_IN_WORDS[puzzle.mateIn]} 만에 메이트: 첫 수를 두세요`
+          : puzzle.kind === "mate" && run.step < puzzle.mateIn - 1
+            ? `메이트까지 ${MATE_IN_WORDS[puzzle.mateIn - run.step]}: 다음 수를 두세요`
+            : "이제 체크메이트하세요";
 
   return (
     <PuzzleScreen

@@ -1,46 +1,38 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-/** 문제 하나의 기록 */
-export interface PuzzleRecord {
-  /** 마지막으로 푼 때(ms). 안 풀었으면 없다 */
-  solvedAt?: number;
-  /** 틀린 횟수 */
-  misses: number;
-}
+import { localDay, type PuzzleRecord, recordMiss, recordSolve } from "./review";
+
+export type { PuzzleRecord } from "./review";
 
 export interface StudyProgress {
   records: Record<string, PuzzleRecord>;
-  solve(id: string): void;
-  miss(id: string): void;
+  /** 풀었다. `now`는 시험이 넣는 때(없으면 지금) */
+  solve(id: string, now?: number): void;
+  /** 틀렸다. `now`는 시험이 넣는 때(없으면 지금) */
+  miss(id: string, now?: number): void;
   reset(): void;
 }
 
-/** 수 배우기 진행 기록(docs/23). 이 브라우저에만 남는다. 게임마다 저장 이름을 달리 한다 */
+/**
+ * 수 배우기 진행 기록(docs/23). 이 브라우저에만 남는다. 게임마다 저장 이름을 달리 한다.
+ * 기록 모양과 다음 복습 날은 `review.ts`가 정한다(옛 기록도 그대로 읽는다)
+ */
 export function createStudyProgress(name: string) {
   return create<StudyProgress>()(
     persist(
       (set) => ({
         records: {},
-        solve: (id) =>
+        solve: (id, now = Date.now()) =>
           set((s) => ({
             records: {
               ...s.records,
-              [id]: {
-                misses: s.records[id]?.misses ?? 0,
-                solvedAt: Date.now(),
-              },
+              [id]: recordSolve(s.records[id], now, localDay),
             },
           })),
-        miss: (id) =>
+        miss: (id, now = Date.now()) =>
           set((s) => ({
-            records: {
-              ...s.records,
-              [id]: {
-                ...s.records[id],
-                misses: (s.records[id]?.misses ?? 0) + 1,
-              },
-            },
+            records: { ...s.records, [id]: recordMiss(s.records[id], now) },
           })),
         reset: () => set({ records: {} }),
       }),
