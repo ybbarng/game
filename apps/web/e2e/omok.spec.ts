@@ -42,7 +42,7 @@ async function placeOne(page: Page, touch: boolean): Promise<void> {
     if (touch) {
       await page.touchscreen.tap(p.x, p.y);
       await expect(page.getByRole("status")).toContainText(
-        `${pointName(x, y)}: 한 번 더 누르면 둔다`,
+        `${pointName(x, y)}: 한 번 더 누르면 둬요.`,
       );
       await page.touchscreen.tap(p.x, p.y);
     } else await page.mouse.click(p.x, p.y);
@@ -399,13 +399,13 @@ test(
     await expect(five.getByText("0/8")).toBeVisible();
     await five.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "한 수로 다섯을 만드세요",
+      "한 수로 다섯을 만드세요.",
     );
 
     // 흑 H8·H7·H6·H5, 백이 H9를 막았다. 위(H9)가 아니라 아래 H4가 다섯 자리다.
     await play("A1");
     await expect(page.getByRole("status")).toHaveText(
-      "그 수로는 몰아붙일 수 없어요",
+      "그 수로는 몰아붙일 수 없어요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
     await play("H4");
@@ -421,7 +421,7 @@ test(
       .click();
     await play("G9");
     await expect(page.getByRole("status")).toHaveText(
-      "계속 넷으로 몰아 다섯을 만드세요",
+      "계속 넷으로 몰아 다섯을 만드세요.",
       { timeout: 10_000 },
     );
     const blocked = await page.locator("[data-last]").getAttribute("data-last");
@@ -441,7 +441,7 @@ test(
       .getByRole("button", { name: "풀기 시작" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
-      "백의 공격을 미리 막으세요",
+      "백의 공격을 미리 막으세요.",
     );
     await play("F7");
     await expect(page.getByRole("status")).toHaveText("막았어요!");
@@ -457,15 +457,17 @@ test(
       .getByRole("button", { name: "풀기 시작" })
       .click();
     await play("F11");
-    await expect(page.getByRole("status")).toHaveText("F11: 흑은 4·4 금지예요");
+    await expect(page.getByRole("status")).toHaveText(
+      "F11: 흑은 4·4 금지예요.",
+    );
     // 힌트를 누르면 금지 안내는 지워지고 힌트 자리를 겨눈다.
     await page.getByRole("button", { name: "힌트" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "B11: 한 번 더 누르면 둔다",
+      "B11: 한 번 더 누르면 둬요.",
     );
     await play("B11");
     await expect(page.getByRole("status")).toHaveText(
-      "계속 넷으로 몰아 다섯을 만드세요",
+      "계속 넷으로 몰아 다섯을 만드세요.",
       { timeout: 10_000 },
     );
     const renjuBlock = await page
@@ -598,13 +600,13 @@ test(
     await expect(good.getByText("0/10")).toBeVisible();
     await good.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "흑 셋째 수예요. 흑이 이긴다고 알려진 모양(화월·포월)을 만드세요",
+      "흑 셋째 수예요. 흑이 이긴다고 알려진 모양(화월·포월)을 만드세요.",
     );
 
     // 백 H9(직접)에 J6(유성)은 틀리고, G9(화월)는 맞다.
     await play("J6");
     await expect(page.getByRole("status")).toHaveText(
-      "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요",
+      "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
     await play("G9");
@@ -624,7 +626,7 @@ test(
     // 다섯째 문제(막으며 키우기): F6으로 백 셋을 막으면서 흑 셋을 만든다.
     await good.getByRole("button", { name: "좋은 수 고르기 5번" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "백의 열린 셋을 막으면서 흑 열린 셋도 만드세요",
+      "백의 열린 셋을 막으면서 흑 열린 셋도 만드세요.",
     );
     await play("F6");
     await expect(page.getByRole("status")).toHaveText("좋은 수예요!");

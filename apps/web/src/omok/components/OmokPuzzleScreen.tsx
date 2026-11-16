@@ -106,22 +106,23 @@ function OmokPuzzleRun({
 
   const goal =
     puzzle.kind === "attack" && run.step > 0
-      ? "계속 넷으로 몰아 다섯을 만드세요"
+      ? "계속 넷으로 몰아 다섯을 만드세요."
       : puzzle.goal
         ? puzzle.goal
         : puzzle.kind === "attack" && puzzle.moves >= 3
-          ? `넷으로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
+          ? `넷으로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요.`
           : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   /** 금지 자리면 까닭을 알리고 true(틀린 것으로 치지 않는다) */
   const warnForbidden = (at: number): boolean => {
     const banned = view.forbidden.find((f) => f.at === at);
     if (!banned) return false;
-    setNotice(`${pointName(at)}: 흑은 ${banned.reason} 금지예요`);
+    setNotice(`${pointName(at)}: 흑은 ${banned.reason} 금지예요.`);
     return true;
   };
   const prompt =
-    notice ?? (aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둔다` : goal);
+    notice ??
+    (aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둬요.` : goal);
 
   return (
     <PuzzleScreen
@@ -167,13 +168,13 @@ function OmokPuzzleRun({
       wrongText={
         puzzle.kind === "attack"
           ? puzzle.race
-            ? "그 수로는 흑이 먼저 이기지 못해요"
-            : "그 수로는 몰아붙일 수 없어요"
+            ? "그 수로는 흑이 먼저 이기지 못해요."
+            : "그 수로는 몰아붙일 수 없어요."
           : puzzle.kind === "pick"
             ? puzzle.reason === "opening"
-              ? "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요"
-              : "그 수는 백 열린 셋을 못 막거나, 막아도 흑 열린 셋이 생기지 않아요"
-            : "그 수로는 백의 공격을 못 막아요"
+              ? "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요."
+              : "그 수는 백 열린 셋을 못 막거나, 막아도 흑 열린 셋이 생기지 않아요."
+            : "그 수로는 백의 공격을 못 막아요."
       }
       wrongHint={set.hint}
       shown={shown !== null}
