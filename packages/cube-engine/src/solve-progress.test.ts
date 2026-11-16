@@ -90,7 +90,18 @@ describe("이정표", () => {
   it("맞춘 큐브는 그 크기의 이정표가 모두 켜진다", () => {
     expect(milestonesOf(3, solvedCube(3))).toContain("ll");
     expect(milestonesOf(2, solvedCube(2))).toEqual(["layer1", "oll", "ll"]);
-    expect(milestonesOf(4, solvedCube(4))).toEqual(["centers", "edges", "ll"]);
+    expect(milestonesOf(4, solvedCube(4))).toEqual([
+      "centers",
+      "edges",
+      "cross",
+      "f2l1",
+      "f2l2",
+      "f2l3",
+      "layer1",
+      "layer2",
+      "oll",
+      "ll",
+    ]);
   });
 
   it("섞인 큐브는 아무것도 켜지지 않는다", () => {
@@ -172,6 +183,57 @@ describe("이정표", () => {
       "edges",
     ]);
     expect(milestonesOf(5, after(5, "R U 2R"))).toEqual([]);
+  });
+
+  it("큰 큐브: 센터·엣지 짝 뒤에는 3×3처럼 십자·F2L·첫 층·둘째 층·윗면을 본다", () => {
+    for (const n of [4, 5]) {
+      // F2L 한 칸을 빼면 F2L 3/4까지(3×3 「십자만」과 같은 상태)
+      expect(milestonesOf(n, after(n, "R U R'"))).toEqual([
+        "centers",
+        "edges",
+        "cross",
+        "f2l1",
+        "f2l2",
+        "f2l3",
+      ]);
+      // 수네만 둔 상태: 아래 두 층은 맞고 윗면은 아직
+      expect(milestonesOf(n, after(n, "R U R' U R U2 R'"))).toEqual([
+        "centers",
+        "edges",
+        "cross",
+        "f2l1",
+        "f2l2",
+        "f2l3",
+        "layer1",
+        "layer2",
+      ]);
+      // 큐브를 돌려 쥐어도 같다
+      expect(milestonesOf(n, after(n, "x y R U R'"))).toEqual(
+        milestonesOf(n, after(n, "R U R'")),
+      );
+    }
+  });
+
+  it("큰 큐브: 센터가 다 맞지 않으면 층 단계는 켜지지 않는다", () => {
+    // 안쪽 층을 돌렸다 되돌리지 않은 상태: 바깥 조각은 그대로지만 센터 넷이 깨진다
+    const got = milestonesOf(4, after(4, "2R U2 2R'"));
+    expect(got).not.toContain("centers");
+    expect(got).not.toContain("cross");
+  });
+
+  it("큰 큐브: 윗층 엣지 하나가 통째로 뒤집히면(4×4 마지막 층 패리티) 둘째 층까지, 윗면은 꺼진다", () => {
+    // 4×4 OLL 패리티 공식: 아래 두 층·센터는 그대로, 윗층 엣지 한 줄이 짝은 그대로 뒤집힌다
+    const parity = "Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'";
+    expect(milestonesOf(4, after(4, parity))).toEqual([
+      "centers",
+      "edges",
+      "cross",
+      "f2l1",
+      "f2l2",
+      "f2l3",
+      "layer1",
+      "layer2",
+    ]);
   });
 });
 

@@ -14,6 +14,7 @@ import type { TutorialKit } from "@/components/tutorial/kit";
 
 import { useBadukTutorialProgress } from "../progress";
 import { useBaduk } from "../store";
+import { BADUK_STUDY_LESSONS } from "../study-lessons";
 import {
   BADUK_LESSONS,
   BADUK_TUTORIAL_RULES,
@@ -22,8 +23,11 @@ import {
 import { BadukBoard } from "./BadukBoard";
 import { BadukGame } from "./BadukGame";
 
-const sceneState = (scene: BadukScene) =>
-  createBadukScenario({ rules: BADUK_TUTORIAL_RULES, ...scene });
+const sceneState = ({ size, ...scene }: BadukScene) =>
+  createBadukScenario({
+    rules: size ? { ...BADUK_TUTORIAL_RULES, size } : BADUK_TUTORIAL_RULES,
+    ...scene,
+  });
 
 /** 설명·퀴즈에 보이는 판 그림. 표시(A·×·○)를 얹는다. 누를 수 없다 */
 function BadukSceneView({ scenario }: { scenario: BadukScene }) {
@@ -94,4 +98,19 @@ export const badukTutorial: TutorialKit<
       mission={mission}
     />
   ),
+};
+
+/**
+ * 수 배우기의 단원(패로 버티기, 긴 축과 축머리, 포석). 규칙 배우기와 같은 단원 화면·진행 기록을 쓰고 단원만 다르다.
+ * 단원 id가 "lesson-"으로 시작해 규칙 배우기 단원과 겹치지 않는다
+ */
+export const badukStudyLessons: TutorialKit<
+  BadukView,
+  GameEvent,
+  BadukScene,
+  Action
+> = {
+  ...badukTutorial,
+  title: "바둑 수 배우기",
+  lessons: BADUK_STUDY_LESSONS,
 };

@@ -8,6 +8,8 @@ import {
   canLive,
   captureMoves,
   koRecapturePoint,
+  ladderDefense,
+  ladderMoves,
   lifeKeyMoves,
   passAliveStones,
   snapbackGain,
@@ -99,5 +101,28 @@ describe("패", () => {
 
   it("되따낼 수 없으니 패를 따내는 수 하나로 두 수 안에 잡는다", () => {
     expect(captureMoves(b, 1, p("A8"), 2)).toEqual([p("A7")]);
+  });
+});
+
+describe("축 읽기", () => {
+  // 백 C7을 흑 B6·B7·D7이 둘렀다. C8에서 단수를 치면 판 끝까지 가는 긴 축, C6에서 치면 백이 C8로 뻗어 빠져나간다
+  const b = board(["B6", "B7", "D7"], ["C7"]);
+
+  it("축이 되는 쪽 단수는 백이 가장 오래 버틸 때 흑이 둘 수를 알려 준다", () => {
+    expect(ladderMoves(b, 1, p("C7"), p("C8"))).toBe(12);
+  });
+
+  it("다른 쪽 단수와 단수가 아닌 수는 축이 아니다", () => {
+    expect(ladderMoves(b, 1, p("C7"), p("C6"))).toBeNull();
+    expect(ladderMoves(b, 1, p("C7"), p("E5"))).toBeNull();
+  });
+
+  it("축이 가는 길에 백 돌(축머리)이 있으면 축이 깨지고, 받는 쪽은 빠져나가는 수를 고른다", () => {
+    const broken = board(["B6", "B7", "D7"], ["C7", "G3"]);
+    expect(ladderMoves(broken, 1, p("C7"), p("C8"))).toBeNull();
+    const atari = tryPlace(broken, p("C8"), 1);
+    if (!atari.ok) throw new Error("둘 수 없다");
+    const d = ladderDefense(atari.board, 1, p("C7"));
+    expect(d).toBe(p("C6"));
   });
 });
