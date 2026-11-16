@@ -1,10 +1,11 @@
-//! Cubie 홈 시연 한 판(`fixtures/hero-show.json`, 사이트 `apps/web/src/cube/native/core-fixtures-hero.ts` `buildHeroShow`):
-//! 씨앗 → 섞기·쥐는 방향, 배우는 방식 초보자·프리드리히 풀이의 보여 주기 변환, 연출 걸음. 어긋난 사례는 모두 모아 찍는다.
+//! Cubie 홈 시연 한 판(`fixtures/hero-show.json`·`hero-show-big.json`, 사이트
+//! `apps/web/src/cube/native/core-fixtures-hero.ts` `buildHeroShow`·`buildHeroShowBig`): 해법(사이트 `HERO_METHODS` 전부)
+//! × 씨앗 → 섞기·쥐는 방향, 풀이의 보여 주기 변환, 연출 걸음. 어긋난 사례는 모두 모아 찍는다.
 
 mod json;
 
 use cube_core::hero_show::{
-    hero_timing3, orient_for_solve, orient_steps, random_scramble, scramble_steps, solve_for_hero,
+    hero_timing, orient_for_solve, orient_steps, random_scramble, scramble_steps, solve_for_hero,
     solve_steps, HeroMethod,
 };
 use cube_core::rng::Rng;
@@ -18,13 +19,48 @@ fn nums(j: &Json) -> Vec<f64> {
 
 #[test]
 fn hero_show_matches_site() {
-    let text = include_str!("../fixtures/hero-show.json");
+    check(include_str!("../fixtures/hero-show.json"));
+}
+
+#[test]
+fn hero_show_big_matches_site() {
+    check(include_str!("../fixtures/hero-show-big.json"));
+}
+
+/// 해법마다 한 판 계산 시간(앱이 시연 풀이를 만드는 데 드는 시간). 평소 시험에서는 건너뛴다:
+/// `cargo test --release --test hero_show -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn hero_show_timing() {
+    use cube_core::hero_show::hero_show;
+    for (k, method) in HeroMethod::all().into_iter().enumerate() {
+        let mut times = vec![];
+        // 해법마다 다른 씨앗(축소법 기억이 앞 해법의 판을 재사용하지 않게)
+        for seed in (1..=5u32).map(|s| s + 100 * k as u32) {
+            let mut rng = Rng::new(seed);
+            let t0 = std::time::Instant::now();
+            hero_show(method, &mut || rng.next_float()).expect("한 판");
+            times.push(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        println!(
+            "{} 가운데 {:.1}ms · 가장 오래 {:.1}ms",
+            method.id(),
+            times[2],
+            times[4]
+        );
+    }
+}
+
+fn check(text: &str) {
     let cases = json::parse(text).get("cases").arr().to_vec();
     let mut bad: Vec<String> = vec![];
-    let t = hero_timing3();
     for c in &cases {
         let method = HeroMethod::from_id(c.get("method").str()).expect("해법");
         let seed = c.get("seed").num() as u32;
+        let n = method.size();
+        assert_eq!(n, c.get("size").num() as usize);
+        let t = hero_timing(n);
         let what = format!("{} 씨앗 {seed}", method.id());
         let mut check = |name: &str, have: String, want: String| {
             if have != want {
@@ -34,13 +70,13 @@ fn hero_show_matches_site() {
             }
         };
         let mut rng = Rng::new(seed);
-        let scramble = random_scramble(&mut || rng.next_float(), t.scramble_length, 3);
+        let scramble = random_scramble(&mut || rng.next_float(), t.scramble_length, n);
         check("섞기", scramble.join(" "), c.get("scramble").str().into());
-        let mut state = apply_alg(3, &solved_cube(3), &scramble.join(" ")).expect("섞기");
-        let orient = orient_for_solve(3, &state);
+        let mut state = apply_alg(n, &solved_cube(n), &scramble.join(" ")).expect("섞기");
+        let orient = orient_for_solve(n, &state);
         check("방향", orient.join(" "), c.get("orient").str().into());
         if !orient.is_empty() {
-            state = apply_alg(3, &state, &orient.join(" ")).expect("방향");
+            state = apply_alg(n, &state, &orient.join(" ")).expect("방향");
         }
         let solve = match solve_for_hero(method, &state) {
             Ok(s) => s,

@@ -156,7 +156,8 @@ enum NativeShot {
     // 홈 시연(docs/52 5-6): `CUBIE_NATIVE_SHOT_HERO=<해법>:<씨앗>`이면 그 판의 멈춤 자리 몇 곳(앞 걸음과 0.4초 넘게 떨어진 수
     // 바로 앞)을 native-hero-<i>.png로, 자리를 hero-frames.txt(첫 줄 「해법 씨앗」, 그다음 줄마다 「수 번호 시각」)로 쓴다.
     // `scripts/hero-compare.mjs <폴더>`가 같은 판을 웹 미니 화면에서 같은 시각에 찍어 나란히 얹는다
-    if n == 3, let spec = ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT_HERO"] {
+    // 해법 id의 크기로 찍는다(`CUBIE_NATIVE_N`을 해법 크기에 맞춘다. 예: `CUBIE_NATIVE_N=7 CUBIE_NATIVE_SHOT_HERO=7-cfop:5`)
+    if let spec = ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT_HERO"], spec.hasPrefix("\(n)-") {
       let parts = spec.split(separator: ":")
       if parts.count == 2, let seed = UInt32(parts[1]),
         let show = NativeCore.heroSteps(method: String(parts[0]), seed: seed)

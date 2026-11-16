@@ -649,9 +649,24 @@ pub unsafe extern "C" fn cubie_replay_steps(
     unsafe { write_str(&lines.join("\n"), out, len) }
 }
 
-/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(`3-beginner`·`3-cfop`)와 씨앗으로 섞기 →
-/// 쥐는 방향 → 풀이의 시각표를 줄마다 「시각 표기 회전ms」로, 끝 줄은 「end 시각」(「맞춤」 멈춤이 시작하는 때)으로
-/// `out`에 쓴다. 맞춘 큐브(흰 위·초록 앞)에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수를 돌려준다
+/// 시각표 → 줄 글(「시각 표기 회전ms」 줄들, 끝 줄 「end 시각」)
+fn hero_lines(cues: &[cube_core::hero_show::HeroCue], end: f64) -> String {
+    let mut lines: Vec<String> = cues
+        .iter()
+        .map(|c| format!("{} {} {}", c.at, c.mv, c.move_ms))
+        .collect();
+    lines.push(format!("end {end}"));
+    lines.join("\n")
+}
+
+/// 마지막으로 만든 한 판(해법 id, 씨앗, 글). 부르는 쪽은 길이를 먼저 묻고 다시 부르므로(`NativeCore.string`) 큰 큐브
+/// 풀이(7×7 약 0.6초)를 두 번 하지 않게 기억해 둔다
+static LAST_HERO: std::sync::Mutex<Option<(String, u32, String)>> = std::sync::Mutex::new(None);
+
+/// 홈 시연 한 판(코어 `hero_show`, 사이트 `HeroLoop` 한 바퀴): 해법 id(사이트 `HERO_METHODS`, `2-beginner`~`7-cfop`)와
+/// 씨앗으로 섞기 → 쥐는 방향 → 풀이의 시각표를 줄마다 「시각 표기 회전ms」로, 끝 줄은 「end 시각」(「맞춤」 멈춤이
+/// 시작하는 때)으로 `out`에 쓴다. 맞춘 큐브(흰 위·초록 앞)에서 시작한다. 모르는 해법이면 빈 글. 글 전체 바이트 수를
+/// 돌려준다. 큰 큐브는 풀이에 수백 ms가 들어 앱은 화면 스레드 밖에서 부른다(섞기는 [`cubie_hero_scramble`]로 먼저)
 ///
 /// # Safety
 /// `method`는 NUL로 끝나는 C 글, `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
@@ -663,20 +678,61 @@ pub unsafe extern "C" fn cubie_hero_steps(
     len: u32,
 ) -> u32 {
     use cube_core::hero_show::{hero_show, hero_timeline, HeroMethod};
+    let Some(id) = (unsafe { c_str(method) }) else {
+        return 0;
+    };
+    let hit = LAST_HERO.lock().ok().and_then(|last| {
+        last.as_ref()
+            .filter(|(m, s, _)| m == id && *s == seed)
+            .map(|(_, _, t)| t.clone())
+    });
+    let text = hit.unwrap_or_else(|| {
+        let text = HeroMethod::from_id(id)
+            .and_then(|m| {
+                let mut rng = cube_core::rng::Rng::new(seed);
+                hero_show(m, &mut || rng.next_float())
+                    .ok()
+                    .map(|s| (m.size(), s))
+            })
+            .map(|(n, show)| {
+                let (cues, end) = hero_timeline(n, &show.steps);
+                hero_lines(&cues, end)
+            })
+            .unwrap_or_default();
+        if let Ok(mut last) = LAST_HERO.lock() {
+            *last = Some((id.to_string(), seed, text.clone()));
+        }
+        text
+    });
+    unsafe { write_str(&text, out, len) }
+}
+
+/// 홈 시연 한 판의 섞기만(풀이 없이, 바로 끝난다): [`cubie_hero_steps`]의 앞 걸음과 같은 섞기 수의 시각표, 끝 줄
+/// 「end 시각」은 섞은 뒤 멈춤이 끝나 풀기 시작하는 때. 앱은 이것으로 섞기를 먼저 보이며 뒤에서 풀이를 만든다
+/// (사이트 `HeroLoop`도 섞는 동안 워커가 푼다). 모르는 해법이면 빈 글
+///
+/// # Safety
+/// [`cubie_hero_steps`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_hero_scramble(
+    method: *const c_char,
+    seed: u32,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    use cube_core::hero_show::{
+        hero_scramble, hero_timeline, hero_timing, scramble_steps, HeroMethod,
+    };
     let text = (unsafe { c_str(method) })
         .and_then(HeroMethod::from_id)
-        .and_then(|m| {
+        .map(|m| {
+            let n = m.size();
             let mut rng = cube_core::rng::Rng::new(seed);
-            hero_show(m, &mut || rng.next_float()).ok()
-        })
-        .map(|show| {
-            let (cues, end) = hero_timeline(&show.steps);
-            let mut lines: Vec<String> = cues
-                .iter()
-                .map(|c| format!("{} {} {}", c.at, c.mv, c.move_ms))
-                .collect();
-            lines.push(format!("end {end}"));
-            lines.join("\n")
+            let (scramble, _, _) = hero_scramble(n, &mut || rng.next_float());
+            let steps = scramble_steps(&scramble, m.label(), &hero_timing(n));
+            let end: f64 = steps.iter().map(|s| s.ms).sum();
+            let (cues, _) = hero_timeline(n, &steps);
+            hero_lines(&cues, end)
         })
         .unwrap_or_default();
     unsafe { write_str(&text, out, len) }
@@ -1080,11 +1136,37 @@ mod tests {
             let mut again = vec![0u8; need];
             cubie_hero_steps(m.as_ptr(), 5, again.as_mut_ptr(), need as u32);
             assert_eq!(buf, again);
-            let roux = CString::new("3-roux").unwrap();
+            let roux = CString::new("3-petrus").unwrap();
             assert_eq!(
                 cubie_hero_steps(roux.as_ptr(), 5, std::ptr::null_mut(), 0),
                 0
             );
+        }
+    }
+
+    /// 해법 표 전부(2×2~7×7): 섞기만 낸 시각표는 한 판 시각표의 앞 걸음과 같고, 끝 시각은 그 판의 다음 수 앞이다
+    #[test]
+    fn hero_scramble_is_prefix_of_steps() {
+        use cube_core::hero_show::HeroMethod;
+        use std::ffi::CString;
+        let read = |f: &dyn Fn(*mut u8, u32) -> u32| {
+            let need = f(std::ptr::null_mut(), 0) as usize;
+            let mut buf = vec![0u8; need];
+            f(buf.as_mut_ptr(), need as u32);
+            String::from_utf8(buf).unwrap()
+        };
+        for m in HeroMethod::all() {
+            let id = CString::new(m.id()).unwrap();
+            let full = read(&|o, l| unsafe { cubie_hero_steps(id.as_ptr(), 9, o, l) });
+            let pre = read(&|o, l| unsafe { cubie_hero_scramble(id.as_ptr(), 9, o, l) });
+            let full: Vec<&str> = full.lines().collect();
+            let pre: Vec<&str> = pre.lines().collect();
+            let k = pre.len() - 1;
+            assert!(k > 5, "{}", m.id());
+            assert_eq!(full[..k], pre[..k], "{}", m.id());
+            let end: f64 = pre[k].strip_prefix("end ").unwrap().parse().unwrap();
+            let next: f64 = full[k].split(' ').next().unwrap().parse().unwrap();
+            assert!(next >= end, "{}", m.id());
         }
     }
 

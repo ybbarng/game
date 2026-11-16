@@ -50,6 +50,27 @@ pub enum StageName {
     LlEdges,
     LlCornerPlace,
     LlCornerTwist,
+    // 2×2 초보자(배우지 않는 방식)
+    Co,
+    Cp,
+    // 4×4~7×7 축소법
+    CentersUd,
+    CentersRest,
+    Edges,
+    LastEdges,
+    OllParity,
+    PllParity,
+    // 루
+    Fb,
+    Sb,
+    Cmll,
+    LseEo,
+    LseUlur,
+    LseEp,
+    // ZZ
+    Eoline,
+    ZzLeft,
+    ZzRight,
 }
 
 impl StageName {
@@ -70,6 +91,23 @@ impl StageName {
             StageName::LlEdges => "ll-edges",
             StageName::LlCornerPlace => "ll-corner-place",
             StageName::LlCornerTwist => "ll-corner-twist",
+            StageName::Co => "co",
+            StageName::Cp => "cp",
+            StageName::CentersUd => "centers-ud",
+            StageName::CentersRest => "centers-rest",
+            StageName::Edges => "edges",
+            StageName::LastEdges => "last-edges",
+            StageName::OllParity => "oll-parity",
+            StageName::PllParity => "pll-parity",
+            StageName::Fb => "fb",
+            StageName::Sb => "sb",
+            StageName::Cmll => "cmll",
+            StageName::LseEo => "lse-eo",
+            StageName::LseUlur => "lse-ulur",
+            StageName::LseEp => "lse-ep",
+            StageName::Eoline => "eoline",
+            StageName::ZzLeft => "zz-left",
+            StageName::ZzRight => "zz-right",
         }
     }
 
@@ -90,6 +128,23 @@ impl StageName {
             StageName::LlEdges => "옆면 맞추기",
             StageName::LlCornerPlace => "코너 자리",
             StageName::LlCornerTwist => "코너 방향",
+            StageName::Co => "노란 면",
+            StageName::Cp => "위 코너 자리",
+            StageName::CentersUd => "흰·노랑 센터",
+            StageName::CentersRest => "나머지 센터",
+            StageName::Edges => "엣지 짝",
+            StageName::LastEdges => "마지막 두 엣지",
+            StageName::OllParity => "패리티(엣지 뒤집기)",
+            StageName::PllParity => "패리티(엣지 맞바꾸기)",
+            StageName::Fb => "첫 블록",
+            StageName::Sb => "둘째 블록",
+            StageName::Cmll => "위 코너(CMLL)",
+            StageName::LseEo => "엣지 방향(EO)",
+            StageName::LseUlur => "왼쪽·오른쪽 위 엣지",
+            StageName::LseEp => "가운데 줄 엣지",
+            StageName::Eoline => "EO라인",
+            StageName::ZzLeft => "왼쪽 블록",
+            StageName::ZzRight => "오른쪽 블록",
         }
     }
 }
@@ -122,7 +177,7 @@ pub struct HumanSolve {
 
 // ── 판(사이트 `Solve`) ─────────────────────────────────
 
-const OPPOSITE: [u8; 6] = [3, 4, 5, 0, 1, 2];
+pub(crate) const OPPOSITE: [u8; 6] = [3, 4, 5, 0, 1, 2];
 const SOLVED_FRAME: [u8; 6] = [0, 1, 2, 3, 4, 5];
 
 #[derive(Clone)]
@@ -228,7 +283,7 @@ impl Solve {
         }
     }
 
-    fn result(&self) -> HumanSolve {
+    pub(crate) fn result(&self) -> HumanSolve {
         let mut moves = Vec::new();
         let mut stages = Vec::new();
         let mut looks = Vec::new();
@@ -374,7 +429,7 @@ const EDGE_NAMES: [[u8; 2]; 12] = [
     [5, 1],
 ];
 
-fn corner_facelets(n: usize) -> [[usize; 3]; 8] {
+pub(crate) fn corner_facelets(n: usize) -> [[usize; 3]; 8] {
     CORNER_FACELETS_3.map(|corner| {
         corner.map(|i| {
             let face = i / 9;
@@ -386,7 +441,7 @@ fn corner_facelets(n: usize) -> [[usize; 3]; 8] {
     })
 }
 
-fn read_cubie(rel: &[u8], n: usize) -> R<Cubie> {
+pub(crate) fn read_cubie(rel: &[u8], n: usize) -> R<Cubie> {
     let mut c = Cubie {
         cp: vec![],
         co: vec![],
@@ -481,7 +536,7 @@ fn coord_tables() -> &'static CoordTables {
 // ── 조각 몇 개의 탐색(사이트 `search.ts`) ──────────────────
 
 /// 지켜볼 조각: (꼭짓점인가, 조각 번호)
-type Tracked = (bool, u8);
+pub(crate) type Tracked = (bool, u8);
 
 fn home_coord(t: Tracked) -> u8 {
     if t.0 {
@@ -491,7 +546,7 @@ fn home_coord(t: Tracked) -> u8 {
     }
 }
 
-fn coords_of(c: &Cubie, tracked: &[Tracked]) -> Vec<u8> {
+pub(crate) fn coords_of(c: &Cubie, tracked: &[Tracked]) -> Vec<u8> {
     tracked
         .iter()
         .map(|&(corner, piece)| {
@@ -558,12 +613,12 @@ fn distance_table(tracked: &[Tracked]) -> Arc<Vec<u8>> {
     table
 }
 
-struct Heuristic {
+pub(crate) struct Heuristic {
     members: Vec<usize>,
     table: Arc<Vec<u8>>,
 }
 
-fn heuristic(tracked: &[Tracked], members: Vec<usize>) -> Heuristic {
+pub(crate) fn heuristic(tracked: &[Tracked], members: Vec<usize>) -> Heuristic {
     let sub: Vec<Tracked> = members.iter().map(|&i| tracked[i]).collect();
     Heuristic {
         table: distance_table(&sub),
@@ -572,9 +627,9 @@ fn heuristic(tracked: &[Tracked], members: Vec<usize>) -> Heuristic {
 }
 
 #[derive(Clone, Copy, Default)]
-struct SearchOpts {
-    max_depth: Option<usize>,
-    depth: Option<usize>,
+pub(crate) struct SearchOpts {
+    pub(crate) max_depth: Option<usize>,
+    pub(crate) depth: Option<usize>,
 }
 
 struct Ida<'a> {
@@ -641,7 +696,7 @@ impl Ida<'_> {
 }
 
 /// 지켜볼 조각이 모두 제자리·제방향이 되는 가장 짧은 수(사이트 `idaSearch`)
-fn ida_search(
+pub(crate) fn ida_search(
     start: Vec<u8>,
     tracked: &[Tracked],
     hs: &[Heuristic],
@@ -671,23 +726,23 @@ fn ida_search(
     None
 }
 
-fn all_moves() -> Vec<usize> {
+pub(crate) fn all_moves() -> Vec<usize> {
     (0..FACE_MOVE_COUNT).collect()
 }
 
 /// F2L은 D를 돌리지 않는다
-fn no_d_moves() -> Vec<usize> {
+pub(crate) fn no_d_moves() -> Vec<usize> {
     (0..FACE_MOVE_COUNT).filter(|m| m / 3 != 3).collect()
 }
 
-fn apply_path(s: &mut Solve, path: &[usize]) {
+pub(crate) fn apply_path(s: &mut Solve, path: &[usize]) {
     let text: Vec<String> = path.iter().map(|&m| face_move_name(m)).collect();
     s.apply(&text.join(" "));
 }
 
 // ── 윗층 판정과 공식 고르기(사이트 `ll.ts`) ─────────────────
 
-fn lower_solved(rel: &[u8], n: usize) -> bool {
+pub(crate) fn lower_solved(rel: &[u8], n: usize) -> bool {
     let nn = n * n;
     (0..nn).all(|i| rel[3 * nn + i] == 3)
         && [1usize, 2, 4, 5]
@@ -695,7 +750,7 @@ fn lower_solved(rel: &[u8], n: usize) -> bool {
             .all(|&face| (n..nn).all(|i| rel[face * nn + i] == face as u8))
 }
 
-fn top_oriented(rel: &[u8], n: usize) -> bool {
+pub(crate) fn top_oriented(rel: &[u8], n: usize) -> bool {
     rel[..n * n].iter().all(|&c| c == 0)
 }
 
@@ -713,7 +768,7 @@ fn reached(s: &Solve, goal: &dyn Fn(&Solve) -> bool, post_auf: bool) -> Option<u
 }
 
 /// 목표에 닿는 공식을 찾아 실제로 둔다(사이트 `applyMatch`)
-fn apply_match(
+pub(crate) fn apply_match(
     s: &mut Solve,
     algs: &[&str],
     goal: &dyn Fn(&Solve) -> bool,
@@ -738,13 +793,13 @@ fn apply_match(
     Err(SolveError("맞는 공식을 찾지 못했다"))
 }
 
-fn f2l_ok(s: &Solve) -> bool {
+pub(crate) fn f2l_ok(s: &Solve) -> bool {
     lower_solved(&s.rel(), s.n)
 }
 
 // ── 3×3 CFOP ───────────────────────────────────────────
 
-fn white_down(s: &mut Solve) -> R<()> {
+pub(crate) fn white_down(s: &mut Solve) -> R<()> {
     for r in ["", "z2", "x", "x'", "z", "z'"] {
         let mut t = s.probe();
         t.apply(r);
@@ -758,7 +813,7 @@ fn white_down(s: &mut Solve) -> R<()> {
 
 const CROSS_EDGES: [u8; 4] = [4, 5, 6, 7];
 
-fn cross_optimal(s: &mut Solve) -> R<()> {
+pub(crate) fn cross_optimal(s: &mut Solve) -> R<()> {
     let tracked: Vec<Tracked> = CROSS_EDGES.iter().map(|&p| (false, p)).collect();
     let hs = [heuristic(&tracked, vec![0, 1, 2, 3])];
     let start = coords_of(&s.cubie()?, &tracked);
@@ -778,7 +833,7 @@ fn cross_optimal(s: &mut Solve) -> R<()> {
 }
 
 /// F2L 네 쌍: 남은 쌍마다 지키며 넣는 가장 짧은 수를 길이 0부터 함께 찾아 가장 짧은 쌍부터(사이트 `insertBySearch`)
-fn f2l_pairs(s: &mut Solve) -> R<()> {
+pub(crate) fn f2l_pairs(s: &mut Solve) -> R<()> {
     let moves = no_d_moves();
     let mut done: Vec<u8> = vec![];
     for name in PAIR_NAMES {
@@ -849,15 +904,20 @@ pub fn first_face_map(first: usize) -> [u8; 6] {
 }
 
 /// 3×3 고수, 첫 면 색을 골라서(사이트 `solveCfop(state, { first })`, 색 중립). 그 색을 흰색처럼 보고 같은 차례로 푼다
-pub fn solve_cfop_first(state: &State, first: usize) -> R<HumanSolve> {
-    let mut f = face_colors(3, state);
+/// 엔진 상태 → 스티커 글자(면 번호). `first`가 흰색이 아니면 그 색을 흰 글자로 읽는다(사이트 `toFacelets(n, state, firstFaceMap(first))`)
+pub(crate) fn facelets_first(n: usize, state: &State, first: usize) -> Vec<u8> {
+    let mut f = face_colors(n, state);
     if first != 0 {
         let map = first_face_map(first);
         for c in f.iter_mut() {
             *c = map[*c as usize];
         }
     }
-    let mut s = Solve::new(3, f, None);
+    f
+}
+
+pub fn solve_cfop_first(state: &State, first: usize) -> R<HumanSolve> {
+    let mut s = Solve::new(3, facelets_first(3, state, first), None);
     white_down(&mut s)?;
     cross_optimal(&mut s)?;
     s.stage(StageName::Cross);
@@ -878,8 +938,8 @@ pub fn solve_cfop_first(state: &State, first: usize) -> R<HumanSolve> {
 // ── 2×2 ───────────────────────────────────────────────
 
 /// 2×2 기준 방향: 흰 꼭짓점 하나(아래층에 있으면 그것)를 아래 앞 오른쪽 조각으로 본다(사이트 `start2`)
-fn start2(state: &State) -> R<Solve> {
-    let f = face_colors(2, state);
+pub(crate) fn start2(state: &State, first: usize) -> R<Solve> {
+    let f = facelets_first(2, state, first);
     let slots = corner_facelets(2);
     for slot in [4, 5, 6, 7, 0, 1, 2, 3] {
         let t = slots[slot].map(|i| f[i]);
@@ -901,7 +961,7 @@ fn start2(state: &State) -> R<Solve> {
 
 /// 2×2 고수(사이트 `solveAdvanced2`): 가장 짧은 첫 층 → 윗면 공식 7개 → 윗층 공식 2개
 pub fn solve_advanced2(state: &State) -> R<HumanSolve> {
-    let mut s = start2(state)?;
+    let mut s = start2(state, 0)?;
     let tracked: Vec<Tracked> = [4, 5, 6, 7].iter().map(|&p| (true, p)).collect();
     let hs = [heuristic(&tracked, vec![0, 1, 2, 3])];
     let path = ida_search(
@@ -914,14 +974,95 @@ pub fn solve_advanced2(state: &State) -> R<HumanSolve> {
     .ok_or(SolveError("첫 층을 찾지 못했다"))?;
     apply_path(&mut s, &path);
     s.stage(StageName::FirstLayer);
+    last_layer2(&mut s)?;
+    finish(&s)
+}
+
+/// 2×2 윗면 공식 7개 → 윗층 공식 2개(사이트 `lastLayer2`)
+fn last_layer2(s: &mut Solve) -> R<()> {
     apply_match(
-        &mut s,
+        s,
         human_data::OCLL_2X2,
         &|t| f2l_ok(t) && top_oriented(&t.rel(), 2),
         false,
     )?;
     s.stage(StageName::Oll);
-    apply_match(&mut s, human_data::CPLL, &|t| t.is_solved(), true)?;
+    apply_match(s, human_data::CPLL, &|t| t.is_solved(), true)?;
     s.stage(StageName::Pll);
+    Ok(())
+}
+
+fn y_turn(k: usize) -> &'static str {
+    ["", "y", "y2", "y'"][k % 4]
+}
+
+/// 첫 층 코너 넣기(사이트 `BEGINNER.cornerTrigger`)
+const CORNER_TRIGGER: &str = "R U R' U'";
+
+/// 첫 층 꼭짓점(2×2·3×3 공통 초보자 방법, 사이트 `firstLayerCorners`): 위층의 흰 꼭짓점을 앞 오른쪽 위로 쥐고
+/// `R U R' U'`를 맞을 때까지, 위층에 없으면 잘못 든 꼭짓점을 앞 오른쪽으로 돌려 한 번 꺼낸다
+fn first_layer_corners(s: &mut Solve) -> R<()> {
+    let ok = |c: &Cubie, slot: usize| c.cp[slot] as usize == slot && c.co[slot] == 0;
+    let probe = |s: &Solve, alg: &str| {
+        let mut t = s.probe();
+        t.apply(alg);
+        t
+    };
+    for iter in 0.. {
+        if iter > 20 {
+            return Err(SolveError("첫 층 꼭짓점 단계가 끝나지 않는다"));
+        }
+        s.look();
+        let c = s.cubie()?;
+        if (4..8).all(|i| ok(&c, i)) {
+            return Ok(());
+        }
+        let mut found = None;
+        for k in 0..4 {
+            let t = probe(s, y_turn(k)).cubie()?;
+            if t.cp.iter().position(|&p| p == 4).is_some_and(|i| i < 4) {
+                found = Some(k);
+                break;
+            }
+        }
+        if let Some(k) = found {
+            s.apply(y_turn(k));
+            let mut a = 0;
+            for x in 0..4 {
+                if probe(s, u_turn(x)).cubie()?.cp[0] == 4 {
+                    a = x;
+                    break;
+                }
+            }
+            s.apply(u_turn(a));
+            for r in 0.. {
+                if r > 6 {
+                    return Err(SolveError("꼭짓점 넣기 단계가 끝나지 않는다"));
+                }
+                if ok(&s.cubie()?, 4) {
+                    break;
+                }
+                s.apply(CORNER_TRIGGER);
+            }
+            continue;
+        }
+        let mut k = 0;
+        for x in 0..4 {
+            if !ok(&probe(s, y_turn(x)).cubie()?, 4) {
+                k = x;
+                break;
+            }
+        }
+        s.apply(y_turn(k)).apply(CORNER_TRIGGER);
+    }
+    Ok(())
+}
+
+/// 2×2 중수(사이트 `solveIntermediate2(state, { first })`, 홈 시연 「공식 해법」): 첫 층(초보자) → 윗면 7 → 윗층 2
+pub fn solve_intermediate2(state: &State, first: usize) -> R<HumanSolve> {
+    let mut s = start2(state, first)?;
+    first_layer_corners(&mut s)?;
+    s.stage(StageName::FirstLayer);
+    last_layer2(&mut s)?;
     finish(&s)
 }

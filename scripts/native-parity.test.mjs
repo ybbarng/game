@@ -45,6 +45,9 @@ describe("감시 목록", () => {
     expect(watchedEntry("apps/web/src/cube/keymap-editor.ts")).not.toBeNull();
     expect(watchedEntry("apps/web/src/cube/keymap-editor.test.ts")).toBeNull();
     expect(watchedEntry("apps/web/src/cube/tiers/emblem3d/gem.ts")).toBeNull();
+    // 홈 시연은 해법 표 전부가 앱 코어(hero_show.rs)에 있다: 조각 강조도 함께(2026-11-16)
+    expect(watchedEntry("apps/web/src/cube/hero/methods.ts")).not.toBeNull();
+    expect(watchedEntry("apps/web/src/cube/piece-marks.ts")).not.toBeNull();
   });
 });
 

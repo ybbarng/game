@@ -25,12 +25,23 @@ enum NativeCore {
     }
   }
 
-  /// 홈 시연이 코어에 있는 해법(사이트 `HERO_METHODS` 가운데 옮긴 것, docs/52 5-6)
-  static let heroMethods: Set<String> = ["3-beginner", "3-cfop"]
+  /// 홈 시연이 코어에 있는 해법(사이트 `HERO_METHODS` 전부, docs/52 5-6·5-10)
+  static let heroMethods: Set<String> = Set(CubeSettings.heroMethods.values.joined())
 
-  /// 홈 시연 한 판(코어 `hero_show`): 걸음(시각 ms, 표기, 회전 ms)과 「맞춤」 멈춤이 시작하는 시각. 모르는 해법이면 nil
-  static func heroSteps(method: String, seed: UInt32) -> (steps: [(at: Double, move: String, moveMs: Double)], end: Double)? {
-    let s = method.withCString { m in string { cubie_hero_steps(m, seed, $0, $1) } }
+  typealias HeroShow = (steps: [(at: Double, move: String, moveMs: Double)], end: Double)
+
+  /// 홈 시연 한 판(코어 `hero_show`): 걸음(시각 ms, 표기, 회전 ms)과 「맞춤」 멈춤이 시작하는 시각. 모르는 해법이면 nil.
+  /// 큰 큐브는 풀이에 수백 ms가 든다(7×7 약 0.6초): 화면 스레드 밖에서 부른다
+  static func heroSteps(method: String, seed: UInt32) -> HeroShow? {
+    heroLines(method.withCString { m in string { cubie_hero_steps(m, seed, $0, $1) } })
+  }
+
+  /// 같은 판의 섞기만(바로 끝난다): `heroSteps`의 앞 걸음과 같고, `end`는 섞은 뒤 멈춤이 끝나 풀기 시작하는 시각
+  static func heroScramble(method: String, seed: UInt32) -> HeroShow? {
+    heroLines(method.withCString { m in string { cubie_hero_scramble(m, seed, $0, $1) } })
+  }
+
+  private static func heroLines(_ s: String) -> HeroShow? {
     var steps: [(at: Double, move: String, moveMs: Double)] = []
     var end: Double?
     for line in s.split(separator: "\n") {

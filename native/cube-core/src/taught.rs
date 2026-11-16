@@ -78,7 +78,7 @@ fn guard(count: usize, limit: usize, what: &'static str) -> R<()> {
 
 // ── 흰 면 위로·흰 십자 ─────────────────────────────────
 
-fn white_up(s: &mut Solve) -> R<()> {
+pub(crate) fn white_up(s: &mut Solve) -> R<()> {
     for r in ["", "x2", "x", "x'", "z", "z'"] {
         if probe_with(s, r).f[4] == 0 {
             s.apply(r);
@@ -194,7 +194,7 @@ fn next_cross_edge(s: &Solve) -> R<Option<String>> {
     Err(SolveError("십자 엣지를 넣을 수를 찾지 못했다"))
 }
 
-fn cross_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn cross_taught(s: &mut Solve) -> R<()> {
     for i in 0.. {
         guard(i, 4, "십자 단계가 끝나지 않는다")?;
         let Some(alg) = next_cross_edge(s)? else {
@@ -498,7 +498,7 @@ fn corner_shortcut_step(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-fn corners_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn corners_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 20, "첫 층 꼭짓점 단계가 끝나지 않는다")?;
         let c = s.cubie()?;
@@ -513,7 +513,7 @@ fn corners_taught(s: &mut Solve) -> R<()> {
 
 // ── 둘째 층(흰 면 아래, 늘 앞-오른쪽 칸) ──────────────────
 
-fn middle_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn middle_taught(s: &mut Solve) -> R<()> {
     let ok = |ep: &[u8], eo: &[u8], i: usize| ep[i] as usize == i && eo[i] == 0;
     for iter in 0.. {
         guard(iter, 20, "둘째 층 단계가 끝나지 않는다")?;
@@ -561,7 +561,7 @@ fn middle_taught(s: &mut Solve) -> R<()> {
 
 // ── 마지막 층 ───────────────────────────────────────────
 
-fn yellow_cross_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn yellow_cross_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 2, "노란 십자 단계가 끝나지 않는다")?;
         let r0 = s.rel();
@@ -591,7 +591,7 @@ fn edge_sides_matched(rel: &[u8]) -> [bool; 4] {
     CROSS_SIDE.map(|i| rel[i] == face_of(i))
 }
 
-fn ll_edges_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn ll_edges_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 2, "옆면 맞추기 단계가 끝나지 않는다")?;
         if let Some(all) = (0..4).find(|&a| {
@@ -629,7 +629,7 @@ fn placed_top(s: &Solve) -> R<usize> {
     Ok((0..4).filter(|&j| cp[j] as usize == j).count())
 }
 
-fn cycle_around(s: &mut Solve) -> R<()> {
+fn cycle_around(s: &mut Solve, back: bool) -> R<()> {
     let mut k = None;
     for x in 0..4 {
         if probe_with(s, y_turn(x)).cubie()?.cp[0] == 0 {
@@ -640,7 +640,7 @@ fn cycle_around(s: &mut Solve) -> R<()> {
     let k = k.ok_or(SolveError("제자리 꼭짓점을 찾지 못했다"))?;
     s.apply(y_turn(k));
     let behind = s.cubie()?.cp[1] == 2;
-    s.apply(if behind {
+    s.apply(if back && behind {
         CORNER_CYCLE_BACK
     } else {
         CORNER_CYCLE
@@ -648,7 +648,7 @@ fn cycle_around(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
     for iter in 0.. {
         guard(iter, 2, "꼭짓점 자리 단계가 끝나지 않는다")?;
         let placed = placed_top(s)?;
@@ -657,7 +657,7 @@ fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
         }
         s.look();
         if placed == 1 {
-            cycle_around(s)?;
+            cycle_around(s, true)?;
             continue;
         }
         if placed != 0 {
@@ -668,7 +668,7 @@ fn ll_corner_place_taught(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-fn ll_corner_twist_taught(s: &mut Solve) -> R<()> {
+pub(crate) fn ll_corner_twist_taught(s: &mut Solve, back: bool) -> R<()> {
     for iter in 0.. {
         guard(iter, 4, "꼭짓점 방향 단계가 끝나지 않는다")?;
         let c = s.cubie()?;
@@ -685,12 +685,24 @@ fn ll_corner_twist_taught(s: &mut Solve) -> R<()> {
         }
         let a = a.ok_or(SolveError("돌릴 꼭짓점이 없다"))?;
         s.apply(u_turn(a));
-        let f = if s.cubie()?.co[0] == 1 {
-            TRIGGER
-        } else {
-            TRIGGER_BACK
-        };
-        s.apply(&format!("{f} {f}"));
+        if back {
+            let f = if s.cubie()?.co[0] == 1 {
+                TRIGGER
+            } else {
+                TRIGGER_BACK
+            };
+            s.apply(&format!("{f} {f}"));
+            continue;
+        }
+        let piece = s.cubie()?.cp[0];
+        for r in 0.. {
+            guard(r, 4, "꼭짓점 돌리기 단계가 끝나지 않는다")?;
+            let t = s.cubie()?;
+            if r > 0 && t.cp[0] == piece && t.co[0] == 0 {
+                break;
+            }
+            s.apply(TRIGGER);
+        }
     }
     let a = (0..4)
         .find(|&a| probe_with(s, u_turn(a)).is_solved())
@@ -717,7 +729,52 @@ pub fn solve_beginner3_taught(state: &State) -> R<HumanSolve> {
     s.stage(StageName::LlEdges);
     ll_corner_place_taught(&mut s)?;
     s.stage(StageName::LlCornerPlace);
-    ll_corner_twist_taught(&mut s)?;
+    ll_corner_twist_taught(&mut s, true)?;
+    s.stage(StageName::LlCornerTwist);
+    finish(&s)
+}
+
+// ── 2×2(홈 시연 「초보자 해법」, 사이트 `solveBeginner2(state, { taught: true })`) ─────
+
+/// 2×2 코너 자리(사이트 `cornerPlace2Taught`): U를 돌려 제자리가 꼭 하나인 자리를 앞-오른쪽 위에 쥐고 공식,
+/// 그런 자리가 없으면 제자리가 0인 자리에서 한 번
+fn corner_place2_taught(s: &mut Solve) -> R<()> {
+    for iter in 0.. {
+        guard(iter, 3, "꼭짓점 자리 단계가 끝나지 않는다")?;
+        let mut counts = [0usize; 4];
+        for (a, c) in counts.iter_mut().enumerate() {
+            *c = placed_top(&probe_with(s, u_turn(a)))?;
+        }
+        if let Some(all) = counts.iter().position(|&c| c == 4) {
+            s.apply(u_turn(all));
+            return Ok(());
+        }
+        s.look();
+        if let Some(one) = counts.iter().position(|&c| c == 1) {
+            s.apply(u_turn(one));
+            cycle_around(s, false)?;
+            continue;
+        }
+        let zero = counts
+            .iter()
+            .position(|&c| c == 0)
+            .ok_or(SolveError("제자리가 없는 U 자리를 찾지 못했다"))?;
+        s.apply(u_turn(zero)).apply(CORNER_CYCLE);
+    }
+    Ok(())
+}
+
+/// 2×2 초보자, 배우는 방식(첫 면 흰색): 첫 층을 흰 면 위에서 지름길로 → z2 → 코너 자리 → 코너 방향
+pub fn solve_beginner2_taught(state: &State) -> R<HumanSolve> {
+    let mut s = crate::human::start2(state, 0)?;
+    s.look_barrier = true;
+    s.apply("z2");
+    corners_taught(&mut s)?;
+    s.apply("z2");
+    s.stage(StageName::FirstLayer);
+    corner_place2_taught(&mut s)?;
+    s.stage(StageName::LlCornerPlace);
+    ll_corner_twist_taught(&mut s, false)?;
     s.stage(StageName::LlCornerTwist);
     finish(&s)
 }

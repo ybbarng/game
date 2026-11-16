@@ -334,6 +334,18 @@ if [ "$NATIVE" = 1 ]; then
   measure "홈 시연 중"
   cmd hero stop
   sleep 5
+  # 7×7 홈 시연(축소법 초보자, docs/52 5-10): 섞는 동안 화면 스레드 밖에서 풀이(약 0.6초)를 만들고, 섞은 뒤 멈춤(약 6.5초)이
+  # 끝나면 푼다. 시작부터 13초(섞기·풀이 계산·풀기 앞부분)의 CPU와 그 끝의 메모리
+  cmd size 7
+  sleep 3
+  cmd hero start
+  cpu_begin
+  sleep 13
+  cpu_end "7×7 홈 시연 시작부터 13초"
+  measure "7×7 홈 시연 중(풀기 시작 뒤)"
+  cmd hero stop
+  cmd size 3
+  sleep 5
   # 설정 창의 사용자 키 배치 편집기(「사용자」 배치, 면 돌리기 묶음 펼침, docs/52 5-8)
   cmd editor open
   sleep 8

@@ -4,6 +4,7 @@
 //
 //   apps/cubie/build.sh
 //   CUBIE_NATIVE_SHOT=<폴더> CUBIE_NATIVE_SHOT_HERO=3-beginner:5 apps/cubie/Cubie.app/Contents/MacOS/Cubie
+//   (3×3 밖은 크기도: CUBIE_NATIVE_N=7 CUBIE_NATIVE_SHOT_HERO=7-cfop:5 …, 해법 id는 사이트 `HERO_METHODS`)
 //   node apps/cubie/scripts/hero-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr]
 //
 // 결과: <폴더>/web-hero-<i>.png, <폴더>/compare-hero.png(위 줄 웹, 아래 줄 네이티브, 어두운 회색·#000 바탕).
@@ -50,16 +51,28 @@ try {
     colorScheme: "dark",
   });
   await ctx.addInitScript(appLike);
-  // 사이트 미니는 첫 화면 크기·해법 설정에서 해법을 고른다(번갈아면 초보자). 프리드리히를 견줄 때는 그것을 고른다
-  if (method !== "3-beginner")
-    await ctx.addInitScript(
-      (m) =>
-        localStorage.setItem(
-          "cube.settings.v1",
-          JSON.stringify({ heroSize: 3, heroMethod: m }),
-        ),
-      method,
-    );
+  // 사이트 미니는 지금 큐브 크기(`cube.mini.v1`의 n)와 첫 화면 해법 설정에서 해법을 고른다(번갈아면 초보자).
+  // 견줄 해법의 크기로 두고 그 해법을 고른다
+  const size = Number(method.split("-")[0]);
+  await ctx.addInitScript(
+    ([m, n]) => {
+      localStorage.setItem(
+        "cube.settings.v1",
+        JSON.stringify({ heroSize: n, heroMethod: m }),
+      );
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n,
+          mirror: true,
+          records: {},
+          best5: {},
+        }),
+      );
+    },
+    [method, size],
+  );
   const page = await ctx.newPage();
   await page.clock.install();
   await page.goto(`${BASE}/cube/mini`);
