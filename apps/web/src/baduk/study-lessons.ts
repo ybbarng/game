@@ -357,7 +357,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         body: [
           "규칙 배우기에서 패를 따낸 바로 다음에는 상대가 되따낼 수 없다고 배웠어요. 다른 곳에 한 수 둔 뒤에야 되따낼 수 있었죠.",
           "이번에는 패를 두고 서로 버티는 법을 배워요. 먼저 패를 따인 쪽(흑)의 처지예요.",
-          `그림은 백이 방금 ${KO.setup[0]}에 두어 ${KO.ko}의 흑 한 점을 따낸 모양이에요. 흑이 ×에 바로 두면 백 ${obj(KO.setup[0])} 되따낼 것 같지만, 판 모양이 한 수 전으로 돌아가서 둘 수 없어요.`,
+          `그림은 백이 방금 ${KO.setup[0]}에 두어 ${KO.ko}의 흑 한 점을 따낸 모양이에요. 흑이 ×에 바로 두면 백 ${obj(KO.setup[0] as string)} 되따낼 것 같지만, 판 모양이 한 수 전으로 돌아가서 둘 수 없어요.`,
         ],
         scene: sceneOf(KO, { [KO.ko]: "×" }),
       },
@@ -393,7 +393,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         kind: "explain",
         title: "패를 잇는 때",
         body: [
-          `그림은 흑 ${subj(KO_CONNECT.setup[0])} ×(${KO_CONNECT.ko})의 백 한 점을 따내 패가 됐고, 백이 ${KO_CONNECT_THREAT}에 팻감을 둔 모양이에요. △ 흑 ${COUNT[KO_CONNECT_THREATENED]} 점이 단수예요.`,
+          `그림은 흑 ${subj(KO_CONNECT.setup[0] as string)} ×(${KO_CONNECT.ko})의 백 한 점을 따내 패가 됐고, 백이 ${KO_CONNECT_THREAT}에 팻감을 둔 모양이에요. △ 흑 ${COUNT[KO_CONNECT_THREATENED]} 점이 단수예요.`,
           `흑이 받으면 백이 ×에 되따내 패가 이어져요. 흑이 끝내 패를 지면 □ 흑 돌 ${COUNT[KO_CONNECT_LOST.length]} 점을 잃어요. 패에 걸린 한 점과, 백이 되따낼 때 함께 단수가 되어 달아날 곳이 없는 돌이에요.`,
           `노리는 돌(${COUNT[KO_CONNECT_THREATENED]} 점)이 패를 지면 잃는 돌(${COUNT[KO_CONNECT_LOST.length]} 점)보다 적어요. 그래서 흑은 ×에 이어 패를 끝내고, △ 돌은 내줘요.`,
         ],
