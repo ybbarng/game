@@ -24,6 +24,7 @@ import {
   type Standing,
   standingAwareBot,
   standingValue,
+  sureStandingCard,
 } from "./search-bot";
 
 const rules: HeartsRules = WINDOWS_RULES;
@@ -198,6 +199,28 @@ describe("하트 고수: 점수 판", () => {
     const [d5, h2] = plan?.values.map((v) => v.mean) ?? [];
     expect(d5).toBeCloseTo(26 / 3);
     expect(h2).toBeCloseTo(26 / 3);
+  });
+});
+
+describe("하트 고수: 확실할 때만 순위로 바꾸기", () => {
+  const cards: Card[] = ["D5", "H2", "C9"];
+
+  it("순위 이득이 추측 판마다 크게 흔들려 평균이 0 근처면 판 점수로 고른 카드를 그대로 둔다", () => {
+    const samples = [
+      [0, 0, 0, 0],
+      [26, -26, 26, -26],
+      [1, -1, 1, -1],
+    ];
+    expect(sureStandingCard(cards, samples, 0)).toBeNull();
+  });
+
+  it("같은 추측 판끼리 견줘 꾸준히 나은 카드가 있으면 그 카드로 바꾼다", () => {
+    const samples = [
+      [0, 26, 0, 0],
+      [26, -26, 26, -26],
+      [3, 29, 4, 3],
+    ];
+    expect(sureStandingCard(cards, samples, 0)).toBe("C9");
   });
 });
 
