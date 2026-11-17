@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SuitText } from "@/components/SuitText";
 import { Box, Btn, Result } from "@/components/security/demos";
 import { cn } from "@/lib/cn";
-import { ro, wa } from "@/lib/josa";
+import { josaOf, obj, ro, topic, wa } from "@/lib/josa";
 
 /*
  * 작은 수로 원리를 보여 주는 장난감들. 실제 게임은 타원곡선(ristretto255)을 쓰지만, 원리는 23 같은 작은 소수로도 같다.
@@ -114,7 +114,8 @@ export function LockToy() {
       <Picker label="영희 열쇠 b" value={b} options={keys} onChange={setB} />
       <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm">
         <li>
-          <SuitText text={name} />는 수 <Num>{m}</Num>로 나타냅니다.
+          <SuitText text={topic(name)} /> 수 <Num>{m}</Num>
+          {josaOf(m, ro)} 나타냅니다.
         </li>
         <li>
           철수가 잠급니다: {m}
@@ -665,7 +666,9 @@ export function ElGamalToy() {
           열립니다.
         </li>
         <li>
-          카드 <Num>{m}</Num>를 무작위 r = {r}로 감쌉니다: (g<sup>r</sup>, m·h
+          카드 <Num>{m}</Num>
+          {josaOf(m, obj)} 무작위 r = {ro(String(r))} 감쌉니다: (g<sup>r</sup>,
+          m·h
           <sup>r</sup>) = (<Num>{c1}</Num>, <Num>{c2}</Num>)
         </li>
         <li>
