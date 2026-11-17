@@ -205,7 +205,7 @@ fn parse_token(n: usize, token: &str, index: usize) -> Result<CubeMove, Notation
     let letter = parts.letter;
     if matches!(letter, 'x' | 'y' | 'z') {
         if parts.a.is_some() || parts.w {
-            return Err(fail("큐브 돌리기에는 층 번호·w를 붙이지 않는다"));
+            return Err(fail("큐브 돌리기에는 층 번호·w를 붙이지 않아요."));
         }
         return Ok(CubeMove {
             axis: (letter as u8) - b'x',
@@ -217,10 +217,10 @@ fn parse_token(n: usize, token: &str, index: usize) -> Result<CubeMove, Notation
 
     if let Some(slice) = slice_spec(letter) {
         if parts.a.is_some() || parts.w {
-            return Err(fail("가운데 층에는 층 번호·w를 붙이지 않는다"));
+            return Err(fail("가운데 층에는 층 번호·w를 붙이지 않아요."));
         }
         if n % 2 == 0 {
-            return Err(fail(&format!("{n}×{n}에는 정가운데 층이 없다")));
+            return Err(fail(&format!("{n}×{n}에는 정가운데 층이 없어요.")));
         }
         let mid = (n + 1) / 2;
         return Ok(to_axis_move(n, &slice, mid, mid, turns));
@@ -229,7 +229,7 @@ fn parse_token(n: usize, token: &str, index: usize) -> Result<CubeMove, Notation
     let lower = letter.is_ascii_lowercase();
     let spec = face_spec(letter.to_ascii_uppercase()).ok_or_else(|| fail("알 수 없는 면"))?;
     if lower && parts.w {
-        return Err(fail("소문자 면에는 w를 붙이지 않는다"));
+        return Err(fail("소문자 면에는 w를 붙이지 않아요."));
     }
     let wide = lower || parts.w;
 

@@ -82,14 +82,15 @@ function parseToken(n: number, token: string, index: number): CubeMove {
   const b = bText === undefined ? undefined : Number(bText);
 
   if (letter === "x" || letter === "y" || letter === "z") {
-    if (a !== undefined || w) fail("큐브 돌리기에는 층 번호·w를 붙이지 않는다");
+    if (a !== undefined || w)
+      fail("큐브 돌리기에는 층 번호·w를 붙이지 않아요.");
     return { axis: letter, from: 1, to: n, turns };
   }
 
   const slice = SLICE_SPECS[letter];
   if (slice) {
-    if (a !== undefined || w) fail("가운데 층에는 층 번호·w를 붙이지 않는다");
-    if (n % 2 === 0) fail(`${n}×${n}에는 정가운데 층이 없다`);
+    if (a !== undefined || w) fail("가운데 층에는 층 번호·w를 붙이지 않아요.");
+    if (n % 2 === 0) fail(`${n}×${n}에는 정가운데 층이 없어요.`);
     const mid = (n + 1) / 2;
     return toAxisMove(n, slice, mid, mid, turns);
   }
@@ -97,7 +98,7 @@ function parseToken(n: number, token: string, index: number): CubeMove {
   const lower = letter !== letter.toUpperCase();
   const spec = FACE_SPECS[letter.toUpperCase()];
   if (!spec) return fail("알 수 없는 면");
-  if (lower && w) fail("소문자 면에는 w를 붙이지 않는다");
+  if (lower && w) fail("소문자 면에는 w를 붙이지 않아요.");
   const wide = lower || w === "w";
 
   let p: number;
