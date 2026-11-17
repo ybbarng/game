@@ -203,6 +203,13 @@ export const HEARTS_TUNING = {
   standingLast: 0.5,
   /** 이번 판에 이만큼 받으면 끝 점수에 닿는 사람이 있을 때 순위를 본다(26이면 한 판에 받을 수 있는 최대) */
   standingReach: 26,
+  /**
+   * 순위로 카드를 바꿀 때 오차를 얼마나 깎는가. 0 이상이면 판 점수로 고른 카드를 기준으로, 같은 추측 판끼리
+   * 짝지은 순위 포함 값의 이득에서 표준 오차(이 배수)를 뺀 값이 0보다 클 때만 바꾼다. 음수면 순위 포함 값으로 바로 고른다
+   */
+  standingZ: -1,
+  /** 넘기기도 순위를 보는가(1 본다, 0 판 점수만) */
+  standingPass: 1,
   /** 문 슛 계획이 보통 계획보다 이만큼(판당 점수) 나아야 노린다 */
   moonMargin: 1,
   /** 문 슛 계획 비교에서 오차를 얼마나 깎는가(같은 추측 판끼리 짝지어 본 차이의 표준 오차 배수) */
@@ -606,7 +613,10 @@ export function planHeartsPass(
   const candidates = passCandidates(view.hand, decision.count, moon);
   const plans = moon ? [false, true] : [false];
   if (candidates.length <= 1 && plans.length === 1) return null;
-  const standing = options.standing ? standingFor(view) : null;
+  const standing =
+    options.standing && HEARTS_TUNING.standingPass > 0
+      ? standingFor(view)
+      : null;
   const rollout = options.standingRollout ?? "none";
   const pool = heartsDeck().filter((c) => !view.hand.includes(c));
   // 후보 × 계획. 0번은 기준 후보의 보통 계획
@@ -713,6 +723,11 @@ export interface HeartsPlayPlan {
   threat: number | null;
   /** 문 슛 계획이 보통 계획보다 확실히 나을 때 그 계획의 가장 좋은 카드 */
   moonCard: Card | null;
+  /**
+   * 순위를 확실할 때만 볼 때(`standingZ` ≥ 0) 카드마다 추측 판별 순위 포함 값. 이때 `values`는 판 점수만 본 값이다.
+   * 순위를 보지 않거나 순위 포함 값으로 바로 고를 때는 null
+   */
+  standingSamples: number[][] | null;
   worlds: number;
 }
 
@@ -764,6 +779,10 @@ export function planHeartsPlay(
   // 카드마다 추측 판별 값(같은 판끼리 짝지어 비교하려고 모두 남긴다)
   const normalSamples: number[][] = decision.cards.map(() => []);
   const moonSamples: number[][] = decision.cards.map(() => []);
+  // 순위를 확실할 때만 볼 때: 판 점수 값(normal·moon)과 순위 포함 값을 따로 모은다
+  const sure = standing !== null && HEARTS_TUNING.standingZ >= 0;
+  const direct = sure ? null : standing;
+  const standingSamples: number[][] = decision.cards.map(() => []);
   let counted = 0;
   const worlds = runWorlds(options.budget, () => {
     const hands = sampleHeartsHands(view, rng, forgotten);
@@ -773,12 +792,13 @@ export function planHeartsPlay(
       const sim = cloneSim({ ...base, hands });
       apply(sim, view.seat, card);
       playOut(sim, rng, normal);
-      normalSamples[i]?.push(utility(sim, view.seat, standing));
+      normalSamples[i]?.push(utility(sim, view.seat, direct));
+      if (sure) standingSamples[i]?.push(utility(sim, view.seat, standing));
       if (!shoot) return;
       const moonSim = cloneSim({ ...base, hands });
       apply(moonSim, view.seat, card);
       playOut(moonSim, rng, shooterPolicy(view.seat));
-      moonSamples[i]?.push(utility(moonSim, view.seat, standing));
+      moonSamples[i]?.push(utility(moonSim, view.seat, direct));
     });
   });
   if (counted === 0) return null;
@@ -798,8 +818,37 @@ export function planHeartsPlay(
     moonCard: moon
       ? sureMoonCard(values, moon, normalSamples, moonSamples)
       : null,
+    standingSamples: sure ? standingSamples : null,
     worlds,
   };
+}
+
+/**
+ * 판 점수로 고른 카드(`chosen`번)보다 순위 포함 값이 확실히 나은 카드. 같은 추측 판끼리 짝지은 차이의
+ * 평균에서 표준 오차(`standingZ`배)를 뺀 값이 가장 크고 0보다 큰 카드, 없으면 null
+ */
+export function sureStandingCard(
+  cards: readonly Card[],
+  samples: readonly (readonly number[])[],
+  chosen: number,
+): Card | null {
+  const base = samples[chosen] ?? [];
+  let best: Card | null = null;
+  let bestGain = 0;
+  samples.forEach((s, i) => {
+    if (i === chosen || s.length === 0) return;
+    const diffs = s.map((v, w) => v - (base[w] ?? 0));
+    const n = diffs.length;
+    const mean = diffs.reduce((a, b) => a + b, 0) / n;
+    const variance =
+      n > 1 ? diffs.reduce((a, d) => a + (d - mean) ** 2, 0) / (n - 1) : 0;
+    const gain = mean - HEARTS_TUNING.standingZ * Math.sqrt(variance / n);
+    if (gain > bestGain) {
+      bestGain = gain;
+      best = cards[i] ?? null;
+    }
+  });
+  return best;
 }
 
 /**
@@ -944,7 +993,14 @@ export function createHeartsSearchBot(
         rng,
       );
       // 문 슛 계획이 확실히 나으면 그 계획의 가장 좋은 카드
-      const chosen = plan.moonCard ?? card;
+      const ranked = plan.standingSamples
+        ? sureStandingCard(
+            plan.values.map((v) => v.card),
+            plan.standingSamples,
+            plan.values.findIndex((v) => v.card === card),
+          )
+        : null;
+      const chosen = plan.moonCard ?? ranked ?? card;
       return fallback.type === "play" && fallback.card === chosen
         ? fallback
         : { type: "play", card: chosen };

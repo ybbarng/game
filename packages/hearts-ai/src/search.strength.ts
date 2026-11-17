@@ -8,6 +8,7 @@ import {
   HEARTS_SEARCH_TIME_LIMIT_MS,
   HEARTS_TUNING,
   type HeartsSearchOptions,
+  standingFor,
 } from "./search-bot";
 import { type HeartsSimulationResult, simulateHearts } from "./simulate";
 
@@ -289,6 +290,43 @@ const VARIANTS: [string, HeartsSearchOptions, "old" | "normal" | "late"][] = [
   ["새 고수(전부) vs 중수", { clock: performance }, "normal"],
 ];
 
+/** 진단: HEARTS_BENCH_DIFF=1이면 순위를 보는 국면에서 옛 고수와 다른 카드를 고른 횟수를 센다(느려진다) */
+const DIFF = process.env.HEARTS_BENCH_DIFF === "1";
+
+interface Changes {
+  active: number;
+  changed: number;
+}
+
+/** 둘 때마다 같은 난수 상태로 옛 고수의 수도 구해 견준다. 도전자가 실제로 두는 수는 그대로다 */
+function countChanges(
+  bot: HeartsBot,
+  old: HeartsBot,
+  changes: Changes,
+): HeartsBot {
+  return {
+    name: bot.name,
+    decide(view, rng) {
+      const active =
+        view.decision?.kind === "play" &&
+        view.decision.cards.length > 1 &&
+        standingFor(view) !== null;
+      const theirs = active ? old.decide(view, { ...rng }) : null;
+      const action = bot.decide(view, rng);
+      if (theirs) {
+        changes.active++;
+        if (
+          action.type === "play" &&
+          theirs.type === "play" &&
+          action.card !== theirs.card
+        )
+          changes.changed++;
+      }
+      return action;
+    },
+  };
+}
+
 const KEYS: Record<string, string> = {
   "새 고수(전부) vs 옛 고수": "old",
   "점수 판만 vs 옛 고수(55~90점에서 시작)": "standing",
@@ -311,15 +349,25 @@ describe("하트 고수 판단 셋 (pnpm --filter @game/hearts-ai bench src/sear
       for (const config of configs) {
         Object.assign(HEARTS_TUNING, DEFAULT_TUNING, config.tuning);
         const timing: Timing = { pass: [], play: [] };
-        const challenger = timed(
-          createHeartsSearchBot({ ...WORLDS, ...options, ...config.options }),
-          timing,
-        );
         const baseline =
           against === "normal" ? heartsNormalBot : createHeartsSearchBot(OLD);
+        const bot = createHeartsSearchBot({
+          ...WORLDS,
+          ...options,
+          ...config.options,
+        });
+        const changes: Changes = { active: 0, changed: 0 };
+        const challenger = timed(
+          late && DIFF ? countChanges(bot, baseline, changes) : bot,
+          timing,
+        );
         const r = duel(challenger, baseline, GAMES, late, late);
+        const changed =
+          late && DIFF
+            ? `\n  순위를 보는 국면의 카드 내기 ${changes.active}번 중 옛 고수와 다른 카드 ${changes.changed}번(${((changes.changed / Math.max(1, changes.active)) * 100).toFixed(1)}%)`
+            : "";
         console.log(
-          `${label}${late ? ` [${config.label}]` : ""}${PLAY_WORLDS ? ` [추측 ${PLAY_WORLDS}·${PASS_WORLDS ?? 24}판]` : ""} 씨앗 ${FROM}~${FROM + GAMES - 1}: ${report(r)}` +
+          `${label}${late ? ` [${config.label}]` : ""}${PLAY_WORLDS ? ` [추측 ${PLAY_WORLDS}·${PASS_WORLDS ?? 24}판]` : ""} 씨앗 ${FROM}~${FROM + GAMES - 1}: ${report(r)}${changed}` +
             `\n  넘기기 ${stats(timing.pass)}\n  카드 내기 ${stats(timing.play)}`,
         );
         expect(r.perGame.length).toBeGreaterThan(0);
