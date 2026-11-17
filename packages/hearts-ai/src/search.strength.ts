@@ -54,16 +54,23 @@ function standingConfigs(text: string | undefined): StandingConfig[] {
   return parts.map((part) => {
     const options: Record<string, string> = {};
     const tuning: Record<string, number> = {};
+    let clocked = false;
     for (const [k, v] of part
       .split(",")
       .filter((s) => s.includes("="))
       .map((s) => s.split("=") as [string, string])) {
       if (k === "standingRollout") options[k] = v;
+      // clock=1: 제품의 혼자 하기처럼 실제 시계로 시간 상한(300ms)을 켠다
+      else if (k === "clock") clocked = v === "1";
       else if (k.startsWith("standing") && k in HEARTS_TUNING)
         tuning[k] = Number(v);
       else throw new Error(`점수 판 설정이 아니다: ${k}`);
     }
-    return { label: part || "기본값", options, tuning };
+    return {
+      label: part || "기본값",
+      options: clocked ? { ...options, clock: performance } : options,
+      tuning,
+    };
   });
 }
 const STANDING_SET = standingConfigs(process.env.HEARTS_BENCH_SET);
