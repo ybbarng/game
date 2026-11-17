@@ -91,6 +91,55 @@ it("초고수 한 수에 걸리는 시간", () => {
   );
 });
 
+/** 정렬한 값에서 가운데·열에 아홉·가장 긴 값 */
+function spread(sorted: number[]) {
+  return {
+    median: sorted[sorted.length >> 1] ?? 0,
+    p90: sorted[Math.floor(sorted.length * 0.9)] ?? 0,
+    max: sorted.at(-1) ?? 0,
+  };
+}
+
+// 휴대폰에서 화면이 굳는지 볼 때 쓴다(docs/22 「휴대폰에서 멈춤」). 상대를 고수로 두어 기물이 많이 남은
+// 중반 판을 만들고, 20~80수째(두 편 합)의 초고수 수만 잰다. 판마다 첫 수 차례를 바꾼다.
+it("중반 초고수 한 수에 걸리는 시간", () => {
+  const times: number[] = [];
+  const nodes: number[] = [];
+  const games = Number(process.env.JANGGI_MID_GAMES ?? 12);
+  for (let seed = 1; seed <= games; seed++) {
+    let { state } = createMatch(RULES, seed);
+    const rng = createRng(seed + 1);
+    for (let i = 0; i < 400 && state.phase !== "gameOver"; i++) {
+      if (state.phase !== "setup" && state.phase !== "play") break;
+      const seat = pendingSeats(state)[0] as number;
+      const view = viewOf(state, seat);
+      const ply = view.played.length;
+      if (ply > 80) break;
+      let action: ReturnType<JanggiBot["decide"]>;
+      if (seat === seed % 2 && view.decision?.kind === "move") {
+        const t = performance.now();
+        const r = deepSearch(view, rng, MASTER_BUDGET);
+        const ms = performance.now() - t;
+        if (ply >= 20) {
+          times.push(ms);
+          nodes.push(r.nodes);
+        }
+        action = r.move ? { type: "move", ...r.move } : { type: "pass" };
+      } else action = janggiExpertBot.decide(view, rng);
+      const r = step(state, seat, action);
+      if (!r.ok) throw new Error(r.error);
+      state = r.state;
+    }
+  }
+  times.sort((a, b) => a - b);
+  nodes.sort((a, b) => a - b);
+  const t = spread(times);
+  const n = spread(nodes);
+  console.log(
+    `중반 초고수 한 수(상대 고수, ${games}판 20~80수째, ${times.length}수): 가운데 ${t.median.toFixed(0)}ms, 열에 아홉 ${t.p90.toFixed(0)}ms, 가장 긴 ${t.max.toFixed(0)}ms · 노드 가운데 ${n.median}, 열에 아홉 ${n.p90}, 가장 많은 ${n.max}`,
+  );
+});
+
 it("초고수가 고수를 이긴다", () => {
   expect(duel(janggiMasterBot, janggiExpertBot, GAMES)).toBeGreaterThanOrEqual(
     Math.ceil(GAMES * 0.75),
