@@ -107,6 +107,22 @@ export const BOARD_CASES: PlanCase[] = [
   { kit: galaxyKit, rules: GALAXY_RULES, levels: [1] },
 ];
 
+/**
+ * 판 게임 지문은 무거워서(바둑 한 수 약 0.1초 등) 시험 파일 둘로 나눠 동시에 돈다. 묶음마다 게임 id.
+ * `bot-plan-board.test.ts`가 첫 묶음, `bot-plan-board-b.test.ts`가 둘째 묶음을 보고, 모든 판 게임이
+ * 한 묶음에만 드는지는 `bot-plan-board.test.ts` 「판 게임은 모두 한 시험 파일에서만 지문을 잰다」가 본다
+ */
+export const BOARD_GROUPS: readonly (readonly string[])[] = [
+  ["chess", "janggi", "omok"],
+  ["baduk", "baseball", "yut", "galaxy"],
+];
+
+/** 묶음 하나의 판 게임 경우들(묶음 차례대로) */
+export function boardGroup(index: number): PlanCase[] {
+  const ids = BOARD_GROUPS[index] ?? [];
+  return BOARD_CASES.filter((c) => ids.includes(c.kit.id));
+}
+
 /** 지문 하나(16자리) */
 export function fingerprint({
   kit,
