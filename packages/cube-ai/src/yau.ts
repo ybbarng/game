@@ -56,19 +56,32 @@ const HOLDS: readonly string[] = ["", "x", "x2", "x'", "z", "z'"].flatMap((a) =>
   ["", "y", "y'", "y2"].map((b) => join(a, b)),
 );
 
-/** 흰 면 아래·흰 십자 엣지 셋(앞·왼쪽·뒤)이 되는 쥐기 */
-function sideHold(s: PuzzleState): string {
-  const ok = (h: string) => {
+const ORANGE = 4;
+const R_FACE = 1;
+
+/**
+ * 옆 센터의 쥐기 고르기. `orange`(지금): 흰 면 아래, 흰 십자 셋 단계가 비워 둔 흰-주황 자리를 오른쪽으로. 흰-주황 엣지
+ * 블럭이 우연히 제자리에 들어 있어 흰 십자 넷이 다 있어도 오른쪽(작업대)은 흰-주황 자리라, R이 빼내는 것은 넣지 않은
+ * 흰-주황뿐이고 마지막 십자 엣지 단계가 다시 넣는다(docs/47 16-22). `shortest`(계획 표 4·5): 흰 면 아래·흰 십자 엣지
+ * 셋(앞·왼쪽·뒤)이 되는 가장 짧은 쥐기. 넷이 다 있으면 넣은 흰-빨강 등이 오른쪽에 와 R이 빼냈다(대회 섞기 300개 중 하나)
+ */
+export type YauSideHold = "orange" | "shortest";
+
+/** 옆 센터를 시작하는 쥐기 */
+function sideHold(s: PuzzleState, rule: YauSideHold): string {
+  const targets = (h: string) => {
     try {
-      yauSideTargets(playN(4, s, h));
-      return true;
+      return yauSideTargets(playN(4, s, h));
     } catch {
-      return false;
+      return null;
     }
   };
   const h = [...HOLDS]
     .sort((a, b) => a.split(" ").length - b.split(" ").length)
-    .find(ok);
+    .find((x) => {
+      const fc = targets(x);
+      return fc !== null && (rule === "shortest" || fc[R_FACE] === ORANGE);
+    });
   if (h === undefined) throw new Error("흰 십자 셋이 맞지 않았다");
   return h;
 }
@@ -81,12 +94,13 @@ export type YauEdges = "taught" | "short";
 
 /**
  * 섞인 4×4를 야우 앞 다섯 단계로(엣지 짝까지). 끝난 상태와 단계들. `pick`은 같은 경우가 여럿일 때 고르는 차례.
- * 앞 네 단계는 늘 단원 규칙이고, 엣지 짝만 `edges`로 고른다
+ * 앞 네 단계는 늘 단원 규칙이고, 엣지 짝만 `edges`로 고른다. `hold`는 옆 센터 쥐기(계획 표 4·5의 컴퓨터만 `shortest`)
  */
 export function yauReduce(
   start: PuzzleState,
   pick: Pick = FIRST,
   edges: YauEdges = "taught",
+  hold: YauSideHold = "orange",
 ): { state: PuzzleState; stages: YauReduceStage[] } {
   const stages: YauReduceStage[] = [];
   let s = start;
@@ -102,7 +116,7 @@ export function yauReduce(
   );
   push("cross3", runYauCross(s, pick).steps.map(stepMovesYauCross));
   // 옆 센터는 흰 면 아래, 비운 십자 자리(흰-주황)를 오른쪽으로 쥔 큐브에서 시작한다(단원 쥐기)
-  const side = sideHold(s);
+  const side = sideHold(s, hold);
   const sideSteps = runYauSideCenters(playN(4, s, side), pick).steps.map(
     stepMovesYau,
   );
@@ -138,8 +152,9 @@ export function solveYauHuman(
   state: PuzzleState,
   until?: StageName,
   edges: YauEdges = "taught",
+  hold: YauSideHold = "orange",
 ): HumanSolve {
-  const { stages: parts } = yauReduce(state, FIRST, edges);
+  const { stages: parts } = yauReduce(state, FIRST, edges, hold);
   const moves: string[] = [];
   const stages: HumanSolve["stages"] = [];
   const looks: number[] = [];

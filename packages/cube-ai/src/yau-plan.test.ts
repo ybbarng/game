@@ -16,8 +16,8 @@ import {
 import { yauReduce } from "./yau";
 
 /**
- * 4×4 컴퓨터 야우(docs/47 10-4·10-5): 중수가 야우(계획 표 4), 고수·초고수는 야우 + 짧은 엣지 짝 + CFOP(계획 표 5).
- * 옛 표 3·4 글은 옛 계획(축소법) 그대로
+ * 4×4 컴퓨터 야우(docs/47 10-4·10-5): 중수가 야우(계획 표 4), 고수·초고수는 야우 + 짧은 엣지 짝 + CFOP(계획 표 5),
+ * 옆 센터를 흰-주황 자리를 오른쪽에 두고 시작(계획 표 6, docs/47 16-22). 옛 표 3·4·5 글은 옛 계획 그대로
  */
 
 const SEEDS = [1, 2, 3];
@@ -61,7 +61,7 @@ describe("4×4 야우 사람 해법", () => {
   });
 });
 
-describe("계획 표 5: 4×4 중수·고수·초고수가 야우", () => {
+describe("계획 표 6: 4×4 중수·고수·초고수가 야우", () => {
   it("4×4 중수는 야우, 고수·초고수는 야우 + 짧은 엣지 짝, 다른 크기는 그대로", () => {
     expect(levelMethod("club", 4)).toBe("yau");
     expect(levelMethod("fast", 4)).toBe("yau-cfop");
@@ -69,14 +69,14 @@ describe("계획 표 5: 4×4 중수·고수·초고수가 야우", () => {
     expect(levelMethod("casual", 4)).toBe("intermediate");
     expect(levelMethod("fast", 5)).toBe("advanced");
     expect(levelMethod("club", 3)).toBe("fourlook");
-    expect(BOT_PLAN_VERSION).toBe(5);
-    expect(levelText("pro")).toBe("5:pro");
+    expect(BOT_PLAN_VERSION).toBe(6);
+    expect(levelText("pro")).toBe("6:pro");
   });
 
   it("다른 기기가 다시 계산해도 같은 계획이고, 단계는 야우 차례다", () => {
     const s = start(2);
     const a = botPlan(levelText("pro"), 4, s, 77, { inspectionMs: 15_000 });
-    expect(botPlan("5:pro", 4, s, 77, { inspectionMs: 15_000 })).toEqual(a);
+    expect(botPlan("6:pro", 4, s, 77, { inspectionMs: 15_000 })).toEqual(a);
     expect(a.fallback).toBeUndefined();
     expect(a.stages[0]?.name).toBe("yau-centers");
     const solved = applyMoves(
@@ -88,7 +88,7 @@ describe("계획 표 5: 4×4 중수·고수·초고수가 야우", () => {
   });
 });
 
-describe("옛 계획 표 3·4 글", () => {
+describe("옛 계획 표 3·4·5 글", () => {
   it("읽으면 버전이 붙고, 글로 되돌리면 그대로다", () => {
     expect(readBotSkill("3:club")).toEqual({
       kind: "level",
@@ -107,10 +107,16 @@ describe("옛 계획 표 3·4 글", () => {
       version: 4,
     });
     expect(botSkillText(readBotSkill("4:pro") as never)).toBe("4:pro");
-    expect(readBotSkill("5:club")).toEqual({ kind: "level", level: "club" });
+    expect(readBotSkill("5:club")).toEqual({
+      kind: "level",
+      level: "club",
+      version: 5,
+    });
+    expect(botSkillText(readBotSkill("5:club") as never)).toBe("5:club");
+    expect(readBotSkill("6:club")).toEqual({ kind: "level", level: "club" });
     // 그보다 옛 표와 모르는 표는 다시 계산하지 않는다
     expect(readBotSkill("2:club")).toBeNull();
-    expect(readBotSkill("6:club")).toBeNull();
+    expect(readBotSkill("7:club")).toBeNull();
     expect(botSkillLabel("3:club")).toBe("중수");
     expect(botSkillLabel("4:pro")).toBe("초고수");
   });
@@ -122,7 +128,7 @@ describe("옛 계획 표 3·4 글", () => {
     const club = BOT_TARGET_MS[4]?.club as number;
     const base = BASE_MEAN_MS_V3[4]?.club as number;
     expect(old).toEqual(
-      botPlan("5:club", 4, s, 5, {
+      botPlan("6:club", 4, s, 5, {
         solve: (_m, size, st) => solveHuman("fourlook", size, st),
         scale: club / base,
       }),
@@ -138,7 +144,7 @@ describe("옛 계획 표 3·4 글", () => {
       const target = BOT_TARGET_MS[4]?.[level] as number;
       const base = BASE_MEAN_MS_V4[4]?.[level] as number;
       expect(old).toEqual(
-        botPlan(`5:${level}`, 4, s, 9, {
+        botPlan(`6:${level}`, 4, s, 9, {
           solve: (_m, size, st) => solveHuman("advanced", size, st),
           scale: target / base,
         }),
@@ -152,16 +158,42 @@ describe("옛 계획 표 3·4 글", () => {
     expect(botPlan("4:club", 4, s, 9)).toEqual(botPlan("5:club", 4, s, 9));
   });
 
-  it("야우를 쓰지 않는 단계·크기는 표 3·4·5가 같은 계획이다", () => {
+  it.each(["club", "fast", "pro"] as const)(
+    "4×4 %s의 표 4·5 글은 옛 쥐기 야우로 다시 계산한다(흰 십자 넷이 다 든 씨앗 1134)",
+    (level) => {
+      const s = scrambledState("444", 1134);
+      const old = botPlan(`5:${level}`, 4, s, 9);
+      const method = level === "club" ? "yau-v5" : "yau-cfop-v5";
+      expect(old).toEqual(
+        botPlan(`6:${level}`, 4, s, 9, {
+          solve: (_m, size, st) => solveHuman(method, size, st),
+        }),
+      );
+      // 표 6은 쥐기가 달라 계획이 다르다
+      expect(botPlan(`6:${level}`, 4, s, 9)).not.toEqual(old);
+      if (level === "club") expect(botPlan("4:club", 4, s, 9)).toEqual(old);
+    },
+  );
+
+  it("쥐기가 갈리지 않는 섞기는 표 5와 6이 같은 계획이다", () => {
     const s = start(1);
-    expect(botPlan("3:casual", 4, s, 9)).toEqual(botPlan("5:casual", 4, s, 9));
-    expect(botPlan("4:casual", 4, s, 9)).toEqual(botPlan("5:casual", 4, s, 9));
+    for (const level of ["club", "fast", "pro"] as const)
+      expect(botPlan(`5:${level}`, 4, s, 9)).toEqual(
+        botPlan(`6:${level}`, 4, s, 9),
+      );
+  });
+
+  it("야우를 쓰지 않는 단계·크기는 표 3·4·5·6이 같은 계획이다", () => {
+    const s = start(1);
+    expect(botPlan("3:casual", 4, s, 9)).toEqual(botPlan("6:casual", 4, s, 9));
+    expect(botPlan("4:casual", 4, s, 9)).toEqual(botPlan("6:casual", 4, s, 9));
+    expect(botPlan("5:casual", 4, s, 9)).toEqual(botPlan("6:casual", 4, s, 9));
     // 「내 실력에 맞춤」 6분 40초는 입문 쪽(축소법 층별)이라 표와 상관없다
     expect(botPlan("3:fit:400000", 4, s, 9)).toEqual(
-      botPlan("5:fit:400000", 4, s, 9),
+      botPlan("6:fit:400000", 4, s, 9),
     );
     expect(botPlan("4:fit:400000", 4, s, 9)).toEqual(
-      botPlan("5:fit:400000", 4, s, 9),
+      botPlan("6:fit:400000", 4, s, 9),
     );
   });
 });
