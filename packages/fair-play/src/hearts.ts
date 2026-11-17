@@ -16,6 +16,7 @@ import {
   TWO_OF_CLUBS,
 } from "@game/hearts-engine";
 import type { Card } from "@game/mighty-engine";
+import { obj, subj } from "@game/mighty-engine/josa";
 
 import { cardText, slotOfToken, tokenOf } from "./blind";
 
@@ -151,7 +152,7 @@ export class HeartsRenegeWatch {
     if (this.revealed.has(play.card))
       return {
         seat: play.seat,
-        reason: `${cardText(play.card)}가 두 번 나왔어요.`,
+        reason: `${subj(cardText(play.card))} 두 번 나왔어요.`,
         duplicate: true,
       };
     this.revealed.add(play.card);
@@ -168,7 +169,7 @@ export class HeartsRenegeWatch {
       if (!allowed.includes(past.card))
         return {
           seat: play.seat,
-          reason: `${past.trickIndex + 1}번째 턴에 ${cardText(past.card)}를 냈는데, 그때 ${cardText(play.card)}가 손에 있었어요. ${describeHearts(past)}`,
+          reason: `${past.trickIndex + 1}번째 턴에 ${obj(cardText(past.card))} 냈는데, 그때 ${subj(cardText(play.card))} 손에 있었어요. ${describeHearts(past)}`,
         };
     }
     this.plays.push(play);

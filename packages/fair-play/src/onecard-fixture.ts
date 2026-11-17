@@ -1,5 +1,6 @@
 /** 원카드 멘탈 포커 시험이 같이 쓰는 도우미: 작은 덱, 기기 둘, 장난감 엔진 */
 import type { Card } from "@game/mighty-engine";
+import { subj } from "@game/mighty-engine/josa";
 
 import type { Incident } from "./coordinator";
 import type { FairDevice, FairWire } from "./device";
@@ -81,7 +82,7 @@ export function onecardNet(
       const byDeal = new Map<number, number[]>();
       for (const g of globals) {
         const at = deck.locate(1, g);
-        if (!at) throw new Error(`판 자리 ${g}가 없다`);
+        if (!at) throw new Error(`판 자리 ${subj(String(g))} 없다`);
         byDeal.set(at.deal, [...(byDeal.get(at.deal) ?? []), at.slot]);
       }
       for (const [deal, slots] of byDeal)
