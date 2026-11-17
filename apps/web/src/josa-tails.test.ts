@@ -3,7 +3,8 @@
  * 그대로 붙인 글을 잡는다(docs/standing-rules.md 3절 「이름·카드·수 뒤 조사는 조사 도우미로」).
  * 「${카드}가 두 번 나왔어요」는 카드가 ♠10이면 「♠10가」가 된다. 자리 값을 모르니 `subj`·`obj` 등
  * (`@game/mighty-engine/josa`, 웹은 `lib/josa`)으로 고른다.
- * 보는 곳: 엔진·화투·멘탈 포커·컴퓨터 패키지의 소스(거절 사유·검증 실패 사유·오류 글)와 웹 소스 전체
+ * 보는 곳: 엔진·화투·멘탈 포커·컴퓨터 패키지의 소스(거절 사유·검증 실패 사유·오류 글), 별 따기 공통 코드·터미널 도구
+ * (`stardraw-core`·`stardraw-cli`)와 별 따기 서버(`apps/stardraw-server`, 응답 글·운영 기록), 웹 소스 전체
  * (게임 폴더·`components`·`review`·`stats`·튜토리얼·수 배우기·큐브·별 따기·온라인 방 `net/`). 시험·시험 자료·시험 틀은 뺀다.
  * 굵은 글씨 표시·괄호 풀이를 사이에 둔 것(`**${money(x)}**이에요`, `${name}(컴퓨터)가`)도 같은 자리로 본다.
  * `.tsx`는 JSX 본문도 본다(`jsxTails`): `{값}` 바로 뒤, 안이 `{값}` 하나뿐인 태그(`<Num>{m}</Num>를`) 뒤,
@@ -18,6 +19,8 @@ const files: Record<string, string> = import.meta.glob(
   [
     "./**/*.{ts,tsx}",
     "../../../packages/{engine,*-engine,hwatu,fair-play,ai,*-ai}/src/**/*.ts",
+    "../../../packages/stardraw-{core,cli}/src/**/*.ts",
+    "../../stardraw-server/src/**/*.ts",
     "!./**/*.test.{ts,tsx}",
     "!./**/*-fixture.ts", // 시험 자료
     "!./**/*-suite.ts", // 시험 틀
@@ -27,6 +30,10 @@ const files: Record<string, string> = import.meta.glob(
     "!./hwatu/card-table-sim.ts", // 시험·시연용 흉내
     "!./lib/josa.ts", // 조사 도우미 자신
     "!../../../packages/**/*.test.ts",
+    "!../../stardraw-server/src/**/*.test.ts",
+    "!../../../packages/stardraw-core/src/testing.ts", // 시험 도우미
+    "!../../stardraw-server/src/testing.ts", // 시험 도우미
+    "!../../../packages/stardraw-core/src/*.fixtures.ts", // 시험 자료
     "!../../../packages/engine/src/josa.ts", // 조사 도우미 자신(「${word}(으)로」)
   ],
   { query: "?raw", import: "default", eager: true },
@@ -172,11 +179,13 @@ const tails = (key: string, source: string) =>
     ? [...bareTails(source), ...jsxTails(source)]
     : bareTails(source);
 
-/** glob 열쇠(「./net/…」·「../../../packages/…」)를 저장소 기준 경로로 */
+/** glob 열쇠(「./net/…」·「../../../packages/…」·「../../stardraw-server/…」)를 저장소 기준 경로로 */
 const repoPath = (key: string) =>
   key.startsWith("./")
     ? `apps/web/src/${key.slice(2)}`
-    : key.replace(/^(\.\.\/)+/, "");
+    : key.startsWith("../../../")
+      ? key.slice("../../../".length)
+      : `apps/${key.slice("../../".length)}`;
 
 describe("템플릿 자리·JSX 본문 뒤 조사", () => {
   it("자리 뒤에 받침을 가리지 않는 조사를 붙인 글을 찾는다", () => {
@@ -222,7 +231,7 @@ describe("템플릿 자리·JSX 본문 뒤 조사", () => {
     ]);
   });
 
-  it("엔진·멘탈 포커·컴퓨터 패키지와 웹 화면 글은 자리 뒤 조사를 도우미로 고른다", () => {
+  it("엔진·멘탈 포커·컴퓨터·별 따기 패키지와 웹 화면 글은 자리 뒤 조사를 도우미로 고른다", () => {
     expect(Object.keys(files).length).toBeGreaterThan(1000);
     const problems: string[] = [];
     for (const [key, source] of Object.entries(files)) {
