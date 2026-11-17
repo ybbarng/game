@@ -542,22 +542,27 @@ function completesFor(
 }
 
 /**
- * 고수(docs/48 16-8): 중수 판단을 바탕으로 사들이기·정거장 올리기에서 앞을 더 본다.
- * g4 고수의 앞섬은 거래 평가에서 나왔고, 거래가 빠진 g5에서는 기대 자산만 보던 판단이 중수와 같아졌다
- * (판단을 하나씩 중수 것으로 바꿔도 1 대 3에서 1등 23~25%). 그래서 bench로 앞서는 것만 더했다.
- * - 막는 사들이기: 주인이 이 별을 포함해 하나 모자란 별자리(남은 하나는 주인 없음)를 남은 판이 넷 넘게 남았으면
- *   사들인다(남의 완성 덤·이용료 2배·정거장을 막는다)
- * - 내 완성 사들이기는 남길 돈 없이도(별빛 60은 남긴다) 남은 판이 둘 넘게면, 둘 잇기는 남은 판 다섯 넘게까지
+ * 고수(docs/48 16-8·16-9): 중수 판단을 바탕으로 사들이기·맡기기·정거장 올리기에서 앞을 더 본다.
+ * 이기는 사람은 대개 별자리를 완성한 사람이라(완성하면 1등 약 60%, 못 하면 약 10%) 내 완성을 늘리고 남의 완성을 막는다.
+ * - 사들이기(판 몫은 남은 돌림 ÷ 판 전체 돌림): 내 완성은 언제나. 판 몫 40% 넘게는 남길 돈의 두 배를 남기면 무엇이든.
+ *   주인이 하나 모자란 별자리를 막는 인수는 판 몫 20% 넘게, 내 별이 있는 별자리를 잇는 인수는 판 몫 25% 넘게
+ *   (나머지 별에 다른 주인이 있어도). 막기·잇기는 남길 돈의 절반을 남긴다
+ * - 막는 맡기기: 남 한 사람이 나머지를 모두 가진 별자리의 내 별은 맡겨 사들이지 못하게 하고 되찾지 않는다
  * - 정거장 올리기는 실제 칸 밟힘으로 한 단·두 단 올림의 효율을 견주고, 없으면 중수처럼
  */
 const expertPolicy: Policy = {
   ...intermediatePolicy,
   takeover(ctx, square, price) {
     const left = myCash(ctx) - price;
-    const rounds = remainingRounds(ctx.view);
+    // 남은 돌림을 판 전체 돌림에 견준 몫(긴 판은 25돌림으로 어림)
+    const share =
+      remainingRounds(ctx.view) / (turnLimitOf(ctx.view.rules) ?? 25);
     const reserve = intermediateReserve(ctx);
     const { mine, theirs } = completesFor(ctx, square);
-    if (mine) return left >= 60 && rounds > 2;
+    // 내 별자리를 완성하는 인수는 언제나. 판 끝이라도 완성 덤(별자리 값)이 줄어드는 자산(값의 0.7배)보다 크다
+    if (mine) return true;
+    // 판 앞쪽에는 남길 돈의 두 배를 남기면 무엇이든 사들인다. 남의 별자리를 흩고 내 별자리 기회를 늘린다
+    if (share > 0.4 && left >= 2 * reserve) return true;
     const owner = ctx.view.owners[square] ?? -1;
     const group = groupOf(ctx, square);
     const squares = ctx.view.board.groups[group]?.squares ?? [];
@@ -568,21 +573,16 @@ const expertPolicy: Policy = {
         (sq) =>
           ctx.view.owners[sq] === owner || (ctx.view.owners[sq] ?? -1) < 0,
       );
-    if ((ownerNear || theirs) && rounds > 4 && left >= reserve) return true;
-    const open = squares.every(
-      (sq) =>
-        sq === square ||
-        ctx.view.owners[sq] === ctx.seat ||
-        (ctx.view.owners[sq] ?? -1) < 0,
-    );
+    if ((ownerNear || theirs) && share > 0.2 && left >= reserve / 2)
+      return true;
+    // 내 별이 있는 별자리는 나머지 별에 다른 주인이 있어도 잇는다(그 별은 나중에 완성 인수로)
     return (
-      open &&
-      ownedIn(ctx, ctx.seat, group) >= 1 &&
-      rounds > 5 &&
-      left >= reserve
+      ownedIn(ctx, ctx.seat, group) >= 1 && share > 0.25 && left >= reserve / 2
     );
   },
   manage(ctx, rng) {
+    const shield = shieldSquares(ctx).find((sq) => !ctx.view.mortgaged[sq]);
+    if (shield !== undefined) return { type: "mortgage", square: shield };
     const reserve = expertReserve(ctx);
     const spare = myCash(ctx) - reserve;
     // 별자리마다 한 단 올림과 두 단 올림(3단 꺾임점: 2→3단이 1→2단보다 이용료가 훨씬 크다)의 효율을 견준다
@@ -616,9 +616,33 @@ const expertPolicy: Policy = {
       if (!best || score > best.score) best = { square: sq, score };
     }
     if (best) return { type: "build", square: best.square };
-    return intermediatePolicy.manage(ctx, rng);
+    const managed = intermediatePolicy.manage(ctx, rng);
+    // 막으려고 맡긴 별은 되찾지 않는다
+    if (
+      managed?.type === "unmortgage" &&
+      shieldSquares(ctx).includes(managed.square)
+    )
+      return null;
+    return managed;
   },
 };
+
+/**
+ * 맡겨서 막을 내 별: 남 한 사람이 이 별자리의 나머지 별을 모두 가져, 내 별을 도착 인수로 사들이면 그 사람이
+ * 완성하는 별. 맡긴 별은 사들일 수 없다(2-8). 맡기면 자산이 값의 20분의 1만큼 줄고 이용료(1단)를 못 받는다
+ */
+function shieldSquares(ctx: Ctx): number[] {
+  if (!ctx.view.rules.takeover) return [];
+  return STAR_SQUARES.filter((sq) => {
+    if (ctx.view.owners[sq] !== ctx.seat) return false;
+    const squares = ctx.view.board.groups[groupOf(ctx, sq)]?.squares ?? [];
+    return activeSeats(ctx.view).some(
+      (o) =>
+        o !== ctx.seat &&
+        squares.every((s) => s === sq || ctx.view.owners[s] === o),
+    );
+  });
+}
 
 /* ───────────── 목록 ───────────── */
 

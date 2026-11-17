@@ -274,6 +274,59 @@ describe("은하 한 바퀴 컴퓨터", () => {
     expect(answer(1, [])).toBe("declineTakeover");
   });
 
+  it("고수 도착 인수: 판 앞쪽에는 외톨이 별도 사들이고, 판 끝에는 완성하는 별만 사들인다", () => {
+    const orion = board.squares.flatMap((s) =>
+      s.star && board.groups[s.star.group]?.id === "Ori" ? [s.index] : [],
+    );
+    const bellatrix = board.squares.findIndex(
+      (s) => s.star?.star.id === "Bellatrix",
+    );
+    const others = orion.filter((sq) => sq !== bellatrix);
+    const answer = (round: number, mine: number[]) => {
+      const state = createGalaxyScenario({
+        board,
+        round,
+        cash: [1000, 800, 800, 800],
+        positions: [bellatrix - 6, 0, 0, 0],
+        stars: [
+          { square: bellatrix, owner: 1 },
+          ...mine.map((square) => ({ square, owner: 0 })),
+        ],
+      });
+      const landed = rolled(state, [2, 4]);
+      expect(landed.phase).toBe("takeover");
+      return galaxyExpertBot.decide(viewOf(landed, 0), createRng(1)).type;
+    };
+    // 기본 4인 판 20돌림: 1돌림째는 남은 판이 넉넉하다, 18돌림째는 남은 판 셋, 20돌림째는 마지막 돌림
+    expect(answer(1, [])).toBe("takeover");
+    expect(answer(18, [])).toBe("declineTakeover");
+    expect(answer(20, others)).toBe("takeover");
+  });
+
+  it("고수는 남이 사들이면 별자리를 완성할 내 별을 맡겨 막는다(중수는 그대로 굴린다)", () => {
+    const orion = board.squares.flatMap((s) =>
+      s.star && board.groups[s.star.group]?.id === "Ori" ? [s.index] : [],
+    );
+    const [mine, ...theirs] = orion as [number, ...number[]];
+    const state = createGalaxyScenario({
+      board,
+      cash: [800, 800, 800, 800],
+      stars: [
+        { square: mine, owner: 0 },
+        ...theirs.map((square) => ({ square, owner: 1 })),
+      ],
+    });
+    const view = viewOf(state, 0);
+    expect(view.decision?.kind).toBe("roll");
+    expect(galaxyExpertBot.decide(view, createRng(1))).toEqual({
+      type: "mortgage",
+      square: mine,
+    });
+    expect(galaxyIntermediateBot.decide(view, createRng(1))).toEqual({
+      type: "roll",
+    });
+  });
+
   it("단계 번호로 고른다", () => {
     expect(galaxyBotFor(0).name).toBe("입문");
     expect(galaxyBotFor(1).name).toBe("중수");
