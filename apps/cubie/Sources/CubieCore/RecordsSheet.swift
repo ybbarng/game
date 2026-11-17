@@ -10,13 +10,24 @@ public enum RecordsSheet {
   // MARK: 글(사이트와 같다)
 
   public static let tiersTitle = "티어"
-  public static let tiersBasis = "Cubie 기록 기준 · 최고 Ao5"
+  public static let tiersBasis = "Cubie 기록 기준 · 최고 5판 평균(Ao5)"
   public static let tiersLink = "티어표"
   public static let tierPending = "5판 뒤에"
   public static let tiersNote =
     "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자 맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요."
   public static let title = "기록"
-  public static let summaryLabels = ["최고", "평균", "5번 평균", "12번 평균"]
+  /// 요약 이름: 최근 n판 평균과 티어를 정한 최고 5판 평균을 이름으로 가른다(2026-11-18)
+  public static let summaryLabels = ["최고", "평균", TierProgress.recent5, TierProgress.recent12, TierProgress.best5]
+
+  /// 요약 「최고 5판 평균」 값(「2:35.09 · 7~11번」, 없으면 「-」)
+  public static func best5Text(_ v: TierProgress.View?) -> String {
+    v.map { "\(MiniBook.formatMs($0.ms)) · \(TierProgress.rangeText($0))" } ?? "-"
+  }
+
+  /// 기록 줄 시간 글: 최고 5판 평균에서 빠진 가장 빠른·느린 판은 대회 표기처럼 괄호
+  public static func timeText(_ time: String, mark: TierProgress.Mark?) -> String {
+    mark == .fast || mark == .slow ? "(\(time))" : time
+  }
   public static let empty = "아직 기록이 없어요."
   public static let synthetic = "다른 프로그램 입력"
   public static let swipe = "마우스·화면"

@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import type { SolveRecord } from "../records";
-import { ao5, bestAo5, myTier, nextTier, tierName, tierOf } from "./rank";
+import {
+  ao5,
+  bestAo5,
+  bestFiveDetail,
+  myTier,
+  nextSolve,
+  nextTier,
+  tierHistory,
+  tierName,
+  tierOf,
+  trimmedOf,
+} from "./rank";
 import { TIER_IDS, TIER_SIZES, TIER_TABLE } from "./table";
 
 const r = (
@@ -125,6 +136,154 @@ describe("티어 경계(상한 이하)", () => {
 
   it("표가 없는 크기는 없다", () => {
     expect(tierOf(8, 10_000)).toBeNull();
+  });
+});
+
+/**
+ * 2026-11-18 사용자 Cubie 3×3 기록 11판(새것이 앞). 1번 8:28.45와 7~11번(4:09.71·3:06.83·2:03.81·2:19.80·2:18.65)은
+ * 사용자 기록 창 스크린샷 값, 2~6번은 그 사이를 채운 느린 판. 기록 창 「최고 Ao5」 2:35.09 = 브론즈 II
+ */
+const USER = [
+  138_650, 139_800, 123_810, 186_830, 249_710, 290_000, 330_000, 370_000,
+  415_000, 460_000, 508_450,
+].map((ms, i, all) => ({
+  ms,
+  penalty: 0,
+  no: all.length - i,
+  // 오래된 판부터 이틀에 세 판쯤: 1번 11/10 … 11번 11/15(한국 시각 낮)
+  at: Date.UTC(2026, 10, 10 + Math.floor((all.length - 1 - i) / 2), 3),
+}));
+
+describe("최고 5판(티어를 정한 5판)", () => {
+  it("사용자 예: 7~11번, 빠진 판은 9번(가장 빠름)과 7번(가장 느림)", () => {
+    expect(bestFiveDetail(USER)).toEqual({
+      ms: 155_090,
+      from: "list",
+      at: 0,
+      fast: 2,
+      slow: 4,
+    });
+  });
+
+  it("남겨 둔 최고 5판이 더 좋으면 그것, 같으면 목록", () => {
+    const kept = five(10_000, 11_000, 12_000, 13_000, 14_000);
+    expect(bestFiveDetail(USER, kept)).toMatchObject({
+      ms: 12_000,
+      from: "kept",
+      fast: 0,
+      slow: 4,
+    });
+    const same = USER.slice(0, 5).map((x) => r(x.ms));
+    expect(bestFiveDetail(USER, same)?.from).toBe("list");
+  });
+
+  it("DNF는 가장 느린 판으로, 같은 시간이면 앞(새것) 판", () => {
+    expect(trimmedOf(five(10_000, null, 9_000, 12_000, 9_000))).toEqual({
+      fast: 2,
+      slow: 1,
+    });
+    expect(trimmedOf(five(5_000, 5_000, 5_000, 5_000, 5_000))).toEqual({
+      fast: 0,
+      slow: 1,
+    });
+  });
+});
+
+describe("다음 판 목표", () => {
+  it("사용자 예: 다음 판 2:51.56 안이면 브론즈 I, 2:51.57이면 브론즈 II 그대로", () => {
+    // 2:18.65·2:19.80과 다음 판 X가 가운데 셋이면 (278.45 + X) / 3 ≤ 150초. 평균은 1/100초로 반올림하므로
+    // X = 171.56초면 150.0033초 → 150.00초로 닿는다(반올림 없이 셈하면 2:51.55)
+    const got = nextSolve(3, USER);
+    expect(got).toEqual({
+      kind: "within",
+      to: { tier: "bronze", division: "I", step: 7 },
+      cutMs: 150_000,
+      ms: 171_560,
+    });
+    const after = (ms: number) => {
+      const t = myTier(3, [r(ms), ...USER]);
+      return t ? tierName(t.place) : null;
+    };
+    expect(after(171_560)).toBe("브론즈 I");
+    expect(after(171_570)).toBe("브론즈 II");
+  });
+
+  it("앞 네 판이 이미 빠르면 다음 판이 몇 초든(DNF여도) 닿는다", () => {
+    // 최근 네 판은 1분대, 그 앞 판은 힌트를 봐서 그 판이 든 5판은 티어에 넣지 않았다. 최고는 그 앞 5판(브론즈 IV)
+    const recs = [
+      ...five(60_000, 61_000, 62_000, 63_000),
+      { ms: 300_000, penalty: 0, hints: 1 },
+      ...five(280_000, 290_000, 295_000, 299_000, 300_000),
+    ];
+    expect(myTier(3, recs)?.place.step).toBe(4);
+    expect(nextSolve(3, recs)).toEqual({
+      kind: "any",
+      to: { tier: "bronze", division: "III", step: 5 },
+      cutMs: 240_000,
+    });
+  });
+
+  it("다음 판 하나로 못 닿으면 그 사실과 지금 최고에서 줄일 시간", () => {
+    // 최고는 옛 5판 2:35.09(브론즈 II), 최근 네 판은 4분대라 다음 판이 0초여도 브론즈 I(2:30)에 못 닿는다
+    const recs = five(240_000, 245_000, 250_000, 255_000).concat(
+      USER.slice(0, 5).map((x) => r(x.ms)),
+    );
+    expect(nextSolve(3, recs)).toEqual({
+      kind: "out",
+      to: { tier: "bronze", division: "I", step: 7 },
+      cutMs: 150_000,
+      gapMs: 5_090,
+    });
+  });
+
+  it("최근 네 판에 힌트 판이 있으면 다음 판으로는 못 닿는다", () => {
+    const recs = USER.map((x, i) => (i === 1 ? { ...x, hints: 1 } : x));
+    const kept = USER.slice(0, 5).map((x) => r(x.ms));
+    expect(nextSolve(3, recs, kept)?.kind).toBe("out");
+  });
+
+  it("티어가 없거나 꼭대기면 없다", () => {
+    expect(nextSolve(3, five(10_000, 11_000, 12_000, 13_000))).toBeNull();
+    expect(nextSolve(3, five(5_000, 5_000, 5_000, 5_000, 5_000))).toBeNull();
+  });
+});
+
+describe("티어 이력", () => {
+  it("사용자 예: 5번에서 아이언 I, 8번 브론즈 IV, 10번 브론즈 III, 11번 브론즈 II", () => {
+    const h = tierHistory(3, USER);
+    expect(h.points.map((p) => p.ms)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      415_000,
+      371_670,
+      330_000,
+      289_900,
+      242_180,
+      192_110,
+      155_090,
+    ]);
+    expect(
+      h.changes.map((c) => [
+        c.no,
+        new Date(c.at).getUTCDate(),
+        c.from ? tierName(c.from) : null,
+        tierName(c.to),
+      ]),
+    ).toEqual([
+      [5, 12, null, "아이언 I"],
+      [8, 13, "아이언 I", "브론즈 IV"],
+      [10, 14, "브론즈 IV", "브론즈 III"],
+      [11, 15, "브론즈 III", "브론즈 II"],
+    ]);
+  });
+
+  it("힌트 판이 든 5판은 넣지 않는다", () => {
+    const recs = USER.map((x, i) => (i === 0 ? { ...x, hints: 1 } : x));
+    const h = tierHistory(3, recs);
+    expect(h.points.at(-1)?.ms).toBe(192_110);
+    expect(h.changes.at(-1)?.to.division).toBe("III");
   });
 });
 

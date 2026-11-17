@@ -22,6 +22,11 @@ const FILES = import.meta.glob<string>(
     "../../../../cubie/Sources/CubieCore/TierSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierShowcase.swift",
     "../../../../cubie/Sources/CubieCore/SettingsSheet.swift",
+    "../../../../cubie/Sources/CubieCore/TierProgress.swift",
+    "../tiers/progress-view.ts",
+    "../tiers/TierHistoryChart.tsx",
+    "../tiers/history-chart.ts",
+    "../../../../cubie/Sources/CubieCore/TierHistoryLayout.swift",
     "../mini/MiniCubeApp.tsx",
     "../tiers/TiersApp.tsx",
     "../tiers/TierShowcase.tsx",
@@ -65,12 +70,10 @@ function sameText(
 describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
   it("기록 창(MiniCubeApp RecordsPage)", () =>
     sameText("MiniCubeApp.tsx", "RecordsSheet.swift", [
-      "Cubie 기록 기준 · 최고 Ao5",
+      "Cubie 기록 기준 · 최고 5판 평균(Ao5)",
       "티어표",
       "5판 뒤에",
       "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자 맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.",
-      "5번 평균",
-      "12번 평균",
       "아직 기록이 없어요.",
       "다른 프로그램 입력",
       "마우스·화면",
@@ -81,20 +84,42 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "처음부터",
     ]));
 
+  it("최고 5판·다음 판 목표(progress-view, 앱 TierProgress.swift)", () =>
+    sameText("progress-view.ts", "TierProgress.swift", [
+      '"최근 5판 평균"',
+      '"최근 12판 평균"',
+      '"최고 5판 평균"',
+      "~",
+      "번",
+      "다음 판 ",
+      " 안이면 ",
+      "다음 판을 맞추면 ",
+      "다음 판 하나로는 ",
+      "에 못 닿아요. 최고 5판 평균을 ",
+      "초 줄여야 해요.",
+    ]));
+
+  it("티어 이력(TierHistoryChart·history-chart, 앱 TierHistoryLayout.swift)", () =>
+    sameText(
+      ["TierHistoryChart.tsx", "history-chart.ts"],
+      "TierHistoryLayout.swift",
+      ["티어 이력", " → ", "에서 ", "까지.", "판.", " 지금 "],
+    ));
+
   it("티어표(TiersApp)", () =>
     // 내 티어 칸 글은 진열(TierShowcase.tsx)로 옮겼다(2026-11-13, 글은 그대로)
     sameText(["TiersApp.tsx", "TierShowcase.tsx"], "TierSheet.swift", [
       "← 큐브",
-      "같은 크기 혼자 맞추기에서 낸 가장 좋은 Ao5로 티어를 매깁니다. Ao5는 연달아 맞춘 5번 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3번의 평균입니다.",
-      "골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고, 아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔습니다. 큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰, 크기가 달라도 같은 티어면 비슷한 실력입니다.",
-      "내 최고 Ao5",
-      "이 크기는 아직 Ao5가 없습니다.",
-      "혼자 맞추기",
-      "에서 5번 맞추면 생깁니다.",
-      "기록은 이 기기에만 저장됩니다.",
-      "칸의 시간은 그 구간에 드는 최고 Ao5의 상한입니다. 「WCA 경기자 중」은 그 티어에 드는 시간 이하인 대회 경기자의 비율입니다(",
+      "같은 크기에서 낸 가장 좋은 5판 평균(Ao5)으로 티어를 매겨요. 5판 평균은 연달아 맞춘 5판 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3판의 평균이에요.",
+      "골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고, 아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔어요. 큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰, 크기가 달라도 같은 티어면 비슷한 실력이에요.",
+      "내 최고 5판 평균",
+      // 앱 티어표는 Cubie 기록으로 센다(사이트는 `?records=cubie`일 때 같은 글)
+      "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.",
+      "Cubie 기록 기준이에요.",
+      "기록은 이 기기에만 저장돼요.",
+      "칸의 시간은 그 구간에 드는 최고 5판 평균의 상한이에요. 「WCA 경기자 중」은 그 티어에 드는 시간 이하인 대회 경기자의 비율이에요(",
       "평균 기록이 있는 약",
-      "그랜드마스터·챌린저 경계는 그때의 세계 약 1,000위·300위 기록이라 해마다 빨라질 수 있습니다.",
+      "그랜드마스터·챌린저 경계는 그때의 세계 약 1,000위·300위 기록이라 해마다 빨라질 수 있어요.",
     ]));
 
   it("설정 창(CubeSettingsApp 가운데 Cubie가 쓰는 칸)", () =>
@@ -162,7 +187,7 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "모든 티어",
       "까지",
       " 이하",
-      "Ao5 ",
+      "5판 평균 ",
       " · ",
     ]));
 

@@ -68,7 +68,8 @@ public final class MiniBook {
   public static let defaultSize = 3
 
   private let store: KeyValueStore
-  private let math: TierMath
+  /// 평균·티어 계산(최고 5판·다음 판·이력은 `TierProgressMath`도 따르면 쓴다, `TierProgress.swift`)
+  let math: TierMath
 
   public init(store: KeyValueStore, math: TierMath) {
     self.store = store

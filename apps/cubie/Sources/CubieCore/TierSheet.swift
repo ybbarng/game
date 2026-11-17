@@ -13,14 +13,13 @@ public enum TierSheet {
   public static let back = "← 큐브"
   public static let title = "티어표"
   public static let intro1 =
-    "같은 크기 혼자 맞추기에서 낸 가장 좋은 Ao5로 티어를 매깁니다. Ao5는 연달아 맞춘 5번 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3번의 평균입니다."
+    "같은 크기에서 낸 가장 좋은 5판 평균(Ao5)으로 티어를 매겨요. 5판 평균은 연달아 맞춘 5판 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3판의 평균이에요."
   public static let intro2 =
-    "골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고, 아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔습니다. 큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰, 크기가 달라도 같은 티어면 비슷한 실력입니다."
-  public static let mineLabel = "내 최고 Ao5"
-  public static let noneBefore = "이 크기는 아직 Ao5가 없습니다. "
-  public static let noneLink = "혼자 맞추기"
-  public static let noneAfter = "에서 5번 맞추면 생깁니다."
-  public static let deviceOnly = "기록은 이 기기에만 저장됩니다."
+    "골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고, 아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔어요. 큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰, 크기가 달라도 같은 티어면 비슷한 실력이에요."
+  public static let mineLabel = "내 최고 5판 평균"
+  /// 앱 티어표는 Cubie 기록으로 센다(사이트 `records=cubie`와 같은 글)
+  public static let none = "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요."
+  public static let deviceOnly = "Cubie 기록 기준이에요. 기록은 이 기기에만 저장돼요."
   public static let headTier = "티어"
   public static let headWca = "WCA 경기자 중"
   public static let outside = "대회 밖"
@@ -28,11 +27,11 @@ public enum TierSheet {
 
   /// 표 위 설명(사이트 그대로, 경기자 수는 한국식 천 단위 쉼표)
   public static func tableNote(n: Int, people: Int) -> String {
-    "칸의 시간은 그 구간에 드는 최고 Ao5의 상한입니다. 「WCA 경기자 중」은 그 티어에 드는 시간 이하인 대회 경기자의 비율입니다(\(n)×\(n) 평균 기록이 있는 약 \(grouped(people))명 가운데)."
+    "칸의 시간은 그 구간에 드는 최고 5판 평균의 상한이에요. 「WCA 경기자 중」은 그 티어에 드는 시간 이하인 대회 경기자의 비율이에요(\(n)×\(n) 평균 기록이 있는 약 \(grouped(people))명 가운데)."
   }
 
   public static func footer(date: String) -> String {
-    "WCA 수치: WCA 결과 내보내기 \(date) 판. 그랜드마스터·챌린저 경계는 그때의 세계 약 1,000위·300위 기록이라 해마다 빨라질 수 있습니다."
+    "WCA 수치: WCA 결과 내보내기 \(date) 판. 그랜드마스터·챌린저 경계는 그때의 세계 약 1,000위·300위 기록이라 해마다 빨라질 수 있어요."
   }
 
   /// 「12,345」(사이트 `toLocaleString("ko-KR")`)
@@ -111,27 +110,11 @@ public enum TierSheet {
     return Table(n: n, people: people, date: head[1], credit: head[2], url: head[3], rows: rows)
   }
 
-  // MARK: 내 티어(사이트 `useMyTier`: 이 기기의 혼자 맞추기 기록)
+  // MARK: 내 티어(Cubie 기록, 사이트 `miniTier`)
 
-  public static let recordsKey = "cube.records.v1"
-  public static let bestFiveKey = "cube.best5.v1"
-
-  /// 혼자 맞추기 기록(새것이 앞, 사이트 `loadRecords("solo", n)`)과 최고 5판(`loadBestFive`)
-  public static func soloRecords(store: KeyValueStore, n: Int) -> (records: [Timeable], bestFive: [Timeable]) {
-    func json(_ key: String) -> [String: Any] {
-      guard let t = store.string(key), let d = t.data(using: .utf8),
-        let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any]
-      else { return [:] }
-      return o
-    }
-    func valid(_ v: Any) -> [String: Any]? {
-      guard let r = v as? [String: Any], r["at"] is NSNumber, r["n"] is NSNumber, r["moves"] is NSNumber else { return nil }
-      if let ms = r["ms"], ms is NSNumber || ms is NSNull { return r }
-      return nil
-    }
-    let list = (json(recordsKey)["solo-\(n)"] as? [Any] ?? []).compactMap(valid).map(Timeable.init)
-    let raw = json(bestFiveKey)[String(n)] as? [Any] ?? []
-    let five = raw.compactMap(valid)
-    return (list, five.count == 5 && raw.count == 5 ? five.map(Timeable.init) : [])
+  /// 티어표 창의 내 티어. 기록 창·메뉴 프로필 칸과 같은 Cubie 기록(`MiniBook`)으로 센다. 2026-11-18까지는 사이트 혼자
+  /// 맞추기 기록(`cube.records.v1`, 앱에는 쌓이지 않는다)을 읽어 기록 창이 브론즈 II일 때도 「아직 없음」이었다
+  public static func mine(store: KeyValueStore, math: TierMath, n: Int) -> TierInfo? {
+    MiniBook(store: store, math: math).tier(n)
   }
 }

@@ -98,7 +98,7 @@ function sampleStore() {
     records: { 3: three, 2: two },
     best5: {},
   };
-  // 사이트 티어표의 「내 티어」는 혼자 맞추기 기록으로 센다
+  // 사이트 혼자 맞추기 기록도 넣어 둔다(앱 티어표·`records=cubie` 사이트 창은 이것을 보지 않아야 한다)
   const solo = [17_200, 16_430, 18_900, 15_880, 16_990].map((ms, i) =>
     record(i + 1, 3, ms),
   );
@@ -145,9 +145,10 @@ const WINDOWS = [
   },
   {
     name: "tiers",
-    path: "/cube/tiers?n=3",
+    // 앱이 여는 사이트 티어표와 같이 Cubie 기록으로 센다(docs/52 5-14)
+    path: "/cube/tiers?n=3&records=cubie",
     size: { width: 760, height: 820 },
-    // 진열(docs/52 5-11): 내 티어, 사다리에서 챌린저를 고른 때, 혼자 맞추기 기록이 없을 때. 흔들기는 멈춰 정면끼리 견준다
+    // 진열(docs/52 5-11): 내 티어, 사다리에서 챌린저를 고른 때, Cubie 기록이 없을 때. 흔들기는 멈춰 정면끼리 견준다
     shots: ["tiers", "tiers-pick", "tiers-none"],
     full: true,
     reducedMotion: "reduce",
@@ -189,9 +190,9 @@ try {
         await page.waitForTimeout(800);
       }
       if (shot === "tiers-none") {
-        // 혼자 맞추기 기록이 없는 저장소(네이티브도 같은 저장소에서 cube.records.v1·cube.best5.v1을 뺀다)
+        // Cubie 기록이 없는 저장소(네이티브도 같은 저장소에서 cube.mini.v1을 뺀다)
         await ctx.close();
-        const { "cube.records.v1": _, ...rest } = store;
+        const { "cube.mini.v1": _, ...rest } = store;
         [ctx, page] = await open(rest);
         await page.waitForTimeout(800);
       }

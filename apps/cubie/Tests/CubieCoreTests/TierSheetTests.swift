@@ -38,21 +38,18 @@ struct TierSheetTests {
     #expect(TierSheet.tableNote(n: 3, people: 284_562).hasSuffix("(3×3 평균 기록이 있는 약 284,562명 가운데)."))
   }
 
-  @Test func readsSoloRecordsNotMiniRecords() {
-    let solo = (1...5).map { record(Double(10_000 + $0 * 100), at: $0) }
-    let five = (1...5).map { record(Double(9_000 + $0), at: $0) }
-    let store = MemoryStore([
-      TierSheet.recordsKey: json(["solo-3": solo, "blind-3": [record(1)]]),
-      TierSheet.bestFiveKey: json(["3": five]),
-      MiniBook.key: json(["version": 1, "records": ["3": [record(1)]]]),
-    ])
-    let got = TierSheet.soloRecords(store: store, n: 3)
-    #expect(got.records.count == 5 && got.records.first?.ms == 10_100)
-    #expect(got.bestFive.count == 5)
-    #expect(TierSheet.soloRecords(store: store, n: 4).records.isEmpty)
-    // 최고 5판은 딱 5판일 때만
-    let broken = MemoryStore([TierSheet.bestFiveKey: json(["3": Array(five.prefix(4))])])
-    #expect(TierSheet.soloRecords(store: broken, n: 3).bestFive.isEmpty)
+  /// 2026-11-18 사용자 「내 기록에 맞게 티어가 보이지 않는 것 같은데」: 기록 창·메뉴 프로필 칸은 Cubie 기록으로 3×3 브론즈 II인데
+  /// 티어표 창만 사이트 혼자 맞추기 기록(앱에는 없음)을 읽어 「아직 없음」이었다. 앱의 티어 표시는 모두 Cubie 기록 하나로
+  @MainActor
+  @Test func tiersWindowUsesCubieRecordsLikeRecordsWindow() {
+    let store = MemoryStore()
+    let book = MiniBook(store: store, math: FakeMath())
+    for ms in [100_000.0, 120_000, 110_000, 130_000, 105_000] { book.add(record(ms)) }
+    #expect(book.tier(3) != nil)
+    #expect(TierSheet.mine(store: store, math: FakeMath(), n: 3) == book.tier(3))
+    // 사이트 혼자 맞추기 기록(사이트 창에서 옮겨 온 옛 글)이 남아 있어도 앱 티어는 Cubie 기록으로
+    store.set(json(["solo-4": (1...5).map { record(Double(1_000 * $0), n: 4, at: $0) }]), for: "cube.records.v1")
+    #expect(TierSheet.mine(store: store, math: FakeMath(), n: 4) == nil)
   }
 
   private func json(_ v: Any) -> String {

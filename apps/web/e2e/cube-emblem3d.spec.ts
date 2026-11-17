@@ -213,7 +213,7 @@ test("사다리: 누르면 위쪽 큰 칸이 그 티어로, 같은 칸·내 티�
   await heroIs(page, "challenger");
   await expect(box).toHaveAttribute("data-cube-tier-view", "pick");
   await expect(box.locator("[data-cube-tier-picked]")).toHaveText("챌린저");
-  await expect(box).toContainText("Ao5 6.5초 이하");
+  await expect(box).toContainText("5판 평균 6.5초 이하");
   await expect(box.locator("[data-cube-picked-gap]")).toHaveText("6.90초");
   await expect(cell("challenger")).toHaveAttribute("aria-pressed", "true");
   await shot(page, "picked-desktop");
