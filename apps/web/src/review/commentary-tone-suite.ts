@@ -20,16 +20,31 @@ export interface ToneRun {
   level: number | ((seat: number) => number);
   /** 최대 걸음 수(게임이 먼저 끝나면 거기서 멈춘다) */
   steps: number;
-  /** 해설을 n걸음마다 한 번 계산한다(무거운 계산을 줄인다). 기본 1 */
+  /**
+   * 해설을 자리마다 n수에 한 번 계산한다(무거운 계산을 줄인다). 기본 1.
+   * 걸음 번호로 고르면 두 편이 번갈아 두는 게임에서 짝수 n이 한 편의 수만 고르므로, 자리마다 따로 센다
+   */
   every?: number;
+}
+
+export interface Collected {
+  lines: string[];
+  /** 컴퓨터가 수를 고른 자리(차례 순서대로 처음 나온 차례) */
+  movedSeats: number[];
+  /** 해설이 한 줄이라도 나온 자리 */
+  explainedSeats: number[];
 }
 
 const name = (seat: number) =>
   ["민준", "나", "컴퓨터 1", "컴퓨터 2", "서연"][seat] ?? `자리 ${seat}`;
 
 /** 대국 하나를 두면서 해설 글과 사건 글을 모은다 */
-export function collectCommentary(kit: AnyKit, run: ToneRun): string[] {
+export function collectCommentary(kit: AnyKit, run: ToneRun): Collected {
   const lines: string[] = [];
+  const moved = new Set<number>();
+  const explained = new Set<number>();
+  /** 자리마다 지금까지 둔 걸음 수 */
+  const count = new Map<number, number>();
   let state = kit.createMatch(run.rules, run.seed).state;
   const every = run.every ?? 1;
   for (let i = 0; i < run.steps; i++) {
@@ -53,6 +68,7 @@ export function collectCommentary(kit: AnyKit, run: ToneRun): string[] {
           typeof run.level === "function" ? run.level(seat) : run.level;
         const bot = kit.botFor?.(level);
         if (!bot) throw new Error("컴퓨터가 없는 게임");
+        moved.add(seat);
         next = {
           seat,
           action: bot.decide(view, { seed: run.seed * 7919 + i }),
@@ -61,17 +77,25 @@ export function collectCommentary(kit: AnyKit, run: ToneRun): string[] {
     }
     const result = kit.step(state, next.seat, next.action);
     if (!result.ok) throw new Error(`${i}걸음: ${result.error}`);
-    if (i % every === 0)
-      lines.push(
-        ...commentaryLines(
-          kit.review.explain(state, next, result.state, i, name),
-        ),
+    const nth = count.get(next.seat) ?? 0;
+    count.set(next.seat, nth + 1);
+    if (nth % every === 0) {
+      const said = commentaryLines(
+        kit.review.explain(state, next, result.state, i, name),
       );
+      if (said.length > 0) explained.add(next.seat);
+      lines.push(...said);
+    }
     lines.push(...(kit.review.stepNotes?.(result.events, name) ?? []));
     state = result.state;
     if (kit.isOver(kit.viewOf(state, 0))) break;
   }
-  return lines;
+  const sorted = (s: Set<number>) => [...s].sort((a, b) => a - b);
+  return {
+    lines,
+    movedSeats: sorted(moved),
+    explainedSeats: sorted(explained),
+  };
 }
 
 /**
@@ -84,8 +108,15 @@ export function commentaryToneSuite(
   minLines = 20,
 ) {
   it("다시 보기 해설은 해요체 문장(마침표)이거나 마침표 없는 꼬리표다", () => {
-    const lines = runs.flatMap((run) => collectCommentary(kit, run));
+    const collected = runs.map((run) => collectCommentary(kit, run));
+    const lines = collected.flatMap((c) => c.lines);
     expect(lines.length).toBeGreaterThanOrEqual(minLines);
+    // 컴퓨터가 수를 둔 모든 자리의 해설을 말투 검사가 봤다(나중에 두는 편을 빠뜨리지 않는다)
+    for (const c of collected)
+      expect(c.movedSeats.length).toBeGreaterThanOrEqual(2);
+    expect(collected.map((c) => c.explainedSeats)).toEqual(
+      collected.map((c) => c.movedSeats),
+    );
     expect([...new Set(commentaryProblems(lines))]).toEqual([]);
   });
 }
