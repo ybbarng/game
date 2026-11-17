@@ -1,8 +1,10 @@
 import {
-  PawnEndingSolver,
   pawnEndingMoves,
+  pawnPuzzleCandidate,
+  promotionDigest,
   toPawnEnding,
 } from "@game/chess-ai";
+import { OUTSIDE_PAWN_PROOFS } from "@game/chess-ai/outside-pawn-proofs";
 import { legalMoves, parseFen, sanToMove } from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
@@ -10,7 +12,10 @@ import { CHESS_PUZZLE_SETS } from "./puzzles";
 import { explainOutside, outsidePawnOf } from "./study";
 
 /*
- * 바깥 패스 폰 문제가 킹과 폰 끝까지 읽기(@game/chess-ai의 pawn-ending.ts)와 어긋나지 않는지 본다(docs/26 6절).
+ * 바깥 패스 폰 문제가 「정답 수만 이기고, 다른 수는 모두 이기지 못한다」는 증명과 어긋나지 않는지 본다(docs/26 6절).
+ * 증명은 두 단계다(@game/chess-ai `queen-ending.ts`). 킹과 폰 판을 끝까지 읽는 후보 증명(폰이 퀸이 된 판만 어림)을
+ * 여기서 다시 세우고, 그 증명의 승급 판 묶음이 bench(`outside-pawn.strength.ts`)가 퀸이 된 뒤까지 끝까지 읽어
+ * 모두 확인한 기록(`outside-pawn-proofs.json`)과 같은지 본다. 같으면 어림 없이 끝까지 읽은 증명이다.
  * 읽는 판이 많아 문제를 둘로 갈라 outside-a·outside-b 두 파일이 동시에 돈다(파일 하나 2초 안쪽).
  */
 
@@ -30,31 +35,46 @@ export function outsidePawnSuite(half: 0 | 1) {
     .map((p) => [p.id, p] as const);
   describe("바깥 패스 폰 문제", () => {
     if (half === 0)
-      it("일곱 문제가 있다", () => {
+      it("일곱 문제가 있고, 문제마다 확인한 증명 기록이 하나씩 있다", () => {
         expect(puzzles).toHaveLength(7);
+        expect(puzzles.map((p) => `${p.fen} ${p.solution}`).sort()).toEqual(
+          OUTSIDE_PAWN_PROOFS.map((r) => `${r.fen} ${r.answer}`).sort(),
+        );
       });
 
     it.each(rows)(
-      "%s: 정답 수만 이긴다고 증명되고, 다른 수는 모두 이기지 못한다고 증명된다",
+      "%s: 정답 수만 이기고 다른 수는 모두 이기지 못한다는 증명이 끝까지 확인한 기록과 같다",
       (_id, puzzle) => {
         const pos = parseFen(puzzle.fen);
         const s = toPawnEnding(pos.board, pos.turn, pos.ep);
         if (!s) throw new Error("킹과 폰만 있는 판이 아니다");
-        // 문제마다 새 판정기(다른 문제에서 기억한 증명에 기대지 않게)
-        const solver = new PawnEndingSolver();
         const answer = sanToMove(pos, puzzle.solution);
-        const moves = pawnEndingMoves(s);
+        if (!answer) throw new Error("정답 수를 둘 수 없다");
         // 판정기의 수와 엔진의 수가 같다(승급 수는 없는 판이다)
-        expect(moves.map((m) => [m.from, m.to]).sort()).toEqual(
+        expect(
+          pawnEndingMoves(s)
+            .map((m) => [m.from, m.to])
+            .sort(),
+        ).toEqual(
           legalMoves(pos)
             .map((m) => [m.from, m.to])
             .sort(),
         );
-        for (const m of moves) {
-          const isAnswer = m.from === answer?.from && m.to === answer.to;
-          if (isAnswer) expect(solver.winsAfter(m, PLIES - 1)).toBe(true);
-          else expect(solver.holdsAfter(m, PLIES - 1)).toBe(true);
-        }
+        const record = OUTSIDE_PAWN_PROOFS.find(
+          (r) => r.fen === puzzle.fen && r.answer === puzzle.solution,
+        );
+        if (!record) throw new Error("확인한 증명 기록이 없다");
+        const cand = pawnPuzzleCandidate(
+          s,
+          answer,
+          PLIES - 1,
+          new Set(record.refuted),
+        );
+        expect(cand.unproved).toBeNull();
+        expect({
+          leaves: cand.leaves.length,
+          digest: promotionDigest(cand.leaves.map((l) => l.key)),
+        }).toEqual({ leaves: record.leaves, digest: record.digest });
       },
     );
 
@@ -71,7 +91,10 @@ export function outsidePawnSuite(half: 0 | 1) {
           );
           expect(lines[0]).toContain(`(${puzzle.solution})`);
           expect(lines[1]).toMatch(/[ab]폰/);
-          expect(lines.at(-1)).toBe("다른 수는 모두 비기거나 져요.");
+          expect(lines.slice(-2)).toEqual([
+            "흑이 어떻게 받아도 백이 체크메이트까지 갈 수 있어요.",
+            "다른 수는 모두 비기거나 져요.",
+          ]);
         },
       );
   });

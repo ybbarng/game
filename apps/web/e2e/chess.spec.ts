@@ -702,6 +702,9 @@ test(
     await expect(
       page.getByText(/반대쪽 흑 폰\(f5·h7\)을 잡으러 가요/),
     ).toBeVisible();
+    await expect(
+      page.getByText("흑이 어떻게 받아도 백이 체크메이트까지 갈 수 있어요."),
+    ).toBeVisible();
     await page.screenshot({ path: info.outputPath("chess-outside-pawn.png") });
   },
 );
