@@ -92,6 +92,6 @@ export const GALAXY_LEVELS: readonly {
     value: 2,
     label: "고수",
     description:
-      "칸마다 남이 멈출 확률로 앞으로 받을 이용료를 셈해 별 값을 매겨요.",
+      "판 앞쪽에는 남의 별도 적극 사들이고, 남이 사들여 별자리를 완성할 내 별은 맡겨서 막아요.",
   },
 ];
