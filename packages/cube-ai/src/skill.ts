@@ -68,14 +68,16 @@ export type BotSkill =
 /**
  * 계획 표 버전. 단계의 해법·빠르기·목표 표를 바꾸면 올린다(다른 표를 쓰는 기기가 계획을 맞춰 보지 않게).
  * 4(2026-11-17): 4×4 중수가 축소법 대신 야우(docs/47 10-4)
+ * 5(2026-11-17): 4×4 고수·초고수도 야우(십자를 지키는 짧은 엣지 짝 + CFOP, docs/47 10-5)
  */
-export const BOT_PLAN_VERSION = 4;
+export const BOT_PLAN_VERSION = 5;
 
 /**
- * 옛 계획 표 가운데 이 기기가 그대로 다시 계산하는 것. 3은 4×4 중수가 축소법인 것만 다르다(`levelMethod`,
- * `plan.ts` `BASE_MEAN_MS_V3`). 배포 직후 옛 화면 방장의 컴퓨터도 계획을 맞춰 보고, 옛 판의 단계 이름도 그대로 읽힌다
+ * 옛 계획 표 가운데 이 기기가 그대로 다시 계산하는 것. 3은 4×4 중수·고수·초고수가 축소법, 4는 4×4 고수·초고수가 축소법인
+ * 것만 다르다(`levelMethod`, `plan.ts` `BASE_MEAN_MS_V3`·`BASE_MEAN_MS_V4`). 배포 직후 옛 화면 방장의 컴퓨터도 계획을
+ * 맞춰 보고, 옛 판의 단계 이름도 그대로 읽힌다
  */
-export const OLD_PLAN_VERSIONS = [3] as const;
+export const OLD_PLAN_VERSIONS = [3, 4] as const;
 export type OldPlanVersion = (typeof OLD_PLAN_VERSIONS)[number];
 
 /** 크기별 단계 목표(한 판 평균, ms). 근거는 docs/47 10-1 */
@@ -115,12 +117,12 @@ export const BOT_TARGET_MS: Readonly<Record<number, Record<BotLevel, number>>> =
 
 /**
  * 단계마다 쓰는 해법(크기마다). 5×5(와 계획 표 3의 4×4)는 축소법 뒤 이 3×3 해법. 4×4 중수는 야우(docs/47 10-4): 앞
- * 다섯 단계는 사이트 야우 과정의 단원 규칙, 3×3처럼은 중수의 4단계 마지막 층 CFOP. 단원 규칙의 엣지 짝은 한 줄씩 묶어
- * 축소법 컴퓨터보다 수가 두 배 넘게 많아서, 고수·초고수 목표 시간에 두면 손이 같은 단계 3×3보다 빨라진다(사람과 반대).
- * 그래서 고수·초고수는 엣지 짝이 짧은 축소법 그대로 둔다
+ * 다섯 단계는 사이트 야우 과정의 단원 규칙, 3×3처럼은 중수의 4단계 마지막 층 CFOP. 4×4 고수·초고수도 야우(docs/47 10-5):
+ * 단원 규칙의 엣지 짝은 한 줄씩 묶어 길어서(평균 약 86수) 고수·초고수 목표 시간에 두면 손이 같은 단계 3×3보다 빨라지므로,
+ * 엣지 짝만 십자를 지키는 짧은 길(`yau-edges.ts`, 평균 약 27수)로 하고 3×3처럼은 CFOP. 계획 표 4의 4×4는 고수·초고수가 축소법
  */
 export const LEVEL_METHOD: Readonly<
-  Record<"2" | "3" | "4" | "big", Record<BotLevel, SolveMethod>>
+  Record<"2" | "3" | "4" | "4-v4" | "big", Record<BotLevel, SolveMethod>>
 > = {
   2: {
     novice: "beginner",
@@ -137,6 +139,13 @@ export const LEVEL_METHOD: Readonly<
     pro: "advanced",
   },
   4: {
+    novice: "beginner",
+    casual: "intermediate",
+    club: "yau",
+    fast: "yau-cfop",
+    pro: "yau-cfop",
+  },
+  "4-v4": {
     novice: "beginner",
     casual: "intermediate",
     club: "yau",
@@ -163,9 +172,11 @@ export function levelMethod(
       ? "2"
       : size === 3
         ? "3"
-        : size === 4 && version === undefined
-          ? "4"
-          : "big";
+        : size !== 4 || version === 3
+          ? "big"
+          : version === 4
+            ? "4-v4"
+            : "4";
   return LEVEL_METHOD[key][level];
 }
 

@@ -136,8 +136,9 @@ export const BASE_MEAN_MS: Readonly<Record<number, Record<BotLevel, number>>> =
       casual: 112_130,
       // 2026-11-17 bench(섞기 100개, 씨앗 1000부터): 야우(docs/47 10-4). 축소법 때는 65_820(`BASE_MEAN_MS_V3`)
       club: 117_800,
-      fast: 37_490,
-      pro: 21_360,
+      // 2026-11-17 bench(섞기 100개, 씨앗 1000부터): 야우 + 짧은 엣지 짝(docs/47 10-5). 축소법 때는 37_490·21_360(`BASE_MEAN_MS_V4`)
+      fast: 55_540,
+      pro: 30_690,
     },
     5: {
       novice: 339_830,
@@ -182,13 +183,23 @@ export const STAGE_PAUSE_FACTOR: Readonly<Partial<Record<StageName, number>>> =
   };
 
 /**
- * 계획 표 3(2026-11-09~11-17)에서 지금 표와 다른 배율 1 평균: 4×4 중수가 축소법이던 때(2026-11-05 bench).
+ * 계획 표 3(2026-11-09~11-17)에서 지금 표와 다른 배율 1 평균: 4×4 중수·고수·초고수가 축소법이던 때(2026-11-05 bench).
  * 버전 3 글의 컴퓨터를 옛 계획 그대로 다시 계산한다. 바꾸지 않는다
  */
 export const BASE_MEAN_MS_V3: Readonly<
   Record<number, Partial<Record<BotLevel, number>>>
 > = {
-  4: { club: 65_820 },
+  4: { club: 65_820, fast: 37_490, pro: 21_360 },
+};
+
+/**
+ * 계획 표 4(2026-11-17)에서 지금 표와 다른 배율 1 평균: 4×4 고수·초고수가 축소법이던 때(2026-11-05 bench).
+ * 버전 4 글의 컴퓨터를 옛 계획 그대로 다시 계산한다. 바꾸지 않는다
+ */
+export const BASE_MEAN_MS_V4: Readonly<
+  Record<number, Partial<Record<BotLevel, number>>>
+> = {
+  4: { fast: 37_490, pro: 21_360 },
 };
 
 /** 그 표의 배율 1 평균 */
@@ -197,10 +208,13 @@ export function baseMeanMs(
   size: number,
   version?: OldPlanVersion,
 ): number | undefined {
-  return (
-    (version === 3 ? BASE_MEAN_MS_V3[size]?.[level] : undefined) ??
-    BASE_MEAN_MS[size]?.[level]
-  );
+  const old =
+    version === 3
+      ? BASE_MEAN_MS_V3
+      : version === 4
+        ? BASE_MEAN_MS_V4
+        : undefined;
+  return old?.[size]?.[level] ?? BASE_MEAN_MS[size]?.[level];
 }
 
 /** 단계·크기의 시간 배율(목표 / 배율 1 평균) */
