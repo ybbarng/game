@@ -21,6 +21,7 @@ import {
   spotsOf,
 } from "./study";
 import {
+  compareStory,
   endgameSpots,
   placeName,
   playLine,
@@ -280,6 +281,34 @@ export const ENDGAME_REVERSE_PUZZLE = puzzle("endgame-reverse-1", "endgame");
 export const ENDGAME_DOUBLE_PUZZLE = puzzle("endgame-double-1", "endgame");
 export const REVERSE_STORY = orderStory(ENDGAME_REVERSE_PUZZLE);
 export const DOUBLE_STORY = orderStory(ENDGAME_DOUBLE_PUZZLE);
+/** 역끝내기냐 큰 후수냐 그림(그 묶음 첫 문제) */
+export const ENDGAME_COMPARE_PUZZLE = puzzle("endgame-compare-1", "endgame");
+/**
+ * 역끝내기냐 큰 후수냐 그림의 글에 쓰는 것: 세 곳 이름·자리·크기, 백이 선수로 둘 때 흑이 받는 자리,
+ * 두 순서에서 이어 두는 자리, 두 순서의 점수 차 차이. 모두 엔진으로 읽는다(study-lessons.test.ts가 다시 본다)
+ */
+export const COMPARE_STORY = (() => {
+  const p = ENDGAME_COMPARE_PUZZLE;
+  const c = compareStory(p);
+  return {
+    rev: {
+      label: c.rev.label,
+      move: pointName(c.rev.move, PUZZLE_SIZE),
+      size: c.rev.size,
+    },
+    big: { label: c.big.label, size: c.big.size },
+    small: { label: c.small.label, size: c.small.size },
+    stones: c.rev.theirs.stones,
+    reply: c.rev.theirs.replies.map((q) => pointName(q, PUZZLE_SIZE)).join("·"),
+    revWins: c.revWins,
+    gap: c.gap,
+  };
+})();
+const CMP = COMPARE_STORY;
+const CMP_SUM = CMP.rev.size + CMP.small.size;
+/** 역끝내기냐 큰 후수냐 그림의 후수 두 곳 이름(「A·C」) */
+const CMP_GOTES = [CMP.big.label, CMP.small.label].sort().join("·");
+
 /** 역끝내기 그림의 세 곳 크기(모두 같다. 글이 「세 곳 모두 n점짜리」라 하니 다르면 단원을 만들 때 멈춘다) */
 const REVERSE_SIZE = (() => {
   const [first, ...rest] = REVERSE_STORY.sizes;
@@ -758,13 +787,30 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
       },
       {
         kind: "explain",
+        title: "역끝내기냐 큰 후수냐",
+        body: [
+          `앞의 역끝내기 그림은 세 곳 크기가 같았어요. 이번 그림은 크기가 서로 달라요. 끝내기가 ${SPOT_LABELS.slice(0, 3).join("·")} 세 곳 남았고, 흑 차례예요.`,
+          `${CMP.rev.label}(${CMP.rev.move})는 백의 선수 자리예요. 백이 두면 흑 ${COUNT[CMP.stones]} 점이 단수가 되어 흑이 ${CMP.reply}에 이어 받아야 해요. ${CMP.reply}는 흑 집이라, 이어도 흑 집 한 칸이 흑 돌로 바뀔 뿐 흑 점수는 그대로예요. 흑이 먼저 막으면 역끝내기예요.`,
+          `세어 보면 ${topic(CMP.rev.label)} ${CMP.rev.size}점짜리, ${topic(CMP.big.label)} ${CMP.big.size}점짜리, ${topic(CMP.small.label)} ${CMP.small.size}점짜리예요. 역끝내기 ${subj(CMP.rev.label)} ${CMP.small.size > CMP.rev.size ? CMP_GOTES : CMP.big.label}보다 작아요.${CMP.big.size === CMP.small.size ? ` ${topic(CMP_GOTES)} 크기가 같아 어느 쪽을 큰 후수로 봐도 셈은 같아요. 여기서는 ${obj(CMP.big.label)} 큰 후수로 볼게요.` : ""}`,
+          `${CMP.rev.label}부터 막으면 그 뒤 백이 ${CMP_GOTES} 가운데 ${CMP.big.label}에 먼저 두고, ${CMP.small.label}에는 흑이 먼저 둬요.`,
+          `${CMP.big.label}부터 두면 그 뒤 ${[CMP.rev.label, CMP.small.label].sort().join("·")}에 모두 백이 먼저 둬요. 백이 ${CMP.rev.label}에 두면 흑이 ${CMP.reply}에 받아야 해서, 차례가 다시 백에게 가거든요. 흑은 ${CMP.big.label}에 먼저 두는 대신 ${wa(CMP.rev.label)} 남은 ${obj(CMP.small.label)} 백에게 내줘요.`,
+          `끝내기 한 곳은 흑이 먼저 두느냐 백이 먼저 두느냐에 따라 점수 차가 그곳 크기만큼 달라져요. ${CMP.rev.label}부터 두면 흑이 ${[CMP.rev.label, CMP.small.label].sort().join("·")}에 먼저 두고, ${CMP.big.label}부터 두면 흑이 ${CMP.big.label}에만 먼저 둬요. 그래서 ${CMP.rev.size} + ${CMP.small.size} = ${CMP_SUM}점과 ${CMP.big.size}점을 견줘요.`,
+          `이 판은 ${CMP.revWins ? `${CMP_SUM}점이 ${CMP.big.size}점보다 커서 ${CMP.rev.label}부터 막아요` : `${CMP.big.size}점이 ${CMP_SUM}점보다 커서 ${CMP.big.label}부터 둬요`}. 반대로 두면 점수 차가 ${CMP.gap}점 작아져요.`,
+        ],
+        scene: sceneOf(
+          ENDGAME_COMPARE_PUZZLE,
+          endgameMarks(ENDGAME_COMPARE_PUZZLE),
+        ),
+      },
+      {
+        kind: "explain",
         title: "어디부터 둘까",
         body: [
           "끝내기가 여러 곳 남으면 이 순서로 골라요.",
           "① 양선수가 있으면 양선수부터 둬요. 양선수는 상대에게도 선수라, 미루면 상대가 먼저 선수로 가져갈 수 있어요.",
           "② 내 선수가 있으면 선수부터 둬요. 선수가 여럿이면 그 가운데 큰 곳부터예요.",
-          "③ 상대의 선수 자리가 있고 남은 후수가 그곳과 크기가 같으면, 상대의 선수 자리부터 막아요(역끝내기).",
-          "④ 그 밖에는 후수 가운데 큰 곳부터 둬요. 상대의 선수 자리가 다른 후수보다 작을 때 어느 쪽이 먼저인지는 이 단원에서 다루지 않아요.",
+          "③ 상대의 선수 자리가 있으면, 그 크기에 남은 작은 후수 크기를 더해 가장 큰 후수와 견줘요. 더한 쪽이 크면 상대의 선수 자리를 먼저 막는 역끝내기부터, 큰 후수가 크면 큰 후수부터 둬요. 같으면 어느 쪽부터 둬도 괜찮아요. 후수 둘이 크기가 같으면 아무 쪽이나 큰 후수로 봐요. 이 셈은 끝내기가 세 곳 남은 판에서 써요.",
+          "④ 그 밖에는 후수 가운데 큰 곳부터 둬요.",
           "⑤ ①~④로 정해지지 않고 크기가 같으면 어느 곳부터 둬도 괜찮아요.",
           `그림은 「선수와 후수」에서 본 판이에요. 세면 ${topic(SENTE_LABEL)} ${SENTE_SIZES[0]}점짜리, ${topic(GOTE_LABEL)} ${SENTE_SIZES[1]}점짜리예요. ${subj(SENTE_LABEL)} 크지 않아도 흑의 선수라 ②대로 먼저 둬요. 백이 받으면 다시 흑 차례라 ${GOTE_LABEL}도 흑이 둬요.`,
         ],
@@ -798,7 +844,19 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         options: ["백이 두면 흑 돌이 단수가 되는 곳", "다른 곳"],
         answer: 0,
         explain:
-          "다른 곳부터 두면 백이 그곳에 선수로 두고, 내가 받은 뒤 다시 백 차례라 남은 곳까지 가져가요. 먼저 막으면(역끝내기) 세 곳 가운데 두 곳을 내가 가져요.",
+          "다른 곳부터 두면 백이 그곳에 선수로 두고, 내가 받은 뒤 다시 백 차례라 남은 곳까지 가져가요. 그곳을 먼저 막는 역끝내기를 두면 세 곳 가운데 두 곳을 내가 가져요.",
+      },
+      {
+        kind: "quiz",
+        question: `흑 차례예요. 백의 선수 자리 ${CMP.rev.size}점짜리와 후수 ${CMP.big.size}점짜리·${CMP.small.size}점짜리가 남았어요. 어디부터 둘까요?`,
+        options: [
+          `백의 선수 자리 ${CMP.rev.size}점짜리`,
+          `후수 ${CMP.big.size}점짜리`,
+        ],
+        answer: CMP.revWins ? 0 : 1,
+        explain: CMP.revWins
+          ? `큰 후수에 먼저 두면, 그 대신 백의 선수 자리와 남은 ${CMP.small.size}점짜리 후수에 백이 먼저 둬요. ${CMP.rev.size} + ${CMP.small.size} = ${CMP_SUM}점이 ${CMP.big.size}점보다 커서 백의 선수 자리부터 막아요.`
+          : `큰 후수에 먼저 두면, 그 대신 백의 선수 자리와 남은 ${CMP.small.size}점짜리 후수에 백이 먼저 둬요. 그래도 ${CMP.rev.size} + ${CMP.small.size} = ${CMP_SUM}점보다 ${CMP.big.size}점이 커서 큰 후수부터 둬요.`,
       },
       {
         kind: "quiz",

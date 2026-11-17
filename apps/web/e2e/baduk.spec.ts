@@ -654,7 +654,7 @@ test(
     await page.getByRole("button", { name: /수 배우기/ }).click();
     const status = page.getByRole("status");
 
-    // 끝내기 단원: 설명 여덟 → 퀴즈 넷 → 끝
+    // 끝내기 단원: 설명 아홉 → 퀴즈 다섯 → 끝
     const lessons = page.getByRole("region", { name: "단원 읽기" });
     await lessons.getByRole("button", { name: "끝내기 기초" }).click();
     await expect(page.getByRole("heading", { name: "끝내기란" })).toBeVisible();
@@ -665,6 +665,7 @@ test(
       "선수와 후수",
       "상대의 선수 자리",
       "누가 두어도 선수인 곳",
+      "역끝내기냐 큰 후수냐",
       "어디부터 둘까",
     ]) {
       await page.getByRole("button", { name: "다음", exact: true }).click();
@@ -673,6 +674,7 @@ test(
         title === "몇 점짜리일까" ||
         title === "상대의 선수 자리" ||
         title === "누가 두어도 선수인 곳" ||
+        title === "역끝내기냐 큰 후수냐" ||
         title === "어디부터 둘까"
       )
         await page.screenshot({
@@ -687,6 +689,8 @@ test(
     await page
       .getByRole("button", { name: "백이 두면 흑 돌이 단수가 되는 곳" })
       .click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "백의 선수 자리 2점짜리" }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await page.getByRole("button", { name: "양선수", exact: true }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
@@ -834,7 +838,7 @@ function endgameThree(id: string): [string, string, string] {
 }
 
 test(
-  "바둑 수 배우기: 역끝내기는 다른 곳부터 두면 틀리고 백의 선수 자리를 먼저 막아 풀며, 양선수는 먼저 두어 푼다",
+  "바둑 수 배우기: 역끝내기는 다른 곳부터 두면 틀리고 백의 선수 자리를 먼저 막아 풀며, 양선수는 먼저 두어 풀고, 역끝내기냐 큰 후수냐는 셈이 큰 쪽부터 둔다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     const touch = info.project.name.startsWith("phone");
@@ -845,7 +849,7 @@ test(
 
     // 역끝내기: 다른 곳 → 틀림, 다시 하기 → 백의 선수 자리 → 백이 둔다 → 남은 곳
     await page
-      .getByRole("region", { name: "역끝내기" })
+      .getByRole("region", { name: "역끝내기", exact: true })
       .getByRole("button", { name: "풀기 시작" })
       .click();
     await expect(status).toHaveText(
@@ -887,6 +891,33 @@ test(
     await expect(page.getByText(/양선수예요/)).toBeVisible();
     await page.screenshot({
       path: info.outputPath("baduk-endgame-double.png"),
+    });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 역끝내기냐 큰 후수냐: 큰 후수부터 → 틀림, 다시 하기 → 역끝내기 → 백이 둔다 → 이어서 가장 좋은 곳
+    await page
+      .getByRole("region", { name: "역끝내기냐 큰 후수냐" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "끝내기가 세 곳(A·B·C) 남았어요. 먼저 둘 곳에 두세요.",
+    );
+    const [first, wrongBig, next] = endgameThree("endgame-compare-1");
+    await placeAt(page, wrongBig, touch);
+    await expect(status).toHaveText(
+      "그곳부터 두면 다른 순서보다 점수 차가 작아요.",
+    );
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await placeAt(page, first, touch);
+    await expect(status).toHaveText(
+      "백이 뒀어요. 이어서 가장 좋은 곳에 두세요.",
+      { timeout: 10_000 },
+    );
+    await placeAt(page, next, touch);
+    await expect(status).toHaveText("끝내기를 잘 골랐어요!");
+    await expect(page.getByText(/2 \+ 4 = 6점과 4점을 견줘요/)).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("baduk-endgame-compare.png"),
     });
   },
 );
