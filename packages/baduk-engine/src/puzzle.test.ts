@@ -14,6 +14,7 @@ import {
   canKill,
   canLive,
   captureMoves,
+  endgameReader,
   endgameSize,
   koRecapturePoint,
   ladderDefense,
@@ -180,5 +181,40 @@ describe("끝내기 읽기", () => {
     expect(endgameSize(cut, [p("E8")])).toBe(2);
     // 백이 받지 않고 쉬면, 흑은 F9에 두어 백 E9를 따낼 수 있다
     expect(solveEndgame(atari.board, [p("E8")], 1).best).toContain(p("F9"));
+  });
+
+  it("읽기 도구: 첫 수마다의 결과와 가장 좋은 수가 solveEndgame과 같고, 수순은 차례마다 solveEndgame의 첫 가장 좋은 수를 둔다", () => {
+    // 빈 점 하나(E5, 2점)와 선수 곳(E8: 흑이 두면 백 E9가 단수, 백은 F9에 이어 받는다)이 함께 남은 판
+    const two = board(
+      rows.map((r) => `D${r}`),
+      [...rows.filter((r) => r !== 8 && r !== 5).map((r) => `E${r}`), "F8"],
+    );
+    const area = [p("E5"), p("E8")];
+    const reader = endgameReader(two, area);
+    const root = reader.choose(two, 1);
+    const solved = solveEndgame(two, area, 1);
+    expect({ score: root.score, best: root.best }).toEqual(solved);
+    // 첫 수마다의 결과는 그 수를 둔 판에서 백부터 읽은 점수 차다
+    for (const { at, score } of root.choices) {
+      if (at === null) continue;
+      const placed = tryPlace(two, at, 1);
+      if (!placed.ok) throw new Error("둘 수 없다");
+      expect(score).toBe(solveEndgame(placed.board, area, 2).score);
+    }
+    // 수순은 차례마다 solveEndgame이 고르는 첫 수와 같고, 끝난 판의 점수 차도 같다
+    const line = reader.line(two, 1);
+    expect(line.moves.length).toBeGreaterThanOrEqual(2);
+    let now = two;
+    let turn: 1 | 2 = 1;
+    for (const m of line.moves) {
+      expect(solveEndgame(now, area, turn).best[0]).toBe(m);
+      const placed = tryPlace(now, m, turn);
+      if (!placed.ok) throw new Error("둘 수 없다");
+      now = placed.board;
+      turn = turn === 1 ? 2 : 1;
+    }
+    // 둘 다 쉬어 끝났다
+    expect(solveEndgame(now, area, turn).best[0]).toBeNull();
+    expect(line.score).toBe(solved.score);
   });
 });
