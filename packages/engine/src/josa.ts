@@ -51,6 +51,8 @@ export const subj = (word: string) =>
 export const topic = (word: string) => pick(word, "은", "는");
 /** 「을/를」 */
 export const obj = (word: string) => pick(word, "을", "를");
+/** 「과/와」 */
+export const wa = (word: string) => pick(word, "과", "와");
 /** 「이에요/예요」 */
 export const copula = (word: string) => pick(word, "이에요", "예요");
 /** 「으로/로」(ㄹ 받침은 「로」) */
