@@ -138,7 +138,7 @@ export async function verifyFairLog(
         return {
           ok: false,
           seat: 0,
-          reason: `기록 ${index + 1}번째: 컴퓨터 자리를 사람이 뒀다`,
+          reason: `기록 ${index + 1}번째: 컴퓨터 자리를 사람이 뒀어요.`,
         };
       if (!entry.bot) continue;
       const state = states[index];
@@ -154,7 +154,7 @@ export async function verifyFairLog(
         return {
           ok: false,
           seat: 0,
-          reason: `기록 ${index + 1}번째: 컴퓨터가 둘 수와 다르다(방장이 컴퓨터를 조종했다)`,
+          reason: `기록 ${index + 1}번째: 컴퓨터가 둘 수와 달라요(방장이 컴퓨터를 조종했어요).`,
         };
       if (index % 8 === 0) await idle();
     }
@@ -174,7 +174,7 @@ export async function verifyFairLog(
     return {
       ok: false,
       seat: 0,
-      reason: "기록 속 내 행동이 내가 보낸 것과 다르다",
+      reason: "기록 속 내 행동이 내가 보낸 것과 달라요.",
     };
 
   // 받은 화면이 다시 계산한 화면 중에 차례대로 있어야 한다. 마지막 다시 계산한 화면 뒤로 받은 것은
@@ -189,7 +189,7 @@ export async function verifyFairLog(
       return {
         ok: false,
         seat: 0,
-        reason: `게임 중 받은 ${i + 1}번째 화면이 진짜 카드로 다시 계산한 것과 다르다`,
+        reason: `게임 중 받은 ${i + 1}번째 화면이 진짜 카드로 다시 계산한 것과 달라요.`,
       };
     }
   }

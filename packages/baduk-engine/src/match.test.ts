@@ -98,20 +98,20 @@ describe("차례와 두기", () => {
     const black = state.blackSeat;
     expect(step(state, 1 - black, place("E5"))).toEqual({
       ok: false,
-      error: "차례가 아니다",
+      error: "차례가 아니에요.",
     });
     expect(step(state, 2, place("E5"))).toEqual({
       ok: false,
-      error: "없는 자리다",
+      error: "없는 자리예요.",
     });
     const after = must(state, black, place("E5")).state;
     expect(step(after, 1 - black, place("E5"))).toEqual({
       ok: false,
-      error: "이미 돌이 있다",
+      error: "이미 돌이 있어요.",
     });
     expect(step(after, 1 - black, { type: "place", at: 81 })).toEqual({
       ok: false,
-      error: "판 밖이다",
+      error: "판 밖이에요.",
     });
     expect(step(after, 1 - black, { type: "place", at: 1.5 }).ok).toBe(false);
   });
@@ -139,7 +139,7 @@ describe("차례와 두기", () => {
     });
     expect(step(state, 0, place("A9"))).toEqual({
       ok: false,
-      error: "자살수: 활로가 없는 자리에는 둘 수 없다",
+      error: "자살수: 활로가 없는 자리에는 둘 수 없어요.",
     });
     expect(legalPoints(state)).not.toContain(at("A9"));
   });
@@ -171,7 +171,7 @@ describe("패", () => {
     expect(took.board[at("D6")]).toBe(0);
     expect(step(took, 1, place("D6"))).toEqual({
       ok: false,
-      error: "패: 바로 되따낼 수 없다(같은 판 모양이 된다)",
+      error: "패: 바로 되따낼 수 없어요(같은 판 모양이 돼요).",
     });
     expect(viewOf(took, 1).legal).not.toContain(at("D6"));
   });
@@ -239,7 +239,7 @@ describe("판 끝과 세기", () => {
     let s = must(r.state, 0, { type: "continue" }).state;
     expect(step(s, 0, { type: "continue" })).toEqual({
       ok: false,
-      error: "이미 눌렀다",
+      error: "이미 눌렀어요.",
     });
     const next = must(s, 1, { type: "continue" });
     s = next.state;
@@ -283,7 +283,7 @@ describe("다시 두기", () => {
       { seat: black, action: place("E5") },
       { seat: 1 - black, action: place("E5") },
     ]);
-    expect(r).toEqual({ ok: false, index: 1, error: "이미 돌이 있다" });
+    expect(r).toEqual({ ok: false, index: 1, error: "이미 돌이 있어요." });
   });
 });
 
@@ -305,7 +305,7 @@ describe("개인 시간", () => {
     const black = state.blackSeat;
     expect(step(state, black, { type: "timeout", spent: 1_000 })).toEqual({
       ok: false,
-      error: "아직 시간이 남았다",
+      error: "아직 시간이 남았어요.",
     });
     const out = must(state, black, { type: "timeout", spent: 270_001 });
     expect(out.state.result).toEqual({ kind: "time", seat: 1 - black });
@@ -319,7 +319,7 @@ describe("개인 시간", () => {
     expect(state.clocks).toBeNull();
     expect(clockTurn(state)).toBeNull();
     expect(step(state, state.blackSeat, { type: "timeout", spent: 1 })).toEqual(
-      { ok: false, error: "시간 규칙이 없다" },
+      { ok: false, error: "시간 규칙이 없어요." },
     );
   });
 

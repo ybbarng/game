@@ -71,7 +71,7 @@ describe("판 끝 검증은 다시 섞은 덱 조각을 처음 덱부터 끝까�
       ok: false,
       index: THIRD_RESHUFFLE_STEP,
       seat: 0,
-      reason: "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸다",
+      reason: "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸어요.",
     });
   });
 
@@ -89,7 +89,7 @@ describe("판 끝 검증은 다시 섞은 덱 조각을 처음 덱부터 끝까�
       ok: false,
       index: THIRD_RESHUFFLE_STEP,
       seat: 0,
-      reason: "엔진은 3번째로 다시 섞었는데 방장이 그 덱 조각을 열지 않았다",
+      reason: "엔진은 3번째로 다시 섞었는데 방장이 그 덱 조각을 열지 않았어요.",
     });
   });
 
@@ -104,7 +104,7 @@ describe("판 끝 검증은 다시 섞은 덱 조각을 처음 덱부터 끝까�
       index: HONEST_LOG_LENGTH,
       seat: 0,
       reason:
-        "방장이 엔진이 쓰지 않은 다시 섞기를 열었다(덱 조각 5개, 엔진 다시 섞기 3번)",
+        "방장이 엔진이 쓰지 않은 다시 섞기를 열었어요(덱 조각 5개, 엔진 다시 섞기 3번).",
     });
   });
 
@@ -114,7 +114,7 @@ describe("판 끝 검증은 다시 섞은 덱 조각을 처음 덱부터 끝까�
       ok: false,
       index: HONEST_LOG_LENGTH,
       seat: 0,
-      reason: "방장이 엔진이 쓰지 않은 더미 카드를 열었다",
+      reason: "방장이 엔진이 쓰지 않은 더미 카드를 열었어요.",
     });
   });
 });

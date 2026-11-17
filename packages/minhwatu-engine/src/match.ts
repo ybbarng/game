@@ -140,7 +140,7 @@ export function matchOnFloor(
     if (!target || !matches.includes(target))
       return {
         ok: false,
-        error: "같은 달 바닥 패가 둘이에요. 먹을 패를 고르세요",
+        error: "같은 달 바닥 패가 둘이에요. 먹을 패를 고르세요.",
       };
     return {
       ok: true,
@@ -305,7 +305,7 @@ export function step(
 ): StepResult {
   if (action.type === "retire") {
     if (state.phase === "gameOver")
-      return { ok: false, error: "끝난 게임이다" };
+      return { ok: false, error: "끝난 게임이에요." };
     const next = clone(state);
     next.phase = "gameOver";
     next.retired = true;
@@ -325,20 +325,20 @@ export function step(
   }
   if (action.type === "continue") {
     if (state.phase !== "roundEnd")
-      return { ok: false, error: "판이 끝났을 때만 다음 판으로 갈 수 있다" };
-    if (state.continued[seat]) return { ok: false, error: "이미 눌렀다" };
+      return { ok: false, error: "판이 끝났을 때만 다음 판으로 갈 수 있어요." };
+    if (state.continued[seat]) return { ok: false, error: "이미 눌렀어요." };
     const next = clone(state);
     next.continued[seat] = true;
     const events: GameEvent[] = [];
     if (next.continued.every(Boolean)) startNextRound(next, events);
     return { ok: true, state: next, events };
   }
-  if (seat !== state.turn) return { ok: false, error: "내 차례가 아니에요" };
+  if (seat !== state.turn) return { ok: false, error: "내 차례가 아니에요." };
   if (action.type === "pick") {
     if (state.phase !== "pick" || !state.pending)
-      return { ok: false, error: "지금은 고를 때가 아니에요" };
+      return { ok: false, error: "지금은 고를 때가 아니에요." };
     if (!state.pending.options.includes(action.target))
-      return { ok: false, error: "뒤집은 패와 같은 달 바닥 패를 고르세요" };
+      return { ok: false, error: "뒤집은 패와 같은 달 바닥 패를 고르세요." };
     const next = clone(state);
     const flipped = state.pending.flipped;
     const took = [flipped, action.target];
@@ -351,9 +351,9 @@ export function step(
   }
   // play
   if (state.phase !== "play")
-    return { ok: false, error: "지금은 패를 낼 때가 아니에요" };
+    return { ok: false, error: "지금은 패를 낼 때가 아니에요." };
   if (!isCardId(action.card) || !state.hands[seat]?.includes(action.card))
-    return { ok: false, error: "손에 없는 패예요" };
+    return { ok: false, error: "손에 없는 패예요." };
   const matched = matchOnFloor(state.floor, action.card, action.target);
   if (!matched.ok) return matched;
   const next = clone(state);

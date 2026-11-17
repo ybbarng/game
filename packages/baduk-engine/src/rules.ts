@@ -47,10 +47,10 @@ export function decodeBadukRules(
   text: string,
 ): { ok: true; rules: BadukRules } | { ok: false; reason: string } {
   const match = /^b1-(9|13|19)k(65|75)w([1-5])(-t\d)?$/.exec(text.trim());
-  if (!match) return { ok: false, reason: "바둑 규칙 문자열 형식이 아니다" };
+  if (!match) return { ok: false, reason: "바둑 규칙 문자열 형식이 아니에요." };
   const [, size, komi, wins, tail] = match;
   const time = decodeTimePreset(tail);
-  if (time === null) return { ok: false, reason: "모르는 시간 규칙이다" };
+  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요." };
   return {
     ok: true,
     rules: {

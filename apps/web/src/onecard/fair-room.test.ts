@@ -296,6 +296,6 @@ describe("원카드 암호화방", () => {
     });
     expect(audits).toHaveLength(1);
     expect(audits[0]).toMatchObject({ ok: false });
-    expect(audits[0]?.ok ? "" : audits[0]?.reason).toContain("빠졌다");
+    expect(audits[0]?.ok ? "" : audits[0]?.reason).toContain("빠졌어요");
   }, 60_000);
 });

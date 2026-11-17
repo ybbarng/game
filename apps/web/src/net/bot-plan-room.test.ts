@@ -155,7 +155,7 @@ describe("컴퓨터 계획 판 번호가 같으면", () => {
     expect(rigs.count).toBeGreaterThan(0);
     expect(await finish(host, audits)).toEqual({
       ok: false,
-      reason: expect.stringContaining("컴퓨터가 둘 수와 다르다"),
+      reason: expect.stringContaining("컴퓨터가 둘 수와 달라요"),
     });
   });
 });

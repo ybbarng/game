@@ -460,11 +460,11 @@ export function judgeShout(
   seat: number,
   seen: number,
 ): ShoutVerdict | { kind: "error"; error: string } {
-  if (state.phase === "over") return { kind: "error", error: "끝난 판이다" };
+  if (state.phase === "over") return { kind: "error", error: "끝난 판이에요." };
   if (!isActive(state, seat))
-    return { kind: "error", error: "판에서 빠진 자리는 외칠 수 없다" };
+    return { kind: "error", error: "판에서 빠진 자리는 외칠 수 없어요." };
   if (!Number.isInteger(seen) || seen < 0 || seen > state.turnNo)
-    return { kind: "error", error: "모르는 판 번호다" };
+    return { kind: "error", error: "모르는 판 번호예요." };
   if (state.turnNo - seen > STALE_SEEN) return { kind: "stale" };
   if (state.rules.race) return judgeRace(state, seat, seen);
   const own = state.windows.find((w) => w.seat === seat);
@@ -781,7 +781,7 @@ function stepCore(
 ): StepResult {
   const n = state.rules.players;
   if (!Number.isInteger(seat) || seat < 0 || seat >= n)
-    return fail("없는 자리다");
+    return fail("없는 자리예요.");
   if (state.phase === "over") {
     // 판이 끝난 뒤 닿은 청구 묶음도 기록에는 남긴다(아무 일 없음). 방장이 발표한 묶음은 모두 기록에 들어가야
     // 참가자가 발표와 기록을 하나하나 맞춰 볼 수 있다
@@ -789,7 +789,7 @@ function stepCore(
       const next = clone(state);
       return done(next, [], false);
     }
-    return fail("끝난 판이다");
+    return fail("끝난 판이에요.");
   }
 
   if (action.type === "retire") {
@@ -817,7 +817,7 @@ function stepCore(
         !Number.isFinite(action.rt) ||
         action.rt < 0)
     )
-      return fail("반응 시간이 맞지 않다");
+      return fail("반응 시간이 맞지 않아요.");
     const next = clone(state);
     if (verdict.kind === "race") {
       // o2: 겨루기 누름은 모았다가(`raceEnd`·다음 행동 전) 반응 시간 순으로 처리한다
@@ -839,7 +839,7 @@ function stepCore(
 
   if (action.type === "raceEnd") {
     if (!state.rules.race || (state.racePending?.length ?? 0) === 0)
-      return fail("모으는 누름이 없다");
+      return fail("모으는 누름이 없어요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     flushRace(next, events);
@@ -852,7 +852,7 @@ function stepCore(
       action.batch < 0 ||
       !Array.isArray(action.shouts)
     )
-      return fail("청구 묶음 모양이 맞지 않다");
+      return fail("청구 묶음 모양이 맞지 않아요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     if (state.rules.race) {
@@ -897,7 +897,7 @@ function stepCore(
       action.kind !== "catchWindow" &&
       action.kind !== "raceWindow"
     )
-      return fail("모르는 창 종류다");
+      return fail("모르는 창 종류예요.");
     const kind =
       action.kind === "selfWindow"
         ? "self"
@@ -907,10 +907,10 @@ function stepCore(
     const window = state.windows.find(
       (w) => w.seat === action.target && w.kind === kind,
     );
-    if (!window) return fail("그 창이 열려 있지 않다");
+    if (!window) return fail("그 창이 열려 있지 않아요.");
     // `id`가 없는 것은 창 번호를 싣기 전 기록(옛 기록 호환): 자리·종류로만 찾는다
     if (action.id !== undefined && action.id !== window.id)
-      return fail("지난 창의 시간 끝이다");
+      return fail("지난 창의 시간 끝이에요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     const w = next.windows.find((x) => x.id === window.id) as ShoutWindow;
@@ -927,7 +927,7 @@ function stepCore(
 
   if (action.type === "reshuffle") {
     const wanted = reshuffleRequest(state);
-    if (!wanted) return fail("다시 섞을 때가 아니다");
+    if (!wanted) return fail("다시 섞을 때가 아니에요.");
     // 멘탈 포커 판: 새 더미는 섞기 사슬이 정한 자리 순서(바깥이 넣은 `refill`)다. 행동의 순서는 쓰지 않는다.
     // 방장 엔진의 `refill`은 자리 표라 카드 확인은 장 수만, 판 끝 다시 계산(진짜 카드)에서는 같은 카드인지까지 본다
     if (state.fair) {
@@ -939,7 +939,7 @@ function stepCore(
         (real &&
           sortOnecards(refill as OnecardCard[]).some((c, i) => c !== wanted[i]))
       )
-        return fail("다시 섞을 카드가 맞지 않다");
+        return fail("다시 섞을 카드가 맞지 않아요.");
       const next = clone(state);
       next.deck = [...refill] as OnecardCard[];
       next.refill = null;
@@ -958,7 +958,7 @@ function stepCore(
       order.length !== wanted.length ||
       sortOnecards(order).some((c, i) => c !== wanted[i])
     )
-      return fail("다시 섞을 카드가 맞지 않다");
+      return fail("다시 섞을 카드가 맞지 않아요.");
     const next = clone(state);
     next.deck = [...order];
     next.pile = next.pile.slice(-1);
@@ -968,8 +968,8 @@ function stepCore(
     return done(next, events, true);
   }
 
-  if (state.phase !== "play") return fail("다시 섞기를 기다린다");
-  if (state.turn !== seat) return fail("차례가 아니다");
+  if (state.phase !== "play") return fail("다시 섞기를 기다리는 중이에요.");
+  if (state.turn !== seat) return fail("차례가 아니에요.");
 
   if (action.type === "draw") {
     const next = clone(state);
@@ -982,15 +982,16 @@ function stepCore(
     return done(next, events, true);
   }
 
-  if (action.type !== "play") return fail("모르는 행동이다");
+  if (action.type !== "play") return fail("모르는 행동이에요.");
   const card = action.card;
-  if (!isOnecardCard(card)) return fail("모르는 카드다");
+  if (!isOnecardCard(card)) return fail("모르는 카드예요.");
   const problem = playProblem(faceOf(state), hand(state, seat), card);
   if (problem) return fail(problem);
   if (rankOf(card) === "7") {
     if (!action.suit || !SUITS.includes(action.suit))
-      return fail("7을 내면 바꿀 무늬를 골라야 한다");
-  } else if (action.suit !== undefined) return fail("무늬는 7만 고른다");
+      return fail("7을 내면 바꿀 무늬를 골라야 해요.");
+  } else if (action.suit !== undefined)
+    return fail("무늬는 7을 낼 때만 골라요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   applyPlay(next, seat, card, action.suit, events);

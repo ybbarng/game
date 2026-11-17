@@ -50,7 +50,8 @@ export function decodeMinhwatuRules(
   text: string,
 ): { ok: true; rules: MinhwatuRules } | { ok: false; reason: string } {
   const match = /^m1-([234])([1-9])([12])([01])([01])$/.exec(text.trim());
-  if (!match) return { ok: false, reason: "민화투 규칙 문자열 형식이 아니다" };
+  if (!match)
+    return { ok: false, reason: "민화투 규칙 문자열 형식이 아니에요." };
   const [, players, rounds, yak, chodan, saodong] = match;
   return {
     ok: true,

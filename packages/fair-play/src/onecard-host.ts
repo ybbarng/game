@@ -99,7 +99,7 @@ export function checkOnecardTable<Rules, State, Action, Event>(
 ): OnecardReplayCheck<State> {
   const first = deals.get(ROUND);
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없다" };
+    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
   const flips = flipsOf(spec.createMatch(rules, seed, first.preset).events);
   const asked = requests.of(ROUND);
   const lead = asked.slice(0, flips);
@@ -108,7 +108,7 @@ export function checkOnecardTable<Rules, State, Action, Event>(
       ok: false,
       index: -1,
       seat: 0,
-      reason: "방장이 처음 카드를 엔진과 다르게 다시 폈다",
+      reason: "방장이 처음 카드를 엔진과 다르게 다시 폈어요.",
     };
   return checkOnecardReplay(
     spec,
@@ -492,18 +492,18 @@ export class OnecardHostTable<
     seat: number,
     action: Action,
   ): Promise<Prepared<Action>> {
-    if (this.halted) return { ok: false, error: "판을 멈췄다" };
+    if (this.halted) return { ok: false, error: "판을 멈췄어요." };
     const state = this.hooks.state();
     let out = action;
     // 다시 섞기: 버린 더미(맨 위 빼고, 모두 열린 카드)를 알리고 새 섞기 사슬을 시작한다.
     if (this.spec.isReshuffle(action)) {
       if (!this.spec.reshuffling(state))
-        return { ok: false, error: "다시 섞을 때가 아니다" };
+        return { ok: false, error: "다시 섞을 때가 아니에요." };
       const segment = this.spec.reshufflesOf(state) + 1;
       if (this.deck.reshuffles(ROUND) < segment) {
         const cards = [...this.spec.reshufflePool(this.public(state))];
         if (cards.some((c) => slotOfToken(c) !== null))
-          return { ok: false, error: "다시 섞을 카드가 아직 열리지 않았다" };
+          return { ok: false, error: "다시 섞을 카드가 아직 열리지 않았어요." };
         const message = onecardReshuffleMessage(
           ROUND,
           segment,
@@ -526,7 +526,7 @@ export class OnecardHostTable<
         for (const card of reveals) {
           if (hand.includes(card)) continue;
           const slot = this.slotOf(hand, card);
-          if (slot === null) return { ok: false, error: "손에 없는 카드다" };
+          if (slot === null) return { ok: false, error: "손에 없는 카드예요." };
           slots.push(slot);
         }
         if (slots.length > 0) {
@@ -541,20 +541,20 @@ export class OnecardHostTable<
         if (slots.some((s) => !hand.includes(`?_${s}`))) {
           this.deck.incident({
             seat,
-            reason: "자기 손에 없는 자리의 카드를 내려 했다",
+            reason: "자기 손에 없는 자리의 카드를 내려 했어요.",
           });
-          return { ok: false, error: "자기 손에 없는 자리의 카드다" };
+          return { ok: false, error: "자기 손에 없는 자리의 카드예요." };
         }
       }
       if (slots.length > 0) {
         if (
           !(await this.until(() => slots.every((s) => this.isOpen(s)), 15_000))
         )
-          return { ok: false, error: "카드 열쇠가 오지 않았다" };
+          return { ok: false, error: "카드 열쇠가 오지 않았어요." };
         const known = this.deck.knownCards(ROUND);
         const opened = new Set([...slots.map((s) => known.get(s)), ...hand]);
         if (reveals.some((c) => !opened.has(c))) {
-          const reason = "낸다고 한 카드와 열쇠로 연 카드가 다르다";
+          const reason = "낸다고 한 카드와 열쇠로 연 카드가 달라요.";
           this.deck.incident({ seat, reason });
           return { ok: false, error: reason };
         }
@@ -563,7 +563,7 @@ export class OnecardHostTable<
     // 엔진을 한 걸음 미리 돌려 보고 더미를 누구에게 몇 장 여는지, 게임이 끝나는지 본다.
     const before = this.deck.requestsOf(ROUND).length;
     for (let guard = 0; guard < 8; guard++) {
-      if (this.halted) return { ok: false, error: "판을 멈췄다" };
+      if (this.halted) return { ok: false, error: "판을 멈췄어요." };
       const dry = this.step(this.hooks.state(), seat, out);
       if (!dry.ok) return dry;
       const uses = this.spec.drawsOf(dry.events);
@@ -571,7 +571,8 @@ export class OnecardHostTable<
       for (const use of uses.slice(asked)) {
         const to = use === null ? PUBLIC : this.deviceOf(use);
         const drawn = this.deck.draw(ROUND, to, 1)[0];
-        if (!drawn) return { ok: false, error: "더미 자리가 엔진과 맞지 않다" };
+        if (!drawn)
+          return { ok: false, error: "더미 자리가 엔진과 맞지 않아요." };
         this.hooks.broadcast({
           t: "fp",
           k: "deck",
@@ -589,7 +590,7 @@ export class OnecardHostTable<
         this.hooks.broadcast({ t: "fp", k: "all", deal: ROUND });
         this.deck.revealAll(ROUND);
         if (!(await this.until(() => this.deals.has(ROUND), 15_000)))
-          return { ok: false, error: "판 끝 열쇠가 오지 않았다" };
+          return { ok: false, error: "판 끝 열쇠가 오지 않았어요." };
         continue;
       }
       break;
@@ -733,7 +734,7 @@ export class OnecardGuestSeat<
               this.deck.incident({
                 seat: 0,
                 reason:
-                  "방장이 처음 카드가 특수 카드가 아닌데 더미를 모두에게 열라고 했다(미리 보기)",
+                  "방장이 처음 카드가 특수 카드가 아닌데 더미를 모두에게 열라고 했어요(미리 보기).",
               });
               return;
             }
@@ -746,7 +747,7 @@ export class OnecardGuestSeat<
           if (!isOnecardReshuffle(message)) {
             this.deck.incident({
               seat: 0,
-              reason: "방장의 다시 섞기 알림 모양이 맞지 않다",
+              reason: "방장의 다시 섞기 알림 모양이 맞지 않아요.",
             });
             break;
           }

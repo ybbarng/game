@@ -61,7 +61,7 @@ export function decodeNyrongppongRules(
     text.trim(),
   );
   if (!match)
-    return { ok: false, reason: "나이롱뽕 규칙 문자열 형식이 아니다" };
+    return { ok: false, reason: "나이롱뽕 규칙 문자열 형식이 아니에요." };
   const [, players, rounds, stop, bagaji, seconds, every] = match;
   return {
     ok: true,

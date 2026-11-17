@@ -59,11 +59,12 @@ export function decodeGostopRules(
   text: string,
 ): { ok: true; rules: GostopRules } | { ok: false; reason: string } {
   const match = /^g1-([23])([ba])([1-9]\d?)$/.exec(text.trim());
-  if (!match) return { ok: false, reason: "고스톱 규칙 문자열 형식이 아니다" };
+  if (!match)
+    return { ok: false, reason: "고스톱 규칙 문자열 형식이 아니에요." };
   const [, players, gukjin, rounds] = match;
   const count = Number(rounds);
   if (count > MAX_ROUNDS)
-    return { ok: false, reason: `판 수는 ${MAX_ROUNDS}판까지다` };
+    return { ok: false, reason: `판 수는 ${MAX_ROUNDS}판까지예요.` };
   return {
     ok: true,
     rules: {

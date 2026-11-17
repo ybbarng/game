@@ -216,7 +216,7 @@ describe("잘못된 행동 거절", () => {
     g.ask("789");
     g.ask("789");
     const again = g.tryAct(0, { type: "guess", guess: "789" });
-    expect(again).toEqual({ ok: false, error: "이미 물어본 수다" });
+    expect(again).toEqual({ ok: false, error: "이미 물어본 수예요." });
   });
 
   it("답할 사람만, 나올 수 있는 답만 받는다", () => {
@@ -244,7 +244,7 @@ describe("잘못된 행동 거절", () => {
     // 앞에서 4·5·7이 하나도 없다고 했으니 456에 스트라이크·볼이 나올 수 없다.
     expect(g.tryAct(1, { type: "answer", strikes: 3, balls: 0 })).toEqual({
       ok: false,
-      error: "앞에서 한 답과 맞지 않는다",
+      error: "앞에서 한 답과 맞지 않아요.",
     });
   });
 

@@ -641,7 +641,7 @@ export class HostRoom<
       this.relayChat(
         -1,
         "투표",
-        `${names.join(", ")}님이 끝내기를 골라 게임을 끝냅니다`,
+        `${names.join(", ")}님이 끝내기를 골라 게임을 끝내요.`,
       );
       this.abandon();
       return;
@@ -1325,7 +1325,7 @@ export class HostRoom<
         // 거절로 알려 기다림을 푼다(참가자 화면에 다시 내 차례가 보인다)
         if (!this.match) {
           this.send(
-            { t: "rejected", error: "방장이 판을 이어 가는 중입니다" },
+            { t: "rejected", error: "방장이 판을 이어 가는 중이에요." },
             from,
           );
           return;

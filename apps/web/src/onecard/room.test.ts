@@ -231,7 +231,7 @@ describe("원카드 일반방", () => {
     await settleClaims(clock);
     expect(troubles).toEqual([]);
     await tick(clock, 5_000);
-    const omitted = "방장이 1번 자리의 청구(0번 판)를 발표하지 않았다";
+    const omitted = "방장이 1번 자리의 청구(0번 판)를 발표하지 않았어요.";
     expect(troubles).toContain(`g2 ${omitted}`);
     expect(troubles).toContain(`g1 ${omitted}`);
   });
@@ -349,7 +349,7 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
       await settleClaims(clock);
     });
     expect(result).toMatchObject({ ok: false });
-    expect(result.ok ? "" : result.reason).toContain("방장 발표와 다르다");
+    expect(result.ok ? "" : result.reason).toContain("방장 발표와 달라요");
   });
 
   it("정직한 방장: 묶음 창이 열린 채 방장이 나가도(판 끝 직전 청구) 짚히지 않고, 버린 청구로 이의도 나지 않는다", async () => {
@@ -436,6 +436,6 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
       await settleClaims(clock);
     });
     expect(result).toMatchObject({ ok: false });
-    expect(result.ok ? "" : result.reason).toContain("빠졌다");
+    expect(result.ok ? "" : result.reason).toContain("빠졌어요");
   });
 });

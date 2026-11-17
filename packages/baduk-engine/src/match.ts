@@ -111,17 +111,17 @@ export function placeError(
 ): { error: string } | { board: Cell[]; captured: number[] } {
   const size = state.rules.size;
   if (!Number.isInteger(at) || at < 0 || at >= size * size)
-    return { error: "판 밖이다" };
+    return { error: "판 밖이에요." };
   const tried = tryPlace(state.board, at, state.toPlay);
   if (!tried.ok)
     return {
       error:
         tried.error === "occupied"
-          ? "이미 돌이 있다"
-          : "자살수: 활로가 없는 자리에는 둘 수 없다",
+          ? "이미 돌이 있어요."
+          : "자살수: 활로가 없는 자리에는 둘 수 없어요.",
     };
   if (state.positions.includes(boardHash(tried.board)))
-    return { error: "패: 바로 되따낼 수 없다(같은 판 모양이 된다)" };
+    return { error: "패: 바로 되따낼 수 없어요(같은 판 모양이 돼요)." };
   return tried;
 }
 
@@ -238,9 +238,9 @@ export function step(
   seat: number,
   action: Action,
 ): StepResult {
-  if (seat !== 0 && seat !== 1) return fail("없는 자리다");
+  if (seat !== 0 && seat !== 1) return fail("없는 자리예요.");
   if (action.type === "retire") {
-    if (state.phase === "gameOver") return fail("이미 끝난 게임이다");
+    if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
     const next = clone(state);
     next.phase = "gameOver";
     next.retired = true;
@@ -251,8 +251,8 @@ export function step(
     };
   }
   if (action.type === "continue") {
-    if (state.phase !== "roundEnd") return fail("판이 끝나지 않았다");
-    if (state.continued[seat]) return fail("이미 눌렀다");
+    if (state.phase !== "roundEnd") return fail("판이 끝나지 않았어요.");
+    if (state.continued[seat]) return fail("이미 눌렀어요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     next.continued[seat] = true;
@@ -260,22 +260,22 @@ export function step(
     return { ok: true, state: next, events };
   }
   if (action.type === "resign") {
-    if (state.phase !== "play") return fail("판이 진행 중이 아니다");
+    if (state.phase !== "play") return fail("판이 진행 중이 아니에요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     endRound(next, { kind: "resign", seat: 1 - seat }, events);
     return { ok: true, state: next, events };
   }
-  if (state.phase !== "play") return fail("판이 진행 중이 아니다");
-  if (seatToMove(state) !== seat) return fail("차례가 아니다");
+  if (state.phase !== "play") return fail("판이 진행 중이 아니에요.");
+  if (seatToMove(state) !== seat) return fail("차례가 아니에요.");
   const stone = state.toPlay;
 
   if (action.type === "timeout") {
     const control = timeControlOf(state.rules);
     const clock = state.clocks?.[seat];
-    if (!control || !clock) return fail("시간 규칙이 없다");
+    if (!control || !clock) return fail("시간 규칙이 없어요.");
     if (!spendTime(clock, action.spent, control).flagged)
-      return fail("아직 시간이 남았다");
+      return fail("아직 시간이 남았어요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     // 시간을 다 쓴 사람의 시계는 0으로 보인다.
@@ -300,7 +300,7 @@ export function step(
     return { ok: true, state: next, events };
   }
 
-  if (action.type !== "place") return fail("모르는 행동이다");
+  if (action.type !== "place") return fail("모르는 행동이에요.");
   const tried = placeError(state, action.at);
   if ("error" in tried) return fail(tried.error);
 

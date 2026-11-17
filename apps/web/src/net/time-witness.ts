@@ -126,13 +126,13 @@ export function witnessTimes(input: WitnessInput): string | null {
     if (entry.window !== null && windows.length > 0) {
       const from = opened.get(entry.window);
       if (from === undefined)
-        return `기록 ${i + 1}번째: 열리지 않은 시간 창으로 넣었다`;
+        return `기록 ${i + 1}번째: 열리지 않은 시간 창으로 넣었어요.`;
       const ms = windows[from]?.get(entry.window) ?? 0;
       const a = arrivalOf.get(from);
       const b = arrivalOf.get(i + 1);
       // 앞 시각이 늦게 적혔으면(가려진 동안 닿음) 사이가 짧게 잰다: 믿지 않는다. 뒤가 늦은 것은 길어질 뿐이다.
       if (a && b && !a.hidden && b.at - a.at < ms - WINDOW_SLACK_MS)
-        return `기록 ${i + 1}번째: 시간 창이 내 기기에서 ${seconds(ms - (b.at - a.at))}초 일찍 닫혔다`;
+        return `기록 ${i + 1}번째: 시간 창이 내 기기에서 ${seconds(ms - (b.at - a.at))}초 일찍 닫혔어요.`;
     }
 
     const before = turns[i] ?? null;
@@ -178,7 +178,7 @@ function trimmedSum(offs: readonly number[]): number {
 }
 
 function differs(index: number, seat: number, off: number): string {
-  return `기록 ${index + 1}번째: ${seat}번 자리 시간을 내 기기에서 잰 것보다 ${seconds(Math.abs(off))}초 ${off > 0 ? "많이" : "적게"} 적었다`;
+  return `기록 ${index + 1}번째: ${seat}번 자리 시간을 내 기기에서 잰 것보다 ${seconds(Math.abs(off))}초 ${off > 0 ? "많이" : "적게"} 적었어요.`;
 }
 
 function seconds(ms: number): string {
