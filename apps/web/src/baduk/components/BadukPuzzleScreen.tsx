@@ -15,7 +15,6 @@ import {
   usePuzzleRun,
 } from "@/components/study/PuzzleScreen";
 import type { ReviewRun } from "@/components/study/review-run";
-
 import { useBadukStudyProgress } from "../progress";
 import {
   BADUK_PUZZLE_SETS,
@@ -26,7 +25,6 @@ import {
 } from "../puzzles";
 import {
   defenseFor,
-  explainSolved,
   judgeMove,
   koPointOf,
   PUZZLE_SIZE,
@@ -36,6 +34,7 @@ import {
   spotsOf,
   targetOf,
 } from "../study";
+import { explainSolved, SPOT_LABELS } from "../study-explain";
 import { BadukBoard } from "./BadukBoard";
 
 /** 잡기 문제 모양마다 보이는 글. `follow`는 둘째 수부터의 안내(없으면 "계속 몰아 따내세요.") */
@@ -117,6 +116,18 @@ const ENDGAME_TEXT = {
     follow: "백이 받았어요. 남은 곳에 두세요.",
     hint: "두면 백 돌이 단수가 되는 곳이 있나 봐요. 백이 받아야 하는 수(선수)부터 둬요.",
     wrong: "그 수는 후수라 백이 남은 곳을 먼저 둬요.",
+  },
+  reverse: {
+    prompt: "끝내기가 세 곳(A·B·C) 남았어요. 먼저 둘 곳에 두세요.",
+    follow: "백이 뒀어요. 남은 곳에 두세요.",
+    hint: "백이 두면 흑 돌이 단수가 되는 곳(백의 선수)이 있나 봐요. 그곳을 흑이 먼저 막아요.",
+    wrong: "그곳부터 두면 백이 선수로 두고 남은 곳까지 가져가요.",
+  },
+  double: {
+    prompt: "끝내기가 세 곳(A·B·C) 남았어요. 먼저 둘 곳에 두세요.",
+    follow: "백이 받았어요. 남은 곳에 두세요.",
+    hint: "흑이 두어도, 백이 두어도 상대 돌이 단수가 되는 곳을 찾아요. 그곳부터 둬요.",
+    wrong: "그곳부터 두면 백이 양선수 자리에 선수로 둬요.",
   },
 } as const;
 
@@ -224,7 +235,7 @@ function BadukPuzzleRun({
     const first = puzzleState(puzzle).board;
     spotsOf(puzzle).forEach((spot, i) => {
       const p = spotMoveOf(first, spot);
-      if (state.board[p] === 0) marks[p] = i === 0 ? "A" : "B";
+      if (state.board[p] === 0) marks[p] = SPOT_LABELS[i] ?? "";
     });
   } else if (puzzle.kind === "kofight") {
     // 팻감 쓰기: 첫 수 앞에는 되따낼 수 없는 자리를 ×로. 팻감 받기: 노림받은 흑 돌을 △로

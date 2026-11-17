@@ -14,20 +14,12 @@ import {
   legalPoints,
   step as playStep,
   pointAt,
-  pointName,
   type Stone,
   solveEndgame,
   tryPlace,
 } from "@game/baduk-engine";
 
-import { topic, wa } from "@/lib/josa";
-
-import {
-  type BadukPuzzle,
-  LADDER_THEMES,
-  LIFE_SHAPE_NAMES,
-  type LifeShape,
-} from "./puzzles";
+import { type BadukPuzzle, LADDER_THEMES } from "./puzzles";
 
 type KoFight = Extract<BadukPuzzle, { kind: "kofight" }>;
 type Endgame = Extract<BadukPuzzle, { kind: "endgame" }>;
@@ -36,7 +28,6 @@ type Endgame = Extract<BadukPuzzle, { kind: "endgame" }>;
 export const PUZZLE_SIZE = 9;
 
 const at = (name: string) => pointAt(name, PUZZLE_SIZE);
-const named = (p: number) => pointName(p, PUZZLE_SIZE);
 
 /**
  * 문제 장면에서 시작하는 판. 늘 흑(나, 0번 자리)이 둔다.
@@ -112,11 +103,14 @@ export function koLossStones(puzzle: KoFight): number[] {
 /** 패를 지면 잃는 흑 돌 수 */
 export const koLossOf = (puzzle: KoFight) => koLossStones(puzzle).length;
 
-/** 끝내기 두 곳의 자리 번호 */
-export const spotsOf = (puzzle: Endgame): [number[], number[]] => [
-  puzzle.spots[0].map(at),
-  puzzle.spots[1].map(at),
-];
+/** 끝내기 곳(두세 곳)의 자리 번호. 문제마다 곳이 둘 이상이다 */
+export const spotsOf = (
+  puzzle: Endgame,
+): [number[], number[], ...number[][]] => {
+  const [a, b, ...rest] = puzzle.spots;
+  if (!a || !b) throw new Error(`${puzzle.id}: 끝내기 곳이 둘보다 적다`);
+  return [a.map(at), b.map(at), ...rest.map((s) => s.map(at))];
+};
 
 /**
  * 끝내기 읽을 범위: 두 곳의 자리 전부. 이미 둔 자리도 넘긴다(엔진은 빈 자리에만 두고,
@@ -165,11 +159,15 @@ export function endgameGain(
   };
 }
 
-/** 끝내기 두 곳의 크기(처음 판에서, 곳마다 따로 읽는다) */
-export function spotSizesOf(puzzle: Endgame): [number, number] {
+/** 끝내기 곳마다의 크기(처음 판에서, 곳마다 따로 읽는다) */
+export function spotSizesOf(puzzle: Endgame): [number, number, ...number[]] {
   const { board } = puzzleState(puzzle);
-  const [a, b] = spotsOf(puzzle);
-  return [endgameSize(board, a), endgameSize(board, b)];
+  const [a, b, ...rest] = spotsOf(puzzle);
+  return [
+    endgameSize(board, a),
+    endgameSize(board, b),
+    ...rest.map((s) => endgameSize(board, s)),
+  ];
 }
 
 /** 노리는(살릴) 무리의 돌 자리 */
@@ -204,7 +202,8 @@ export function judgeMove(
   if (puzzle.kind === "endgame") {
     if (step === 0) {
       if (move !== solutionOf(puzzle)) return "wrong";
-      return puzzle.mode === "sente" ? "next" : "solved";
+      // 큰 곳부터는 한 수로 끝나고, 선수·역끝내기·양선수는 백이 둔 뒤 남은 곳까지 둔다
+      return puzzle.mode === "bigger" ? "solved" : "next";
     }
     const best = solveEndgame(state.board, endgameArea(puzzle, state), 1).best;
     return best.includes(move) ? "solved" : "wrong";
@@ -272,193 +271,4 @@ export function defenseFor(
     state.positions,
   );
   return d === null ? { type: "pass" } : { type: "place", at: d };
-}
-
-/** 이름 있는 눈 모양의 해설: 이름(풀이)과 급소, 덧붙일 말 */
-const SHAPE_TEXT: Record<
-  LifeShape,
-  { name: string; vital: string; note?: string }
-> = {
-  "straight-three": {
-    name: `${LIFE_SHAPE_NAMES["straight-three"]}(곧은 세 집)`,
-    vital: "가운데가 급소예요.",
-  },
-  "bent-three": {
-    name: `${LIFE_SHAPE_NAMES["bent-three"]}(구부러진 세 집)`,
-    vital: "꺾인 자리가 급소예요.",
-  },
-  "pyramid-four": {
-    name: LIFE_SHAPE_NAMES["pyramid-four"],
-    vital: "세 집에 붙은 가운데가 급소예요.",
-    note: "곧은 네 집(직사)·구부러진 네 집(곡사)은 상대가 한 곳을 막아도 다른 곳에 두면 두 눈이 되어 그대로 살고, 네모 네 집은 그대로 죽어요.",
-  },
-  "flower-five": {
-    name: `${LIFE_SHAPE_NAMES["flower-five"]}(십자 다섯 집)`,
-    vital: "네 집에 붙은 한가운데가 급소예요.",
-  },
-  "bulky-five": {
-    name: LIFE_SHAPE_NAMES["bulky-five"],
-    vital:
-      "네모 네 집에 한 집이 붙은 모양이에요. 세 집에 붙은 자리가 급소예요.",
-  },
-  "rabbity-six": {
-    name: `${LIFE_SHAPE_NAMES["rabbity-six"]}(꽃 여섯 집)`,
-    vital: "네 집에 붙은 가운데가 급소예요.",
-  },
-};
-
-const COUNT = ["", "한", "두", "세", "네", "다섯", "여섯", "일곱", "여덟"];
-
-/** 푼 문제의 해설. 장면과 둔 수에서 만든다 */
-export function explainSolved(
-  puzzle: BadukPuzzle,
-  before: Board,
-  move: number,
-  movesPlayed: number,
-): string[] {
-  if (puzzle.kind === "life") {
-    if (puzzle.shape) {
-      const text = SHAPE_TEXT[puzzle.shape];
-      const lines =
-        puzzle.goal === "live"
-          ? [
-              `${text.name}: ${text.vital}`,
-              `${named(move)}에 두면 눈 자리가 떨어진 두 눈 이상으로 나뉘어 살아요.`,
-              "백이 먼저 이 급소를 차지하면 한 눈뿐이라 잡혀요.",
-            ]
-          : [
-              `${text.name}: ${text.vital}`,
-              `${named(move)}에 두면 백은 눈을 둘로 나눌 수 없어요. 안을 채워 가면 끝내 따내요.`,
-              "백이 먼저 이 급소를 차지하면 두 눈이 되어 살아요.",
-            ];
-      return text.note ? [...lines, text.note] : lines;
-    }
-    const placed = tryPlace(before, move, 1);
-    const took = placed.ok ? placed.captured.length : 0;
-    if (puzzle.goal === "live")
-      return [
-        took > 0
-          ? `${named(move)}: 안쪽 백 돌을 따내며 눈 자리를 둘로 나눠요.`
-          : `${named(move)}: 눈 자리를 둘로 나눠요.`,
-        "떨어진 두 눈이 있으면 백은 어느 눈에도 들어올 수 없어 잡히지 않아요.",
-        "다른 자리에 두면 백이 먼저 그 자리를 차지해 한 눈뿐이 돼요.",
-      ];
-    return [
-      `${named(move)}: 백 눈 자리의 급소에 둬요.`,
-      "백은 눈을 둘로 나눌 수 없어 한 눈뿐이에요. 결국 따낼 수 있어요.",
-      "다른 자리에 두면 백이 그 자리를 차지해 두 눈을 만들어요.",
-    ];
-  }
-  if (puzzle.kind === "kofight") return explainKoFight(puzzle);
-  if (puzzle.kind === "endgame") return explainEndgame(puzzle);
-  const target = targetOf(puzzle);
-  const size = groupOf(before, target).stones.length;
-  const first = named(solutionOf(puzzle));
-  const lines: Record<typeof puzzle.theme, string[]> = {
-    atari: [
-      `${first}에서 단수를 쳐요. 백이 넓은 쪽으로 달아날 길을 먼저 막아요.`,
-      "반대쪽에서 단수를 치면 백이 뻗어 활로가 늘어나요.",
-    ],
-    ladder: [
-      `${first}에서 단수를 시작해 계속 단수로 몰아요(축).`,
-      "백은 한쪽으로만 뻗을 수 있고, 끝내 판 끝이나 흑 돌에 막혀 잡혀요.",
-    ],
-    net: [
-      `${first}: 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문).`,
-      "백이 어느 쪽으로 나와도 다음 단수에 잡혀요.",
-    ],
-    snapback: [
-      `${first}: 일부러 한 점을 내줘요(먹여치기). 백 무리는 단수가 돼요.`,
-      `백이 이 돌을 따내도 활로가 하나뿐이라, 흑이 ${first}에 다시 두어 되따내요(환격).`,
-    ],
-    ko: [
-      `${first}: 패를 따내며 단수를 쳐요.`,
-      "백은 바로 되따낼 수 없어요(같은 판 모양 금지). 한 번 다른 곳에 두어야 해서 달아날 틈이 없어요.",
-    ],
-    "long-ladder": [
-      `${first}에서 단수를 쳐 백을 판 끝까지 몰았어요(긴 축).`,
-      "반대쪽에서 단수를 치면 백이 뻗은 자리 옆에 흑 돌이 없어 활로가 셋이 되고 빠져나가요.",
-    ],
-    "blocked-net": [
-      `${(puzzle.breakers ?? []).join("·")} 백 돌이 축머리예요. 어느 쪽에서 단수를 쳐도 백이 뻗다가 축머리와 이어져 축으로는 못 잡아요.`,
-      `${first}: 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문). 백이 달아나려고 뻗어도 흑이 막아 따내요.`,
-    ],
-    breaker: [
-      `${puzzle.breaker ?? ""} 백 돌이 축머리예요. 그쪽으로 몰면 백이 이 돌과 이어져 활로가 늘고 빠져나가요.`,
-      `${first}에서 단수를 치면 백이 뻗어 가는 길에 축머리가 없어 잡혀요.`,
-    ],
-  };
-  // 아홉 수부터는 숫자로. 「돌을」·「돌 2개를」처럼 조사는 끝 낱말에 맞춘다
-  const count = COUNT[movesPlayed]
-    ? `${COUNT[movesPlayed]} 수`
-    : `${movesPlayed}수`;
-  const stones = size > 1 ? `백 돌 ${size}개를` : "백 돌을";
-  return [...lines[puzzle.theme], `${count} 만에 ${stones} 따냈어요.`];
-}
-
-/** 패로 버티기의 해설. 노림받은 무리의 돌 수는 처음 판에서 센다 */
-function explainKoFight(puzzle: KoFight): string[] {
-  const start = puzzleState(puzzle).board;
-  const size = groupOf(start, targetOf(puzzle)).stones.length;
-  const ko = puzzle.ko;
-  if (puzzle.mode === "threat")
-    return [
-      `${topic(puzzle.solution)} 팻감이에요. 백 ${COUNT[size]} 점이 단수가 되어, 백이 받지 않으면 따내요.`,
-      `백이 ${puzzle.reply ?? ""}에 받아 판 모양이 달라졌어요. 그래서 ${ko}에 되따낼 수 있어요.`,
-      "이제 백이 다시 따내려면 백도 먼저 팻감을 써야 해요.",
-    ];
-  const threat = puzzle.setup[puzzle.setup.length - 1] ?? "";
-  const loss = koLossOf(puzzle);
-  if (puzzle.mode === "connect")
-    return [
-      `백 ${topic(threat)} 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
-      `패를 지면 흑 ${COUNT[loss]} 점을 잃어요. 패에 걸린 한 점에, 백이 되따내면 함께 단수가 되어 살릴 수 없는 ${COUNT[loss - 1]} 점을 더한 수예요.`,
-      `노리는 돌(${COUNT[size]} 점)이 패를 지면 잃는 돌(${COUNT[loss]} 점)보다 적어요. 그래서 ${ko}에 이어 패를 끝내고, 노린 돌은 내줘요.`,
-    ];
-  return [
-    `백 ${topic(threat)} 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
-    `${puzzle.solution}에 두어 받았어요. 노리는 돌(${COUNT[size]} 점)이 패를 지면 잃는 돌(${COUNT[loss]} 점)보다 많아 받는 쪽이 나아요.`,
-    `받았으니 백은 ${ko}에 되따낼 수 있어요. 그러면 이번엔 흑이 팻감을 쓸 차례예요.`,
-  ];
-}
-
-/** 끝내기 해설. 크기는 처음 판에서 곳마다 엔진으로 센다 */
-function explainEndgame(puzzle: Endgame): string[] {
-  const start = puzzleState(puzzle);
-  const spots = spotsOf(puzzle);
-  const sizes = spotSizesOf(puzzle);
-  const mine = spots[0].includes(solutionOf(puzzle)) ? 0 : 1;
-  const other = mine === 0 ? 1 : 0;
-  const label = ["A", "B"] as const;
-  const sol = `${label[mine]}(${puzzle.solution})`;
-  if (puzzle.mode === "bigger")
-    return [
-      `A는 ${sizes[0]}점짜리, B는 ${sizes[1]}점짜리 후수 끝내기예요.`,
-      `큰 곳 ${sol}부터 둬요. 작은 ${label[other]}부터 두면 백이 ${label[mine]}에 먼저 둬요.`,
-    ];
-  const placed = tryPlace(start.board, solutionOf(puzzle), 1);
-  let threatened = 0;
-  if (placed.ok) {
-    const seen = new Set<number>();
-    for (let p = 0; p < placed.board.length; p++) {
-      if (placed.board[p] !== 2 || seen.has(p)) continue;
-      const g = groupOf(placed.board, p);
-      for (const s of g.stones) seen.add(s);
-      // 처음 판에서 이미 단수였던 돌은 빼고, 이 수로 새로 단수가 된 돌만 센다
-      if (
-        g.liberties.length === 1 &&
-        groupOf(start.board, p).liberties.length > 1
-      )
-        threatened += g.stones.length;
-    }
-  }
-  const compare =
-    sizes[mine] < sizes[other]
-      ? `${label[other]}(${sizes[other]}점짜리)보다 작은 ${sizes[mine]}점짜리지만`
-      : `${wa(label[other])} 같은 ${sizes[mine]}점짜리지만`;
-  return [
-    `${sol}에 두면 백 ${COUNT[threatened]} 점이 단수가 돼요. 백이 받지 않으면 흑이 따내니 백이 받아야 해요. 그래서 선수예요.`,
-    `${compare}, 선수라 먼저 뒀어요. 백이 받은 사이 ${label[other]}도 흑이 먼저 뒀어요.`,
-    `${label[other]}부터 두면 후수라 차례가 백에게 넘어가고, 백이 ${label[mine]}에 먼저 둬요.`,
-  ];
 }
