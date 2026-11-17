@@ -4,6 +4,7 @@ export * from "./expert";
 export * from "./kpk";
 export * from "./kxk";
 export * from "./master";
+export * from "./pawn-ending";
 export * from "./search";
 export * from "./see";
 export * from "./simulate";

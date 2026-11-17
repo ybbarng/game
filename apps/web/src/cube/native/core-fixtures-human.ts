@@ -24,6 +24,7 @@ import { type ScrambleEvent, scramble } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
 import { createRng, nextInt, type RngState } from "@game/mighty-engine";
 
+import { solveYau } from "../learn/yau-solve";
 import { pickHint } from "../mini/hint-pick";
 import { formatSplits } from "../records";
 import { type SessionCue, SolveSession } from "../solve-session";
@@ -167,6 +168,21 @@ function sessionScenarios(): { n: number; ops: SessionOp[] }[] {
   return out;
 }
 
+/**
+ * 4×4 야우(단원 규칙 풀이) 한 판: 센터 둘 → 십자 셋 → 센터 → 십자 → 엣지 짝 → 3×3처럼이 차례로 켜진다(docs/47 8-8).
+ * 판이 길어(수 약 300) 한 판 세션 자료와 따로 둔다(시험 파일 하나가 느린 시험 기준을 넘지 않게)
+ */
+function yauSessionScenario(): { n: number; ops: SessionOp[] } {
+  const rng = createRng(20261117);
+  const sc = scramble("444", 1).text;
+  const start = applyMoves(4, solvedCube(4), parseMoves(4, sc));
+  const moves = solveYau(start).moves.split(/\s+/).filter(Boolean);
+  return {
+    n: 4,
+    ops: [{ op: "start", scramble: sc, seed: 1 }, ...playOps(rng, moves, 0)],
+  };
+}
+
 function sessionCase({ n, ops }: { n: number; ops: SessionOp[] }) {
   const clock = new ManualClock();
   let cues: SessionCue[] = [];
@@ -220,6 +236,15 @@ export function buildSession(): string {
       what: "Cubie 미니 한 판(SolveSession, solo·살펴보기 없음, ManualClock): 차례(start·move·undo·reset, t = 시계 ms) → 수마다 알림·단계·수·시간·진행·콤보·구간, 끝나면 기록 칸",
     },
     sessionScenarios().map(sessionCase),
+  );
+}
+
+export function buildSessionYau(): string {
+  return fixtureJson(
+    {
+      what: "Cubie 미니 한 판(SolveSession, 꼴은 session.json과 같음): 4×4를 야우 풀이(단원 규칙)로 맞추며 야우 이정표(센터 둘·십자 셋)가 차례로 켜진다",
+    },
+    [sessionCase(yauSessionScenario())],
   );
 }
 

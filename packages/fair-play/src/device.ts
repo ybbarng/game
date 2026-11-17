@@ -1,4 +1,5 @@
 import type { Card } from "@game/mighty-engine";
+import { obj, subj } from "@game/mighty-engine/josa";
 import { type Clock, realClock } from "./clock";
 import {
   type KeyProof,
@@ -54,7 +55,8 @@ export async function prepareGroup(name: GroupName): Promise<SraGroup> {
 /** 준비한 군. 준비하지 않았으면 던진다 */
 export function groupOf(name: GroupName): SraGroup {
   const g = GROUPS[name];
-  if (!g) throw new Error(`잠그기 군 ${name}을 준비하지 않았다(prepareGroup)`);
+  if (!g)
+    throw new Error(`잠그기 군 ${obj(name)} 준비하지 않았다(prepareGroup)`);
   return g;
 }
 
@@ -469,7 +471,7 @@ export class FairDevice {
         this.emit(
           "problem",
           deal,
-          `자리 ${slot}을 두 사람에게 주려 했다`,
+          `자리 ${obj(String(slot))} 두 사람에게 주려 했어요.`,
           null,
         );
         continue;
@@ -722,7 +724,7 @@ export class FairDevice {
       this.emit(
         "problem",
         ctx.id,
-        "섞기 차례가 아닌 사람이 섞은 덱을 보냈다",
+        "섞기 차례가 아닌 사람이 섞은 덱을 보냈어요.",
         from,
       );
       return;
@@ -740,7 +742,7 @@ export class FairDevice {
           BigInt(`0x${message.v}`),
         );
     } catch {
-      this.emit("problem", ctx.id, "덱 값이 숫자가 아니다", from);
+      this.emit("problem", ctx.id, "덱 값이 숫자가 아니에요.", from);
       return;
     }
     if (isShuffleStage(message.stage)) {
@@ -951,7 +953,7 @@ export class FairDevice {
       try {
         key = BigInt(`0x${hex}`);
       } catch {
-        this.emit("problem", ctx.id, "열쇠 값이 숫자가 아니다", from);
+        this.emit("problem", ctx.id, "열쇠 값이 숫자가 아니에요.", from);
         continue;
       }
       const known = ctx.ledger.keys.get(slot)?.get(of);
@@ -959,7 +961,7 @@ export class FairDevice {
         this.emit(
           "problem",
           ctx.id,
-          `자리 ${slot}에 앞서 낸 것과 다른 열쇠를 냈다`,
+          `자리 ${slot}에 앞서 낸 것과 다른 열쇠를 냈어요.`,
           from,
         );
         continue;
@@ -1028,7 +1030,11 @@ export class FairDevice {
         // 넘겨받은 열쇠의 증명은 뒤따라 온다. 오면 다시 열어 보고 그때 탓한다.
         const handed = ctx.handed.get(slot);
         if (handed && !handed.proof) continue;
-        this.report(ctx, slot, `내 자리 ${slot}이 카드로 열리지 않는다`);
+        this.report(
+          ctx,
+          slot,
+          `내 자리 ${subj(String(slot))} 카드로 열리지 않아요.`,
+        );
         continue;
       }
       ctx.mine.set(slot, card);
@@ -1161,7 +1167,11 @@ export class FairDevice {
       const known = ctx.ledger.keys.get(slot);
       if (!known || ctx.devices.some((d) => !known.has(d))) continue;
       if (ctx.ledger.open(slot, ctx.devices) === null)
-        this.report(ctx, slot, `자리 ${slot}이 카드로 열리지 않는다`);
+        this.report(
+          ctx,
+          slot,
+          `자리 ${subj(String(slot))} 카드로 열리지 않아요.`,
+        );
     }
   }
 
@@ -1178,7 +1188,7 @@ export class FairDevice {
         this.emit(
           "problem",
           ctx.id,
-          `${what}: 공개한 열쇠가 카드를 잠글 때 쓴 열쇠와 다르다(열쇠 증명 실패)`,
+          `${what}: 공개한 열쇠가 카드를 잠글 때 쓴 열쇠와 달라요(열쇠 증명 실패).`,
           culprit,
         );
         return;
@@ -1383,7 +1393,7 @@ export class FairDevice {
           this.emit(
             "problem",
             ctx.id,
-            "섞을 때 건 값과 다른 nonce를 공개했다(섞기 증명)",
+            "섞을 때 건 값과 다른 nonce를 공개했어요(섞기 증명).",
             d,
           );
           return;
@@ -1470,7 +1480,7 @@ export class FairDevice {
           this.emit(
             "problem",
             ctx.id,
-            "섞기 증명이 맞지 않는다(섞을 때 카드를 바꿨다)",
+            "섞기 증명이 맞지 않아요(섞을 때 카드를 바꿨어요).",
             d,
           );
       });
@@ -1630,7 +1640,7 @@ export class FairDevice {
         if (!(await check))
           return {
             device: d,
-            reason: "섞기 증명이 맞지 않는다(섞을 때 카드를 바꿨다)",
+            reason: "섞기 증명이 맞지 않아요(섞을 때 카드를 바꿨어요).",
           };
     if (ctx.pool)
       for (const d of ctx.devices) {
@@ -1642,7 +1652,7 @@ export class FairDevice {
         if (st && !(await verifyKeys(this.g, st, proof)))
           return {
             device: d,
-            reason: "다시 섞을 카드를 바꿀 때 값을 바꿨다(바꾸기 증명 실패)",
+            reason: "다시 섞을 카드를 바꿀 때 값을 바꿨어요(바꾸기 증명 실패).",
           };
       }
     const missing = new Map<number, string>();
@@ -1651,13 +1661,13 @@ export class FairDevice {
       const allCommitted = ctx.devices.every((d) => state.commits.has(d));
       const [proved, reason] =
         state.bits !== null
-          ? [state.answers, "섞기 증명 도전에 응답하지 않았다"]
+          ? [state.answers, "섞기 증명 도전에 응답하지 않았어요."]
           : allCommitted
             ? [
                 state.nonces,
-                "섞기 증명 nonce를 공개하지 않았다(도전값을 보고 멈췄다)",
+                "섞기 증명 nonce를 공개하지 않았어요(도전값을 보고 멈췄어요).",
               ]
-            : [state.commits, "섞기 증명 약속을 내지 않았다"];
+            : [state.commits, "섞기 증명 약속을 내지 않았어요."];
       for (const d of ctx.devices)
         if (d !== this.id && !proved.has(d) && !missing.has(d))
           missing.set(d, reason);

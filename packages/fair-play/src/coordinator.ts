@@ -7,6 +7,7 @@ import {
   type RuleSet,
   type Suit,
 } from "@game/mighty-engine";
+import { obj, subj } from "@game/mighty-engine/josa";
 
 import type { RoundDeal } from "./audit";
 import { cardText, redealOwners, slotOfToken, tokenDeal } from "./blind";
@@ -53,7 +54,7 @@ export function reportShuffleTamper(
   // 같은 카드가 두 번 열린 것은 내 기기가 직접 본 사실이라 판을 바로 멈춘다. 누가 했는지는 뒤따라 알린다.
   incident({
     seat: null,
-    reason: `${what}: 섞기 조작이다. 누가 했는지 섞기 증명으로 확인하는 중`,
+    reason: `${what}: 섞기 조작이에요. 누가 했는지 섞기 증명으로 확인하는 중이에요.`,
     pending: true,
   });
   void device.shuffleCulprit(deal).then((culprit) =>
@@ -393,7 +394,7 @@ export class FairCoordinator {
     if (violation) {
       const detail =
         "heldCard" in violation
-          ? `${violation.trickIndex + 1}번째 턴에 ${cardText(violation.played)}를 냈는데, 그때 ${cardText(violation.heldCard)}가 손에 있었다: ${violation.reason}`
+          ? `${violation.trickIndex + 1}번째 턴에 ${obj(cardText(violation.played))} 냈는데, 그때 ${subj(cardText(violation.heldCard))} 손에 있었어요. ${violation.reason}`
           : violation.reason;
       this.incident({ seat: violation.seat, reason: detail });
       return;
@@ -465,7 +466,7 @@ export class FairCoordinator {
       reportShuffleTamper(
         this.device,
         deal,
-        "열어 보니 같은 카드가 두 번 있다",
+        "열어 보니 같은 카드가 두 번 있어요.",
         (i) => this.incident(i),
       );
       return;

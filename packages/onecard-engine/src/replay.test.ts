@@ -113,7 +113,7 @@ describe("다시 하기(replay)", () => {
     const result = replay(O1_ONECARD_RULES, setup, [
       { seat: 1, action: { type: "draw" } },
     ]);
-    expect(result).toEqual({ ok: false, index: 0, error: "차례가 아니다" });
+    expect(result).toEqual({ ok: false, index: 0, error: "차례가 아니에요." });
   });
 
   it("무작위 판 여러 개: 카드 수가 늘 같고, 다시 하면 같다(씨앗 고정)", () => {

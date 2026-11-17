@@ -472,10 +472,10 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
 
     submit(action) {
       const host = get().host;
-      if (!host) return { ok: false, error: "게임이 없어요" };
+      if (!host) return { ok: false, error: "게임이 없어요." };
       // 컴퓨터 수와 연출을 다 보여 주기 전에는 두지 않는다(기권은 언제든).
       if (action.type !== "resign" && (get().queue.length > 0 || get().playing))
-        return { ok: false, error: "잠깐만요" };
+        return { ok: false, error: "잠깐만요." };
       const result = host.submit(action);
       if (!result.ok) {
         set({ notice: result.error });
@@ -488,7 +488,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
       const view = get().view;
       const index = view?.auction?.index;
       if (!view || index === undefined || view.decision?.kind !== "bid")
-        return { ok: false, error: "입찰할 때가 아니에요" };
+        return { ok: false, error: "입찰할 때가 아니에요." };
       if (secretKey) {
         // 온라인: 이 기기에서 만든 소금으로 약속한다. 값과 소금을 먼저 남긴다(새로고침해도 공개하게).
         const salt = newSalt();

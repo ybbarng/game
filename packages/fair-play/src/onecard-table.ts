@@ -1,4 +1,5 @@
 import type { Card } from "@game/mighty-engine";
+import { obj } from "@game/mighty-engine/josa";
 
 import { tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
@@ -335,7 +336,10 @@ export class OnecardDeck {
     options: { trusted?: boolean } = {},
   ): number {
     const ctx = this.rounds.get(round);
-    if (!ctx) throw new Error(`시작하지 않은 판 ${round}을 다시 섞으려 했다`);
+    if (!ctx)
+      throw new Error(
+        `시작하지 않은 판 ${obj(String(round))} 다시 섞으려 했다`,
+      );
     const ordered = reshuffleOrder(cards);
     const existing = ctx.segments[segment];
     if (existing && segment > 0) {
@@ -343,24 +347,24 @@ export class OnecardDeck {
       if (existing.cards.join() !== ordered.join())
         this.incident({
           seat: 0,
-          reason: "방장이 같은 다시 섞기를 다른 카드로 알렸다",
+          reason: "방장이 같은 다시 섞기를 다른 카드로 알렸어요.",
         });
       return existing.dealId;
     }
     if (segment !== ctx.segments.length || segment === 0) {
-      this.incident({ seat: 0, reason: "방장이 다시 섞기 순서를 틀렸다" });
+      this.incident({ seat: 0, reason: "방장이 다시 섞기 순서를 틀렸어요." });
       return onecardDealId(round, Math.max(0, segment));
     }
     const prev = ctx.segments.at(-1) as SegmentCtx;
     const bad =
       ordered.length === 0
-        ? "방장이 빈 카드 목록을 다시 섞으려 했다"
+        ? "방장이 빈 카드 목록을 다시 섞으려 했어요."
         : new Set(ordered).size !== ordered.length
-          ? "방장이 같은 카드를 두 번 다시 섞으려 했다"
+          ? "방장이 같은 카드를 두 번 다시 섞으려 했어요."
           : ordered.some((c) => !this.cards.includes(c))
-            ? "방장이 덱에 없는 카드를 다시 섞으려 했다"
+            ? "방장이 덱에 없는 카드를 다시 섞으려 했어요."
             : prev.next < prev.pile.length
-              ? "방장이 더미가 남았는데 다시 섞으려 했다"
+              ? "방장이 더미가 남았는데 다시 섞으려 했어요."
               : null;
     if (bad) {
       this.incident({ seat: 0, reason: bad });
@@ -389,7 +393,7 @@ export class OnecardDeck {
         if (this.halted || this.allShown(ctx, seg.segment, ordered)) return;
         this.incident({
           seat: 0,
-          reason: "방장이 아직 모두에게 열리지 않은 카드를 다시 섞으려 했다",
+          reason: "방장이 아직 모두에게 열리지 않은 카드를 다시 섞으려 했어요.",
         });
       });
       this.shownWaits.add(wait);
@@ -454,7 +458,7 @@ export class OnecardDeck {
       if (before.to !== to)
         this.incident({
           seat: 0,
-          reason: "방장이 같은 더미 카드를 두 사람에게 열라고 했다",
+          reason: "방장이 같은 더미 카드를 두 사람에게 열라고 했어요.",
         });
       return before.to === to;
     }
@@ -468,7 +472,7 @@ export class OnecardDeck {
     ) {
       this.incident({
         seat: 0,
-        reason: "방장이 더미를 순서와 다르게 열라고 했다",
+        reason: "방장이 더미를 순서와 다르게 열라고 했어요.",
       });
       return false;
     }
@@ -625,9 +629,9 @@ export class OnecardDeck {
       // 같은 카드가 두 번, 또는 알린 카드와 다른 카드가 들어 있으면 그 조각의 섞기 사슬을 조작했다.
       const what =
         new Set(got).size !== got.length
-          ? "열어 보니 같은 카드가 두 번 있다"
+          ? "열어 보니 같은 카드가 두 번 있어요."
           : !sameCards(got, seg.cards)
-            ? "열어 보니 섞기로 한 카드와 다른 카드가 들어 있다"
+            ? "열어 보니 섞기로 한 카드와 다른 카드가 들어 있어요."
             : null;
       if (what) {
         reportShuffleTamper(
@@ -791,7 +795,7 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
   const complete = options.complete === true;
   const first = deals.get(1);
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없다" };
+    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
   let state = spec.createMatch(rules, seed, first.preset).state;
   const states = [state];
   let used = 0;
@@ -821,7 +825,7 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
       return complete
         ? host(
             index,
-            `판 끝인데 ${round}판 패를 몰라 기록 끝까지 다시 계산하지 못했다`,
+            `판 끝인데 ${round}판 패를 몰라 기록 끝까지 다시 계산하지 못했어요.`,
           )
         : { ok: true, state, states, upTo: index };
     const k = spec.reshufflesOf(state);
@@ -841,8 +845,8 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
         return host(
           index,
           deal.refills[k]
-            ? "판 끝인데 다음 판 패를 몰라 기록 끝까지 다시 계산하지 못했다"
-            : `엔진은 ${k + 1}번째로 다시 섞었는데 방장이 그 덱 조각을 열지 않았다`,
+            ? "판 끝인데 다음 판 패를 몰라 기록 끝까지 다시 계산하지 못했어요."
+            : `엔진은 ${k + 1}번째로 다시 섞었는데 방장이 그 덱 조각을 열지 않았어요.`,
         );
       return { ok: true, state, states, upTo: index };
     }
@@ -857,26 +861,29 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
     if (spec.roundOf(after) === round) {
       const k2 = spec.reshufflesOf(after);
       if (k2 > k + 1)
-        return host(index, "한 걸음에 두 번 다시 섞었다(엔진과 맞지 않는다)");
+        return host(
+          index,
+          "한 걸음에 두 번 다시 섞었어요(엔진과 맞지 않아요).",
+        );
       if (k2 === k + 1) {
         const declared = deal.declared[k] ?? [];
         if (!sameCards(pool, declared))
           return host(
             index,
-            "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸다",
+            "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸어요.",
           );
       }
       if (!drawsMatch(result.events))
-        return host(index, "방장이 더미 카드를 엔진과 다르게 열었다");
+        return host(index, "방장이 더미 카드를 엔진과 다르게 열었어요.");
     } else {
       // 판이 바뀌는 걸음에도 바뀌기 전에 그 판 더미에서 뽑은 카드가 있을 수 있다(원카드 엔진: 먹다가
       // 파산해 판이 끝남). 그것까지 맞춰 본 뒤 남은 연 자리가 있는지 본다. 이 걸음의 다시 섞기는 상태가 다음 판으로
       // 넘어가 버린 더미와 견줄 수 없다. 원카드 엔진은 다시 섞기가 따로 한 걸음(`reshuffle` 행동)이라 판 끝과
       // 겹치지 않고, 알린 카드는 그 자리(`reshuffle`의 열린 카드 확인)와 판 끝(조각을 열어 같은 카드인지)에서 본다.
       if (!drawsMatch(result.events))
-        return host(index, "방장이 더미 카드를 엔진과 다르게 열었다");
+        return host(index, "방장이 더미 카드를 엔진과 다르게 열었어요.");
       if (requests && requests.of(round).length > used)
-        return host(index, "방장이 엔진이 쓰지 않은 더미 카드를 열었다");
+        return host(index, "방장이 엔진이 쓰지 않은 더미 카드를 열었어요.");
       used = 0;
     }
     state = spec.withRefill(spec.withPreset(after, null), null);
@@ -889,10 +896,10 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
     if (deal && deal.refills.length !== made)
       return host(
         log.length,
-        `방장이 엔진이 쓰지 않은 다시 섞기를 열었다(덱 조각 ${deal.refills.length + 1}개, 엔진 다시 섞기 ${made}번)`,
+        `방장이 엔진이 쓰지 않은 다시 섞기를 열었어요(덱 조각 ${deal.refills.length + 1}개, 엔진 다시 섞기 ${made}번).`,
       );
     if (requests && requests.of(round).length > used)
-      return host(log.length, "방장이 엔진이 쓰지 않은 더미 카드를 열었다");
+      return host(log.length, "방장이 엔진이 쓰지 않은 더미 카드를 열었어요.");
   }
   return { ok: true, state, states, upTo: log.length };
 }

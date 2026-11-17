@@ -70,12 +70,12 @@ export function playProblem(
   hand: readonly OnecardCard[],
   card: OnecardCard,
 ): string | null {
-  if (!hand.includes(card)) return "손에 없는 카드다";
+  if (!hand.includes(card)) return "손에 없는 카드예요.";
   if (face.attack > 0) {
     if (!canCounter(face, card))
-      return "공격을 받았다. 받아칠 카드가 아니면 먹어야 한다";
-  } else if (!canFollow(face, card)) return "무늬나 숫자가 맞지 않는다";
+      return "공격을 받았어요. 받아칠 카드가 아니면 먹어야 해요.";
+  } else if (!canFollow(face, card)) return "무늬나 숫자가 맞지 않아요.";
   if (hand.length === 1 && finishBlocked(face.rules, card))
-    return "이 카드로는 끝낼 수 없다";
+    return "이 카드로는 끝낼 수 없어요.";
   return null;
 }

@@ -17,7 +17,7 @@ test(
     await page.getByRole("button", { name: /방장이 ②에서/ }).click();
     await page.getByRole("button", { name: /① 해시만 먼저 공개/ }).click();
     await page.getByRole("button", { name: /② 비밀 값 공개/ }).click();
-    await expect(page.getByText(/0번 자리의 값이 약속과 다르다/)).toBeVisible();
+    await expect(page.getByText(/0번 자리의 값이 약속과 달라요/)).toBeVisible();
 
     // 판 끝 검증: 기록을 조작하면 걸린다.
     await expect(page.getByText(/모두 맞습니다/)).toBeVisible();

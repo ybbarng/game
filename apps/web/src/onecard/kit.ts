@@ -23,6 +23,7 @@ import {
 } from "@game/onecard-engine";
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
+import { ro } from "@/lib/josa";
 import { claimsVerifier } from "@/net/claim-verify";
 import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
@@ -101,13 +102,13 @@ export const onecardStats: KitStats<OnecardView, GameEvent> = {
     anyRound<OnecardRound>(
       "catch-2",
       "두 번 잡기",
-      "한 판에 다른 사람을 두 번 잡습니다.",
+      "한 판에 다른 사람을 두 번 잡아요.",
       (r) => r.catches >= 2,
     ),
     anyRound<OnecardRound>(
       "clean-out",
       "깔끔한 1등",
-      "한 번도 잡히지 않고 헛외침 없이 1등으로 다 냅니다.",
+      "한 번도 잡히지 않고 헛외침 없이 1등으로 다 내요.",
       (r) => r.rank === 1 && r.out && r.caught === 0 && r.falseShouts === 0,
     ),
   ],
@@ -150,7 +151,7 @@ export function describeAction(action: Action): string {
   switch (action.type) {
     case "play":
       return action.suit
-        ? `${cardName(action.card)} 냄, ${SUIT_NAMES[action.suit]}로 바꿈`
+        ? `${cardName(action.card)} 냄, ${ro(SUIT_NAMES[action.suit])} 바꿈`
         : `${cardName(action.card)} 냄`;
     case "draw":
       return "먹음";
@@ -280,7 +281,8 @@ export const onecardKit: OnecardKit = {
     if (decoded.ok && !decoded.rules.race)
       return {
         ok: false,
-        reason: "옛 원카드 방(o1)입니다. 방장이 새로고침해 새 방을 열어 주세요",
+        reason:
+          "옛 원카드 방(o1)이에요. 방장이 새로고침해 새 방을 열어 주세요.",
       };
     return decoded;
   },

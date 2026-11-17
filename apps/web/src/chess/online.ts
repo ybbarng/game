@@ -36,6 +36,6 @@ export const chessOnline: BoardOnlineGame<
   rulesSummary(rules) {
     const wins =
       WINS_LABEL[rules.winsToFinish] ?? `${rules.winsToFinish}승 먼저`;
-    return `${wins}. 첫 판 백(먼저 둠)은 무작위, 판마다 백·흑을 바꿉니다.`;
+    return `${wins} · 첫 판 백(먼저 둠)은 무작위 · 판마다 백·흑 바꿈`;
   },
 };

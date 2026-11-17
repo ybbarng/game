@@ -45,22 +45,22 @@ function resultText(
   switch (result.kind) {
     case "hit":
       if (puzzle) return `${cluesOf(view, me).length}번 만에 맞혔어요!`;
-      return mine ? "맞혔어요! 이겼어요" : "상대가 먼저 맞혀 졌어요";
+      return mine ? "맞혔어요! 이겼어요." : "상대가 먼저 맞혀 졌어요.";
     case "draw":
-      return "둘 다 맞혀 비겼어요";
+      return "둘 다 맞혀 비겼어요.";
     case "resign":
-      if (puzzle) return "그만두었어요";
-      return mine ? "상대가 기권했어요" : "기권했어요";
+      if (puzzle) return "그만두었어요.";
+      return mine ? "상대가 기권했어요." : "기권했어요.";
     case "time":
-      return mine ? "상대 시간이 다 돼 이겼어요!" : "시간이 다 돼 졌어요";
+      return mine ? "상대 시간이 다 돼 이겼어요!" : "시간이 다 돼 졌어요.";
     case "cheat":
       if (result.seat === null)
-        return "둘 다 답이 비밀과 맞지 않아 이긴 사람이 없어요";
+        return "둘 다 답이 비밀과 맞지 않아 이긴 사람이 없어요.";
       return mine
-        ? "상대 답이 비밀과 맞지 않아 이겼어요"
-        : "내 답이 비밀과 맞지 않아 졌어요";
+        ? "상대 답이 비밀과 맞지 않아 이겼어요."
+        : "내 답이 비밀과 맞지 않아 졌어요.";
     case "forfeit":
-      return mine ? "상대가 답하지 않아 이겼어요" : "답하지 않아 졌어요";
+      return mine ? "상대가 답하지 않아 이겼어요." : "답하지 않아 졌어요.";
   }
 }
 
@@ -107,11 +107,11 @@ function RevealPanel({
       const known =
         r?.secret ?? (seat === me ? mySecret(view, book)?.secret : undefined);
       const problem = !r
-        ? "아직 공개하지 않았어요"
+        ? "아직 공개하지 않았어요."
         : !r.matches
-          ? "처음 약속과 다른 수를 공개했어요"
+          ? "처음 약속과 다른 수를 공개했어요."
           : r.wrongAt !== null
-            ? `${view.guesses.filter((g, i) => i <= (r.wrongAt as number) && g.seat !== seat).length}번째 답이 이 수와 맞지 않아요`
+            ? `${view.guesses.filter((g, i) => i <= (r.wrongAt as number) && g.seat !== seat).length}번째 답이 이 수와 맞지 않아요.`
             : null;
       return { seat, known, problem, ok: r !== null && problem === null };
     });
@@ -233,17 +233,17 @@ export function BaseballGame({
   else if (view.phase === "setup")
     status =
       decision?.kind === "commit"
-        ? "내 비밀 수를 정하세요. 상대가 이 수를 맞혀야 해요"
+        ? "내 비밀 수를 정하세요. 상대가 이 수를 맞혀야 해요."
         : `${opponent} 쪽에서 비밀 수를 정하는 중…`;
   else if (view.phase === "play")
     status =
       decision?.kind === "guess"
         ? view.solved[opp] && !puzzle
           ? // 상대가 맞힌 것은 위 상대 기록(홈런)에 보인다. 길면 휴대폰 가로에서 두 줄이 되어 기권이 화면 밖으로 밀린다
-            "마지막 기회! 맞히면 비겨요"
+            "마지막 기회! 맞히면 비겨요."
           : puzzle
-            ? "내 차례 — 컴퓨터 수를 맞혀 보세요"
-            : "내 차례 — 상대 수를 맞혀 보세요"
+            ? "내 차례 — 컴퓨터 수를 맞혀 보세요."
+            : "내 차례 — 상대 수를 맞혀 보세요."
         : online
           ? `${opponent}의 차례`
           : "컴퓨터가 생각하는 중…";
@@ -252,7 +252,7 @@ export function BaseballGame({
       decision?.kind === "answer"
         ? secret
           ? "답하는 중…"
-          : "내 비밀 수를 이 기기에서 찾을 수 없어 답하지 못해요"
+          : "내 비밀 수를 이 기기에서 찾을 수 없어 답하지 못해요."
         : `${opponent}의 답을 기다리는 중…`;
   else status = "비밀 수를 공개하고 답을 확인하는 중…";
 
@@ -354,7 +354,7 @@ export function BaseballGame({
             )}
             {secret && !keptOwn && (
               <span className="basis-full text-amber-200">
-                연결이 끊긴 사이 컴퓨터가 정한 수예요(방장 기기도 알 수 있어요)
+                연결이 끊긴 사이 컴퓨터가 정한 수예요(방장 기기도 알 수 있어요).
               </span>
             )}
           </span>
@@ -369,7 +369,7 @@ export function BaseballGame({
             entries={myGuesses}
             digits={digits}
             wrongAt={wrongTheirs}
-            empty="아직 묻지 않았어요"
+            empty="아직 묻지 않았어요."
             seat={me}
             side="mine"
             batting={batting === me}
@@ -404,7 +404,7 @@ export function BaseballGame({
             entries={theirGuesses}
             digits={digits}
             wrongAt={wrongMine}
-            empty="아직 묻지 않았어요"
+            empty="아직 묻지 않았어요."
             seat={opp}
             side="theirs"
             batting={batting === opp}
@@ -450,8 +450,8 @@ export function BaseballGame({
           className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
         >
           {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+            ? "방장이 방을 나갔어요."
+            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
         </p>
       )}
       {waitingOffline && (
@@ -651,7 +651,7 @@ function PadArea({
           }
         />
         <p className="text-center text-white/50 text-xs">
-          비밀 수는 이 기기에만 남고, 상대에게는 잠긴 약속만 갑니다
+          비밀 수는 이 기기에만 남고, 상대에게는 잠긴 약속만 가요.
         </p>
       </>
     );

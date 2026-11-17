@@ -193,6 +193,9 @@ importers:
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@game/stardraw-core':
         specifier: workspace:*
         version: link:../../packages/stardraw-core
@@ -664,6 +667,9 @@ importers:
 
   packages/stardraw-cli:
     dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
       '@game/stardraw-core':
         specifier: workspace:*
         version: link:../stardraw-core
@@ -677,6 +683,9 @@ importers:
 
   packages/stardraw-core:
     dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
       '@noble/curves':
         specifier: 2.4.0
         version: 2.4.0

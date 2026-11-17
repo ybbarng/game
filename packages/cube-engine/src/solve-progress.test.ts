@@ -15,6 +15,9 @@ import { solvedCube } from "./state";
 const after = (n: number, alg: string) =>
   applyMoves(n, solvedCube(n), parseMoves(n, alg));
 
+/** 4×4 야우 이정표(센터가 다 맞으면 늘 함께 켜진다) */
+const YAU = ["centers2", "cross3"] as const;
+
 /** 대회 규칙 섞기 하나(3×3, 고정) */
 const SCRAMBLE = "D2 F2 U' B2 R2 D' L2 U' R2 U2 F' L' D B' R' U' R2 F U' L";
 
@@ -91,6 +94,8 @@ describe("이정표", () => {
     expect(milestonesOf(3, solvedCube(3))).toContain("ll");
     expect(milestonesOf(2, solvedCube(2))).toEqual(["layer1", "oll", "ll"]);
     expect(milestonesOf(4, solvedCube(4))).toEqual([
+      "centers2",
+      "cross3",
       "centers",
       "edges",
       "cross",
@@ -179,16 +184,46 @@ describe("이정표", () => {
 
   it("큰 큐브: 바깥 면 돌리기는 센터·엣지 짝을 그대로 둔다", () => {
     expect(milestonesOf(4, after(4, "R U F' D2"))).toEqual([
+      ...YAU,
       "centers",
       "edges",
     ]);
     expect(milestonesOf(5, after(5, "R U 2R"))).toEqual([]);
   });
 
+  describe("4×4 야우: 센터 둘·십자 셋", () => {
+    it("두 층 돌리기(Uw) 뒤: 위·아래 센터와 아래 십자 줄은 그대로라 센터 둘·십자 셋만 켜진다", () => {
+      expect(milestonesOf(4, after(4, "Uw"))).toEqual(["centers2", "cross3"]);
+    });
+
+    it("아래 십자 줄 둘이 빠지면 센터 둘까지만", () => {
+      // R·F가 아래-오른쪽·아래-앞 줄을 옮긴다(위 십자 줄도 Uw로 어긋남)
+      expect(milestonesOf(4, after(4, "Uw R F"))).toEqual(["centers2"]);
+    });
+
+    it("아래 면을 돌려도 십자 셋은 그대로다(옆 센터 전이라 십자 줄끼리의 자리만 본다)", () => {
+      expect(milestonesOf(4, after(4, "Uw R D"))).toEqual([
+        "centers2",
+        "cross3",
+      ]);
+    });
+
+    it("맞은편 센터가 둘 다 깨지면 아무것도 켜지지 않는다", () => {
+      expect(milestonesOf(4, after(4, "Uw Rw'"))).toEqual([]);
+    });
+
+    it("5×5 이상에는 야우 이정표가 없다(야우 풀이가 4×4만)", () => {
+      expect(milestonesOf(5, after(5, "Uw"))).toEqual([]);
+      expect(milestonesOf(5, solvedCube(5))).not.toContain("centers2");
+    });
+  });
+
   it("큰 큐브: 센터·엣지 짝 뒤에는 3×3처럼 십자·F2L·첫 층·둘째 층·윗면을 본다", () => {
     for (const n of [4, 5]) {
+      const yau = n === 4 ? YAU : [];
       // F2L 한 칸을 빼면 F2L 3/4까지(3×3 「십자만」과 같은 상태)
       expect(milestonesOf(n, after(n, "R U R'"))).toEqual([
+        ...yau,
         "centers",
         "edges",
         "cross",
@@ -198,6 +233,7 @@ describe("이정표", () => {
       ]);
       // 수네만 둔 상태: 아래 두 층은 맞고 윗면은 아직
       expect(milestonesOf(n, after(n, "R U R' U R U2 R'"))).toEqual([
+        ...yau,
         "centers",
         "edges",
         "cross",
@@ -225,6 +261,7 @@ describe("이정표", () => {
     // 4×4 OLL 패리티 공식: 아래 두 층·센터는 그대로, 윗층 엣지 한 줄이 짝은 그대로 뒤집힌다
     const parity = "Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'";
     expect(milestonesOf(4, after(4, parity))).toEqual([
+      ...YAU,
       "centers",
       "edges",
       "cross",

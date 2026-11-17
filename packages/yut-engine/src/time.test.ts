@@ -135,7 +135,7 @@ describe("윷놀이 개인 시간", () => {
     const seat = state.turn;
     expect(step(state, seat, { type: "timeout", spent: 100_000 })).toEqual({
       ok: false,
-      error: "아직 시간이 남았다",
+      error: "아직 시간이 남았어요.",
     });
     expect(step(state, 1 - seat, { type: "timeout", spent: 999_999 }).ok).toBe(
       false,

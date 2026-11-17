@@ -8,6 +8,7 @@ import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { cn } from "@/lib/cn";
+import { ro, topic } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { useMinhwatuTutorialProgress } from "../progress";
@@ -130,8 +131,8 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          손에 {deal.hand}장씩 들고 바닥에 {deal.floor}장을 펼쳐 시작한다.
-          나홀로 민화투는 나 말고 모두 컴퓨터가 앉는다.
+          손에 {deal.hand}장씩 들고 바닥에 {deal.floor}장을 펼쳐 시작해요.
+          나홀로 민화투는 나 말고 모두 컴퓨터가 앉아요.
         </p>
       </Section>
       <Section title="판 수">
@@ -147,7 +148,7 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          판 점수를 더한 합계로 1등을 가린다.
+          판 점수를 더한 합계로 1등을 가려요.
         </p>
       </Section>
       <Section title="약 점수(초약·풍약·비약)">
@@ -180,7 +181,7 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">
           초단(4·5·7월 띠 3장)은 동네에 따라 약으로 세지 않기도 하고,
-          사오동(11월 오동 4장)은 약으로 세는 곳이 적다.
+          사오동(11월 오동 4장)은 약으로 세는 곳이 적어요.
         </p>
       </Section>
       <Section title="컴퓨터 실력">
@@ -198,7 +199,7 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
         <p className="text-xs opacity-60">{level?.description}</p>
       </Section>
       <p className="text-xs opacity-60">
-        다함께 민화투도 여기서 고른 인원·판 수·약으로 방을 연다.
+        다함께 민화투도 여기서 고른 인원·판 수·약으로 방을 열어요.
       </p>
     </SubScreen>
   );
@@ -209,44 +210,44 @@ function MinhwatuRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
       "화투",
-      "화투는 1월부터 12월까지 달마다 넉 장씩, 모두 48장이다. 카드 왼쪽 위 숫자가 그 카드의 달이고, 같은 달 카드끼리 짝이다.",
+      "화투는 1월부터 12월까지 달마다 넉 장씩, 모두 48장이에요. 카드 왼쪽 위 숫자가 그 카드의 달이고, 같은 달 카드끼리 짝이에요.",
     ],
     [
       "목표",
-      "바닥에 펼친 카드와 같은 달 카드를 맞춰 두 장을 함께 가져온다. 이것을 「먹는다」고 한다. 판이 끝나면 먹은 카드의 점수와, 정해진 카드 묶음을 모아 얻는 약 점수로 겨루고, 남보다 많은 점수를 내면 이긴다.",
+      "바닥에 펼친 카드와 같은 달 카드를 맞춰 두 장을 함께 가져와요. 이것을 「먹는다」고 해요. 판이 끝나면 먹은 카드의 점수와, 정해진 카드 묶음을 모아 얻는 약 점수로 겨루고, 남보다 많은 점수를 내면 이겨요.",
     ],
     [
       "나누기",
-      "2명이면 손에 10장씩 들고 바닥에 8장, 3명이면 7장씩과 바닥 6장, 4명이면 5장씩과 바닥 8장을 펼친다. 남은 카드는 엎어 쌓아 더미로 둔다. 바닥에 같은 달 넉 장이 깔리면 다시 섞는다.",
+      "2명이면 손에 10장씩 들고 바닥에 8장, 3명이면 7장씩과 바닥 6장, 4명이면 5장씩과 바닥 8장을 펼쳐요. 남은 카드는 엎어 쌓아 더미로 둬요. 바닥에 같은 달 넉 장이 깔리면 다시 섞어요.",
     ],
     [
       "한 차례",
-      "손에 든 카드 가운데 한 장을 낸다. 바닥에 같은 달 카드가 있으면 둘을 먹고, 없으면 낸 카드는 바닥에 놓인다. 그다음 더미에서 맨 위 카드를 뒤집어 똑같이 맞춘다.",
+      "손에 든 카드 가운데 한 장을 내요. 바닥에 같은 달 카드가 있으면 둘을 먹고, 없으면 낸 카드는 바닥에 놓여요. 그다음 더미에서 맨 위 카드를 뒤집어 똑같이 맞춰요.",
     ],
     [
       "같은 달이 여럿",
-      "바닥에 같은 달이 두 장이면 하나를 골라 먹고, 석 장이면 낸 카드까지 넉 장을 다 먹는다. 더미에서 뒤집은 카드도 똑같다.",
+      "바닥에 같은 달이 두 장이면 하나를 골라 먹고, 석 장이면 낸 카드까지 넉 장을 다 먹어요. 더미에서 뒤집은 카드도 똑같아요.",
     ],
     [
       "카드 점수",
-      "48장은 광·열끗·띠·피 네 종류다. 광은 붉은 원 안에 「光」이 찍힌 카드로 20점, 열끗은 새·짐승·물건이 그려진 카드로 10점, 띠는 긴 띠가 그려진 카드로 5점, 피는 나머지 카드로 0점이다. 48장을 모두 더하면 240점이다.",
+      "48장은 광·열끗·띠·피 네 종류예요. 광은 붉은 원 안에 「光」이 찍힌 카드로 20점, 열끗은 새·짐승·물건이 그려진 카드로 10점, 띠는 긴 띠가 그려진 카드로 5점, 피는 나머지 카드로 0점이에요. 48장을 모두 더하면 240점이에요.",
     ],
     [
       "약",
       [
-        "정해진 카드 묶음을 모두 먹으면 약을 이룬다. 약을 이루면 나머지 사람 한 사람에게서 그 약의 점수씩 받는다",
-        `${YAK_NAMES.choyak}은 ${YAK_DESCRIPTIONS.choyak}, ${YAK_NAMES.pungyak}은 ${YAK_DESCRIPTIONS.pungyak}, ${YAK_NAMES.biyak}은 ${YAK_DESCRIPTIONS.biyak}이고, 옵션에서 고른 대로 20점이나 10점이다`,
-        `${YAK_NAMES.hongdan}은 ${YAK_DESCRIPTIONS.hongdan}, ${YAK_NAMES.cheongdan}은 ${YAK_DESCRIPTIONS.cheongdan}으로 30점이다`,
-        `옵션에서 켜면 ${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점과 ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점도 약으로 센다.`,
+        "정해진 카드 묶음을 모두 먹으면 약을 이뤄요. 약을 이루면 나머지 사람 한 사람에게서 그 약의 점수씩 받아요.",
+        `${topic(YAK_NAMES.choyak)} ${YAK_DESCRIPTIONS.choyak}, ${topic(YAK_NAMES.pungyak)} ${YAK_DESCRIPTIONS.pungyak}, ${topic(YAK_NAMES.biyak)} ${YAK_DESCRIPTIONS.biyak}이고, 옵션에서 고른 대로 20점이나 10점이에요.`,
+        `${topic(YAK_NAMES.hongdan)} ${YAK_DESCRIPTIONS.hongdan}, ${topic(YAK_NAMES.cheongdan)} ${ro(YAK_DESCRIPTIONS.cheongdan)} 30점이에요.`,
+        `옵션에서 켜면 ${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점과 ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점도 약으로 세요.`,
       ].join(". "),
     ],
     [
       "판 점수",
-      "판 점수는 먹은 카드 점수에 약으로 받은 점수를 더하고, 약으로 준 점수와 본을 뺀 것이다. 본은 240점을 인원수로 나눈 몫으로, 3명이면 80점이다. 그래서 모두의 판 점수를 더하면 0이 된다.",
+      "판 점수는 먹은 카드 점수에 약으로 받은 점수를 더하고, 약으로 준 점수와 본을 뺀 거예요. 본은 240점을 인원수로 나눈 몫으로, 3명이면 80점이에요. 그래서 모두의 판 점수를 더하면 0이 돼요.",
     ],
     [
       "먼저 내는 사람과 판 수",
-      "판마다 가장 먼저 카드를 내는 사람을 선이라 한다. 첫 판 선은 무작위로 정하고, 그 뒤로는 앞 판 1등이 선이다. 정한 판 수만큼 치고 판 점수 합계가 가장 높은 사람이 이긴다.",
+      "판마다 가장 먼저 카드를 내는 사람을 선이라 해요. 첫 판 선은 무작위로 정하고, 그 뒤로는 앞 판 1등이 선이에요. 정한 판 수만큼 치고 판 점수 합계가 가장 높은 사람이 이겨요.",
     ],
   ];
   return (
@@ -316,14 +317,14 @@ function MinhwatuHome({
       together={{
         icon: "👥",
         title: "다함께 민화투",
-        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다.",
+        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
         onClick: onOnline,
       }}
       learn={{
         title: "민화투 배우기",
         learned,
         total: MINHWATU_LESSONS.length,
-        firstHint: `처음이라면 여기부터. 짝 맞추기부터 ${MINHWATU_LESSONS.length}단원`,
+        firstHint: `처음이라면 여기서 시작해요. 짝 맞추기부터 ${MINHWATU_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

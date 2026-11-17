@@ -414,11 +414,11 @@ export function GostopTable({
     if (sent.waiting) status = "보내는 중…";
     else if (d?.kind === "play")
       status = selected
-        ? "한 번 더 누르면 냅니다"
+        ? "한 번 더 누르면 내요."
         : d.cards.length === 0
-          ? "뒤집기만 하세요"
-          : "내 차례 — 낼 카드를 고르세요";
-    else if (d?.kind === "choose") status = "먹을 바닥 카드를 고르세요";
+          ? "뒤집기만 하세요."
+          : "내 차례 — 낼 카드를 고르세요.";
+    else if (d?.kind === "choose") status = "먹을 바닥 카드를 고르세요.";
     else if (d?.kind === "goStop") status = `${d.score}점! 고 또는 스톱`;
     else status = `${name(view.turn)} 차례…`;
   } else if (result?.winner === me)
@@ -736,9 +736,9 @@ export function GostopTable({
         <Prompt label="고 또는 스톱">
           <p className="font-black text-3xl text-amber-300">{d.score}점</p>
           <p className="text-sm text-white/80">
-            {d.goCount > 0 ? `지금 ${d.goCount}고. ` : ""}
-            고를 부르면 더 하고(점수 덤·두 배), 지면 고박입니다. 스톱하면 지금
-            점수로 이깁니다.
+            {d.goCount > 0 ? `지금 ${d.goCount}고를 불렀어요. ` : ""}
+            고를 부르면 더 하고(점수 덤·두 배), 지면 고박이에요. 스톱하면 지금
+            점수로 이겨요.
           </p>
           <div className="flex w-full gap-2">
             <button

@@ -185,11 +185,11 @@ export function verifyLate(
   botSeats?: ReadonlySet<number>,
 ): string | null {
   if (action.type === "timeUp")
-    return seat === 0 ? null : "시간 상한을 방장 아닌 자리로 냈다";
+    return seat === 0 ? null : "시간 상한을 방장 아닌 자리로 냈어요.";
   if (!isLate(action)) return null;
-  if (botSeats?.has(seat)) return "컴퓨터 자리를 시간 넘김으로 대신 뒀다";
+  if (botSeats?.has(seat)) return "컴퓨터 자리를 시간 넘김으로 대신 뒀어요.";
   if (!pendingSeats(before).includes(seat))
-    return "정할 때가 아닌 자리를 대신 뒀다";
+    return "정할 때가 아닌 자리를 대신 뒀어요.";
   const {
     late: _late,
     spent: _spent,
@@ -197,7 +197,7 @@ export function verifyLate(
   } = action as Late & { spent?: number };
   const expected = standInAction(before, seat);
   if (!expected || JSON.stringify(bare) !== JSON.stringify(expected))
-    return "시간 넘김으로 대신 둔 수가 정해진 대신 두기와 다르다";
+    return "시간 넘김으로 대신 둔 수가 정해진 대신 두기와 달라요.";
   return null;
 }
 

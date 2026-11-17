@@ -24,6 +24,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { subj } from "@/lib/josa";
 import { useChat } from "@/net/chat";
 
 import { outcomeFor } from "../kit";
@@ -31,17 +32,19 @@ import { sceneOf } from "../scene";
 import { yutSession } from "../session";
 import { YUT_LEVELS } from "../settings";
 import { useYut } from "../store";
-import { seatAngle } from "../toss/sim";
+import { resultLabel } from "../toss/plan";
 import {
   PendingChips,
   PieceToken,
   SeatClocks,
+  SeatRing,
   SideTray,
   seatLabel,
   sideLabel,
+  useSplit,
 } from "./parts";
 import { ThrowPad, TOO_LOW_NOTICE } from "./ThrowPad";
-import { resultLabel, TossMat } from "./TossMat";
+import { TossMat } from "./TossMat";
 import { YutBoard } from "./YutBoard";
 import "@/yut/components/yut.css";
 
@@ -55,102 +58,31 @@ function resultText(
   name: (seat: number) => string,
 ): string {
   const mySide = sideOf(view.rules, view.mySeat);
-  if (!result) return "게임을 끝냈어요";
+  if (!result) return "게임을 끝냈어요.";
   const won = result.side === mySide;
   const winner =
     result.side === null ? null : sideLabel(view, result.side, name);
   switch (result.kind) {
     case "finish":
       return won
-        ? "말을 모두 냈어요! 이겼어요"
-        : `${winner}이(가) 먼저 말을 모두 냈어요`;
+        ? "말을 모두 냈어요! 이겼어요."
+        : `${subj(winner ?? "상대")} 먼저 말을 모두 냈어요.`;
     case "resign":
-      if (result.seat === view.mySeat) return "기권했어요";
+      if (result.seat === view.mySeat) return "기권했어요.";
       return winner === null
-        ? `${name(result.seat)}이(가) 기권해 끝났어요`
+        ? `${subj(name(result.seat))} 기권해 끝났어요.`
         : won
-          ? `${name(result.seat)}이(가) 기권해 이겼어요`
-          : `${name(result.seat)}이(가) 기권했어요`;
+          ? `${subj(name(result.seat))} 기권해 이겼어요.`
+          : `${subj(name(result.seat))} 기권했어요.`;
     case "forfeit":
       return result.seat === view.mySeat
-        ? "던지기 고리를 공개하지 않아 졌어요"
-        : `${name(result.seat)}이(가) 공개하지 않아 끝났어요`;
+        ? "던지기 고리를 공개하지 않아 졌어요."
+        : `${subj(name(result.seat))} 공개하지 않아 끝났어요.`;
     case "time":
       return result.seat === view.mySeat
-        ? "시간을 다 써서 졌어요"
-        : `${name(result.seat)}이(가) 시간을 다 썼어요`;
+        ? "시간을 다 써서 졌어요."
+        : `${subj(name(result.seat))} 시간을 다 썼어요.`;
   }
-}
-
-/** 윷판과 멍석을 나란히 두는 화면(PC·눕힌 휴대폰, globals.css `split`과 같은 조건) */
-const SPLIT_QUERY =
-  "(orientation: landscape) and (max-height: 600px), (min-width: 1024px)";
-
-function useSplit(): boolean {
-  const [split, setSplit] = useState(false);
-  useEffect(() => {
-    const q = window.matchMedia?.(SPLIT_QUERY);
-    if (!q) return;
-    setSplit(q.matches);
-    const on = () => setSplit(q.matches);
-    q.addEventListener("change", on);
-    return () => q.removeEventListener("change", on);
-  }, []);
-  return split;
-}
-
-/**
- * 멍석 둘레의 다른 사람 자리(던지는 장면). 자리 방향은 3D 멍석과 같은 `seatAngle`이라 그 사람이 던지면 이쪽에서
- * 날아온다. 온라인이면 그 자리에서 한 말을 말풍선으로 띄운다
- */
-function SeatRing({
-  view,
-  name,
-  bubble,
-}: {
-  view: YutView;
-  name: (seat: number) => string;
-  bubble: (seat: number) => string | null;
-}) {
-  const players = view.rules.players;
-  return (
-    <>
-      {Array.from({ length: players }, (_, seat) => seat)
-        .filter((seat) => seat !== view.mySeat)
-        .map((seat) => {
-          const a = seatAngle(seat - view.mySeat, players);
-          const left = Math.max(14, Math.min(86, 50 + Math.cos(a) * 44));
-          const top = Math.max(7, Math.min(88, 50 + Math.sin(a) * 44));
-          const said = bubble(seat);
-          return (
-            <div
-              key={seat}
-              data-mat-seat={seat}
-              className="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
-              style={{ left: `${left}%`, top: `${top}%` }}
-            >
-              {said && (
-                <span
-                  data-mat-bubble
-                  className="yut-pop max-w-36 truncate rounded-xl bg-white px-2 py-0.5 text-black text-xs shadow"
-                >
-                  {said}
-                </span>
-              )}
-              <span
-                className={cn(
-                  "flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-xs",
-                  view.turn === seat && "ring-2 ring-amber-300",
-                )}
-              >
-                <PieceToken side={sideOf(view.rules, seat)} size={12} />
-                <span className="max-w-20 truncate">{name(seat)}</span>
-              </span>
-            </div>
-          );
-        })}
-    </>
-  );
 }
 
 function bannerOf(result: GameResult | null, view: YutView): Banner {
@@ -325,15 +257,15 @@ export function YutGame({
   else if (view.phase === "commit")
     status = "모두의 기기가 던지기 사슬을 약속하는 중…";
   else if (view.phase === "throw")
-    status = myTurn ? "내 차례 — 윷을 던지세요" : `${turnName}의 차례`;
+    status = myTurn ? "내 차례 — 윷을 던지세요." : `${turnName}의 차례`;
   else if (view.phase === "reveal" || view.phase === "open")
     status = "모두의 기기가 함께 던지는 중…";
   else if (decision?.kind === "move")
     status =
       options.length > 0
-        ? `움직일 말을 고르세요 · ${view.pending.map((v) => throwName(v)).join(", ")}`
-        : "쓸 수 있는 결과가 없어요";
-  else status = `${turnName}이(가) 말을 고르는 중…`;
+        ? `움직일 말을 고르세요. 남은 결과: ${view.pending.map((v) => throwName(v)).join(", ")}`
+        : "쓸 수 있는 결과가 없어요.";
+  else status = `${subj(turnName)} 말을 고르는 중…`;
 
   const ended = events.find((e) => e.type === "gameEnded");
   const banner: Banner | null =
@@ -390,8 +322,8 @@ export function YutGame({
           className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
         >
           {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+            ? "방장이 방을 나갔어요."
+            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
         </p>
       )}
       {waitingOffline && (

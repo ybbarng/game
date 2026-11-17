@@ -30,6 +30,8 @@ export const janggiOnline: BoardOnlineGame<
   botFor: janggiBotFor,
   rulesSummary(rules) {
     const bikjang = BIKJANG_INFO.find((v) => v.value === rules.bikjang);
-    return `${bikjang?.label ?? ""} · ${bikjang?.description ?? ""}. 첫 판 초(먼저 둠)는 무작위, 판마다 초·한을 바꿉니다.`;
+    return `${bikjang?.label ?? ""} · 첫 판 초(먼저 둠)는 무작위 · 판마다 초·한 바꿈`;
   },
+  rulesNote: (rules) =>
+    BIKJANG_INFO.find((v) => v.value === rules.bikjang)?.description ?? "",
 };

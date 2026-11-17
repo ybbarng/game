@@ -50,7 +50,7 @@ describe("체스 개인 시간", () => {
     const white = state.whiteSeat;
     expect(step(state, white, { type: "timeout", spent: 1_000 })).toEqual({
       ok: false,
-      error: "아직 시간이 남았다",
+      error: "아직 시간이 남았어요.",
     });
     const end = must(state, white, { type: "timeout", spent: 270_001 });
     expect(end.state.result).toEqual({ kind: "time", seat: 1 - white });

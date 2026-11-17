@@ -276,7 +276,7 @@ describe("윷놀이 온라인 방", () => {
         ? { type: "reveal", link: chainLink("ee".repeat(32), 1) }
         : null;
     await play(room, () => room.rejected.length > 0);
-    expect(room.rejected).toContain("약속한 사슬의 다음 고리가 아니다");
+    expect(room.rejected).toContain("약속한 사슬의 다음 고리가 아니에요.");
   });
 
   it("참가자가 공개하지 않고 끊기면 컴퓨터가 대신 공개하지 못해 기다리고, 끝내기로 참가자 편이 진다", async () => {

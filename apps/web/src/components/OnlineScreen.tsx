@@ -18,6 +18,7 @@ import {
   loadAuditHistory,
   recordAudit,
 } from "@/net/audit-history";
+import { auditChatText, auditNotice } from "@/net/audit-text";
 import { useChat } from "@/net/chat";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -163,18 +164,19 @@ export function OnlineScreen({
    * 다른 사람의 실패 알림은 그 사람의 주장으로만 보여 준다. 판 끝 기록은 모두 같은 것을 받으므로,
    * 남이 거짓으로 "실패"라고 알려 게임을 무효로 만드는 것을 막는다(모의 침투 B3).
    */
-  const onAuditReport = (who: string, ok: boolean, reason?: string) => {
+  const onAuditReport = (
+    who: string,
+    ok: boolean,
+    reason?: string,
+    unchecked?: string,
+  ) => {
     const own = who === "나";
     const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
     useChat.getState().receive({
       id: randomId(8),
       seat: -1,
       name: "검증",
-      text: ok
-        ? `${who} — 문제없음 ✓`
-        : own
-          ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봅니다)`,
+      text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
       if (failure) useGame.setState({ invalid: failure });
@@ -297,13 +299,22 @@ export function OnlineScreen({
         guest.on("audit", (result) => {
           useGame.setState({
             audit: result,
-            notice: result.ok
-              ? "공정성 확인: 섞기와 진행에 문제가 없습니다"
-              : `공정성 확인 실패: ${result.reason}`,
+            notice: auditNotice(
+              result,
+              "공정성 확인",
+              "섞기와 진행에 문제가 없어요.",
+            ),
           });
-          onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
+          onAuditReport(
+            "나",
+            result.ok,
+            result.ok ? undefined : result.reason,
+            result.ok ? result.unchecked : undefined,
+          );
         });
-        guest.on("report", (r) => onAuditReport(r.name, r.ok, r.reason));
+        guest.on("report", (r) =>
+          onAuditReport(r.name, r.ok, r.reason, r.unchecked),
+        );
         guest.on("incident", (n) =>
           onIncident(
             n,
@@ -401,7 +412,8 @@ export function OnlineScreen({
               <p className="text-xs opacity-60">
                 규칙: {ruleName(encodeRuleString(rules))}
                 {" · "}
-                {rules.playerCount}명. 빈자리는 컴퓨터가 채웁니다.
+                {rules.playerCount}명
+                <span className="block">빈자리는 컴퓨터가 채워요.</span>
               </p>
             )}
             {isHost && <RoomKindPicker />}
@@ -450,8 +462,8 @@ export function OnlineScreen({
                 className="rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
               >
                 {hostLeft
-                  ? "방장이 방을 나갔습니다"
-                  : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+                  ? "방장이 방을 나갔어요."
+                  : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
               </p>
             )}
             {isHost && (
@@ -577,16 +589,16 @@ export function OnlineScreen({
         )}
 
         {phase === "kicked" && (
-          <p className="text-center text-sm">방장이 대기실에서 내보냈습니다.</p>
+          <p className="text-center text-sm">방장이 대기실에서 내보냈어요.</p>
         )}
         {phase === "full" && (
           <p className="text-center text-sm">
-            자리가 다 찼거나 이미 시작한 방입니다.
+            자리가 다 찼거나 이미 시작한 방이에요.
           </p>
         )}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다: {error}
+            연결하지 못했어요: {error}
           </p>
         )}
 
@@ -599,8 +611,8 @@ export function OnlineScreen({
           이 방은 어떻게 지켜지나요?
         </a>
         <p className="text-center text-[11px] leading-relaxed opacity-50">
-          연결 문제를 고치려고 연결에 걸린 시간을 서버에 보냅니다(패·이름·채팅은
-          보내지 않습니다)
+          연결 문제를 고치려고 연결에 걸린 시간을 서버에 보내요(패·이름·채팅은
+          보내지 않아요).
         </p>
         <button
           type="button"

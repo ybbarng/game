@@ -1313,43 +1313,43 @@ function manageProblem(
 ): string | null {
   const inTurn = s.phase === "turn" && s.turn.seat === seat;
   const inDebt = s.phase === "debt" && s.debt?.seat === seat;
-  if (!inTurn && !inDebt) return "지금은 정거장이나 별을 정리할 때가 아니에요";
+  if (!inTurn && !inDebt) return "지금은 정거장이나 별을 정리할 때가 아니에요.";
   if (inDebt && (action.type === "build" || action.type === "unmortgage"))
-    return "빚을 정리하는 중에는 정거장을 내리거나 별을 맡기기만 할 수 있어요";
+    return "빚을 정리하는 중에는 정거장을 내리거나 별을 맡기기만 할 수 있어요.";
   const square = action.square;
   const star = Number.isInteger(square) ? starAt(s.board, square) : null;
-  if (!star) return "별 칸이 아니에요";
-  if (s.owners[square] !== seat) return "내 별이 아니에요";
+  if (!star) return "별 칸이 아니에요.";
+  if (s.owners[square] !== seat) return "내 별이 아니에요.";
   const squares = s.board.groups[star.group]?.squares ?? [];
   const levels = squares.map((sq) => s.levels[sq] ?? 0);
   const level = s.levels[square] ?? 0;
   switch (action.type) {
     case "build": {
       if (!isComplete(s, seat, star.group))
-        return "별자리를 완성해야 정거장을 올릴 수 있어요";
+        return "별자리를 완성해야 정거장을 올릴 수 있어요.";
       if (squares.some((sq) => s.mortgaged[sq]))
-        return "맡긴 별이 있는 별자리는 올릴 수 없어요";
-      if (level >= 4) return "이미 큰 정거장이에요";
+        return "맡긴 별이 있는 별자리는 올릴 수 없어요.";
+      if (level >= 4) return "이미 큰 정거장이에요.";
       if (level > Math.min(...levels))
-        return "한 별자리 안에서는 고르게 올려야 해요";
+        return "한 별자리 안에서는 고르게 올려야 해요.";
       if ((s.cash[seat] ?? 0) < buildCostOf(s, seat, square))
-        return "별빛이 모자라요";
+        return "별빛이 모자라요.";
       return null;
     }
     case "sell":
-      if (level < 2) return "내릴 정거장이 없어요(1단은 별과 함께 있어요)";
+      if (level < 2) return "내릴 정거장이 없어요(1단은 별과 함께 있어요).";
       if (level < Math.max(...levels))
-        return "한 별자리 안에서는 고르게 내려야 해요";
+        return "한 별자리 안에서는 고르게 내려야 해요.";
       return null;
     case "mortgage":
-      if (s.mortgaged[square]) return "이미 맡긴 별이에요";
+      if (s.mortgaged[square]) return "이미 맡긴 별이에요.";
       if (levels.some((l) => l > 1))
-        return "2단 이상 정거장이 있는 별자리는 먼저 정거장을 내려야 해요";
+        return "2단 이상 정거장이 있는 별자리는 먼저 정거장을 내려야 해요.";
       return null;
     case "unmortgage":
-      if (!s.mortgaged[square]) return "맡긴 별이 아니에요";
+      if (!s.mortgaged[square]) return "맡긴 별이 아니에요.";
       if ((s.cash[seat] ?? 0) < unmortgageCost(s.board, square))
-        return "별빛이 모자라요";
+        return "별빛이 모자라요.";
       return null;
   }
 }
@@ -1420,7 +1420,7 @@ function applyManage(
 /* ───────────── 걸음 ───────────── */
 
 function retire(state: GalaxyState): StepResult {
-  if (state.phase === "gameOver") return fail("이미 끝난 게임이에요");
+  if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   const pending = pendingSeats(state);
@@ -1449,11 +1449,11 @@ export function step(
   action: Action,
 ): StepResult {
   if (!Number.isInteger(seat) || seat < 0 || seat >= state.rules.players)
-    return fail("없는 자리예요");
-  if (!action || typeof action !== "object") return fail("모르는 행동이에요");
-  if (state.phase === "gameOver") return fail("이미 끝난 게임이에요");
+    return fail("없는 자리예요.");
+  if (!action || typeof action !== "object") return fail("모르는 행동이에요.");
+  if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
   if (action.type === "retire") return retire(state);
-  if (state.out[seat]) return fail("운항을 멈춘 우주인이에요");
+  if (state.out[seat]) return fail("운항을 멈춘 우주인이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   const done = (): StepResult => ({ ok: true, state: next, events });
@@ -1473,35 +1473,35 @@ export function step(
       return done();
     case "timeUp":
       if (state.rules.length === "long")
-        return fail("긴 판은 시간 상한이 없어요");
-      if (state.timeUp) return fail("이미 시간 상한에 닿았어요");
+        return fail("긴 판은 시간 상한이 없어요.");
+      if (state.timeUp) return fail("이미 시간 상한에 닿았어요.");
       next.timeUp = true;
       events.push({ type: "timeUp" });
       return done();
     case "timeout": {
       const control = timeControlOf(state.rules);
       if (!control || clockTurn(state)?.seat !== seat)
-        return fail("시계가 가는 차례가 아니에요");
+        return fail("시계가 가는 차례가 아니에요.");
       const clock = (state.clocks as PlayerClock[])[seat] as PlayerClock;
       if (!spendTime(clock, action.spent, control).flagged)
-        return fail("아직 시간이 남았어요");
+        return fail("아직 시간이 남았어요.");
       (next.clocks as PlayerClock[])[seat] = { main: 0, periods: 0 };
       finish(next, "time", seat, events);
       return done();
     }
     case "commit": {
-      if (state.phase !== "commit") return fail("약속할 때가 아니에요");
+      if (state.phase !== "commit") return fail("약속할 때가 아니에요.");
       const chain = state.chains[seat];
-      if (!chain || chain.commit !== null) return fail("이미 약속했어요");
+      if (!chain || chain.commit !== null) return fail("이미 약속했어요.");
       if (typeof action.hash !== "string" || !LINK_PATTERN.test(action.hash))
-        return fail("약속 형식이 아니에요");
+        return fail("약속 형식이 아니에요.");
       // 관측 의뢰: 판 처음(0세대) 약속에는 의뢰 비밀 약속도 함께 낸다
       if (next.requests && state.generation === 0) {
         if (
           typeof action.request !== "string" ||
           !HASH_PATTERN.test(action.request)
         )
-          return fail("관측 의뢰 약속이 없어요");
+          return fail("관측 의뢰 약속이 없어요.");
         next.requests.commits[seat] = action.request;
       }
       next.chains[seat] = { commit: action.hash, last: action.hash, used: 0 };
@@ -1513,14 +1513,14 @@ export function step(
       return done();
     }
     case "reveal": {
-      if (state.phase !== "reveal") return fail("공개할 때가 아니에요");
-      if (state.reveals[seat] !== null) return fail("이미 공개했어요");
+      if (state.phase !== "reveal") return fail("공개할 때가 아니에요.");
+      if (state.reveals[seat] !== null) return fail("이미 공개했어요.");
       const chain = state.chains[seat];
-      if (!chain?.last) return fail("약속이 없어요");
+      if (!chain?.last) return fail("약속이 없어요.");
       if (typeof action.link !== "string" || !LINK_PATTERN.test(action.link))
-        return fail("고리 형식이 아니에요");
+        return fail("고리 형식이 아니에요.");
       if (chainHash(action.link) !== chain.last)
-        return fail("약속한 사슬의 다음 고리가 아니에요");
+        return fail("약속한 사슬의 다음 고리가 아니에요.");
       next.reveals[seat] = action.link;
       next.chains[seat] = {
         commit: chain.commit,
@@ -1535,15 +1535,15 @@ export function step(
     case "requestReveal": {
       const requests = next.requests;
       if (state.phase !== "requestReveal" || !requests)
-        return fail("의뢰를 펼칠 때가 아니에요");
-      if (requests.reveals[seat] !== null) return fail("이미 펼쳤어요");
+        return fail("의뢰를 펼칠 때가 아니에요.");
+      if (requests.reveals[seat] !== null) return fail("이미 펼쳤어요.");
       if (
         typeof action.secret !== "string" ||
         !HASH_PATTERN.test(action.secret)
       )
-        return fail("의뢰 비밀 형식이 아니에요");
+        return fail("의뢰 비밀 형식이 아니에요.");
       if (requestCommitment(seat, action.secret) !== requests.commits[seat])
-        return fail("약속한 의뢰와 달라요");
+        return fail("약속한 의뢰와 달라요.");
       const card = requestOf(state.board, action.secret, requests.anchor ?? "");
       const isDone = requestDone(next, seat, card);
       requests.reveals[seat] = { secret: action.secret, card, done: isDone };
@@ -1559,11 +1559,11 @@ export function step(
       return done();
     }
     case "roll": {
-      if (state.phase !== "turn") return fail("굴릴 때가 아니에요");
-      if (state.turn.seat !== seat) return fail("차례가 아니에요");
+      if (state.phase !== "turn") return fail("굴릴 때가 아니에요.");
+      if (state.turn.seat !== seat) return fail("차례가 아니에요.");
       const purpose = state.turn.next;
       if (purpose === "end")
-        return fail("이번 차례는 더 굴리지 않아요. 차례를 마쳐 주세요");
+        return fail("이번 차례는 더 굴리지 않아요. 차례를 마쳐 주세요.");
       if (charged()) return done();
       events.push({ type: "rolled", seat, purpose });
       openReveal(next, purpose, events);
@@ -1571,11 +1571,11 @@ export function step(
     }
     case "payFine": {
       if (state.phase !== "turn" || state.turn.seat !== seat)
-        return fail("차례가 아니에요");
+        return fail("차례가 아니에요.");
       if (state.turn.next !== "jailRoll")
-        return fail("소행성대에 걸리지 않았어요");
+        return fail("소행성대에 걸리지 않았어요.");
       if ((state.cash[seat] ?? 0) < NUMBERS.asteroidFine)
-        return fail("별빛이 모자라요");
+        return fail("별빛이 모자라요.");
       if (charged()) return done();
       pay(next, events, seat, BANK, NUMBERS.asteroidFine, "fine");
       next.jailed[seat] = false;
@@ -1585,10 +1585,10 @@ export function step(
     }
     case "buy": {
       if (state.phase !== "buy" || state.turn.seat !== seat)
-        return fail("살 때가 아니에요");
+        return fail("살 때가 아니에요.");
       const square = state.positions[seat] as number;
       const price = starAt(state.board, square)?.value ?? 0;
-      if ((state.cash[seat] ?? 0) < price) return fail("별빛이 모자라요");
+      if ((state.cash[seat] ?? 0) < price) return fail("별빛이 모자라요.");
       if (charged()) return done();
       pay(next, events, seat, BANK, price, "buy", { square });
       next.owners[square] = seat;
@@ -1600,7 +1600,7 @@ export function step(
     }
     case "pass": {
       if (state.phase !== "buy" || state.turn.seat !== seat)
-        return fail("넘길 때가 아니에요");
+        return fail("넘길 때가 아니에요.");
       if (charged()) return done();
       const square = state.positions[seat] as number;
       const index = state.auctionCount;
@@ -1619,10 +1619,10 @@ export function step(
     case "bid": {
       const auction = next.auction;
       if (state.phase !== "bid" || !auction)
-        return fail("입찰할 때가 아니에요");
-      if (auction.commits[seat] !== null) return fail("이미 입찰했어요");
+        return fail("입찰할 때가 아니에요.");
+      if (auction.commits[seat] !== null) return fail("이미 입찰했어요.");
       if (typeof action.hash !== "string" || !HASH_PATTERN.test(action.hash))
-        return fail("입찰 약속 형식이 아니에요");
+        return fail("입찰 약속 형식이 아니에요.");
       auction.commits[seat] = action.hash;
       events.push({ type: "bidCommitted", seat });
       if (activeSeats(next).every((s) => auction.commits[s] !== null))
@@ -1632,16 +1632,16 @@ export function step(
     case "bidReveal": {
       const auction = next.auction;
       if (state.phase !== "bidReveal" || !auction)
-        return fail("입찰을 공개할 때가 아니에요");
+        return fail("입찰을 공개할 때가 아니에요.");
       const commit = auction.commits[seat];
-      if (!commit) return fail("입찰하지 않았어요");
-      if (auction.reveals[seat] !== null) return fail("이미 공개했어요");
+      if (!commit) return fail("입찰하지 않았어요.");
+      if (auction.reveals[seat] !== null) return fail("이미 공개했어요.");
       if (typeof action.salt !== "string" || !SALT_PATTERN.test(action.salt))
-        return fail("소금 형식이 아니에요");
+        return fail("소금 형식이 아니에요.");
       if (!Number.isInteger(action.value) || action.value < 0)
-        return fail("입찰 값은 0 이상의 정수여야 해요");
+        return fail("입찰 값은 0 이상의 정수여야 해요.");
       if (bidCommitment(auction.index, action.value, action.salt) !== commit)
-        return fail("약속한 입찰 값과 달라요");
+        return fail("약속한 입찰 값과 달라요.");
       const value = action.value;
       const valid =
         value === 0 ||
@@ -1656,7 +1656,7 @@ export function step(
     case "declineTakeover": {
       const pending = state.takeover;
       if (state.phase !== "takeover" || !pending || state.turn.seat !== seat)
-        return fail("사들일 별이 없어요");
+        return fail("사들일 별이 없어요.");
       if (charged()) return done();
       next.takeover = null;
       if (action.type === "takeover") {
@@ -1689,14 +1689,14 @@ export function step(
     }
     case "end": {
       if (state.phase !== "turn" || state.turn.seat !== seat)
-        return fail("차례가 아니에요");
-      if (state.turn.next !== "end") return fail("아직 굴려야 해요");
+        return fail("차례가 아니에요.");
+      if (state.turn.next !== "end") return fail("아직 굴려야 해요.");
       if (charged()) return done();
       endTurn(next, events);
       return done();
     }
     default:
-      return fail("모르는 행동이에요");
+      return fail("모르는 행동이에요.");
   }
 }
 
@@ -1710,11 +1710,11 @@ export function stepWithDice(
   dice: [number, number],
 ): StepResult {
   if (state.phase !== "turn" || state.turn.seat !== seat)
-    return fail("굴릴 때가 아니에요");
+    return fail("굴릴 때가 아니에요.");
   const purpose = state.turn.next;
-  if (purpose === "end") return fail("이번 차례는 더 굴리지 않아요");
+  if (purpose === "end") return fail("이번 차례는 더 굴리지 않아요.");
   if (!dice.every((d) => Number.isInteger(d) && d >= 1 && d <= 6))
-    return fail("주사위 눈은 1~6이에요");
+    return fail("주사위 눈은 1~6이에요.");
   const next = clone(state);
   const events: GameEvent[] = [{ type: "rolled", seat, purpose }];
   const index = next.revealCount;
@@ -1889,7 +1889,7 @@ export function replay(
     return {
       ok: false,
       index: 0,
-      error: "옛 규칙으로 둔 판이라 다시 볼 수 없어요",
+      error: "옛 규칙으로 둔 판이라 다시 볼 수 없어요.",
     };
   let { state } = createMatch(rules, seed, board);
   for (const [index, entry] of log.entries()) {

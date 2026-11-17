@@ -38,13 +38,13 @@ export const minhwatuStats: KitStats<MinhwatuView, GameEvent> = {
     anyRound<MinhwatuRound>(
       "first-yak",
       "첫 약",
-      "약을 하나 이룹니다.",
+      "약을 하나 이뤄요.",
       (r) => r.yaks.length >= 1,
     ),
     anyRound<MinhwatuRound>(
       "two-yaks",
       "약 둘",
-      "한 판에 약을 둘 이룹니다.",
+      "한 판에 약을 둘 이뤄요.",
       (r) => r.yaks.length >= 2,
     ),
   ],

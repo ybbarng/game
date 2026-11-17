@@ -89,7 +89,7 @@ export function ScoreSheet({
               {history.length === 0 && (
                 <tr className="h-7">
                   <td colSpan={5} className="text-sm opacity-50">
-                    아직 끝난 판이 없습니다
+                    아직 끝난 판이 없어요.
                   </td>
                 </tr>
               )}

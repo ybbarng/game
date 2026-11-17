@@ -57,13 +57,26 @@ export const LEGACY_AS: Readonly<Record<LegacyBotLevel, BotLevel>> = {
   expert: "pro",
 };
 
+/**
+ * `version`은 이 기기가 아직 다시 계산할 수 있는 옛 계획 표(`OLD_PLAN_VERSIONS`)의 글을 읽었을 때만 붙는다. 없으면 지금 표
+ */
 export type BotSkill =
-  | { kind: "level"; level: BotLevel }
-  | { kind: "fit"; targetMs: number }
+  | { kind: "level"; level: BotLevel; version?: OldPlanVersion }
+  | { kind: "fit"; targetMs: number; version?: OldPlanVersion }
   | { kind: "legacy"; level: LegacyBotLevel };
 
-/** 계획 표 버전. 단계의 해법·빠르기·목표 표를 바꾸면 올린다(다른 표를 쓰는 기기가 계획을 맞춰 보지 않게) */
-export const BOT_PLAN_VERSION = 3;
+/**
+ * 계획 표 버전. 단계의 해법·빠르기·목표 표를 바꾸면 올린다(다른 표를 쓰는 기기가 계획을 맞춰 보지 않게).
+ * 4(2026-11-17): 4×4 중수가 축소법 대신 야우(docs/47 10-4)
+ */
+export const BOT_PLAN_VERSION = 4;
+
+/**
+ * 옛 계획 표 가운데 이 기기가 그대로 다시 계산하는 것. 3은 4×4 중수가 축소법인 것만 다르다(`levelMethod`,
+ * `plan.ts` `BASE_MEAN_MS_V3`). 배포 직후 옛 화면 방장의 컴퓨터도 계획을 맞춰 보고, 옛 판의 단계 이름도 그대로 읽힌다
+ */
+export const OLD_PLAN_VERSIONS = [3] as const;
+export type OldPlanVersion = (typeof OLD_PLAN_VERSIONS)[number];
 
 /** 크기별 단계 목표(한 판 평균, ms). 근거는 docs/47 10-1 */
 export const BOT_TARGET_MS: Readonly<Record<number, Record<BotLevel, number>>> =
@@ -100,9 +113,14 @@ export const BOT_TARGET_MS: Readonly<Record<number, Record<BotLevel, number>>> =
     },
   };
 
-/** 단계마다 쓰는 해법(크기마다). 4×4·5×5는 축소법 뒤 이 3×3 해법 */
+/**
+ * 단계마다 쓰는 해법(크기마다). 5×5(와 계획 표 3의 4×4)는 축소법 뒤 이 3×3 해법. 4×4 중수는 야우(docs/47 10-4): 앞
+ * 다섯 단계는 사이트 야우 과정의 단원 규칙, 3×3처럼은 중수의 4단계 마지막 층 CFOP. 단원 규칙의 엣지 짝은 한 줄씩 묶어
+ * 축소법 컴퓨터보다 수가 두 배 넘게 많아서, 고수·초고수 목표 시간에 두면 손이 같은 단계 3×3보다 빨라진다(사람과 반대).
+ * 그래서 고수·초고수는 엣지 짝이 짧은 축소법 그대로 둔다
+ */
 export const LEVEL_METHOD: Readonly<
-  Record<"2" | "3" | "big", Record<BotLevel, SolveMethod>>
+  Record<"2" | "3" | "4" | "big", Record<BotLevel, SolveMethod>>
 > = {
   2: {
     novice: "beginner",
@@ -118,6 +136,13 @@ export const LEVEL_METHOD: Readonly<
     fast: "advanced",
     pro: "advanced",
   },
+  4: {
+    novice: "beginner",
+    casual: "intermediate",
+    club: "yau",
+    fast: "advanced",
+    pro: "advanced",
+  },
   big: {
     novice: "beginner",
     casual: "intermediate",
@@ -127,8 +152,20 @@ export const LEVEL_METHOD: Readonly<
   },
 };
 
-export function levelMethod(level: BotLevel, size: number): SolveMethod {
-  const key = size === 2 ? "2" : size === 3 ? "3" : "big";
+/** 단계가 쓰는 해법. `version`은 옛 계획 표(없으면 지금 표) */
+export function levelMethod(
+  level: BotLevel,
+  size: number,
+  version?: OldPlanVersion,
+): SolveMethod {
+  const key =
+    size === 2
+      ? "2"
+      : size === 3
+        ? "3"
+        : size === 4 && version === undefined
+          ? "4"
+          : "big";
   return LEVEL_METHOD[key][level];
 }
 
@@ -175,8 +212,9 @@ export function fitLevel(
 /** 방 상태로 보낼 글 */
 export function botSkillText(skill: BotSkill): string {
   if (skill.kind === "legacy") return skill.level;
-  if (skill.kind === "level") return `${BOT_PLAN_VERSION}:${skill.level}`;
-  return `${BOT_PLAN_VERSION}:fit:${Math.round(skill.targetMs)}`;
+  const v = skill.version ?? BOT_PLAN_VERSION;
+  if (skill.kind === "level") return `${v}:${skill.level}`;
+  return `${v}:fit:${Math.round(skill.targetMs)}`;
 }
 
 /** 단계 하나의 글(시험·화면 편의) */
@@ -192,15 +230,20 @@ export function readBotSkill(text: unknown): BotSkill | null {
   if ((LEGACY_BOT_LEVELS as readonly string[]).includes(text))
     return { kind: "legacy", level: text as LegacyBotLevel };
   const m = /^(\d+):(.+)$/.exec(text);
-  if (!m || Number(m[1]) !== BOT_PLAN_VERSION) return null;
+  if (!m) return null;
+  const v = Number(m[1]);
+  const old = (OLD_PLAN_VERSIONS as readonly number[]).includes(v)
+    ? { version: v as OldPlanVersion }
+    : null;
+  if (v !== BOT_PLAN_VERSION && !old) return null;
   const rest = m[2] as string;
   if ((BOT_LEVELS as readonly string[]).includes(rest))
-    return { kind: "level", level: rest as BotLevel };
+    return { kind: "level", level: rest as BotLevel, ...old };
   const fit = /^fit:(\d{1,7})$/.exec(rest);
   if (fit) {
     const targetMs = Number(fit[1]);
     if (targetMs >= FIT_MIN_MS && targetMs <= FIT_MAX_MS)
-      return { kind: "fit", targetMs };
+      return { kind: "fit", targetMs, ...old };
   }
   return null;
 }

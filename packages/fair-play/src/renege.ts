@@ -6,6 +6,7 @@ import {
   type TrickCards,
   unplayableReason,
 } from "@game/mighty-engine";
+import { subj } from "@game/mighty-engine/josa";
 import { cardText } from "./blind";
 
 /*
@@ -68,7 +69,7 @@ export class RenegeWatch {
     if (this.revealed.has(card))
       return {
         seat,
-        reason: `${cardText(card)}가 두 번 나왔다`,
+        reason: `${subj(cardText(card))} 두 번 나왔어요.`,
         duplicate: true,
       };
     this.revealed.add(card);
@@ -116,13 +117,13 @@ export class RenegeWatch {
 function describe(kind: string): string {
   switch (kind) {
     case "followSuit":
-      return "선 무늬가 있었는데 따라 내지 않았다";
+      return "선 무늬가 있었는데 따라 내지 않았어요.";
     case "jokerCalled":
-      return "조커콜에 조커가 있었는데 내지 않았다";
+      return "조커콜에 조커가 있었는데 내지 않았어요.";
     case "kirudaFirstTrick":
-      return "첫 턴에 다른 카드가 있었는데 기루다를 냈다";
+      return "첫 턴에 다른 카드가 있었는데 기루다를 냈어요.";
     case "mustPlayMightyOrJoker":
-      return "마지막 턴에 못 내는 마이티·조커를 미리 내지 않았다";
+      return "마지막 턴에 못 내는 마이티·조커를 미리 내지 않았어요.";
     default:
       return `규칙 위반(${kind})`;
   }

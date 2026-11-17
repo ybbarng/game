@@ -136,7 +136,7 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   await expect(page.getByRole("status")).toContainText("내 차례");
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();
-  await expect(page.getByRole("status")).toHaveText("기권했어요");
+  await expect(page.getByRole("status")).toHaveText("기권했어요.");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("chess-end.png") });
   expect(errors).toEqual([]);
@@ -318,7 +318,7 @@ test(
     });
     await white.getByRole("button", { name: "기권" }).click();
     await white.getByRole("button", { name: "기권하기" }).click();
-    await expect(black.getByRole("status")).toHaveText("상대가 기권했어요");
+    await expect(black.getByRole("status")).toHaveText("상대가 기권했어요.");
     await black.screenshot({ path: info.outputPath("chess-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
@@ -370,8 +370,8 @@ test(
       timeout: 15_000,
     });
     await black.getByRole("button", { name: "받기" }).click();
-    await expect(black.getByRole("status")).toHaveText("합의해 비겼어요");
-    await expect(white.getByRole("status")).toHaveText("합의해 비겼어요");
+    await expect(black.getByRole("status")).toHaveText("합의해 비겼어요.");
+    await expect(white.getByRole("status")).toHaveText("합의해 비겼어요.");
     await white.screenshot({ path: info.outputPath("chess-draw.png") });
 
     await host.getByRole("button", { name: "← 체스" }).click();
@@ -395,7 +395,7 @@ test(
     });
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(page.getByRole("status")).toHaveText("기권했어요");
+    await expect(page.getByRole("status")).toHaveText("기권했어요.");
     // 복기 기록이 실제로 쓰인 뒤에 떠난다.
     await expect
       .poll(() =>
@@ -438,7 +438,7 @@ test(
     await page.getByRole("button", { name: "처음" }).click();
     await expect(pieces(page)).toHaveCount(32);
     await expect(page.getByTitle("기보")).toHaveText(
-      "기보: 아직 둔 수가 없어요",
+      "기보: 아직 둔 수가 없어요.",
     );
     await page.getByRole("button", { name: "한 수 앞으로" }).click();
     await expect(page.getByTitle("기보")).toContainText("1. ");
@@ -544,7 +544,7 @@ test(
       "3:00",
     );
     await page.clock.runFor(270_001);
-    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
+    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요.");
     await page.screenshot({ path: info.outputPath("chess-time.png") });
   },
 );
@@ -673,6 +673,36 @@ test(
     await expect(page.getByRole("status")).toHaveText("이기는 수예요!");
     await expect(page.getByText(/폰부터 밀면\(e6\)/)).toBeVisible();
     await page.screenshot({ path: info.outputPath("chess-king-pawn.png") });
+  },
+);
+
+test(
+  "체스 수 배우기: 바깥 패스 폰 문제에서 a폰만 밀면 틀리고, 킹이 반대쪽 흑 폰으로 가면 이긴다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 문제 풀이 진행은 크기와 상관없다
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const set = page.getByRole("region", { name: "바깥 패스 폰" });
+    await expect(set).toContainText("패스 폰이라고 해요.");
+    await set.getByRole("button", { name: "풀기 시작" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "백이 이기는 단 하나의 수를 찾으세요.",
+    );
+    await tapSquare(page, "a4", false);
+    await tapSquare(page, "a5", false);
+    await expect(page.getByRole("status")).toHaveText(
+      "그 수로는 이기지 못해요.",
+    );
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await tapSquare(page, "f3", false);
+    await tapSquare(page, "f4", false);
+    await expect(page.getByRole("status")).toHaveText("이기는 수예요!");
+    await expect(
+      page.getByText(/반대쪽 흑 폰\(f5·h7\)을 잡으러 가요/),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath("chess-outside-pawn.png") });
   },
 );
 

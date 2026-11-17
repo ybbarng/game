@@ -320,9 +320,9 @@ export const useMinhwatu = create<MinhwatuStore>((set, get) => {
 
     submit(action) {
       const host = get().host;
-      if (!host) return { ok: false, error: "게임이 없다" };
+      if (!host) return { ok: false, error: "게임이 없어요." };
       // 남의 차례를 다 보여 주기 전에는 내지 않는다.
-      if (get().queue.length > 0) return { ok: false, error: "잠깐만요" };
+      if (get().queue.length > 0) return { ok: false, error: "잠깐만요." };
       const result = host.submit(action);
       if (!result.ok) {
         set({ notice: result.error });

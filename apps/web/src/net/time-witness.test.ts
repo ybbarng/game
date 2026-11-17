@@ -125,10 +125,10 @@ describe("손님 시계 확인(witnessTimes)", () => {
     it("한쪽만 가져가도 잡힌다(손님 수만 부풀리기, 자기 수만 줄이기)", () => {
       for (const seed of SEEDS) {
         expect(witnessTimes(phoneGame(seed, 200, 500, "guest"))).toMatch(
-          /1번 자리 시간을 .*많이 적었다/,
+          /1번 자리 시간을 .*많이 적었어요/,
         );
         expect(witnessTimes(phoneGame(seed, 200, 500, "host"))).toMatch(
-          /0번 자리 시간을 .*적게 적었다/,
+          /0번 자리 시간을 .*적게 적었어요/,
         );
       }
     });
@@ -151,7 +151,7 @@ describe("손님 시계 확인(witnessTimes)", () => {
           expect(
             witnessTimes(phoneGame(seed, 200, 500, "guest", stalls)),
             `씨앗 ${seed}, 멈춤 ${stalls}`,
-          ).toMatch(/1번 자리 시간을 .*많이 적었다/);
+          ).toMatch(/1번 자리 시간을 .*많이 적었어요/);
     });
   });
 
@@ -187,7 +187,7 @@ describe("손님 시계 확인(witnessTimes)", () => {
         [1, 180_001, 15_000],
       ]),
     );
-    expect(problem).toMatch(/기록 2번째: 1번 자리 시간을.*많이 적었다/);
+    expect(problem).toMatch(/기록 2번째: 1번 자리 시간을.*많이 적었어요/);
   });
 
   it("방장이 자기 시간을 적게 적으면 실패한다", () => {
@@ -197,7 +197,7 @@ describe("손님 시계 확인(witnessTimes)", () => {
         [1, 5_000, 65_000],
       ]),
     );
-    expect(problem).toMatch(/기록 1번째: 0번 자리 시간을.*적게 적었다/);
+    expect(problem).toMatch(/기록 1번째: 0번 자리 시간을.*적게 적었어요/);
   });
 
   it("차례마다 조금씩 훔쳐도 쌓여서 허용 폭을 넘으면 실패한다", () => {
@@ -209,7 +209,7 @@ describe("손님 시계 확인(witnessTimes)", () => {
       // 방장(0번)은 수마다 1초씩 적게 적는다
       moves.push([seat, seat === 0 ? 9_000 : 10_000, t]);
     }
-    expect(witnessTimes(alternating(moves))).toMatch(/0번 자리.*적게 적었다/);
+    expect(witnessTimes(alternating(moves))).toMatch(/0번 자리.*적게 적었어요/);
   });
 
   it("끊기거나 가려진 사이에 걸친 차례는 재지 않는다", () => {
@@ -291,7 +291,7 @@ describe("손님 시계 확인(witnessTimes)", () => {
 
     it("일찍 닫혔으면 실패한다", () => {
       expect(witnessTimes(window(cap - 60_000))).toMatch(
-        /기록 2번째: 시간 창이 내 기기에서 60.0초 일찍 닫혔다/,
+        /기록 2번째: 시간 창이 내 기기에서 60.0초 일찍 닫혔어요/,
       );
     });
 

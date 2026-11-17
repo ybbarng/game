@@ -23,6 +23,7 @@ import {
   viewOf,
 } from "@game/chess-engine";
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { obj } from "@/lib/josa";
 import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 import { chessAdvisor } from "./advisor";
@@ -71,13 +72,13 @@ export const chessStats: KitStats<ChessView, GameEvent> = {
     anyRound<ChessRound>(
       "checkmate",
       "체크메이트",
-      "체크메이트로 이깁니다.",
+      "체크메이트로 이겨요.",
       (r) => r.outcome === "win" && r.by === "checkmate",
     ),
     anyRound<ChessRound>(
       "black-win",
       "흑의 승리",
-      "흑(나중)으로 이깁니다.",
+      "흑(나중)으로 이겨요.",
       (r) => r.outcome === "win" && r.side === "black",
     ),
   ],
@@ -154,7 +155,7 @@ export function explainChess(
   });
   const mine = moveToSan(state.position, played);
   if (suggested.type !== "move")
-    return { situation, verdict: null, reasons: [`둔 수: ${mine}`] };
+    return { situation, verdict: null, reasons: [`${obj(mine)} 뒀어요.`] };
   const best: Move = {
     from: suggested.from,
     to: suggested.to,
@@ -165,14 +166,14 @@ export function explainChess(
     return {
       situation,
       verdict: "good",
-      reasons: [`${mine}: 고수도 같은 수를 둔다`],
+      reasons: [`고수도 같은 수(${mine})를 둬요.`],
     };
   const mineValue = moveValue(state, played);
   const bestValue = Math.max(moveValue(state, best), mineValue);
   return {
     situation,
     verdict: verdictOf(bestValue - mineValue),
-    reasons: [`둔 수: ${mine}`, `고수라면 ${bestSan}`],
+    reasons: [`${obj(mine)} 뒀어요.`, `고수라면 다른 수(${bestSan})를 둬요.`],
   };
 }
 

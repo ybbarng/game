@@ -19,6 +19,7 @@
     "build": "rolldown -c rolldown.config.mjs"
   },
   "dependencies": {
+    "@game/mighty-engine": "workspace:*",
     "@game/stardraw-core": "workspace:*"
   },
   "devDependencies": {

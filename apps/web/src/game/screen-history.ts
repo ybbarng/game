@@ -193,7 +193,7 @@ export function useScreenHistory<S extends ScreenLike>(
         message:
           stack.current[from]?.kind === "online"
             ? "온라인 방에서 나가시겠어요?"
-            : "온라인 대국에서 나가시겠어요? 함께 하던 사람들과 연결이 끊깁니다.",
+            : "온라인 대국에서 나가시겠어요? 함께 하던 사람들과 연결이 끊겨요.",
         onLeave: () => {
           bypass.current = true;
           window.history.go(to - from);

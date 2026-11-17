@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 
 import { GameClock } from "@/components/GameClock";
 import { cn } from "@/lib/cn";
+import { seatAngle } from "@/yut/toss/sim";
 import "@/yut/components/yut.css";
 
 /** 편 색(말 색): 홍·청·녹·황 */
@@ -254,7 +255,7 @@ export function YutSticks({
             : showFaces && value !== null
               ? `${throwName(value)}${value === 4 || value === 5 ? "! 한 번 더" : ""}`
               : sticks === null && nak === null
-                ? "윷을 던져 보세요"
+                ? "윷을 던져 보세요."
                 : ""}
       </p>
     </div>
@@ -351,5 +352,76 @@ export function SeatClocks({
         </span>
       ))}
     </div>
+  );
+}
+
+/** 윷판과 멍석을 나란히 두는 화면(PC·눕힌 휴대폰, globals.css `split`과 같은 조건) */
+export const SPLIT_QUERY =
+  "(orientation: landscape) and (max-height: 600px), (min-width: 1024px)";
+
+export function useSplit(): boolean {
+  const [split, setSplit] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia?.(SPLIT_QUERY);
+    if (!q) return;
+    setSplit(q.matches);
+    const on = () => setSplit(q.matches);
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return split;
+}
+
+/**
+ * 멍석 둘레의 다른 사람 자리(던지는 장면). 자리 방향은 3D 멍석과 같은 `seatAngle`이라 그 사람이 던지면 이쪽에서
+ * 날아온다. 온라인이면 그 자리에서 한 말을 말풍선으로 띄운다(다시 보기는 말풍선 없음)
+ */
+export function SeatRing({
+  view,
+  name,
+  bubble = () => null,
+}: {
+  view: YutView;
+  name: (seat: number) => string;
+  bubble?: (seat: number) => string | null;
+}) {
+  const players = view.rules.players;
+  return (
+    <>
+      {Array.from({ length: players }, (_, seat) => seat)
+        .filter((seat) => seat !== view.mySeat)
+        .map((seat) => {
+          const a = seatAngle(seat - view.mySeat, players);
+          const left = Math.max(14, Math.min(86, 50 + Math.cos(a) * 44));
+          const top = Math.max(7, Math.min(88, 50 + Math.sin(a) * 44));
+          const said = bubble(seat);
+          return (
+            <div
+              key={seat}
+              data-mat-seat={seat}
+              className="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+              style={{ left: `${left}%`, top: `${top}%` }}
+            >
+              {said && (
+                <span
+                  data-mat-bubble
+                  className="yut-pop max-w-36 truncate rounded-xl bg-white px-2 py-0.5 text-black text-xs shadow"
+                >
+                  {said}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-xs",
+                  view.turn === seat && "ring-2 ring-amber-300",
+                )}
+              >
+                <PieceToken side={sideOf(view.rules, seat)} size={12} />
+                <span className="max-w-20 truncate">{name(seat)}</span>
+              </span>
+            </div>
+          );
+        })}
+    </>
   );
 }

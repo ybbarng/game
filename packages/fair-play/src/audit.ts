@@ -8,6 +8,7 @@ import {
   type RuleSet,
   step,
 } from "@game/mighty-engine";
+import { obj } from "@game/mighty-engine/josa";
 
 import { cardText, slotOfToken } from "./blind";
 
@@ -97,7 +98,7 @@ export function checkReplay(
 ): ReplayCheck {
   const first = deals.get(1);
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없다" };
+    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
   let state = createMatch({ rules, seed, presetDeal: first.deal }).state;
   const states = [state];
   /** 바로 앞 걸음이 진짜 카드로는 성공한 죽이기였다(죽었어야 할 자리와 불린 카드) */
@@ -122,7 +123,7 @@ export function checkReplay(
           ok: false,
           index: index - 1,
           seat: lastKill.killed,
-          reason: `죽이기에 불린 ${cardText(lastKill.card)}를 갖고 있으면서 없다고 했다`,
+          reason: `죽이기에 불린 ${obj(cardText(lastKill.card))} 갖고 있으면서 없다고 했어요.`,
         };
       return {
         ok: false,
@@ -167,7 +168,7 @@ function blameOf(
   )
     return {
       seat: realKill.killed,
-      reason: `죽이기에 불린 ${cardText(realKill.card)}를 갖고 있으면서 없다고 했다`,
+      reason: `죽이기에 불린 ${obj(cardText(realKill.card))} 갖고 있으면서 없다고 했어요.`,
     };
   const realFriend = real.find((e) => e.type === "friendRevealed");
   const seenFriend = seen.find((e) => e.type === "friendRevealed");
@@ -178,10 +179,10 @@ function blameOf(
   )
     return {
       seat: realFriend.seat,
-      reason: "프렌드인데 점수를 따고도 밝히지 않았다",
+      reason: "프렌드인데 점수를 따고도 밝히지 않았어요.",
     };
   return {
     seat: 0,
-    reason: `방장이 진행한 결과가 진짜 카드로 다시 계산한 것과 다르다(${actor}번 차례)`,
+    reason: `방장이 진행한 결과가 진짜 카드로 다시 계산한 것과 달라요(${actor}번 차례).`,
   };
 }

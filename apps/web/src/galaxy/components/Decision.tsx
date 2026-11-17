@@ -16,6 +16,7 @@ import {
 } from "@game/galaxy-engine";
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/cn";
+import { subj } from "@/lib/josa";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 
 import { money, squareName, starInfo, starLine, subject } from "../format";
@@ -248,7 +249,7 @@ export function BidSheet({
       {passer !== null && (
         <p data-bid-why className="text-sm text-white/85">
           {subject(name(passer))} {info?.star.ko}에 도착했지만 사지 않아 봉투
-          입찰을 엽니다.
+          입찰을 열어요.
         </p>
       )}
       <p className="mt-0.5 text-white/60 text-xs">
@@ -328,7 +329,7 @@ export function DebtSheet({
         ? `${squareName(view.board, a.square)} 맡기기`
         : "";
   return (
-    <Sheet title={`별빛 ${money(short)}이 모자라요`} testId="debt">
+    <Sheet title={`별빛 ${subj(money(short))} 모자라요`} testId="debt">
       <ol className="mb-3 flex flex-col gap-1">
         {plan.map((a, i) => (
           <li

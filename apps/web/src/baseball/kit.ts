@@ -25,6 +25,7 @@ import {
 } from "@game/baseball-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
+import { topic } from "@/lib/josa";
 import { anyRound, countRounds } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
 
@@ -87,13 +88,13 @@ export const baseballStats: KitStats<BaseballView, GameEvent> = {
     anyRound<BaseballRound>(
       "quick-solve",
       "다섯 번 안에",
-      "서로 맞히기에서 다섯 번 안에 상대 수를 맞힙니다.",
+      "서로 맞히기에서 다섯 번 안에 상대 수를 맞혀요.",
       (r) => r.mode === "duel" && r.solved && r.guesses <= 5,
     ),
     countRounds<BaseballRound>(
       "puzzle-10",
       "퍼즐 열 개",
-      "퍼즐을 열 번 풉니다.",
+      "퍼즐을 열 번 풀어요.",
       10,
       (r) => r.mode === "puzzle" && r.solved,
     ),
@@ -187,11 +188,13 @@ export function explainBaseball(
   const best = expectedLeft(candidates, bestGuess, digits);
   const candidate = candidates.includes(action.guess);
   const reasons = [
-    `${action.guess}: ${candidate ? "남은 후보 가운데 하나" : "이미 빠진 수(맞을 수는 없다)"}, 물으면 후보가 평균 ${mine.toFixed(1)}개 남는다`,
+    `${topic(action.guess)} ${candidate ? "남은 후보 가운데 하나예요" : "이미 빠진 수라 답일 수 없어요"}. 이 수를 물으면 후보가 평균 ${mine.toFixed(1)}개 남아요.`,
   ];
   if (bestGuess !== action.guess)
-    reasons.push(`고수라면 ${bestGuess}(평균 ${best.toFixed(1)}개)`);
-  else reasons.push("고수도 같은 수를 묻는다");
+    reasons.push(
+      `고수라면 다른 수(${bestGuess})를 물어요(후보 평균 ${best.toFixed(1)}개).`,
+    );
+  else reasons.push("고수도 같은 수를 물어요.");
   return {
     situation,
     verdict:

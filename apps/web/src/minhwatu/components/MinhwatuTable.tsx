@@ -57,6 +57,7 @@ import {
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { subj, wa } from "@/lib/josa";
 
 import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
 import { MINHWATU_LEVELS } from "../settings";
@@ -472,19 +473,19 @@ export function MinhwatuTable({
     status = "보내는 중…";
   else if (view.phase === "pick")
     status = myPick
-      ? `뒤집은 ${cardOf(view.pending?.flipped ?? "01g").name}와 짝: 먹을 바닥 패를 고르세요`
-      : `${name(view.turn)}가 먹을 패를 고르는 중`;
+      ? `뒤집은 ${wa(cardOf(view.pending?.flipped ?? "01g").name)} 짝: 먹을 바닥 패를 고르세요.`
+      : `${subj(name(view.turn))} 먹을 패를 고르는 중`;
   else if (view.phase === "play")
     status = myPlay
       ? needTarget
-        ? "같은 달 바닥 패가 둘이에요. 먹을 패를 누르세요"
+        ? "같은 달 바닥 패가 둘이에요. 먹을 패를 누르세요."
         : selected
-          ? "한 번 더 누르면 냅니다"
-          : "내 차례 — 낼 패를 누르세요"
+          ? "한 번 더 누르면 내요."
+          : "내 차례 — 낼 패를 누르세요."
       : online
         ? `${name(view.turn)}의 차례`
-        : `${name(view.turn)}(컴퓨터)가 생각하는 중…`;
-  else if (view.retired) status = "게임을 끝냈어요";
+        : `${subj(`${name(view.turn)}(컴퓨터)`)} 생각하는 중…`;
+  else if (view.retired) status = "게임을 끝냈어요.";
   else if (gameOver) {
     const best = Math.max(...view.totals);
     const winners = view.totals.flatMap((t, s) => (t === best ? [s] : []));

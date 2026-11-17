@@ -66,9 +66,9 @@ export function lengthDetail(rules: GalaxyRules): string {
   const turns = turnLimitOf(rules);
   const minutes = soloMinutes(rules);
   if (turns === null || minutes === null)
-    return "한 사람만 남을 때까지 해요(30분 넘게 걸려요)";
+    return "한 사람만 남을 때까지 해요(30분 넘게 걸려요).";
   const dealt = NUMBERS.dealStars[rules.length];
-  const deal = dealt > 0 ? ` · 시작할 때 별 ${dealt}개씩 나눠 받아요` : "";
+  const deal = dealt > 0 ? ` · 시작할 때 별 ${dealt}개씩 나눠 받아요.` : "";
   return `한 사람에 ${turns}차례 · 약 ${minutes}분${deal}`;
 }
 

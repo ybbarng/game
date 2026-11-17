@@ -57,7 +57,7 @@ async function playCard(page: Page, id?: string) {
     `section[aria-label="손패"] [data-card="${chosen}"]`,
   );
   await target.click();
-  await expect(page.getByRole("status")).toHaveText("한 번 더 누르면 냅니다");
+  await expect(page.getByRole("status")).toHaveText("한 번 더 누르면 내요.");
   await target.click();
   // 낸 카드가 손에서 빠지거나, 흔들기·폭탄을 묻는다.
   await expect

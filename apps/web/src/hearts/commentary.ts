@@ -8,6 +8,7 @@ import {
 
 import type { Commentary, Verdict } from "@/game/kit";
 import { cardLabel } from "@/game/terms";
+import { copula, ro, subj, topic } from "@/lib/josa";
 import { signed, verdictOf } from "@/review/commentary";
 
 import { directionLabel } from "./terms";
@@ -34,10 +35,10 @@ export function explainHearts(
 
   if (decision?.kind === "pass") {
     situation.push(
-      `넘기기 단계 · ${directionLabel(view.direction)}으로 ${decision.count}장`,
+      `넘기기 단계 · ${ro(directionLabel(view.direction))} ${decision.count}장`,
     );
     reasons.push(
-      "넘길 카드는 ♠Q·♠A·♠K와 높은 하트처럼 먹기 쉬운 카드가 먼저다. 낮은 스페이드가 많으면 ♠Q를 쥐고 버틸 수도 있다",
+      "넘길 카드는 ♠Q·♠A·♠K와 높은 하트처럼 먹기 쉬운 카드가 먼저예요. 낮은 스페이드가 많으면 ♠Q를 쥐고 버틸 수도 있어요.",
     );
     return { situation, verdict, reasons };
   }
@@ -48,7 +49,7 @@ export function explainHearts(
       `${view.trickIndex + 1}/13턴 · 하트 ${view.heartsBroken ? "깨짐" : "안 깨짐"} · ${
         trick && trick.plays.length > 0
           ? `나온 카드 ${trick.plays.map((p) => `${cardLabel(p.card)}(${name(p.seat)})`).join(" ")}`
-          : `${name(next.seat)}이(가) 선`
+          : `${subj(name(next.seat))} 선`
       }`,
     );
     const values = evaluateHeartsPlays(view, { seed }, PLAY_WORLDS);
@@ -59,12 +60,13 @@ export function explainHearts(
       if (best && chosen) {
         verdict = verdictOf(Math.max(0, best.mean - chosen.mean), STEPS);
         reasons.push(
-          `남의 패를 ${PLAY_WORLDS}가지로 추측해 끝까지 둬 보면 ${cardLabel(action.card)}는 평균 ${signed(chosen.mean)}점(다른 사람 평균보다 덜 먹은 점수)`,
+          `남의 패를 ${PLAY_WORLDS}가지로 추측해 끝까지 둬 보면 ${topic(cardLabel(action.card))} 평균 ${signed(chosen.mean)}점이에요(다른 사람 평균보다 덜 먹은 점수).`,
         );
-        if (best.card === action.card) reasons.push("계산상 가장 좋은 카드다");
+        if (best.card === action.card)
+          reasons.push("계산상 가장 좋은 카드예요.");
         else
           reasons.push(
-            `가장 좋은 카드는 ${cardLabel(best.card)}(평균 ${signed(best.mean)}점)`,
+            `가장 좋은 카드는 ${copula(cardLabel(best.card))}(평균 ${signed(best.mean)}점).`,
           );
         reasons.push(
           `다른 후보: ${sorted
@@ -75,7 +77,7 @@ export function explainHearts(
         );
       }
     } else if (values?.length === 1)
-      reasons.push("낼 수 있는 카드가 하나뿐이다");
+      reasons.push("낼 수 있는 카드가 하나뿐이에요.");
     const done = after?.round.tricks[state.round.tricks.length];
     if (done) {
       const points = pointsOf(
@@ -83,7 +85,7 @@ export function explainHearts(
         state.rules,
       );
       reasons.push(
-        `이 턴은 ${name(done.winner)}이(가) 먹었다${points > 0 ? ` · ${points}점` : ""}`,
+        `이 턴은 ${subj(name(done.winner))} 먹었어요${points > 0 ? `(${points}점)` : ""}.`,
       );
     }
   }

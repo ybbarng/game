@@ -5,6 +5,7 @@ import { toHex } from "@game/stardraw-core";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { ro } from "@/lib/josa";
 
 import { Avatar, EGG_LABEL } from "./Avatar";
 import { FingerMark } from "./FingerMark";
@@ -778,7 +779,7 @@ export function AstronautCard({
 
       {!flipped && aboutBadge && affiliation && (
         <p className="break-keep text-center text-amber-100/85 text-xs">
-          {affiliation.method}으로 받은 소속이 이 기기에 있습니다. 우주국도 누가
+          {ro(affiliation.method)} 받은 소속이 이 기기에 있습니다. 우주국도 누가
           받았는지 모릅니다 ·{" "}
           <a href="/stardraw/qualify" className="underline underline-offset-2">
             자세히

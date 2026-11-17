@@ -147,9 +147,9 @@ export function step(
   seat: number,
   action: Action,
 ): StepResult {
-  if (seat !== 0 && seat !== 1) return fail("없는 자리다");
+  if (seat !== 0 && seat !== 1) return fail("없는 자리예요.");
   if (action.type === "retire") {
-    if (state.phase === "gameOver") return fail("이미 끝난 게임이다");
+    if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
     const next = clone(state);
     next.phase = "gameOver";
     next.retired = true;
@@ -160,15 +160,15 @@ export function step(
     };
   }
   if (action.type === "continue") {
-    if (state.phase !== "roundEnd") return fail("판이 끝나지 않았다");
-    if (state.continued[seat]) return fail("이미 눌렀다");
+    if (state.phase !== "roundEnd") return fail("판이 끝나지 않았어요.");
+    if (state.continued[seat]) return fail("이미 눌렀어요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     next.continued[seat] = true;
     if (next.continued.every(Boolean)) startNextRound(next, events);
     return { ok: true, state: next, events };
   }
-  if (state.phase !== "play") return fail("판이 진행 중이 아니다");
+  if (state.phase !== "play") return fail("판이 진행 중이 아니에요.");
   if (action.type === "resign") {
     const next = clone(state);
     const events: GameEvent[] = [];
@@ -176,12 +176,12 @@ export function step(
     return { ok: true, state: next, events };
   }
   if (action.type === "timeout") {
-    if (seatToMove(state) !== seat) return fail("차례가 아니다");
+    if (seatToMove(state) !== seat) return fail("차례가 아니에요.");
     const control = timeControlOf(state.rules);
     const clock = state.clocks?.[seat];
-    if (!control || !clock) return fail("시간 규칙이 없다");
+    if (!control || !clock) return fail("시간 규칙이 없어요.");
     if (!spendTime(clock, action.spent, control).flagged)
-      return fail("아직 시간이 남았다");
+      return fail("아직 시간이 남았어요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     // 시간을 다 쓴 사람의 시계는 0으로 보인다.
@@ -189,11 +189,12 @@ export function step(
     endRound(next, { kind: "time", seat: 1 - seat }, events);
     return { ok: true, state: next, events };
   }
-  if (action.type !== "place") return fail("모르는 행동이다");
-  if (seatToMove(state) !== seat) return fail("차례가 아니다");
+  if (action.type !== "place") return fail("모르는 행동이에요.");
+  if (seatToMove(state) !== seat) return fail("차례가 아니에요.");
   const { at } = action;
-  if (!Number.isInteger(at) || at < 0 || at >= CELLS) return fail("판 밖이다");
-  if (state.board[at] !== 0) return fail("이미 돌이 있다");
+  if (!Number.isInteger(at) || at < 0 || at >= CELLS)
+    return fail("판 밖이에요.");
+  if (state.board[at] !== 0) return fail("이미 돌이 있어요.");
   const stone = stoneToMove(state);
   const forbidden = forbiddenReason(
     state.board,

@@ -80,21 +80,22 @@ export const YUT_LINEUPS: readonly {
   label: string;
   description: string;
 }[] = [
-  { value: "duel", label: "1:1", description: "둘이서 각자 말로 겨룬다." },
+  { value: "duel", label: "1:1", description: "둘이서 각자 말로 겨뤄요." },
   {
     value: "team",
     label: "2:2 편",
-    description: "넷이 두 편으로 나뉜다. 편끼리 말을 함께 쓰고 번갈아 던진다.",
+    description:
+      "넷이 두 편으로 나뉘어요. 편끼리 말을 함께 쓰고 번갈아 던져요.",
   },
   {
     value: "three",
     label: "3인",
-    description: "셋이서 각자 겨룬다. 말을 먼저 다 내보낸 사람이 이긴다.",
+    description: "셋이서 각자 겨뤄요. 말을 먼저 다 내보낸 사람이 이겨요.",
   },
   {
     value: "four",
     label: "4인",
-    description: "넷이서 각자 겨룬다. 말을 먼저 다 내보낸 사람이 이긴다.",
+    description: "넷이서 각자 겨뤄요. 말을 먼저 다 내보낸 사람이 이겨요.",
   },
 ];
 
@@ -106,18 +107,18 @@ export const YUT_LEVELS: readonly {
   {
     value: 0,
     label: "입문",
-    description: "움직일 수 있는 말 가운데 아무거나 고른다.",
+    description: "움직일 수 있는 말 가운데 아무거나 골라요.",
   },
   {
     value: 1,
     label: "중수",
     description:
-      "상대 말 잡기, 말 내보내기, 지름길, 업기를 먼저 보고, 잡힐 자리는 피한다.",
+      "상대 말 잡기, 말 내보내기, 지름길, 업기를 먼저 보고, 잡힐 자리는 피해요.",
   },
   {
     value: 2,
     label: "고수",
     description:
-      "상대가 다음에 무엇을 던질지 확률대로 따져, 평균으로 가장 유리한 수를 둔다.",
+      "상대가 다음에 무엇을 던질지 확률대로 따져, 평균으로 가장 유리한 수를 둬요.",
   },
 ];

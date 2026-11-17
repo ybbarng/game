@@ -14,6 +14,8 @@ import {
   xyOf,
 } from "@game/chess-engine";
 
+import { ro } from "@/lib/josa";
+
 /*
  * 체스 전술 문제(포크·핀·스큐어·발견 공격)의 모양을 판에서 알아보고 말로 풀어 준다(docs/23).
  * 문제 데이터가 말하는 전술이 정말 그 모양인지 단위 시험이 이것으로 확인하고, 해설도 장면에서 만든다.
@@ -209,7 +211,7 @@ export function explainTactic(
   const shape = tacticsOf(pos, move).find((s) => s.tactic === tactic);
   const san = moveToSan(pos, move);
   const mover = KIND_NAMES[(after[move.to] as string)[1] as Kind];
-  const head = `${mover}${hasBatchim(mover) ? "을" : "를"} ${squareName(move.to)}로(${san})`;
+  const head = `${mover}${hasBatchim(mover) ? "을" : "를"} ${ro(squareName(move.to))}(${san})`;
   if (!shape) return [head];
   const targets = shape.targets.map((t) => named(after, t)).join("·");
   switch (tactic) {

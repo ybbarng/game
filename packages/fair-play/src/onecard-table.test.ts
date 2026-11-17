@@ -306,7 +306,7 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     await net.settle();
     net.decks[1]?.reshuffle(1, 1, ["S2"]);
     expect(net.incidents[1]).toEqual([
-      { seat: 0, reason: "방장이 더미가 남았는데 다시 섞으려 했다" },
+      { seat: 0, reason: "방장이 더미가 남았는데 다시 섞으려 했어요." },
     ]);
   });
 
@@ -327,7 +327,7 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     expect(net.incidents[1]).toEqual([
       {
         seat: 0,
-        reason: "방장이 아직 모두에게 열리지 않은 카드를 다시 섞으려 했다",
+        reason: "방장이 아직 모두에게 열리지 않은 카드를 다시 섞으려 했어요.",
       },
     ]);
   });
@@ -337,7 +337,7 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     const guest = net.decks[1];
     guest?.request(onecardDealId(1, 0), 6, 1);
     expect(net.incidents[1]).toEqual([
-      { seat: 0, reason: "방장이 더미를 순서와 다르게 열라고 했다" },
+      { seat: 0, reason: "방장이 더미를 순서와 다르게 열라고 했어요." },
     ]);
     await net.settle();
   });

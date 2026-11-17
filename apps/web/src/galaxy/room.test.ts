@@ -260,7 +260,7 @@ describe("은하 한 바퀴 온라인 방", () => {
         ? { type: "reveal", link: chainLink("ee".repeat(32), 1) }
         : null;
     await play(room, () => room.rejected.length > 0);
-    expect(room.rejected).toContain("약속한 사슬의 다음 고리가 아니에요");
+    expect(room.rejected).toContain("약속한 사슬의 다음 고리가 아니에요.");
 
     // 봉투: 낸 값과 다른 값으로 공개하면 받지 않는다.
     room.guestDevice.lie = (view) => {
@@ -273,7 +273,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     room.guestDevice.passBuy = true;
     room.rejected.length = 0;
     await play(room, () => room.rejected.length > 0);
-    expect(room.rejected).toContain("약속한 입찰 값과 달라요");
+    expect(room.rejected).toContain("약속한 입찰 값과 달라요.");
   });
 
   it("결정 시간을 넘기면 방장이 대신 정한다: 봉투는 「내지 않음」, 차례는 굴리기, 같은 차례 남은 결정은 바로", async () => {
@@ -445,7 +445,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     const audits = await resignAndAudit(room);
     expect(audits[0]?.ok).toBe(false);
     expect(audits[0]?.ok === false && audits[0].reason).toContain(
-      "정해진 대신 두기와 다르다",
+      "정해진 대신 두기와 달라요.",
     );
   });
 
@@ -474,7 +474,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     const audits = await resignAndAudit(room);
     expect(audits[0]?.ok).toBe(false);
     expect(audits[0]?.ok === false && audits[0].reason).toContain(
-      "정해진 대신 두기와 다르다",
+      "정해진 대신 두기와 달라요.",
     );
   });
 

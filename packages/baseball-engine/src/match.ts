@@ -266,7 +266,7 @@ function afterAnswer(
 
 /** 끝내기: 답이나 공개를 기다리던 사람이 하나뿐이면 그 사람이 진다 */
 function retire(state: BaseballState): StepResult {
-  if (state.phase === "gameOver") return fail("이미 끝난 게임이다");
+  if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   const pending = pendingSeats(state);
@@ -297,14 +297,14 @@ export function step(
   seat: number,
   action: Action,
 ): StepResult {
-  if (seat !== 0 && seat !== 1) return fail("없는 자리다");
+  if (seat !== 0 && seat !== 1) return fail("없는 자리예요.");
   const { rules } = state;
   switch (action.type) {
     case "retire":
       return retire(state);
     case "continue": {
-      if (state.phase !== "roundEnd") return fail("판이 끝나지 않았다");
-      if (state.continued[seat]) return fail("이미 눌렀다");
+      if (state.phase !== "roundEnd") return fail("판이 끝나지 않았어요.");
+      if (state.continued[seat]) return fail("이미 눌렀어요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       next.continued[seat] = true;
@@ -317,21 +317,21 @@ export function step(
         state.phase !== "play" &&
         state.phase !== "answer"
       )
-        return fail("판이 진행 중이 아니다");
+        return fail("판이 진행 중이 아니에요.");
       if (rules.mode === "puzzle" && seat !== 0)
-        return fail("퍼즐은 맞히는 사람만 그만둘 수 있다");
+        return fail("퍼즐은 맞히는 사람만 그만둘 수 있어요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       enterReveal(next, { kind: "resign", seat: 1 - seat }, events);
       return { ok: true, state: next, events };
     }
     case "commit": {
-      if (state.phase !== "setup") return fail("비밀 수를 정할 때가 아니다");
+      if (state.phase !== "setup") return fail("비밀 수를 정할 때가 아니에요.");
       if (!secretHolders(rules).includes(seat))
-        return fail("이 자리는 비밀 수를 정하지 않는다");
-      if (state.commits[seat] !== null) return fail("이미 정했다");
+        return fail("이 자리는 비밀 수를 정하지 않아요.");
+      if (state.commits[seat] !== null) return fail("이미 정했어요.");
       if (typeof action.hash !== "string" || !HASH_PATTERN.test(action.hash))
-        return fail("약속 형식이 아니다");
+        return fail("약속 형식이 아니에요.");
       const next = clone(state);
       next.commits[seat] = action.hash;
       const events: GameEvent[] = [{ type: "committed", seat }];
@@ -342,16 +342,16 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "guess": {
-      if (state.phase !== "play") return fail("맞힐 때가 아니다");
-      if (state.turn !== seat) return fail("차례가 아니다");
+      if (state.phase !== "play") return fail("맞힐 때가 아니에요.");
+      if (state.turn !== seat) return fail("차례가 아니에요.");
       if (!isValidNumber(action.guess, rules))
         return fail(
-          `${rules.digits}자리, 서로 다른 숫자${rules.zero ? "" : "(1~9)"}로 물어야 한다`,
+          `${rules.digits}자리, 서로 다른 숫자${rules.zero ? "" : "(1~9)"}로 물어야 해요.`,
         );
       if (
         state.guesses.some((g) => g.seat === seat && g.guess === action.guess)
       )
-        return fail("이미 물어본 수다");
+        return fail("이미 물어본 수예요.");
       const next = clone(state);
       const control = timeControlOf(rules);
       const clock = next.clocks?.[seat];
@@ -378,18 +378,18 @@ export function step(
       };
     }
     case "answer": {
-      if (state.phase !== "answer") return fail("답할 때가 아니다");
-      if (answererOf(state) !== seat) return fail("답할 사람이 아니다");
+      if (state.phase !== "answer") return fail("답할 때가 아니에요.");
+      if (answererOf(state) !== seat) return fail("답할 사람이 아니에요.");
       const answer = { strikes: action.strikes, balls: action.balls };
       if (!isPossibleScore(answer, rules.digits))
-        return fail("나올 수 없는 답이다");
+        return fail("나올 수 없는 답이에요.");
       const next = clone(state);
       const entry = next.guesses.at(-1) as BaseballState["guesses"][number];
       entry.strikes = answer.strikes;
       entry.balls = answer.balls;
       // 앞에서 한 답과 함께 맞는 수가 하나도 없으면 거짓이 확실하다. 받지 않는다.
       if (!hasCandidate(rules, cluesOf(next, entry.seat)))
-        return fail("앞에서 한 답과 맞지 않는다");
+        return fail("앞에서 한 답과 맞지 않아요.");
       const events: GameEvent[] = [
         {
           type: "answered",
@@ -404,13 +404,13 @@ export function step(
       return { ok: true, state: next, events };
     }
     case "reveal": {
-      if (state.phase !== "reveal") return fail("공개할 때가 아니다");
+      if (state.phase !== "reveal") return fail("공개할 때가 아니에요.");
       if (!revealPending(state).includes(seat))
-        return fail("공개할 사람이 아니다");
+        return fail("공개할 사람이 아니에요.");
       if (!isValidNumber(action.secret, rules))
-        return fail("규칙에 맞는 수가 아니다");
+        return fail("규칙에 맞는 수가 아니에요.");
       if (typeof action.salt !== "string" || !SALT_PATTERN.test(action.salt))
-        return fail("소금 형식이 아니다");
+        return fail("소금 형식이 아니에요.");
       const matches =
         commitmentOf(action.secret, action.salt) === state.commits[seat];
       // 이 사람이 한 답을 공개한 비밀로 다시 계산해 본다.
@@ -438,12 +438,12 @@ export function step(
     }
     case "timeout": {
       if (state.phase !== "play" || state.turn !== seat)
-        return fail("차례가 아니다");
+        return fail("차례가 아니에요.");
       const control = timeControlOf(rules);
       const clock = state.clocks?.[seat];
-      if (!control || !clock) return fail("시간 규칙이 없다");
+      if (!control || !clock) return fail("시간 규칙이 없어요.");
       if (!spendTime(clock, action.spent, control).flagged)
-        return fail("아직 시간이 남았다");
+        return fail("아직 시간이 남았어요.");
       const next = clone(state);
       const events: GameEvent[] = [];
       (next.clocks as PlayerClock[])[seat] = { main: 0, periods: 0 };
@@ -451,7 +451,7 @@ export function step(
       return { ok: true, state: next, events };
     }
     default:
-      return fail("모르는 행동이다");
+      return fail("모르는 행동이에요.");
   }
 }
 

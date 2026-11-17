@@ -64,13 +64,13 @@ export const janggiStats: KitStats<JanggiView, GameEvent> = {
     anyRound<JanggiRound>(
       "checkmate",
       "외통",
-      "외통으로 이깁니다.",
+      "외통으로 이겨요.",
       (r) => r.outcome === "win" && r.by === "checkmate",
     ),
     anyRound<JanggiRound>(
       "han-win",
       "한의 승리",
-      "한(나중)으로 이깁니다.",
+      "한(나중)으로 이겨요.",
       (r) => r.outcome === "win" && r.side === "han",
     ),
   ],
@@ -157,7 +157,7 @@ export function explainJanggi(
       situation,
       verdict: "good",
       reasons: [
-        `${moveText(state, action.from, action.to)}: 고수도 같은 수를 둔다`,
+        `고수도 같은 수(${moveText(state, action.from, action.to)})를 둬요.`,
         ...notes,
       ],
     };
@@ -167,8 +167,8 @@ export function explainJanggi(
     situation,
     verdict: verdictOf(best - mine),
     reasons: [
-      `${obj(moveText(state, action.from, action.to))} 뒀다`,
-      `고수라면 ${moveText(state, suggested.from, suggested.to)}`,
+      `${obj(moveText(state, action.from, action.to))} 뒀어요.`,
+      `고수라면 다른 수(${moveText(state, suggested.from, suggested.to)})를 둬요.`,
       ...notes,
     ],
   };

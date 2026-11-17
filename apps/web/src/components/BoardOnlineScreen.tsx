@@ -12,8 +12,9 @@ import type { GameKit, KitBot } from "@/game/kit";
 import { useSettings } from "@/game/settings";
 import { cn } from "@/lib/cn";
 import { recordAudit } from "@/net/audit-history";
+import { auditChatText, auditNotice } from "@/net/audit-text";
 import { useChat } from "@/net/chat";
-import { GuestRoom } from "@/net/guest-room";
+import { GuestRoom, OTHER_GAME_ROOM } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import {
   type HostRestore,
@@ -87,6 +88,8 @@ export interface BoardOnlineGame<
   botFor(level: number): KitBot<View, ActionT>;
   /** 방장이 방을 만들 때 보이는 규칙 요약(시간 규칙은 이 화면이 앞에 붙인다) */
   rulesSummary(rules: Rules): string;
+  /** 규칙 요약 아래 설명 문장(있으면) */
+  rulesNote?(rules: Rules): string;
 }
 
 function seatNamesOf(lobby: LobbyState): string[] {
@@ -171,17 +174,18 @@ export function BoardOnlineScreen<
   });
 
   /** 게임 끝 검증 결과를 채팅에 남긴다. 무효 표시는 내 기기의 검증만 따른다(HeartsOnlineScreen과 같다) */
-  const onAuditReport = (who: string, ok: boolean, reason?: string) => {
+  const onAuditReport = (
+    who: string,
+    ok: boolean,
+    reason?: string,
+    unchecked?: string,
+  ) => {
     const own = who === "나";
     useChat.getState().receive({
       id: randomId(8),
       seat: -1,
       name: "검증",
-      text: ok
-        ? `${who} — 문제없음 ✓`
-        : own
-          ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봅니다)`,
+      text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
       if (!ok) useStore.setState({ notice: `기록 검증 실패: ${reason ?? ""}` });
@@ -281,20 +285,25 @@ export function BoardOnlineScreen<
         );
         guest.on("rejected", (e) => {
           useStore.setState({ notice: e });
-          if (e === "다른 게임의 방입니다") {
+          if (e === OTHER_GAME_ROOM) {
             setError(e);
             setPhase("error");
           }
         });
         guest.on("audit", (result) => {
           useStore.setState({
-            notice: result.ok
-              ? "기록 확인: 진행에 문제가 없습니다"
-              : `기록 확인 실패: ${result.reason}`,
+            notice: auditNotice(result, "기록 확인", "진행에 문제가 없어요."),
           });
-          onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
+          onAuditReport(
+            "나",
+            result.ok,
+            result.ok ? undefined : result.reason,
+            result.ok ? result.unchecked : undefined,
+          );
         });
-        guest.on("report", (r) => onAuditReport(r.name, r.ok, r.reason));
+        guest.on("report", (r) =>
+          onAuditReport(r.name, r.ok, r.reason, r.unchecked),
+        );
         // 게임 끝 검증을 통과하면 복기용으로 남긴다.
         guest.on("archive", (source) => {
           const view = guest.match?.current();
@@ -381,6 +390,9 @@ export function BoardOnlineScreen<
                 {game.rulesSummary(rules)}
               </p>
             )}
+            {isHost && game.rulesNote && (
+              <p className="text-white/60 text-xs">{game.rulesNote(rules)}</p>
+            )}
             <button
               type="button"
               onClick={() => void enter()}
@@ -401,8 +413,8 @@ export function BoardOnlineScreen<
                 className="rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
               >
                 {hostLeft
-                  ? "방장이 방을 나갔습니다"
-                  : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+                  ? "방장이 방을 나갔어요."
+                  : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
               </p>
             )}
             {isHost && (
@@ -460,7 +472,7 @@ export function BoardOnlineScreen<
                   ? "시작하는 중…"
                   : friendIn
                     ? "시작하기"
-                    : "친구가 들어오면 시작할 수 있어요"}
+                    : "친구가 들어오면 시작할 수 있어요."}
               </button>
             ) : (
               <p className="text-center text-sm opacity-80">
@@ -472,21 +484,21 @@ export function BoardOnlineScreen<
 
         {phase === "full" && (
           <p className="text-center text-sm">
-            자리가 다 찼거나 이미 시작한 방입니다.
+            자리가 다 찼거나 이미 시작한 방이에요.
           </p>
         )}
         {phase === "kicked" && (
-          <p className="text-center text-sm">방장이 방에서 내보냈습니다.</p>
+          <p className="text-center text-sm">방장이 방에서 내보냈어요.</p>
         )}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다: {error}
+            연결하지 못했어요: {error}
           </p>
         )}
 
         <p className="text-center text-[11px] leading-relaxed opacity-50">
-          서버 없이 두 기기를 바로 잇습니다. 연결 문제를 고치려고 연결에 걸린
-          시간을 서버에 보냅니다. 둔 수·이름·채팅은 보내지 않습니다.
+          서버 없이 두 기기를 바로 이어요. 연결 문제를 고치려고 연결에 걸린
+          시간을 서버에 보내요. 둔 수·이름·채팅은 보내지 않아요.
         </p>
         <button
           type="button"

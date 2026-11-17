@@ -17,6 +17,8 @@ export interface SimulationOptions {
   bots: readonly Bot[];
   /** 점수 계산까지 끝낸 판 수. 그 전에 누가 파산하면 멈춘다 */
   rounds: number;
+  /** 판 점수 계산이 끝날 때마다(다음 판으로 넘어가기 전, 판 상태가 남아 있을 때) 부른다. bench가 판 기록을 셀 때 쓴다 */
+  onRoundScored?: (state: MatchState) => void;
 }
 
 export interface SimulationResult {
@@ -68,6 +70,7 @@ export function simulate(options: SimulationOptions): SimulationResult {
       if (event.type !== "roundScored") continue;
       roundsPlayed++;
       if (event.result.rulingWon) declarerWins++;
+      options.onRoundScored?.(state);
     }
   }
 

@@ -94,7 +94,7 @@ describe("화투 암호화방: 고친 프로그램(부정)", () => {
       done: () => incidents.length > 0,
     });
     expect(incidents[0]?.seat).toBe(cheater);
-    expect(incidents[0]?.reason).toMatch(/열쇠로 연 카드가 다르다/);
+    expect(incidents[0]?.reason).toMatch(/열쇠로 연 카드가 달라요/);
   });
 
   it("나눠 줄 때 잠글 때와 다른 열쇠를 주면 받은 사람이 열쇠 증명으로 그 자리를 짚는다", async () => {

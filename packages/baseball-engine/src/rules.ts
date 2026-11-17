@@ -59,12 +59,12 @@ export function decodeBaseballRules(
 ): { ok: true; rules: BaseballRules } | { ok: false; reason: string } {
   const match = /^b1-([34])([zn])([dp])([fx])([1-5])(-t\d)?$/.exec(text.trim());
   if (!match)
-    return { ok: false, reason: "숫자야구 규칙 문자열 형식이 아니다" };
+    return { ok: false, reason: "숫자야구 규칙 문자열 형식이 아니에요." };
   const [, digits, zero, mode, fair, wins, tail] = match;
   const time = decodeTimePreset(tail);
-  if (time === null) return { ok: false, reason: "모르는 시간 규칙이다" };
+  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요." };
   if (mode === "p" && wins !== "1")
-    return { ok: false, reason: "퍼즐은 한 판만 한다" };
+    return { ok: false, reason: "퍼즐은 한 판만 해요." };
   return {
     ok: true,
     rules: {

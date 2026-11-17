@@ -128,7 +128,7 @@ test("장기: 게임 목록에서 들어가 상차림을 고르고 두다가 무
   await expect(page.getByRole("status")).toContainText("내 차례");
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();
-  await expect(page.getByRole("status")).toHaveText("기권했어요");
+  await expect(page.getByRole("status")).toHaveText("기권했어요.");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("janggi-end.png") });
   expect(errors).toEqual([]);
@@ -763,7 +763,7 @@ test(
     });
     await cho.getByRole("button", { name: "기권" }).click();
     await cho.getByRole("button", { name: "기권하기" }).click();
-    await expect(han.getByRole("status")).toHaveText("상대가 기권했어요");
+    await expect(han.getByRole("status")).toHaveText("상대가 기권했어요.");
     await han.screenshot({ path: info.outputPath("janggi-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
@@ -789,7 +789,7 @@ test(
     });
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
-    await expect(page.getByRole("status")).toHaveText("기권했어요");
+    await expect(page.getByRole("status")).toHaveText("기권했어요.");
     // 복기 기록이 실제로 쓰인 뒤에 떠난다.
     await expect
       .poll(() =>
@@ -993,7 +993,7 @@ test(
       "3:00",
     );
     await page.clock.runFor(270_001);
-    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
+    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요.");
     await page.screenshot({ path: info.outputPath("janggi-time.png") });
   },
 );

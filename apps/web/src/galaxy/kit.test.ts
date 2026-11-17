@@ -393,7 +393,7 @@ describe("만난 별과 사건 줄", () => {
     const card = (id: number, squares: number[]) =>
       eventLine({ type: "card", seat: 0, card: id, squares }, board, name);
     expect(card(4, [])).toBe(
-      "내가 공문 칸에 도착해 「먼 별 탐사 지원」 공문을 폈어요 · 해당 별 없음",
+      "내가 공문 칸에 도착해 「먼 별 탐사 지원」 공문을 폈어요(해당 별 없음).",
     );
     expect(card(16, [])).toContain("해당 별자리 없음");
     expect(card(4, [9])).not.toContain("없음");
@@ -435,7 +435,7 @@ describe("만난 별과 사건 줄", () => {
         board,
         name,
       ),
-    ).toBe("민준이 시리우스에 도착했지만 사지 않아 봉투 입찰을 엽니다");
+    ).toBe("민준이 시리우스에 도착했지만 사지 않아 봉투 입찰을 열어요.");
     expect(
       eventLine(
         {
@@ -449,14 +449,14 @@ describe("만난 별과 사건 줄", () => {
         board,
         name,
       ),
-    ).toBe("컴퓨터가 시리우스에 도착해 나에게 이용료 ✦40을 냈어요");
+    ).toBe("컴퓨터가 시리우스에 도착해 나에게 이용료 ✦40을 냈어요.");
     expect(
       eventLine(
         { type: "bought", seat: 0, square: sirius, price: 220 },
         board,
         name,
       ),
-    ).toBe("내가 시리우스에 도착해 ✦220에 샀어요");
+    ).toBe("내가 시리우스에 도착해 ✦220에 샀어요.");
   });
 
   it("주어 조사는 받침에 맞춘다", () => {

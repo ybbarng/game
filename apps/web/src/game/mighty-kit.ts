@@ -21,7 +21,7 @@ import {
   viewOf,
 } from "@game/mighty-engine";
 
-import { type BotLevel, botFor } from "./bots";
+import { type BotLevel, botFor, MIGHTY_BOT_PLAN } from "./bots";
 import type { GameKit } from "./kit";
 
 /** 멘탈 포커 판 하나의 실제 패(복기용) */
@@ -180,6 +180,7 @@ export const mightyKit: MightyKit = {
     },
   },
   botFor: (level) => botFor(level as BotLevel),
+  botPlan: MIGHTY_BOT_PLAN,
   // 튜토리얼 미션처럼 손패가 짧은 장면에서는 낼 카드가 떨어지면 멈춘다.
   botCanAct: (view) =>
     !(view.decision?.kind === "play" && view.decision.cards.length === 0),

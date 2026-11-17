@@ -27,7 +27,7 @@ describe("공정한 섞기", () => {
     const result = await deriveSeed(commitments, tampered);
     expect(result).toEqual({
       ok: false,
-      reason: "0번 자리의 값이 약속과 다르다",
+      reason: "0번 자리의 값이 약속과 달라요.",
     });
   });
 

@@ -1,4 +1,5 @@
 import { createRng } from "@game/mighty-engine";
+import { subj } from "@game/mighty-engine/josa";
 import {
   createMatch,
   type NyrongppongRules,
@@ -25,7 +26,7 @@ export function playGame(
     const action = bot.decide(viewOf(state, seat), rng);
     const result = step(state, seat, action);
     if (!result.ok)
-      throw new Error(`${bot.name}이 할 수 없는 행동: ${result.error}`);
+      throw new Error(`${subj(bot.name)} 할 수 없는 행동: ${result.error}`);
     state = result.state;
   }
   throw new Error("게임이 끝나지 않는다");

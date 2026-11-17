@@ -19,7 +19,7 @@ async function stepOnce(page: Page): Promise<boolean> {
       return false;
     }
   }
-  if (await page.getByText("당선을 축하합니다").isVisible()) {
+  if (await page.getByText("당선을 축하해요").isVisible()) {
     for (
       let k = 0;
       k < 6 && !(await page.getByText(/\(3\/3\)/).isVisible());
@@ -114,11 +114,11 @@ test("방장이 방을 만들고 친구가 링크로 들어와 한 판을 끝까
   // 방장이 나가면 기록이 공개되고 참가자가 공정성을 확인한다.
   await host.getByRole("button", { name: "나가기" }).click();
   await expect(
-    guest.getByText("공정성 확인: 섞기와 진행에 문제가 없습니다"),
+    guest.getByText("공정성 확인: 섞기와 진행에 문제가 없어요"),
   ).toBeVisible({ timeout: 10_000 });
-  await expect(
-    guest.getByText("방장이 방을 나가 게임이 끝났습니다"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(guest.getByText("방장이 방을 나가 게임이 끝났어요")).toBeVisible(
+    { timeout: 10_000 },
+  );
   expect(errors).toEqual([]);
 });
 

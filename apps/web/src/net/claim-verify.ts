@@ -61,7 +61,7 @@ export function claimsVerifier<Action>(
     }): string | null {
       const { seat, action, context } = input;
       if (spec.direct?.(action) && !context.botSeats?.has(seat))
-        return `${seat}번 자리의 청구가 청구 통로를 거치지 않고 기록에 들어 있다(방장이 지어냈다)`;
+        return `${seat}번 자리의 청구가 청구 통로를 거치지 않고 기록에 들어 있어요(방장이 지어냈어요).`;
       if (!spec.recorded(action)) return null;
       const c = cursorOf(context);
       const text = JSON.stringify(action);
@@ -74,18 +74,18 @@ export function claimsVerifier<Action>(
         // 받지 못한 발표의 묶음일 수 있다: 끊긴 구간 안이면 넘긴다(구간을 모르면 어디서든)
         if (!c.gaps || c.gaps.has(c.at)) return null;
         return want === undefined
-          ? "끊긴 구간 밖의 기록 속 청구 묶음이 받은 발표보다 많다(방장이 없던 청구를 넣었다)"
-          : "끊긴 구간 밖의 기록 속 청구 묶음이 방장 발표와 다르다(빼거나 바꿨다)";
+          ? "끊긴 구간 밖의 기록 속 청구 묶음이 받은 발표보다 많아요(방장이 없던 청구를 넣었어요)."
+          : "끊긴 구간 밖의 기록 속 청구 묶음이 방장 발표와 달라요(빼거나 바꿨어요).";
       }
       if (want === undefined)
-        return "기록 속 청구 묶음이 받은 발표보다 많다(방장이 없던 청구를 넣었다)";
-      return "기록 속 청구 묶음이 방장 발표와 다르다(빼거나 바꿨다)";
+        return "기록 속 청구 묶음이 받은 발표보다 많아요(방장이 없던 청구를 넣었어요).";
+      return "기록 속 청구 묶음이 방장 발표와 달라요(빼거나 바꿨어요).";
     },
     verifyUnsignedDone(context: VerifyContext): string | null {
       if (!context.complete) return null;
       const c = cursorOf(context);
       return c.at < c.expected.length
-        ? "방장이 발표한 청구 묶음이 기록에서 빠졌다"
+        ? "방장이 발표한 청구 묶음이 기록에서 빠졌어요."
         : null;
     },
   };

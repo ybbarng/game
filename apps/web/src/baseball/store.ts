@@ -387,7 +387,7 @@ export const useBaseball = create<BaseballStore>((set, get) => {
     chooseSecret(secret) {
       const view = get().view;
       if (view?.decision?.kind !== "commit")
-        return { ok: false, error: "비밀 수를 정할 때가 아니다" };
+        return { ok: false, error: "비밀 수를 정할 때가 아니에요." };
       const material = { secret, salt: newSalt() };
       const secrets = { ...get().secrets, [view.roundNumber]: material };
       // 약속을 내기 전에 먼저 남긴다(새로고침해도 답할 수 있게).
@@ -401,9 +401,9 @@ export const useBaseball = create<BaseballStore>((set, get) => {
 
     submit(action) {
       const host = get().host;
-      if (!host) return { ok: false, error: "게임이 없다" };
+      if (!host) return { ok: false, error: "게임이 없어요." };
       // 컴퓨터 수를 보여 주기 전에는 두지 않는다.
-      if (get().queue.length > 0) return { ok: false, error: "잠깐만요" };
+      if (get().queue.length > 0) return { ok: false, error: "잠깐만요." };
       const result = host.submit(action);
       if (!result.ok) {
         set({ notice: result.error });

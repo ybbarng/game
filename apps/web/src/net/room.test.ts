@@ -40,6 +40,9 @@ async function setup() {
     rules,
     revealTimeoutMs: 500,
     standInDelayMs: 10,
+    // 화면처럼 빈자리 컴퓨터의 단계를 알린다(알리지 않으면 참가자가 컴퓨터 수를 「확인 못 함」으로 본다)
+    bot: intermediateBot,
+    botLevel: 1,
   });
   const a = new GuestRoom({
     transport: net.join("a"),
@@ -416,13 +419,13 @@ describe("온라인 방", () => {
     await until(() => results.length === 1);
     expect(results[0]).toEqual({
       ok: false,
-      reason: "0번 자리의 값이 약속과 다르다",
+      reason: "0번 자리의 값이 약속과 달라요.",
     });
     // 철수의 실패 알림은 방장을 거치지 않고 다른 참가자에게도 간다.
     await until(() => heardByB.some((r) => r.name === "철수"));
     expect(heardByB.find((r) => r.name === "철수")).toMatchObject({
       ok: false,
-      reason: "0번 자리의 값이 약속과 다르다",
+      reason: "0번 자리의 값이 약속과 달라요.",
     });
     await until(() => heardByHost.some((r) => r.name === "철수"));
   });
@@ -458,7 +461,7 @@ describe("온라인 방", () => {
     expect(results[0]?.ok).toBe(false);
     if (results[0]?.ok === false)
       expect(results[0].reason).toMatch(
-        /받은 \d+번째 화면이 기록과 맞지 않는다/,
+        /받은 \d+번째 화면이 기록과 맞지 않아요/,
       );
   });
 
@@ -500,7 +503,7 @@ describe("온라인 방", () => {
     // 첫 차례는 방장(0번)이다. a가 억지로 보낸다.
     a.transport.send({ t: "action", action: { type: "pass" } });
     await until(() => errors.length === 1);
-    expect(errors[0]).toBe("지금은 이 자리의 차례가 아니다");
+    expect(errors[0]).toBe("지금은 이 자리의 차례가 아니에요.");
   });
 });
 

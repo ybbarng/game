@@ -26,6 +26,7 @@ import {
 import type { Commentary, GameKit, Verdict } from "@/game/kit";
 
 import { hwatuReviewDeals } from "@/hwatu/fair";
+import { obj } from "@/lib/josa";
 
 import { minhwatuFair } from "./fair";
 import { minhwatuStats } from "./stats";
@@ -84,7 +85,7 @@ export function explainMinhwatu(
     return {
       situation,
       verdict: "good",
-      reasons: [`${describeAction(action)}: 고수도 같은 수를 둔다`],
+      reasons: [`고수도 같은 수(${describeAction(action)})를 둬요.`],
     };
   const mine = greedyValue(view, action);
   const best = Math.max(greedyValue(view, suggested), mine);
@@ -92,8 +93,8 @@ export function explainMinhwatu(
     situation,
     verdict: verdictOf(best - mine),
     reasons: [
-      `둔 수: ${describeAction(action)}`,
-      `고수의 수: ${describeAction(suggested)}`,
+      `${obj(describeAction(action))} 뒀어요.`,
+      `고수라면 다른 수(${describeAction(suggested)})를 둬요.`,
     ],
   };
 }

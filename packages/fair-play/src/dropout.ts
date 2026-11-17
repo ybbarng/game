@@ -57,7 +57,7 @@ export class DropoutPolicy {
     )
       this.state = {
         kind: "aborted",
-        reason: `${this.state.seat}번이 돌아오지 않아 이 판을 무효로 했다`,
+        reason: `${this.state.seat}번이 돌아오지 않아 이 판을 무효로 했어요.`,
       };
   }
 }

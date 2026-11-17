@@ -54,7 +54,7 @@ async function playTurn(page: Page, touch: boolean): Promise<boolean> {
   const card = hand(page).getByRole("button").first();
   if (touch) {
     await card.tap();
-    await expect(status(page)).toHaveText("한 번 더 누르면 냅니다");
+    await expect(status(page)).toHaveText("한 번 더 누르면 내요.");
     await card.tap();
   } else await card.click();
   // 바닥에 같은 달이 둘이면 하나를 고른다.

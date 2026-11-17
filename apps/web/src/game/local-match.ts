@@ -524,11 +524,11 @@ export class LocalMatch<
    * 끊긴 사람을 더 기다리지 않기로 했을 때 쓴다
    */
   end(): SubmitResult {
-    if (this.ended) return { ok: false, error: "이미 끝냈다" };
+    if (this.ended) return { ok: false, error: "이미 끝냈어요." };
     const result = this.apply(this.seat, this.kit.retireAction);
     if (!result.ok) return result;
     this.ended = true;
-    this.haltedReason = "게임을 끝냈다";
+    this.haltedReason = "게임을 끝냈어요.";
     this.stopThinking();
     this.clearTimers();
     for (const seat of [...this.held.keys()]) this.deliver(seat);
@@ -582,15 +582,15 @@ export class LocalMatch<
   /** 다른 사람 자리의 행동(온라인 대전에서 참가자가 보낸 것) */
   submitAs(seat: number, action: ActionT): SubmitResult {
     if (!this.humans.has(seat))
-      return { ok: false, error: "사람 자리가 아니다" };
+      return { ok: false, error: "사람 자리가 아니에요." };
     if (this.haltedReason) return { ok: false, error: this.haltedReason };
     if (this.options.prepare) {
       // 앞 행동을 준비하는 동안 같은 자리의 행동은 받지 않는다(두 번 누르면 헛다리 뒤 두 번째 지목이 들어간다).
       if (this.preparing.has(seat))
-        return { ok: false, error: "앞 행동을 처리하는 중입니다" };
+        return { ok: false, error: "앞 행동을 처리하는 중이에요." };
       // 아직 보여 주지 못한 화면이 있으면(멘탈 포커로 섞고 나누는 중) 지난 화면을 보고 한 행동이다.
       if (this.held.has(seat))
-        return { ok: false, error: "섞고 나누는 중입니다" };
+        return { ok: false, error: "섞고 나누는 중이에요." };
       this.enqueue(seat, action, false);
       return { ok: true };
     }

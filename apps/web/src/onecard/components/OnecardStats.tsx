@@ -10,9 +10,9 @@ export function OnecardStats({ book }: { book: StatsBook }) {
   const s = summarizeOnecard(book.rounds, book.games);
   if (s.games === 0)
     return (
-      <Card title="아직 기록이 없습니다">
+      <Card title="아직 기록이 없어요">
         <p className="text-sm text-white/70">
-          원카드를 한 판 끝까지 하면 여기에 쌓입니다.
+          원카드를 한 판 끝까지 하면 여기에 쌓여요.
         </p>
       </Card>
     );

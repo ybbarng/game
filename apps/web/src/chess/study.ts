@@ -19,6 +19,7 @@ import {
   viewOf,
 } from "@game/chess-engine";
 import { adviseWith } from "@/game/bot-runner";
+import { obj, ro, subj, topic } from "@/lib/josa";
 
 import { chessAdvisor } from "./advisor";
 import type { ChessPuzzle } from "./puzzles";
@@ -86,13 +87,6 @@ function attackers(board: Board, at: number): Kind[] {
   return [...kinds];
 }
 
-/** 끝 글자에 받침이 있나(을/를을 고른다) */
-function hasBatchim(word: string): boolean {
-  const code = (word.at(-1) ?? "").charCodeAt(0) - 0xac00;
-  return code >= 0 && code <= 11171 && code % 28 !== 0;
-}
-const obj = (word: string) => `${word}${hasBatchim(word) ? "을" : "를"}`;
-const subj = (word: string) => `${word}${hasBatchim(word) ? "이" : "가"}`;
 const names = (kinds: Kind[]) => kinds.map((k) => KIND_NAMES[k]).join("·");
 
 /**
@@ -105,7 +99,7 @@ export function explainMate(pos: Position, move: Move): string[] {
   const king = kingOf(board, "b");
   const mover = board[move.to] as string;
   const lines = [
-    `${obj(KIND_NAMES[mover[1] as Kind])} ${squareName(move.to)}로(${moveToSan(pos, move)}): 체크!`,
+    `${obj(KIND_NAMES[mover[1] as Kind])} ${ro(squareName(move.to))}(${moveToSan(pos, move)}): 체크!`,
   ];
   const [kx, ky] = [king % 8, Math.floor(king / 8)];
   const blocked: string[] = [];
@@ -131,9 +125,11 @@ export function explainMate(pos: Position, move: Move): string[] {
       guarded.set(who, [...(guarded.get(who) ?? []), squareName(to)]);
     }
   if (blocked.length > 0)
-    lines.push(`킹 둘레 ${blocked.join("·")}는 흑 자기 기물이 막고 있어요.`);
+    lines.push(
+      `킹 둘레 ${topic(blocked.join("·"))} 흑 자기 기물이 막고 있어요.`,
+    );
   for (const [who, squares] of guarded)
-    lines.push(`킹이 피할 ${squares.join("·")}는 ${subj(who)} 노려요.`);
+    lines.push(`킹이 피할 ${topic(squares.join("·"))} ${subj(who)} 노려요.`);
   lines.push("막거나 잡을 수도 없어 체크메이트예요.");
   return lines;
 }
@@ -150,14 +146,21 @@ export function explainEndgame(pos: Position, move: Move): string[] {
   const [bx, by] = [bk % 8, Math.floor(bk / 8)];
   const pawn = pos.board.indexOf("wP");
   const lines = [
-    `킹을 ${squareName(move.to)}로(${moveToSan(pos, move)}): 이 수만 이겨요.`,
+    `킹을 ${ro(squareName(move.to))}(${moveToSan(pos, move)}): 이 수만 이겨요.`,
   ];
   const facing =
     (wx === bx && Math.abs(wy - by) === 2) ||
     (wy === by && Math.abs(wx - bx) === 2);
+  const farFacing =
+    (wx === bx && Math.abs(wy - by) === 4) ||
+    (wy === by && Math.abs(wx - bx) === 4);
   if (facing)
     lines.push(
       "킹끼리 한 칸 띄우고 마주 섰어요(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아가요.",
+    );
+  else if (farFacing)
+    lines.push(
+      "킹끼리 세 칸 띄우고 마주 섰어요(먼 맞서기). 흑 킹이 다가오면 백 킹도 마주 보며 다가가요. 그러면 한 칸 띄우고 마주 선 맞서기가 되고, 흑 킹이 비켜야 해요.",
     );
   else if (wy < Math.floor(pawn / 8))
     lines.push(
@@ -172,5 +175,63 @@ export function explainEndgame(pos: Position, move: Move): string[] {
     lines.push(
       `폰부터 밀면(${moveToSan(pos, push)}) 흑 킹이 폰 앞을 막아 비겨요. 킹이 앞서고 폰은 뒤따라가요.`,
     );
+  return lines;
+}
+
+/** 백의 바깥 패스 폰: 앞쪽 같은·옆 세로줄에 흑 폰이 없는 백 폰 가운데 흑 폰들에서 가장 먼 것 */
+export function outsidePawnOf(board: Board): number | null {
+  const black: number[] = [];
+  const white: number[] = [];
+  board.forEach((c, i) => {
+    if (c === "bP") black.push(i);
+    else if (c === "wP") white.push(i);
+  });
+  const passed = white.filter((p) =>
+    black.every((b) => Math.abs((b % 8) - (p % 8)) > 1 || b >> 3 >= p >> 3),
+  );
+  const far = (p: number) =>
+    Math.min(...black.map((b) => Math.abs((b % 8) - (p % 8))));
+  return passed.sort((a, b) => far(b) - far(a))[0] ?? null;
+}
+
+/**
+ * 바깥 패스 폰 해설: 흑 킹이 먼 패스 폰에 붙잡힌 사이 백 킹이 반대쪽 흑 폰으로 간다.
+ * 판에서 만든다(어느 폰이 바깥 패스 폰인지, 흑 킹이 그 폰 바로 옆인지, 반대쪽 흑 폰은 어디인지).
+ * 정답만 이기고 다른 수는 이기지 못한다는 것은 outside.test.ts가 끝까지 읽기로 확인한다
+ */
+export function explainOutside(pos: Position, move: Move): string[] {
+  const outside = outsidePawnOf(pos.board);
+  const bk = kingOf(pos.board, "b");
+  const mover = pos.board[move.from] as string;
+  const kind = KIND_NAMES[mover[1] as Kind];
+  const lines = [
+    `${obj(kind)} ${ro(squareName(move.to))}(${moveToSan(pos, move)}): 이 수만 이겨요.`,
+  ];
+  if (outside === null) return lines;
+  const file = `${squareName(outside)[0]}폰`;
+  // 흑 폰은 세로줄 차례로(f5·h7)
+  const blackPawns = pos.board
+    .map((c, i) => (c === "bP" ? squareName(i) : null))
+    .filter((s): s is string => s !== null)
+    .sort()
+    .join("·");
+  const beside =
+    Math.max(
+      Math.abs((bk % 8) - (outside % 8)),
+      Math.abs((bk >> 3) - (outside >> 3)),
+    ) <= 1;
+  if (move.from === outside)
+    lines.push(
+      `흑 킹이 ${file} 바로 옆에 왔어요. 폰을 한 칸 더 밀면 흑 킹은 폰을 잡으러 한 걸음 더 가야 해요. 그만큼 백 킹이 반대쪽 흑 폰(${blackPawns})에 먼저 닿아요.`,
+    );
+  else if (beside)
+    lines.push(
+      `${obj(file)} 흑 킹에게 내줘요. 흑 킹이 판 가장자리 쪽에서 ${obj(file)} 잡는 사이, 백 킹은 반대쪽 흑 폰(${blackPawns})을 잡으러 가요.`,
+    );
+  else
+    lines.push(
+      `흑 킹은 ${subj(file)} 퀸이 되지 않게 막으러 판 가장자리 쪽으로 가야 해요. 그사이 백 킹은 반대쪽 흑 폰(${blackPawns})을 잡으러 가요.`,
+    );
+  lines.push("다른 수는 모두 비기거나 져요.");
   return lines;
 }

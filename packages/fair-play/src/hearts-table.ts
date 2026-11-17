@@ -246,7 +246,7 @@ export class HeartsCoordinator {
       reportShuffleTamper(
         this.device,
         deal,
-        "열어 보니 같은 카드가 두 번 있다",
+        "열어 보니 같은 카드가 두 번 있어요.",
         (i) => this.incident(i),
       );
       return;
@@ -572,7 +572,7 @@ export class HeartsHostTable {
     action: Action,
   ): Promise<Prepared> {
     await this.gate;
-    if (this.halted) return { ok: false, error: "판을 멈췄다" };
+    if (this.halted) return { ok: false, error: "판을 멈췄어요." };
     const state = this.hooks.state();
     const hand = state.round.hands[seat] ?? [];
     const deal = this.coordinator.deal;
@@ -586,7 +586,7 @@ export class HeartsHostTable {
           continue;
         }
         const slot = slotInHand(hand, cards, card);
-        if (slot === null) return { ok: false, error: "손에 없는 카드다" };
+        if (slot === null) return { ok: false, error: "손에 없는 카드예요." };
         tokens.push(tokenOf(slot));
       }
       return { ok: true, action: { ...action, cards: tokens } };
@@ -595,7 +595,7 @@ export class HeartsHostTable {
     if (this.deviceOf(seat) === 0) {
       if (hand.includes(action.card)) return { ok: true, action };
       const slot = slotInHand(hand, cards, action.card);
-      if (slot === null) return { ok: false, error: "손에 없는 카드다" };
+      if (slot === null) return { ok: false, error: "손에 없는 카드예요." };
       this.device.reveal(deal, [slot], "play");
       return { ok: true, action: { ...action, deckSlot: slot } as Action };
     }
@@ -604,17 +604,17 @@ export class HeartsHostTable {
       if (hand.includes(action.card)) return { ok: true, action };
       this.coordinator.incident({
         seat,
-        reason: "자기 손에 없는 자리의 카드를 내려 했다",
+        reason: "자기 손에 없는 자리의 카드를 내려 했어요.",
       });
-      return { ok: false, error: "자기 손에 없는 자리의 카드다" };
+      return { ok: false, error: "자기 손에 없는 자리의 카드예요." };
     }
     const opened = await this.waitFor(
       () => this.device.open(deal, slot) ?? undefined,
     );
     if (opened === undefined)
-      return { ok: false, error: "카드 열쇠가 오지 않았다" };
+      return { ok: false, error: "카드 열쇠가 오지 않았어요." };
     if (opened !== action.card) {
-      const reason = `낸다고 한 카드와 열쇠로 연 카드가 다르다`;
+      const reason = `낸다고 한 카드와 열쇠로 연 카드가 달라요.`;
       this.coordinator.incident({ seat, reason });
       return { ok: false, error: reason };
     }

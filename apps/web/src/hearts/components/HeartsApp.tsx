@@ -134,7 +134,7 @@ export function HeartsApp() {
         </>
       }
       tagline={
-        <SuitText text="하트와 ♠Q를 가져오지 않게 피하고, 벌점이 가장 적은 사람이 이긴다" />
+        <SuitText text="하트와 ♠Q를 가져오지 않게 피하고, 벌점이 가장 적은 사람이 이겨요." />
       }
       {...(saved
         ? {
@@ -167,20 +167,20 @@ export function HeartsApp() {
       together={{
         icon: "👥",
         title: "다함께 하트",
-        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다.",
+        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
         onClick: () => setScreen({ kind: "online", room: null }),
       }}
       learn={{
         title: "하트 배우기",
         learned,
         total: HEARTS_LESSONS.length,
-        firstHint: `처음이라면 여기부터. ${HEARTS_LESSONS.length}단원, 미션 3개`,
+        firstHint: `처음이라면 여기서 시작해요. ${HEARTS_LESSONS.length}단원과 미션 3개가 있어요.`,
         onClick: () => setScreen({ kind: "tutorial" }),
       }}
       onOptions={() => setScreen({ kind: "options" })}
       aboutLabel="하트는?"
       onAbout={() => setScreen({ kind: "rules" })}
-      credit="윈도우에 들어 있던 하트 규칙을 따라 만들었습니다"
+      credit="윈도우에 들어 있던 하트 규칙을 따라 만들었어요."
     />
   );
 }
@@ -306,7 +306,7 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
               onChange={(heartsBreak) => update({ heartsBreak })}
             />
             <span className="text-xs opacity-70">
-              <SuitText text="♠Q가 나와도 하트가 깨진다" />
+              <SuitText text="♠Q가 나와도 하트가 깨져요." />
             </span>
             <Choice
               value={rules.queenBreaksHearts}
@@ -314,7 +314,7 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
               onChange={(queenBreaksHearts) => update({ queenBreaksHearts })}
             />
             <span className="text-xs opacity-70">
-              <SuitText text="첫 턴에 하트·♠Q를 낼 수 있다" />
+              <SuitText text="첫 턴에 하트·♠Q를 낼 수 있어요." />
             </span>
             <Choice
               value={rules.firstTrickPoints}
@@ -322,7 +322,7 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
               onChange={(firstTrickPoints) => update({ firstTrickPoints })}
             />
             <span className="text-xs opacity-70">
-              <SuitText text="◆J를 먹으면 −10점" />
+              <SuitText text="◆J를 먹은 사람 −10점" />
             </span>
             <Choice
               value={rules.jackOfDiamonds}
@@ -341,7 +341,7 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
           </Section>
           <p className="text-xs opacity-60">
             카드 디자인, 진행 속도, 효과음, 컴퓨터 이름은 마이티 옵션 화면에서
-            고른 것을 함께 쓴다.
+            고른 것을 함께 써요.
           </p>
         </div>
       </div>
@@ -354,37 +354,37 @@ function HeartsRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
       "목표",
-      "네 명이 13장씩 받아 겨룬다. 가져간 하트와 ♠Q가 벌점이고, 누군가 벌점이 옵션에서 정한 점수(기본 100점) 이상이 되면 게임이 끝난다. 그때 벌점이 가장 낮은 사람이 이긴다.",
+      "네 명이 13장씩 받아 겨뤄요. 가져간 하트와 ♠Q가 벌점이고, 누군가 벌점이 옵션에서 정한 점수(기본 100점) 이상이 되면 게임이 끝나요. 그때 벌점이 가장 낮은 사람이 이겨요.",
     ],
     [
       "한 턴",
-      "넷이 자리 순서대로 한 장씩 내는 한 바퀴를 턴이라 한다. 그 턴에 맨 처음 카드를 내는 사람을 선이라 한다. 선이 낸 무늬에서 가장 높은 카드를 낸 사람이 턴을 이겨 나온 카드 넉 장을 모두 가져가고, 다음 턴의 선이 된다. 가져가는 것을 「먹는다」고 한다. 높은 차례는 A, K, Q, J, 10 … 2다.",
+      "넷이 자리 순서대로 한 장씩 내는 한 바퀴를 턴이라 해요. 그 턴에 맨 처음 카드를 내는 사람을 선이라 해요. 선이 낸 무늬에서 가장 높은 카드를 낸 사람이 턴을 이겨 나온 카드 넉 장을 모두 가져가고, 다음 턴의 선이 돼요. 가져가는 것을 「먹는다」고 해요. 높은 차례는 A, K, Q, J, 10 … 2예요.",
     ],
-    ["벌점", "하트 한 장은 1점, ♠Q는 13점이다. 한 판에 모두 26점이다."],
+    ["벌점", "하트 한 장은 1점, ♠Q는 13점이에요. 한 판에 모두 26점이에요."],
     [
       "카드 넘기기",
-      "판을 시작하기 전에 고른 카드 3장을 다른 사람에게 넘긴다. 받는 사람은 판마다 왼쪽 → 오른쪽 → 맞은편 → 안 넘김 차례로 바뀐다.",
+      "판을 시작하기 전에 고른 카드 3장을 다른 사람에게 넘겨요. 받는 사람은 판마다 왼쪽 → 오른쪽 → 맞은편 → 안 넘김 차례로 바뀌어요.",
     ],
     [
       "시작",
-      "♣2를 가진 사람이 첫 턴의 선이 되어 ♣2를 낸다. 첫 턴에는 하트와 ♠Q를 낼 수 없다.",
+      "♣2를 가진 사람이 첫 턴의 선이 되어 ♣2를 내요. 첫 턴에는 하트와 ♠Q를 낼 수 없어요.",
     ],
     [
       "따라 내기",
-      "선이 낸 무늬가 손에 있으면 그 무늬를 내야 한다. 없으면 아무 카드나 낼 수 있고, 이것을 「버린다」고 한다. 버린 카드는 턴을 이기지 못한다. 다른 무늬를 모두 이기는 무늬는 없다.",
+      "선이 낸 무늬가 손에 있으면 그 무늬를 내야 해요. 없으면 아무 카드나 낼 수 있고, 이것을 「버린다」고 해요. 버린 카드는 턴을 이기지 못해요. 다른 무늬를 모두 이기는 무늬는 없어요.",
     ],
     [
       "하트 깨기",
-      "누군가 하트를 한 장이라도 내기 전에는, 선일 때 하트를 낼 수 없다. 손에 하트뿐이면 낼 수 있다. 하트가 처음 나오는 것을 「하트가 깨진다」고 한다.",
+      "누군가 하트를 한 장이라도 내기 전에는, 선일 때 하트를 낼 수 없어요. 손에 하트뿐이면 낼 수 있어요. 하트가 처음 나오는 것을 「하트가 깨진다」고 해요.",
     ],
     [
       "문 슛",
-      "하트 13장과 ♠Q를 혼자 다 먹으면, 다 먹은 사람은 0점이고 다른 사람이 26점씩 받는다. 옵션에서 다 먹은 사람의 벌점을 26점 빼는 것으로 바꾸거나 끌 수 있다.",
+      "하트 13장과 ♠Q를 혼자 다 먹으면, 다 먹은 사람은 0점이고 다른 사람이 26점씩 받아요. 옵션에서 다 먹은 사람의 벌점을 26점 빼는 것으로 바꾸거나 끌 수 있어요.",
     ],
-    ["◆J", "옵션에서 켜면 ◆J를 먹은 사람은 벌점에서 10점을 뺀다."],
+    ["◆J", "옵션에서 켜면 ◆J를 먹은 사람은 벌점에서 10점을 빼요."],
     [
       "요령",
-      "넘길 때는 높은 카드와 ♠Q·♠A·♠K를 넘긴다. 따라 낼 때는 지금 이기고 있는 카드보다 바로 아래 카드를 내 턴을 피한다. 선이 낸 무늬가 손에 없으면 ♠Q와 높은 하트를 버린다.",
+      "넘길 때는 높은 카드와 ♠Q·♠A·♠K를 넘겨요. 따라 낼 때는 지금 이기고 있는 카드보다 바로 아래 카드를 내 턴을 피해요. 선이 낸 무늬가 손에 없으면 ♠Q와 높은 하트를 버려요.",
     ],
   ];
   return (
@@ -411,8 +411,8 @@ function HeartsRulesScreen({ onBack }: { onBack: () => void }) {
           ))}
         </dl>
         <p className="text-center text-xs opacity-50">
-          윈도우 하트의 규칙을 따랐다. 규칙은 옵션에서 바꿀 수 있다. 친구와 할
-          때의 공정성은{" "}
+          윈도우 하트의 규칙을 따랐어요. 규칙은 옵션에서 바꿀 수 있어요. 친구와
+          할 때의 공정성은{" "}
           <a href="/security" className="underline">
             어떻게 지켜지나요?
           </a>

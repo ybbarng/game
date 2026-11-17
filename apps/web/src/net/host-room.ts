@@ -26,11 +26,17 @@ import type {
 } from "@game/mighty-engine";
 import { botName } from "@/game/bot-names";
 import type { BotRunner } from "@/game/bot-runner";
-import type { GameKit, KitBot, KitLoggedAction } from "@/game/kit";
+import {
+  botPlanOf,
+  type GameKit,
+  type KitBot,
+  type KitLoggedAction,
+} from "@/game/kit";
 import { LocalMatch } from "@/game/local-match";
 import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
+import { lobbyBotFields } from "./bot-plan";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
@@ -474,6 +480,7 @@ export class HostRoom<
       rules: this.rules,
       seed: this.seed,
       log: this.match.actionLog() as KitLoggedAction<unknown>[],
+      ...(this.botLevel !== null ? { botPlan: botPlanOf(this.kit) } : {}),
       ...(this.fair
         ? {
             deals: serializeDeals(
@@ -535,7 +542,7 @@ export class HostRoom<
       game: this.kit.id,
       ruleCode: this.kit.encodeRules(this.rules),
       ...(this.ruleName ? { ruleName: this.ruleName } : {}),
-      ...(this.botLevel !== null ? { botLevel: this.botLevel } : {}),
+      ...lobbyBotFields(this.kit, this.botLevel),
       seats,
       started: this.match !== null,
       ...(this.fairGroup()
@@ -634,7 +641,7 @@ export class HostRoom<
       this.relayChat(
         -1,
         "투표",
-        `${names.join(", ")}님이 끝내기를 골라 게임을 끝냅니다`,
+        `${names.join(", ")}님이 끝내기를 골라 게임을 끝내요.`,
       );
       this.abandon();
       return;
@@ -1318,7 +1325,7 @@ export class HostRoom<
         // 거절로 알려 기다림을 푼다(참가자 화면에 다시 내 차례가 보인다)
         if (!this.match) {
           this.send(
-            { t: "rejected", error: "방장이 판을 이어 가는 중입니다" },
+            { t: "rejected", error: "방장이 판을 이어 가는 중이에요." },
             from,
           );
           return;

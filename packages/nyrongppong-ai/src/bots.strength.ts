@@ -1,4 +1,5 @@
 import { createRng } from "@game/mighty-engine";
+import { obj } from "@game/mighty-engine/josa";
 import {
   createMatch,
   pendingSeats,
@@ -45,7 +46,7 @@ function paired(strong: NyrongppongBot, weak: NyrongppongBot, games: number) {
   }
   const result = { diff: diff / games, firsts, baseFirsts };
   console.log(
-    `4인 ${games}게임: ${weak.name} 자리에 ${strong.name}를 앉히면 합계 ${result.diff.toFixed(1)}점, 1등 ${baseFirsts}번 → ${firsts}번`,
+    `4인 ${games}게임: ${weak.name} 자리에 ${obj(strong.name)} 앉히면 합계 ${result.diff.toFixed(1)}점, 1등 ${baseFirsts}번 → ${firsts}번`,
   );
   return result;
 }
