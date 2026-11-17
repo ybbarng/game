@@ -13,6 +13,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { paced } from "@/game/settings";
 import { cn } from "@/lib/cn";
+import { copula, obj } from "@/lib/josa";
 
 import { choReply, firstMoves, pairExample } from "../matchup-examples";
 import {
@@ -140,8 +141,8 @@ export function OrderScene() {
   const board = frame >= 3 ? applyMove(before, first) : before;
   const caption = [
     "판을 놓으면 마·상 자리가 비어 있어요.",
-    `한이 먼저 ${setupLabel(ORDER_HAN)}을 골랐어요.`,
-    `초가 한의 차림을 보고 ${setupLabel(ORDER_CHO)}를 골랐어요.`,
+    `한이 먼저 ${obj(setupLabel(ORDER_HAN))} 골랐어요.`,
+    `초가 한의 차림을 보고 ${obj(setupLabel(ORDER_CHO))} 골랐어요.`,
     `초가 첫 수를 둬요. ${moveText(before, first)}.`,
   ][frame];
   return (
@@ -470,7 +471,7 @@ export function SetupDrill({ count }: { count: number }) {
           <p className="font-semibold">
             {result.grade === "best"
               ? "좋아요!"
-              : `${GRADE_NAMES[result.grade]}. 권하는 것은 ${best.map(setupLabel).join("·")}이에요.`}
+              : `${GRADE_NAMES[result.grade]}. 권하는 것은 ${copula(best.map(setupLabel).join("·"))}.`}
           </p>
           <p className="opacity-85">{result.reason}</p>
           <p
