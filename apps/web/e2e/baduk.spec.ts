@@ -5,11 +5,13 @@ import {
   step as playStep,
   pointAt,
   pointName,
+  solveEndgame,
 } from "@game/baduk-engine";
 
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "../src/baduk/puzzles";
 import {
   defenseFor,
+  endgameArea,
   puzzleState,
   spotMoveOf,
   spotsOf,
@@ -651,7 +653,7 @@ test(
     await page.getByRole("button", { name: /수 배우기/ }).click();
     const status = page.getByRole("status");
 
-    // 끝내기 단원: 설명 여섯 → 퀴즈 둘 → 끝
+    // 끝내기 단원: 설명 여덟 → 퀴즈 넷 → 끝
     const lessons = page.getByRole("region", { name: "단원 읽기" });
     await lessons.getByRole("button", { name: "끝내기 기초" }).click();
     await expect(page.getByRole("heading", { name: "끝내기란" })).toBeVisible();
@@ -660,11 +662,18 @@ test(
       "몇 점짜리일까",
       "큰 곳부터",
       "선수와 후수",
+      "상대의 선수 자리",
+      "누가 두어도 선수인 곳",
       "어디부터 둘까",
     ]) {
       await page.getByRole("button", { name: "다음", exact: true }).click();
       await expect(page.getByRole("heading", { name: title })).toBeVisible();
-      if (title === "몇 점짜리일까" || title === "어디부터 둘까")
+      if (
+        title === "몇 점짜리일까" ||
+        title === "상대의 선수 자리" ||
+        title === "누가 두어도 선수인 곳" ||
+        title === "어디부터 둘까"
+      )
         await page.screenshot({
           path: info.outputPath(`baduk-lesson-endgame-${title}.png`),
         });
@@ -673,6 +682,12 @@ test(
     await page.getByRole("button", { name: "2점짜리" }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await page.getByRole("button", { name: /^선수/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page
+      .getByRole("button", { name: "백이 두면 흑 돌이 단수가 되는 곳" })
+      .click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "양선수", exact: true }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await expect(page.getByText("단원 완료!")).toBeVisible();
     await page.getByRole("button", { name: "단원 목록으로" }).click();
@@ -749,6 +764,86 @@ test(
     await expect(status).toHaveText("끝내기를 잘 골랐어요!");
     await expect(page.getByText(/선수예요/)).toBeVisible();
     await page.screenshot({ path: info.outputPath("baduk-endgame-sente.png") });
+  },
+);
+
+/**
+ * 세 곳 끝내기(역끝내기·양선수)를 화면과 같은 엔진 읽기로 푼다: [정답, 틀린 첫 수(다른 곳), 백이 둔 뒤 흑이 둘 곳]
+ */
+function endgameThree(id: string): [string, string, string] {
+  const p = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles).find(
+    (q) => q.id === id,
+  ) as Extract<BadukPuzzle, { kind: "endgame" }>;
+  const start = puzzleState(p);
+  const solution = pointAt(p.solution, SIZE);
+  const wrong = spotsOf(p)
+    .map((spot) => spotMoveOf(start.board, spot))
+    .find((m) => m !== solution) as number;
+  const mine = playStep(start, 0, { type: "place", at: solution });
+  if (!mine.ok) throw new Error(mine.error);
+  const theirs = playStep(mine.state, 1, defenseFor(p, mine.state, 0));
+  if (!theirs.ok) throw new Error(theirs.error);
+  const next = solveEndgame(theirs.state.board, endgameArea(p), 1).best.find(
+    (m) => m !== null,
+  ) as number;
+  return [p.solution, pointName(wrong, SIZE), pointName(next, SIZE)];
+}
+
+test(
+  "바둑 수 배우기: 역끝내기는 다른 곳부터 두면 틀리고 백의 선수 자리를 먼저 막아 풀며, 양선수는 먼저 두어 푼다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baduk");
+    await page.getByRole("button", { name: /바둑 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const status = page.getByRole("status");
+
+    // 역끝내기: 다른 곳 → 틀림, 다시 하기 → 백의 선수 자리 → 백이 둔다 → 남은 곳
+    await page
+      .getByRole("region", { name: "역끝내기" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(status).toHaveText(
+      "끝내기가 세 곳(A·B·C) 남았어요. 먼저 둘 곳에 두세요.",
+    );
+    await expect(board(page).locator(`text[fill="#b91c1c"]`, { hasText: /^C$/ })).toHaveCount(
+      1,
+    );
+    const [block, wrongFirst, rest] = endgameThree("endgame-reverse-1");
+    await placeAt(page, wrongFirst, touch);
+    await expect(status).toHaveText(
+      "그곳부터 두면 백이 선수로 두고 남은 곳까지 가져가요.",
+    );
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await placeAt(page, block, touch);
+    await expect(status).toHaveText("백이 뒀어요. 남은 곳에 두세요.", {
+      timeout: 10_000,
+    });
+    await placeAt(page, rest, touch);
+    await expect(status).toHaveText("끝내기를 잘 골랐어요!");
+    await expect(page.getByText(/역끝내기예요/)).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("baduk-endgame-reverse.png"),
+    });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 양선수: 양선수 자리 → 백이 받는다 → 남은 곳
+    await page
+      .getByRole("region", { name: "양선수" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    const [both, , after] = endgameThree("endgame-double-1");
+    await placeAt(page, both, touch);
+    await expect(status).toHaveText("백이 받았어요. 남은 곳에 두세요.", {
+      timeout: 10_000,
+    });
+    await placeAt(page, after, touch);
+    await expect(status).toHaveText("끝내기를 잘 골랐어요!");
+    await expect(page.getByText(/양선수예요/)).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("baduk-endgame-double.png"),
+    });
   },
 );
 

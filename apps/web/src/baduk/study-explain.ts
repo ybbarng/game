@@ -774,6 +774,7 @@ function spotWhat(
 
 function endgameConcept(puzzle: Endgame): string[] {
   const spots = endgameSpots(puzzle);
+  const reply = (r: number[]) => r.map(named).join("·");
   const right = solutionOf(puzzle);
   const mine = spots.find((s) => s.spot.includes(right)) ?? spots[0];
   if (!mine) return [];
@@ -798,7 +799,44 @@ function endgameConcept(puzzle: Endgame): string[] {
         `${other.label}부터 두면 후수라 차례가 백에게 넘어가고, 백이 ${mine.label}에 먼저 둬요.`,
       ];
     }
+    case "reverse": {
+      const line = playLine(puzzle, mine.move);
+      const others = rest.map((s) => s.label).join("·");
+      return [
+        `${sol}에 백이 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 되어, 흑은 ${reply(mine.theirs.replies)}에 이어 받아야 해요. 백의 선수 자리예요.`,
+        `흑이 먼저 ${mine.label}에 막는 수는 백 돌을 단수로 몰지 않아 후수예요. 그래도 백의 선수를 없애요. 이렇게 상대의 선수 자리를 먼저 막는 후수 끝내기가 역끝내기예요.`,
+        `${others}부터 두면 백이 ${mine.label}에 선수로 두고, 흑이 받는 사이 남은 곳까지 가져가요. ${mine.label}부터 막으면 백이 ${line.white}에 둔 뒤 흑이 ${line.black}까지 둬, 세 곳 가운데 두 곳을 흑이 가져요.`,
+      ];
+    }
+    case "double": {
+      const line = playLine(puzzle, mine.move);
+      return [
+        `${sol}에 흑이 두면 백 ${subj(points(mine.mine.stones))}, 백이 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 돼요. 누가 두어도 상대가 꼭 받아야 하는 곳이라 양선수예요.`,
+        `흑이 먼저 두면 백이 ${line.white}에 이어 받은 사이 흑이 ${line.black}까지 둬요.`,
+        `다른 곳부터 두면 백이 ${mine.label}에 선수로 두고, 흑이 ${reply(mine.theirs.replies)}에 받는 사이 남은 곳까지 가져가요.`,
+      ];
+    }
   }
+}
+
+/** 흑이 `first`에 둔 뒤 백이 끝내기 곳 안에서 가장 좋게 받는 자리와, 그다음 흑이 두는 자리(문제 화면과 같은 읽기) */
+export function playLine(
+  puzzle: Endgame,
+  first: number,
+): { white: string; black: string } {
+  const area = spotsOf(puzzle).flat();
+  const start = puzzleState(puzzle).board;
+  const one = tryPlace(start, first, 1);
+  if (!one.ok) throw new Error(`${puzzle.id}: 첫 수를 둘 수 없다`);
+  const w = solveEndgame(one.board, area, 2).best.find((m) => m !== null);
+  if (w === undefined || w === null)
+    throw new Error(`${puzzle.id}: 백이 받지 않는다`);
+  const two = tryPlace(one.board, w, 2);
+  if (!two.ok) throw new Error(`${puzzle.id}: 백 수를 둘 수 없다`);
+  const b = solveEndgame(two.board, area, 1).best.find((m) => m !== null);
+  if (b === undefined || b === null)
+    throw new Error(`${puzzle.id}: 흑이 둘 곳이 없다`);
+  return { white: named(w), black: named(b) };
 }
 
 /** 끝내기 뒤 문제: 이 판의 크기·받는 자리·점수 차만 */
@@ -822,5 +860,19 @@ function endgameFacts(puzzle: Endgame): string[] {
         `${spotName(mine)}에 두면 백 ${subj(points(mine.mine.stones))} 단수가 되어 백은 ${reply(mine.mine.replies)}에 이어야 해요.`,
         `${topic(spotName(big))} ${big.size}점짜리로 ${mine.size < big.size ? `${mine.size}점짜리 ${mine.label}보다 크지만` : `${wa(mine.label)} 크기가 같지만`}, 백이 ${reply(mine.mine.replies)}에 받은 사이 흑이 ${named(big.move)}까지 둬요.`,
       ];
+    case "reverse": {
+      const line = playLine(puzzle, mine.move);
+      return [
+        `백이 ${spotName(mine)}에 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 되어 흑은 ${reply(mine.theirs.replies)}에 이어야 해요.`,
+        `흑이 ${mine.label}에 먼저 막자 백은 ${line.white}에 두고, 흑이 ${line.black}까지 뒀어요.`,
+      ];
+    }
+    case "double": {
+      const line = playLine(puzzle, mine.move);
+      return [
+        `${spotName(mine)}에 흑이 두면 백이 ${reply(mine.mine.replies)}에, 백이 두면 흑이 ${reply(mine.theirs.replies)}에 이어야 해요.`,
+        `흑이 먼저 두어 백이 ${line.white}에 받은 사이 ${line.black}까지 뒀어요.`,
+      ];
+    }
   }
 }

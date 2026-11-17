@@ -38,8 +38,11 @@ export const LADDER_THEMES: readonly CaptureTheme[] = [
 /** 패로 버티기: 팻감 쓰기(패를 따인 쪽), 팻감 받기·패 잇기(패를 따낸 쪽) */
 export type KoFightMode = "threat" | "answer" | "connect";
 
-/** 끝내기: 큰 곳부터(후수 둘), 선수부터(선수 하나와 후수 하나) */
-export type EndgameMode = "bigger" | "sente";
+/**
+ * 끝내기: 큰 곳부터(후수 둘), 선수부터(선수 하나와 후수 하나),
+ * 역끝내기(백의 선수 자리 하나와 후수 둘, 백의 선수를 흑이 먼저 막는다), 양선수(누가 두어도 선수인 자리 하나와 후수 둘)
+ */
+export type EndgameMode = "bigger" | "sente" | "reverse" | "double";
 
 /** 이름 있는 눈 모양: 직삼, 곡삼, T자 네 집, 오궁도화, 뭉친 다섯 집, 매화육궁 */
 export type LifeShape =
@@ -101,13 +104,15 @@ export type BadukPuzzle = {
     }
   | {
       /**
-       * 끝내기. 판은 다 막혔고 끝내기 두 곳(`spots`, 누구 것도 아닌 빈 자리)만 남았다. 두 곳 안에서만 둔다.
+       * 끝내기. 판은 다 막혔고 끝내기 두세 곳(`spots`, 누구 것도 아닌 빈 자리)만 남았다. 그 곳들 안에서만 둔다.
        * - bigger: 둘 다 후수. 큰 곳의 `solution`에 두면 푼 것이다
        * - sente: `solution`은 백을 단수로 모는 선수. 백이 받으면 남은 곳에 두어 푼다
+       * - reverse: `solution`은 백이 두면 흑이 받아야 하는 곳(백의 선수)을 흑이 먼저 막는 후수. 백이 남은 곳에 두면 흑도 남은 곳에 두어 푼다
+       * - double: `solution`은 흑이 두어도 백이 두어도 상대가 받아야 하는 곳(양선수). 백이 받으면 남은 곳에 두어 푼다
        */
       kind: "endgame";
       mode: EndgameMode;
-      spots: readonly [readonly string[], readonly string[]];
+      spots: readonly (readonly string[])[];
     }
   | {
       kind: "life";
@@ -138,7 +143,7 @@ type RawCapture = {
 type RawEndgame = {
   black: string[];
   white: string[];
-  spots: [string[], string[]];
+  spots: string[][];
   solution: string;
 };
 type RawKoFight = {
@@ -1072,6 +1077,235 @@ const ENDGAME_SENTE: readonly RawEndgame[] = [
   },
 ];
 
+/**
+ * 역끝내기: 끝내기 세 곳이 모두 2점짜리 후수인데, 그 가운데 한 곳은 백이 두면 흑 한 점이 단수가 되어 흑이 받아야 하는 곳(백의 선수)이다.
+ * 흑이 그곳을 먼저 막으면(후수) 백이 한 곳, 흑이 남은 곳을 둬 흑이 두 곳을 가진다. 다른 곳부터 두면 백이 그곳에 선수로 두고 남은 곳까지 가져간다.
+ * 흑 벽·경계 줄·백 벽의 9줄 판에 조각(빈 점 하나인 후수, 흑 벽 구멍 옆의 약한 흑 한 점)을 쌓아 무작위로 만든 판에서 엔진으로 찾았다.
+ * 처음 판에 단수인 돌은 없다. 판 대칭으로 돌려 놓았다(endgame.test.ts가 정답 하나뿐·모양 수를 본다)
+ */
+const ENDGAME_REVERSE: readonly RawEndgame[] = [
+  {
+    black: ["C9", "C8", "D8", "C7", "C6", "D5", "C4", "C3", "C2", "C1"],
+    white: [
+      "E9",
+      "E8",
+      "D7",
+      "E7",
+      "E6",
+      "E5",
+      "D4",
+      "E4",
+      "E3",
+      "D2",
+      "E2",
+      "D1",
+      "E1",
+    ],
+    spots: [["D9"], ["D6"], ["D3"]],
+    solution: "D6",
+  },
+  {
+    black: ["F9", "F8", "E7", "F6", "F5", "F4", "F3", "F2", "F1"],
+    white: [
+      "D9",
+      "E9",
+      "D8",
+      "E8",
+      "D7",
+      "D6",
+      "D5",
+      "E5",
+      "D4",
+      "E4",
+      "D3",
+      "D2",
+      "E2",
+      "D1",
+    ],
+    spots: [["E6"], ["E3"], ["E1"]],
+    solution: "E6",
+  },
+  {
+    black: ["A6", "B6", "C6", "D6", "E6", "F6", "H6", "J6", "E5", "G5"],
+    white: [
+      "A5",
+      "C5",
+      "H5",
+      "J5",
+      "A4",
+      "B4",
+      "C4",
+      "D4",
+      "E4",
+      "F4",
+      "G4",
+      "H4",
+      "J4",
+    ],
+    spots: [["B5"], ["D5"], ["F5"]],
+    solution: "F5",
+  },
+  {
+    black: ["D9", "E9", "E8", "D7", "E7", "E6", "E5", "E4", "E3", "D2", "E1"],
+    white: ["C9", "C8", "C7", "C6", "C5", "D5", "D4", "C3", "C2", "C1", "D1"],
+    spots: [["D8"], ["D6"], ["D3"]],
+    solution: "D3",
+  },
+  {
+    black: ["A5", "C5", "G5", "A4", "B4", "D4", "E4", "F4", "G4", "H4", "J4"],
+    white: ["A6", "B6", "C6", "D6", "F6", "G6", "H6", "J6", "B5", "E5", "J5"],
+    spots: [["D5"], ["F5"], ["H5"]],
+    solution: "D5",
+  },
+  {
+    black: ["E9", "F9", "E8", "E7", "E6", "E5", "E4", "F3", "E2", "E1"],
+    white: [
+      "G9",
+      "G8",
+      "F7",
+      "G6",
+      "F5",
+      "G5",
+      "G4",
+      "G3",
+      "F2",
+      "G2",
+      "F1",
+      "G1",
+    ],
+    spots: [["F8"], ["F6"], ["F4"]],
+    solution: "F4",
+  },
+];
+
+/**
+ * 양선수: 끝내기 세 곳이 모두 2점짜리인데, 한 곳은 흑이 두면 백 한 점이, 백이 두면 흑 한 점이 단수가 되는 곳(양선수)이다.
+ * 흑이 먼저 두면 백이 받은 사이 흑이 한 곳을 더 둔다. 다른 곳부터 두면 백이 양선수 자리에 선수로 두고 남은 곳까지 가져간다.
+ * 역끝내기와 같은 방법으로 엔진으로 찾았다(약한 흑 한 점과 약한 백 한 점이 빈 점 하나를 사이에 둔 조각)
+ */
+const ENDGAME_DOUBLE: readonly RawEndgame[] = [
+  {
+    black: ["F9", "F8", "F7", "E6", "F5", "F4", "E3", "F3", "E2", "F2", "F1"],
+    white: ["D9", "D8", "E8", "D7", "E7", "D6", "D5", "E4", "D3", "D2", "D1"],
+    spots: [["E9"], ["E5"], ["E1"]],
+    solution: "E5",
+  },
+  {
+    black: ["E9", "E8", "F7", "E6", "E5", "E4", "E3", "E2", "E1", "F1"],
+    white: [
+      "F9",
+      "G8",
+      "G7",
+      "F6",
+      "G6",
+      "G5",
+      "F4",
+      "G4",
+      "G3",
+      "F2",
+      "G2",
+      "G1",
+    ],
+    spots: [["F8"], ["F5"], ["F3"]],
+    solution: "F8",
+  },
+  {
+    black: ["A5", "B5", "D5", "E5", "G5", "H5", "J5", "C4", "F4", "G4"],
+    white: ["B4", "E4", "J4", "A3", "B3", "C3", "D3", "F3", "G3", "H3", "J3"],
+    spots: [["A4"], ["D4"], ["H4"]],
+    solution: "D4",
+  },
+  {
+    black: [
+      "D9",
+      "D8",
+      "D7",
+      "E6",
+      "D5",
+      "D4",
+      "D3",
+      "E3",
+      "C2",
+      "D2",
+      "E2",
+      "D1",
+    ],
+    white: [
+      "F9",
+      "G9",
+      "E8",
+      "F8",
+      "E7",
+      "F7",
+      "F6",
+      "F5",
+      "E4",
+      "F3",
+      "G3",
+      "F2",
+      "F1",
+      "G1",
+    ],
+    spots: [["E9"], ["E5"], ["E1"]],
+    solution: "E5",
+  },
+  {
+    black: [
+      "B4",
+      "G4",
+      "A3",
+      "B3",
+      "C3",
+      "D3",
+      "E3",
+      "F3",
+      "H3",
+      "J3",
+      "A2",
+      "D2",
+      "G2",
+    ],
+    white: [
+      "B6",
+      "A5",
+      "B5",
+      "C5",
+      "D5",
+      "E5",
+      "F5",
+      "G5",
+      "H5",
+      "A4",
+      "D4",
+      "F4",
+      "J4",
+    ],
+    spots: [["C4"], ["E4"], ["H4"]],
+    solution: "H4",
+  },
+  {
+    black: ["F9", "F8", "F7", "G7", "F6", "F5", "E4", "F3", "F2", "E1", "F1"],
+    white: [
+      "D9",
+      "D8",
+      "E8",
+      "D7",
+      "D6",
+      "E6",
+      "D5",
+      "E5",
+      "D4",
+      "C3",
+      "D3",
+      "C2",
+      "E2",
+      "D1",
+    ],
+    spots: [["E9"], ["E7"], ["E3"]],
+    solution: "E3",
+  },
+];
+
 const LIVE: readonly RawLife[] = [
   {
     black: ["C9", "D9", "G9", "C8", "F8", "G8", "C7", "D7", "E7", "F7"],
@@ -1701,5 +1935,17 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
     "선수 끝내기부터",
     "상대가 꼭 받아야 하는 선수가 있으면 그것부터 둬요. 상대가 받은 사이 남은 곳도 내가 둬요.",
     ENDGAME_SENTE,
+  ),
+  endgameSet(
+    "reverse",
+    "역끝내기",
+    "상대가 두면 내가 꼭 받아야 하는 곳(상대의 선수)이 있어요. 그곳을 내가 먼저 막는 후수 끝내기를 역끝내기라고 해요. 크기가 같은 후수보다 먼저 둬요.",
+    ENDGAME_REVERSE,
+  ),
+  endgameSet(
+    "double",
+    "양선수",
+    "누가 두어도 상대가 꼭 받아야 하는 곳을 양선수라고 해요. 다른 끝내기보다 먼저 둬요.",
+    ENDGAME_DOUBLE,
   ),
 ];

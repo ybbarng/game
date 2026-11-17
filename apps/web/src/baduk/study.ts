@@ -103,11 +103,14 @@ export function koLossStones(puzzle: KoFight): number[] {
 /** 패를 지면 잃는 흑 돌 수 */
 export const koLossOf = (puzzle: KoFight) => koLossStones(puzzle).length;
 
-/** 끝내기 두 곳의 자리 번호 */
-export const spotsOf = (puzzle: Endgame): [number[], number[]] => [
-  puzzle.spots[0].map(at),
-  puzzle.spots[1].map(at),
-];
+/** 끝내기 곳(두세 곳)의 자리 번호. 문제마다 곳이 둘 이상이다 */
+export const spotsOf = (
+  puzzle: Endgame,
+): [number[], number[], ...number[][]] => {
+  const [a, b, ...rest] = puzzle.spots;
+  if (!a || !b) throw new Error(`${puzzle.id}: 끝내기 곳이 둘보다 적다`);
+  return [a.map(at), b.map(at), ...rest.map((s) => s.map(at))];
+};
 
 /**
  * 끝내기 읽을 범위: 두 곳의 자리 전부. 이미 둔 자리도 넘긴다(엔진은 빈 자리에만 두고,
@@ -156,11 +159,15 @@ export function endgameGain(
   };
 }
 
-/** 끝내기 두 곳의 크기(처음 판에서, 곳마다 따로 읽는다) */
-export function spotSizesOf(puzzle: Endgame): [number, number] {
+/** 끝내기 곳마다의 크기(처음 판에서, 곳마다 따로 읽는다) */
+export function spotSizesOf(puzzle: Endgame): [number, number, ...number[]] {
   const { board } = puzzleState(puzzle);
-  const [a, b] = spotsOf(puzzle);
-  return [endgameSize(board, a), endgameSize(board, b)];
+  const [a, b, ...rest] = spotsOf(puzzle);
+  return [
+    endgameSize(board, a),
+    endgameSize(board, b),
+    ...rest.map((s) => endgameSize(board, s)),
+  ];
 }
 
 /** 노리는(살릴) 무리의 돌 자리 */
@@ -195,7 +202,8 @@ export function judgeMove(
   if (puzzle.kind === "endgame") {
     if (step === 0) {
       if (move !== solutionOf(puzzle)) return "wrong";
-      return puzzle.mode === "sente" ? "next" : "solved";
+      // 큰 곳부터는 한 수로 끝나고, 선수·역끝내기·양선수는 백이 둔 뒤 남은 곳까지 둔다
+      return puzzle.mode === "bigger" ? "solved" : "next";
     }
     const best = solveEndgame(state.board, endgameArea(puzzle, state), 1).best;
     return best.includes(move) ? "solved" : "wrong";
