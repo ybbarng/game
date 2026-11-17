@@ -6,6 +6,7 @@ export * from "./krrk";
 export * from "./kxk";
 export * from "./master";
 export * from "./pawn-ending";
+export * from "./queen-ending";
 export * from "./search";
 export * from "./see";
 export * from "./simulate";

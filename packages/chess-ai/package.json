@@ -5,7 +5,8 @@
   "type": "module",
   "description": "체스 컴퓨터 플레이어 — 입문·중수·고수·초고수",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./outside-pawn-proofs": "./src/outside-pawn-proofs.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

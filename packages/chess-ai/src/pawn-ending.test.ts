@@ -56,11 +56,28 @@ describe("킹과 폰 판 읽기: 끝에 닿는 판", () => {
     expect(solver.wins(s, PLIES)).toBe(false);
   });
 
-  it("백이 퀸이 되고 흑 폰이 멀리(자기 3번째 줄) 있으면 이긴다", () => {
+  it("백이 퀸이 된 뒤 흑 폰이 남으면 기본 판정은 이긴다고 하지 않고, 어림을 켜야 후보로 본다", () => {
+    // 흑 폰이 멀리(자기 3번째 줄) 있다. 끝까지 읽는 증명은 queen-ending.test.ts
     const s = fromFen("8/7P/p7/k7/8/8/8/4K3 w - - 0 1");
-    expect(new PawnEndingSolver().wins(s, PLIES)).toBe(true);
-    // 이 승리는 끝까지 읽은 것이 아니라 먼 폰 규칙에 기댄다
-    expect(new PawnEndingSolver({ farRule: false }).wins(s, PLIES)).toBe(false);
+    expect(new PawnEndingSolver().wins(s, PLIES)).toBe(false);
+    expect(new PawnEndingSolver({ guessFar: true }).wins(s, PLIES)).toBe(true);
+  });
+
+  it("어림으로 세운 후보 증명에서 승급 판을 모으고, 아니라고 알려 준 승급 판은 쓰지 않는다", () => {
+    const s = fromFen("8/7P/p7/k7/8/8/8/4K3 w - - 0 1");
+    const promote = pawnEndingMoves(s).find((m) => m.kind === "promote");
+    if (!promote) throw new Error("승급 수가 없다");
+    const leaves = new PawnEndingSolver({ guessFar: true }).proofPromotions(
+      "wins",
+      promote,
+      PLIES,
+    );
+    expect(leaves?.map((l) => l.queen)).toEqual([squareAt("h8")]);
+    const refuted = new PawnEndingSolver({
+      guessFar: true,
+      known: () => false,
+    });
+    expect(refuted.proofPromotions("wins", promote, PLIES)).toBeNull();
   });
 
   it("퀸이 되어도 흑 폰이 퀸 한 칸 앞까지 갈 수 있으면 이긴다고 하지 않는다(퀸 대 7번째 줄 폰은 비기기도 한다)", () => {
