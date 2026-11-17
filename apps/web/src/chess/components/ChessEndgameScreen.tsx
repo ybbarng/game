@@ -97,7 +97,7 @@ function EndgameLesson({
   return (
     <main
       data-game="chess"
-      className="flex min-h-dvh flex-col items-center gap-3 bg-[#1c1917] px-4 py-3 text-white"
+      className="flex min-h-dvh flex-col items-center gap-3 break-keep bg-[#1c1917] px-4 py-3 text-white wrap-anywhere"
     >
       <header className="flex w-full max-w-xl items-center gap-2 text-sm">
         <button

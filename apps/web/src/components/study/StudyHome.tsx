@@ -55,7 +55,10 @@ export function StudyHome({
   }, []);
   return (
     <main
-      className={cn("flex min-h-dvh justify-center p-4 text-white", background)}
+      className={cn(
+        "flex min-h-dvh justify-center break-keep p-4 text-white wrap-anywhere",
+        background,
+      )}
     >
       <div className="flex w-full max-w-md flex-col gap-4 py-4">
         <div className="flex items-center justify-between">
