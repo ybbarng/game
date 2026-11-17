@@ -44,6 +44,8 @@ export interface MasterLimits {
   guardNodes: number;
   /** 한 수에 위협 읽기 전부가 쓸 수 있는 노드 */
   threatNodes: number;
+  /** 상대 몰아붙이기를 끊는 자리를 확정하지 못하면 그 첫 수(급소)를 차지하나 */
+  takeKey: boolean;
   /** 앞수 읽기 가장 깊은 수와 노드 */
   maxDepth: number;
   searchNodes: number;
@@ -59,6 +61,7 @@ export const MASTER_LIMITS: MasterLimits = {
   threatNodes: 12000,
   maxDepth: 6,
   searchNodes: 6000,
+  takeKey: true,
 };
 
 /** 뿌리에서 볼 후보 수 */
@@ -328,9 +331,9 @@ function guards(
   const foe = other(stone);
   const guardLength = threes ? limits.guardMoves : limits.vcfMoves;
   const probe = pool.run(threes ? limits.vctNodes : limits.vcfNodes, (b) =>
-    hasThreatWin(board, foe, variant, guardLength, threes, b),
+    threatWin(board, foe, variant, guardLength, threes, b),
   );
-  if (!probe.value) return null;
+  if (probe.value === null) return null;
   const tries = [...candidates];
   for (const f of fourPoints(board, stone, variant))
     if (!tries.includes(f)) tries.push(f);
@@ -347,6 +350,15 @@ function guards(
     // 다 읽지 못했으면 끊는지 모르므로 넣지 않는다.
     if (check.done && !check.value) found.push(at);
   }
+  // 끊는 자리를 하나도 확정하지 못했으면(읽기가 노드 안에 끝나지 않음) 상대 몰아붙이기의 첫 수(급소)를 차지한다.
+  // 렌주에서만 쓴다(docs/20 9절: 렌주 백 10승 13패 → 25승 1패, 일반 규칙은 백 11승 → 0승으로 나빠져 끔).
+  if (
+    found.length === 0 &&
+    limits.takeKey &&
+    variant === "renju" &&
+    allowed(board, probe.value, stone, variant)
+  )
+    found.push(probe.value);
   return found;
 }
 

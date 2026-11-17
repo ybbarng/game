@@ -480,6 +480,52 @@ test(
   },
 );
 
+test(
+  "오목 수 배우기: 3·3 함정을 피해 열린 셋으로 백을 막게 하고 4·3으로 이긴다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    const play = (name: string) => placeAt(page, ...xyOfName(name), false);
+    const last = () => page.locator("[data-last]").getAttribute("data-last");
+    await page.goto("/omok");
+    await page.getByRole("button", { name: /오목 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const set = page.getByRole("region", { name: "3·3 함정 피하기" });
+    await expect(set.getByText("0/6")).toBeVisible();
+    await set.getByRole("button", { name: "풀기 시작" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "넷과 열린 셋으로 몰아붙여 네 수 안에 이기세요.",
+    );
+
+    // J9는 열린 셋 둘이 한 번에 생겨 흑에게 3·3 금지다. 안내만 하고 틀린 것으로 치지 않는다.
+    await play("J9");
+    await expect(page.getByRole("status")).toHaveText("J9: 흑은 3·3 금지예요.");
+    // F9로 열린 셋 하나를 만들면 백이 E9를 막는다.
+    await play("F9");
+    await expect(page.getByRole("status")).toHaveText(
+      "계속 넷과 열린 셋으로 몰아 다섯을 만드세요.",
+      { timeout: 10_000 },
+    );
+    await expect.poll(last).toBe("E9");
+    // I12는 넷과 열린 셋(4·3). 백이 넷을 막으면 셋을 열린 넷으로 잇는다.
+    await play("I12");
+    await expect.poll(last, { timeout: 10_000 }).toBe("I8");
+    // G10은 열린 넷(다섯 자리 J13·E8). 백이 한쪽을 막을 때까지 기다린다(마지막 수 표시는 내 수에도 붙는다).
+    await play("G10");
+    await expect.poll(last, { timeout: 10_000 }).toMatch(/^(J13|E8)$/);
+    await play((await last()) === "J13" ? "E8" : "J13");
+    await expect(page.getByRole("status")).toHaveText("다섯!");
+    await expect(
+      page.getByText(/흑에게 3·3 금지라 둘 수 없어요/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/넷과 열린 셋을 한 번에 만들어요/),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath("omok-study-threes.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+    await expect(set.getByText("1/6")).toBeVisible();
+  },
+);
+
 test("오목 초고수: 옵션에서 고르면 상대 이름에 보이고 한 수를 받는다", async ({
   page,
 }, info) => {
