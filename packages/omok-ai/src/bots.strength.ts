@@ -109,10 +109,11 @@ it("한 수에 걸리는 시간", () => {
   timing("초고수", omokMasterBot, omokExpertBot, 6);
 });
 
-// 게임 기본값인 렌주로도 잰다(2026-11-03 game-85 검토). 아직 이 맥에서 돌리지 않았다(로컬 성능 측정 자제).
+// 게임 기본값인 렌주로도 잰다(2026-11-03 game-85 검토). 2026-11-17 처음 재 보니 12승/20판(백일 때 지는 판이 많음),
+// 급소 차지(master.ts takeKey)를 넣은 뒤 18승/20판(docs/20 9절).
 it("렌주: 초고수는 고수를 이기고, 시간 안에 둔다", () => {
   expect(duel(omokMasterBot, omokExpertBot, 20, RENJU)).toBeGreaterThanOrEqual(
-    14,
+    16,
   );
   timing("초고수", omokMasterBot, omokExpertBot, 6, RENJU);
 });
