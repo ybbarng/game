@@ -3,7 +3,7 @@ import { reductionGeometry, slotPaired } from "@game/cube-reduction";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 import { scrambledState } from "./scramble-test-util";
-import { yauReduce } from "./yau";
+import { type YauSideHold, yauReduce } from "./yau";
 import { yauEdgesShort } from "./yau-edges";
 
 /** 4×4 컴퓨터 야우의 짧은 엣지 짝(docs/47 10-5): 십자와 센터를 지키며 엣지 열둘을 모두 짝짓는다 */
@@ -13,9 +13,12 @@ const D_FACE = 3;
 const crossSlots = g.slots.filter((s) => s.faces.includes(D_FACE));
 
 /** 섞기에 단원 규칙의 앞 네 단계(센터 둘 → 십자 셋 → 옆 센터 → 마지막 십자 엣지)를 둔 상태와 단원 규칙 엣지 짝 수 */
-function beforeEdges(seed: number): { state: PuzzleState; taught: number } {
+function beforeEdges(
+  seed: number,
+  hold: YauSideHold = "orange",
+): { state: PuzzleState; taught: number } {
   const start = scrambledState("444", seed);
-  const { stages } = yauReduce(start);
+  const { stages } = yauReduce(start, undefined, "taught", hold);
   const front = stages
     .slice(0, 4)
     .map((st) => st.moves)
@@ -61,8 +64,8 @@ describe("짧은 엣지 짝", () => {
     },
   );
 
-  it("단원 길이 십자 엣지 하나를 빼냈으면(씨앗 1134) 남은 십자 셋을 지키고 나머지를 모두 짝짓는다", () => {
-    const { state } = beforeEdges(1134);
+  it("계획 표 5의 옛 쥐기가 십자 엣지 하나를 빼냈으면(씨앗 1134) 남은 십자 셋을 지키고 나머지를 모두 짝짓는다", () => {
+    const { state } = beforeEdges(1134, "shortest");
     const before = faceColors(4, state);
     expect(placedCross(before)).toBe(3);
     const after = play(state, yauEdgesShort(state));
