@@ -439,6 +439,13 @@ const studyScreen = (id: string, review?: Review): Screen =>
       ? { kind: "studyLesson", lessonId: id }
       : { kind: "puzzle", puzzleId: id, review };
 
+/** 주소의 `?seed=`(화면 시험이 같은 판을 다시 할 때, 민화투·고스톱·숫자야구와 같은 길) */
+function seedFromUrl(): number | undefined {
+  const raw = new URLSearchParams(window.location.search).get("seed");
+  const seed = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(seed) && seed >= 0 ? seed : undefined;
+}
+
 /** 바둑(/baduk): 첫 화면, 옵션, 규칙, 배우기, 다함께 바둑 방, 대국 화면 */
 export function BadukApp() {
   // 판·방을 떠날 때(나가기 단추든 뒤로가기든) 하는 정리
@@ -592,6 +599,7 @@ export function BadukApp() {
         if (saved) useBaduk.getState().resume(saved);
         else {
           const s = useBadukSettings.getState();
+          const seed = seedFromUrl();
           useBaduk.getState().newGame({
             rules: {
               size: s.size,
@@ -601,6 +609,7 @@ export function BadukApp() {
             },
             level: s.level,
             pick: s.pick,
+            ...(seed !== undefined ? { seed } : {}),
           });
         }
         setScreen({ kind: "playing" });

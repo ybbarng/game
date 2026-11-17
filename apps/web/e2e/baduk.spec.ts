@@ -1053,6 +1053,9 @@ test("바둑 초고수: 옵션에서 고르고, 생각하는 동안 「생각하
   expect(seen).toContain("컴퓨터가 생각하는 중…");
 });
 
+/** 초고수 중반 시험의 판 씨앗(주소 `?seed=`) */
+const MID_SEED = 20261118;
+
 /** 9줄 자리를 가운데에서 가까운 차례로(1선은 뺀다). 같은 거리는 이름 차례 */
 const NEAR_CENTER = Array.from({ length: SIZE * SIZE }, (_, i) => ({
   x: i % SIZE,
@@ -1101,19 +1104,20 @@ test(
   "바둑 초고수: 중반까지 두어도 휴대폰에서 화면이 굳지 않는다(CPU 4배 느리게, 워커 계산)",
   { tag: "@only-phone-portrait" },
   async ({ page }, info) => {
-    // 판 씨앗을 정해 언제 돌려도 같은 판이 되게 한다(컴퓨터는 판 씨앗의 난수만 쓴다).
-    await page.addInitScript(() => {
-      let s = 20261118;
-      Math.random = () => {
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        return s / 2 ** 32;
-      };
-    });
-    await page.goto("/baduk");
+    // 주소 씨앗으로 판을 정해 언제 돌려도 같은 판이 되게 한다(컴퓨터는 판 씨앗의 난수만 쓴다).
+    // Math.random을 덮지 않는다(효과음이 기기마다 다른 횟수로 불러 씨앗이 흔들린다, e2e-math-random.test.ts).
+    await page.goto(`/baduk?seed=${MID_SEED}`);
     await startSolo(page, "초고수");
     await expect(page.getByRole("status")).toContainText("내 차례");
+    // 옵션 화면을 오가도 주소 씨앗이 남아 이 판이 그 씨앗으로 열렸다(이어하기 저장본의 씨앗).
+    await playNearCenter(page, true);
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem("baduk-save") ?? "{}").seed,
+      ),
+    ).toBe(MID_SEED);
     // 중반까지: 내 수 여섯 개(두 편 합 열두 수, 9줄 판의 15%)를 보통 속도로 둔다.
-    for (let i = 0; i < 6; i++) await playNearCenter(page, true);
+    for (let i = 1; i < 6; i++) await playNearCenter(page, true);
     // 휴대폰처럼 CPU를 4배 느리게 하고, 네 수 동안 화면 스레드의 긴 작업(50ms 넘는 일)과 프레임 간격을 잰다.
     await page.evaluate(() => {
       const w = window as unknown as { __long: number[] };
