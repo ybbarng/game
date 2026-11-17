@@ -1,4 +1,6 @@
+import { MASTER_PLAN_LABELS, type MasterPlanId } from "@game/janggi-ai";
 import { OPENING_LINE_MOVES } from "../src/janggi/opening-line";
+import { planText } from "../src/janggi/plan-text";
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
 import { expect, type Locator, type Page, ready, test } from "./test";
@@ -1085,6 +1087,155 @@ test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 �
   await expect(page.locator("[data-plan]")).toContainText("노림: ");
   await page.screenshot({ path: info.outputPath("janggi-master.png") });
 });
+
+/**
+ * 둘 수 있는 내 기물(초, `data-movable`) 가운데 판 차례로 첫 기물을 골라 처음 보이는 갈 곳으로 옮긴다.
+ * 고르는 수가 판 모양에만 달려 있어 기기 속도와 상관없이 같은 수가 된다
+ */
+async function playFirstMovable(page: Page) {
+  const from = await page
+    .locator('[data-piece^="c"][data-movable]')
+    .first()
+    .getAttribute("data-point");
+  if (!from) throw new Error("둘 수가 없다");
+  await tapPoint(page, from, false);
+  const target = page.locator("[data-target]").first();
+  await target.waitFor();
+  const to = (await target.getAttribute("data-target")) as string;
+  await tapPoint(page, to, false);
+  await expect(
+    page.locator(`[data-point="${to}"][data-piece^="c"]`),
+  ).toHaveCount(1);
+}
+
+/**
+ * 초고수와 스무 수(두 편 열 수씩)를 둔 중반 판의 이어하기 저장본. 이 판을 실제로 두어 저장된 것을 옮겼다.
+ * 씨앗을 `Math.random`으로 정하면 기기마다 판이 달라진다: 효과음이 소리 상자를 만들 때 잡음을 `Math.random`으로
+ * 채워 그 횟수가 오디오 표본율을 따른다(48kHz면 22만 번, 44.1kHz면 20만 번, 2026-11-18 CI에서 다른 판이 됨).
+ * 그래서 씨앗과 기록을 저장본으로 넣는다. 사람 자리는 1번이고 초(먼저 두는 편)다.
+ */
+const MASTER_MIDGAME = {
+  version: 1,
+  rules: { bikjang: "score", winsToFinish: 1 },
+  seed: 1154969930,
+  humanSeat: 1,
+  level: 3,
+  log: [
+    { seat: 0, action: { type: "setup", setup: "NENE" }, bot: true },
+    { seat: 1, action: { type: "setup", setup: "ENEN" } },
+    ...[
+      [54, 45],
+      [2, 21],
+      [45, 36],
+      [27, 36],
+      [56, 47],
+      [25, 20],
+      [47, 38],
+      [29, 38],
+      [58, 49],
+      [20, 83],
+      [49, 40],
+      [83, 81],
+      [40, 31],
+      [6, 31],
+      [60, 51],
+      [19, 22],
+      [76, 77],
+      [81, 84],
+      [51, 42],
+      [31, 56],
+    ].map(([from, to], i) => ({
+      seat: i % 2 === 0 ? 1 : 0,
+      action: { type: "move", from, to },
+      ...(i % 2 === 1 ? { bot: true } : {}),
+    })),
+  ],
+};
+
+/** 노림 줄에 나올 수 있는 글 전부 */
+const PLAN_NOTES = (Object.keys(MASTER_PLAN_LABELS) as MasterPlanId[]).map(
+  (id) => `노림: ${planText(id)}`,
+);
+
+test(
+  "장기 초고수: 중반까지 두어도 휴대폰에서 화면이 굳지 않고 노림 줄이 잘리지 않는다(CPU 4배 느리게)",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 중반 판(스무 수째)을 이어하기로 연다. 컴퓨터는 저장본 씨앗의 난수만 쓰고, 내 수는 판 모양으로만 고르니
+    // 어느 기기에서 돌려도 같은 판이 된다.
+    await page.addInitScript(
+      (saved) => localStorage.setItem("janggi-save", saved),
+      JSON.stringify(MASTER_MIDGAME),
+    );
+    await page.goto("/janggi");
+    await ready(page);
+    await page.getByRole("button", { name: /하던 게임 이어하기/ }).click();
+    await expect(page.locator("[data-move-count]")).toHaveAttribute(
+      "data-move-count",
+      "20",
+    );
+    // 장군을 받으면 상태 줄은 「장군! 궁을 지키세요.」다. 둘 다 내 차례다.
+    const myTurn = /내 차례|궁을 지키세요/;
+    await expect(page.getByRole("status")).toContainText(myTurn);
+    const plan = page.locator("[data-plan]");
+    const fits = () => plan.evaluate((el) => el.scrollWidth <= el.clientWidth);
+    const seen = new Set<string>([(await plan.textContent()) ?? ""]);
+    expect(await fits()).toBe(true);
+    await page.screenshot({ path: info.outputPath("janggi-master-mid.png") });
+    // 휴대폰처럼 CPU를 4배 느리게 하고, 네 수 동안 화면 스레드의 긴 작업(50ms 넘는 일)과 프레임 간격을 잰다.
+    await page.evaluate(() => {
+      const w = window as unknown as { __long: number[] };
+      w.__long = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries())
+          w.__long.push(Math.round(e.duration));
+      }).observe({ type: "longtask" });
+    });
+    await slowCpu(page, 4);
+    let maxGap = 0;
+    for (let i = 0; i < 4; i++) {
+      // 컴퓨터는 내 수가 들어가자마자 생각을 시작하니 내 수 전부터 잰다.
+      await watchFrames(page);
+      await playFirstMovable(page);
+      await expect(page.getByRole("status")).toContainText(myTurn, {
+        timeout: 30_000,
+      });
+      maxGap = Math.max(maxGap, (await stopFrames(page)).maxGap);
+      seen.add((await plan.textContent()) ?? "");
+      expect(await fits()).toBe(true);
+    }
+    await expect(page.locator("[data-move-count]")).toHaveAttribute(
+      "data-move-count",
+      "28",
+    );
+    const long = await page.evaluate(
+      () => (window as unknown as { __long: number[] }).__long,
+    );
+    const note = `중반 CPU 4배: 가장 긴 프레임 간격 ${maxGap}ms, 긴 작업 ${long.length}개 가장 긴 ${Math.max(0, ...long)}ms, 본 노림 ${[...seen].join(" / ")}`;
+    info.annotations.push({ type: "frames", description: note });
+    console.info(`[장기 초고수] ${note}`);
+    // 컴퓨터 수는 워커에서 세니 화면 스레드는 내 수·컴퓨터 수를 그리는 일만 한다. 화면 스레드에서 세면
+    // 이 맥에서 긴 작업이 140ms 남짓 생긴다(2026-11-18). CI 기기 속도에 흔들리지 않게 넉넉히 400ms로 가린다.
+    expect(maxGap).toBeLessThan(400);
+    expect(Math.max(0, ...long)).toBeLessThan(400);
+    await slowCpu(page, 1);
+    // 노림 글 전부가 이 휴대폰(412px)과 더 좁은 휴대폰(360px)에서 잘리지 않는지 글을 바꿔 넣어 잰다.
+    for (const width of [412, 360]) {
+      await page.setViewportSize({ width, height: 800 });
+      for (const text of PLAN_NOTES) {
+        const ok = await plan.evaluate((el, t) => {
+          const before = el.textContent;
+          el.textContent = t;
+          const fit = el.scrollWidth <= el.clientWidth;
+          el.textContent = before;
+          return fit;
+        }, text);
+        expect(ok, `${width}px에서 「${text}」`).toBe(true);
+      }
+    }
+    await page.screenshot({ path: info.outputPath("janggi-master-360.png") });
+  },
+);
 
 test(
   "장기: 초고수가 생각하는 동안에도 화면이 멈추지 않는다(CPU 4배 느리게, 워커 계산)",
