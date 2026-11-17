@@ -991,3 +991,68 @@ test(
     await page.screenshot({ path: info.outputPath("chess-endgame-mate.png") });
   },
 );
+
+test(
+  "체스 수 배우기: 룩 둘 사다리 메이트는 방법을 먼저 읽고, 「수 보기」대로 두면 흑이 버텨도 정해진 수 안에 메이트한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 흑이 받기 전 잠깐 기다리는 시간(600ms)을 시계로 건너뛴다
+    await page.clock.install();
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const ladder = page.getByRole("region", { name: "룩 둘로 사다리 메이트" });
+    await expect(ladder.getByText("0/3")).toBeVisible();
+    await ladder.getByRole("button", { name: "풀기 시작" }).click();
+
+    // 처음 여는 연습은 단원부터: 맥락 → 줄 이름 → 밀기(그림의 초록 고리) → … → 연습
+    const lesson = page.getByRole("region", { name: "방법" });
+    await expect(lesson.getByRole("heading")).toHaveText("룩 둘로 끝내기");
+    await expect(
+      page.getByText("룩 둘로 사다리 메이트 방법 1/10"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "다음" }).click();
+    await expect(lesson.getByRole("heading")).toHaveText("줄 이름 붙이기");
+    await page.screenshot({ path: info.outputPath("chess-ladder-names.png") });
+    await page.getByRole("button", { name: "다음" }).click();
+    await expect(lesson.getByRole("heading")).toHaveText("한 줄씩 밀기");
+    // 그림에서 방법이 고르는 수(h3 → h5)를 초록 고리로 보인다
+    await expect(page.locator("[data-hint]")).toHaveCount(2);
+    await page.screenshot({ path: info.outputPath("chess-ladder-lesson.png") });
+    for (let i = 3; i < 10; i++)
+      await page.getByRole("button", { name: "다음" }).click();
+    await expect(lesson.getByRole("heading")).toHaveText(
+      "그림으로 보기: 마지막 메이트",
+    );
+    await page.getByRole("button", { name: "연습 시작" }).click();
+
+    const status = page.getByRole("status");
+    await expect(status).toHaveText(
+      "흑 킹을 20수 안에 메이트하세요. 지금 1수째예요.",
+    );
+    // 「수 보기」가 보이는 방법의 수를 그대로 둔다. 흑은 짧은 깊이 탐색으로 버틴다
+    let shot = false;
+    for (let move = 1; move <= 20; move++) {
+      await page.getByRole("button", { name: "수 보기" }).click();
+      await expect(page.getByTestId("endgame-step")).toBeVisible();
+      if (!shot) {
+        await page.screenshot({
+          path: info.outputPath("chess-ladder-show.png"),
+        });
+        shot = true;
+      }
+      const hint = page.locator("[data-hint]");
+      const to = (await hint.nth(1).getAttribute("data-hint")) as string;
+      await tapSquare(page, to, false);
+      await expect(status).toHaveText(/흑 킹이 받는 중…|체크메이트!/);
+      if ((await status.textContent()) === "체크메이트!") break;
+      await page.clock.fastForward(700);
+      await expect(status).toHaveText(
+        `흑 킹을 20수 안에 메이트하세요. 지금 ${move + 1}수째예요.`,
+      );
+    }
+    await expect(status).toHaveText("체크메이트!");
+    await expect(page.getByText(/수 만에 메이트했어요\./)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("chess-ladder-mate.png") });
+  },
+);

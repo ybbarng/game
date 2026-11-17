@@ -1,6 +1,8 @@
 /*
- * 체스 수 배우기 「기본 엔드게임」(docs/23): 킹+퀸 대 킹, 킹+룩 대 킹을 메이트하는 단원과 연습.
+ * 체스 수 배우기 「기본 엔드게임」(docs/23): 킹+퀸 대 킹, 킹+룩 대 킹, 킹+룩 둘 대 킹을 메이트하는 단원과 연습.
  * 단원 글의 방법은 `endgame-guide.ts`의 `guideMove`와 한 단계씩 같다. 퀸과 룩이 같은 방법을 쓴다.
+ * 룩 둘(사다리 메이트)은 `ladder-guide.ts`의 `ladderMove`, 글은 `ladder-lesson.ts`. 흑은 메이트 거리 표 대신
+ * 짧은 깊이 탐색으로 버틴다(`@game/chess-ai` `krrk.ts`).
  * - 단원: 읽는 쪽 차례대로 늘어놓은 쪽(page). 쪽마다 판 그림(FEN)과, 그 판에서 방법이 고르는 수를 초록 고리로
  * - 연습: 시작 판(FEN)에서 흑 킹(컴퓨터)이 메이트 거리 표로 가장 오래 버틴다. 정해진 수 안에 메이트하면 성공,
  *   스테일메이트·퀸(룩)을 내줌·수를 넘김은 실패
@@ -8,22 +10,64 @@
  */
 
 import {
+  type KrrkBoard,
   type KxkPiece,
+  krrkBlackMoves,
+  krrkBlackPlayed,
+  krrkDefense,
+  krrkMated,
+  krrkStalemate,
+  krrkWhiteMoves,
+  krrkWhitePlayed,
   kxkDefense,
   kxkMated,
   kxkStalemate,
+  kxkWhiteDistance,
+  kxkWhiteMoves,
 } from "@game/chess-ai";
 import { type Cell, parseFen } from "@game/chess-engine";
 
 import { obj, ro, subj, topic, wa } from "@/lib/josa";
 
-import { type GuideRule, type KxkBoard, whitePlayed } from "./endgame-guide";
+import {
+  type Frame,
+  type GuideRule,
+  guideMove,
+  type KxkBoard,
+  type Tie,
+  whitePlayed,
+} from "./endgame-guide";
+import { type LadderRule, ladderMove } from "./ladder-guide";
+import { ladderPages, ladderSteps } from "./ladder-lesson";
 
-/** 기물마다 연습에서 메이트해야 하는 수(백의 수). 방법대로 두면 모든 판에서 퀸 22수·룩 27수 안에 끝난다 */
-export const ENDGAME_LIMIT: Record<KxkPiece, number> = { Q: 25, R: 35 };
+/** 연습 기물: 퀸 하나(Q), 룩 하나(R), 룩 둘(RR) */
+export type EndgamePiece = KxkPiece | "RR";
 
-/** 기물 이름. 뒤 조사는 조사 도우미로 고른다 */
-export const PIECE_WORD: Record<KxkPiece, string> = { Q: "퀸", R: "룩" };
+/** 방법의 단계 이름(퀸·룩 하나와 룩 둘) */
+export type MethodRule = GuideRule | LadderRule;
+
+/**
+ * 기물마다 연습에서 메이트해야 하는 수(백의 수). 방법대로 두면 모든 판에서 퀸 22수·룩 27수 안에 끝난다.
+ * 룩 둘은 흑이 어떻게 받아도 표본 8만여 판에서 18수 안에 끝났다(ladder-guide.test.ts)
+ */
+export const ENDGAME_LIMIT: Record<EndgamePiece, number> = {
+  Q: 25,
+  R: 35,
+  RR: 20,
+};
+
+/** 기물 이름. 뒤 조사는 조사 도우미로 고른다(룩 둘의 「잡을 수 있는 룩」도 「룩」) */
+export const PIECE_WORD: Record<EndgamePiece, string> = {
+  Q: "퀸",
+  R: "룩",
+  RR: "룩",
+};
+
+/** 연습 판: 백 킹·흑 킹·퀸이나 룩 자리. 룩 둘이면 둘째 룩(`q`)과, 방법이 지금 미는 쪽(`frame`)도 둔다 */
+export interface DrillBoard extends KxkBoard {
+  q?: number;
+  frame?: Frame | null;
+}
 
 /** 단원 한 쪽 */
 export interface EndgamePage {
@@ -33,18 +77,19 @@ export interface EndgamePage {
   /** 판 그림(백 차례). 없으면 글만 */
   fen?: string;
   /** 판 그림에서 초록 고리로 보일 수(칸 이름 둘)와, 그 수가 방법의 어느 단계인지(시험이 맞춰 본다) */
-  shows?: { from: string; to: string; rule: GuideRule };
+  shows?: { from: string; to: string; rule: MethodRule };
 }
 
 /** 방법의 단계 하나(단원 글과 연습 화면의 「수 보기」 설명이 함께 쓴다) */
 export interface MethodStep {
-  rule: GuideRule;
+  rule: MethodRule;
   name: string;
   text: string;
 }
 
 /** 방법의 단계들. 위에서부터 차례로 보고, 처음 맞는 단계의 수를 둔다 */
-export function methodSteps(piece: KxkPiece): MethodStep[] {
+export function methodSteps(piece: EndgamePiece): MethodStep[] {
+  if (piece === "RR") return ladderSteps(ENDGAME_LIMIT.RR);
   const P = PIECE_WORD[piece];
   const far = `막는 줄을 따라 흑 킹에서 가장 먼 칸`;
   const steps: MethodStep[] = [
@@ -89,7 +134,8 @@ export function methodSteps(piece: KxkPiece): MethodStep[] {
 }
 
 /** 단원: 맥락 → 낱말 → 늘 지킬 것 → 방법 → 그림으로 보기 → 연습 */
-export function endgamePages(piece: KxkPiece): EndgamePage[] {
+export function endgamePages(piece: EndgamePiece): EndgamePage[] {
+  if (piece === "RR") return ladderPages(ENDGAME_LIMIT.RR);
   const P = PIECE_WORD[piece];
   const K = piece;
   const limit = ENDGAME_LIMIT[piece];
@@ -179,20 +225,20 @@ export function endgamePages(piece: KxkPiece): EndgamePage[] {
 /** 연습 하나 */
 export interface EndgameDrill {
   id: string;
-  piece: KxkPiece;
+  piece: EndgamePiece;
   /** 시작 판(백 차례) */
   fen: string;
 }
 
 export interface EndgameSet {
   id: string;
-  piece: KxkPiece;
+  piece: EndgamePiece;
   title: string;
   summary: string;
   drills: readonly EndgameDrill[];
 }
 
-const drills = (piece: KxkPiece, fens: readonly string[]): EndgameDrill[] =>
+const drills = (piece: EndgamePiece, fens: readonly string[]): EndgameDrill[] =>
   fens.map((fen, i) => ({
     id: `end-${piece.toLowerCase()}-${i + 1}`,
     piece,
@@ -223,6 +269,17 @@ export const ENDGAME_SETS: readonly EndgameSet[] = [
       "R7/8/8/8/4k3/8/8/7K w - - 0 1",
     ]),
   },
+  {
+    id: "end-rook-ladder",
+    piece: "RR",
+    title: "룩 둘로 사다리 메이트",
+    summary: `룩 둘이 번갈아 체크해 흑 킹을 한 줄씩 판 끝 줄로 밀어요. 내 킹은 거의 쓰지 않고 ${ENDGAME_LIMIT.RR}수 안에 메이트해요.`,
+    drills: drills("RR", [
+      "8/8/8/3k4/8/8/8/R3K2R w - - 0 1",
+      "7R/8/8/4k3/8/8/8/R6K w - - 0 1",
+      "R6R/8/8/8/3k4/8/8/4K3 w - - 0 1",
+    ]),
+  },
 ];
 
 /** 연습 id로 묶음과 차례를 찾는다 */
@@ -235,23 +292,79 @@ export function findDrill(id: string) {
   return null;
 }
 
+/** 룩 둘 판을 엔진 계산 판으로(잡힌 룩은 -1) */
+const rr = (b: DrillBoard): KrrkBoard => ({
+  wk: b.wk,
+  bk: b.bk,
+  p: b.p,
+  q: b.q ?? -1,
+});
+
 /** FEN을 판(백 킹·흑 킹·퀸이나 룩 자리)으로 */
-export function drillBoard(piece: KxkPiece, fen: string): KxkBoard {
+export function drillBoard(piece: EndgamePiece, fen: string): DrillBoard {
   const board = parseFen(fen).board;
-  return {
-    wk: board.indexOf("wK"),
-    bk: board.indexOf("bK"),
-    p: board.indexOf(`w${piece}`),
-  };
+  const wk = board.indexOf("wK");
+  const bk = board.indexOf("bK");
+  if (piece === "RR") {
+    const rooks = board.flatMap((c, i) => (c === "wR" ? [i] : []));
+    return { wk, bk, p: rooks[0] ?? -1, q: rooks[1] ?? -1, frame: null };
+  }
+  return { wk, bk, p: board.indexOf(`w${piece}`) };
 }
 
 /** 판을 엔진 판 그림(칸 64개)으로 */
-export function drillCells(piece: KxkPiece, b: KxkBoard): Cell[] {
+export function drillCells(piece: EndgamePiece, b: DrillBoard): Cell[] {
   const cells: Cell[] = Array<Cell>(64).fill("");
   cells[b.wk] = "wK";
   cells[b.bk] = "bK";
-  cells[b.p] = `w${piece}`;
+  if (piece === "RR") {
+    for (const r of [b.p, b.q ?? -1]) if (r >= 0) cells[r] = "wR";
+  } else cells[b.p] = `w${piece}`;
   return cells;
+}
+
+/** 백 차례에 둘 수 있는 수 */
+export function drillMoves(
+  piece: EndgamePiece,
+  b: DrillBoard,
+): { from: number; to: number }[] {
+  if (piece === "RR") return krrkWhiteMoves(rr(b));
+  return kxkWhiteMoves(piece, b.wk, b.bk, b.p).map((m) => ({
+    from: m.from,
+    to: m.to,
+  }));
+}
+
+/** 방법이 이 판에서 둘 수(「힌트」·「수 보기」). 룩 둘은 판에 적어 둔 미는 쪽을 이어 쓴다 */
+export function drillGuide(
+  piece: EndgamePiece,
+  b: DrillBoard,
+  tie: Tie = "first",
+): { from: number; to: number; rule: MethodRule } | null {
+  if (piece === "RR") return ladderMove(rr(b), tie, b.frame ?? null);
+  return guideMove(piece, b, tie);
+}
+
+/**
+ * 백의 수를 둔 판. 룩 둘이면 방법이 이 판에서 고른 미는 쪽을 적어 둔다(내가 방법과 다른 수를 두어도 미는 쪽은 이어 간다)
+ */
+export function drillPlayed(
+  piece: EndgamePiece,
+  b: DrillBoard,
+  move: { from: number; to: number },
+): DrillBoard {
+  if (piece !== "RR") return whitePlayed(b, move);
+  const frame = ladderMove(rr(b), "first", b.frame ?? null)?.frame;
+  return {
+    ...krrkWhitePlayed(rr(b), move),
+    frame: frame ?? b.frame ?? null,
+  };
+}
+
+/** 이 시작 판을 가장 빨리 메이트하는 수(메이트 거리 표가 있는 퀸·룩 하나만). 모르면 null */
+export function drillBest(piece: EndgamePiece, b: DrillBoard): number | null {
+  if (piece === "RR") return null;
+  return kxkWhiteDistance(piece, b.wk, b.bk, b.p);
 }
 
 /** 실패한 까닭 */
@@ -264,27 +377,48 @@ export type DrillMiss = "stalemate" | "lost" | "limit";
  * - 그 밖에는 흑이 받는다
  */
 export function judgeDrill(
-  piece: KxkPiece,
-  before: KxkBoard,
+  piece: EndgamePiece,
+  before: DrillBoard,
   move: { from: number; to: number },
   step: number,
 ): { verdict: "solved" | "next" } | { verdict: "wrong"; miss: DrillMiss } {
-  const b = whitePlayed(before, move);
-  if (kxkMated(piece, b.wk, b.bk, b.p)) return { verdict: "solved" };
-  if (kxkStalemate(piece, b.wk, b.bk, b.p))
-    return { verdict: "wrong", miss: "stalemate" };
-  if (kxkDefense(piece, b.wk, b.bk, b.p)?.capture)
-    return { verdict: "wrong", miss: "lost" };
+  if (piece === "RR") {
+    const a = krrkWhitePlayed(rr(before), move);
+    if (krrkMated(a)) return { verdict: "solved" };
+    if (krrkStalemate(a)) return { verdict: "wrong", miss: "stalemate" };
+    if (krrkBlackMoves(a).some((m) => m.capture))
+      return { verdict: "wrong", miss: "lost" };
+  } else {
+    const b = whitePlayed(before, move);
+    if (kxkMated(piece, b.wk, b.bk, b.p)) return { verdict: "solved" };
+    if (kxkStalemate(piece, b.wk, b.bk, b.p))
+      return { verdict: "wrong", miss: "stalemate" };
+    if (kxkDefense(piece, b.wk, b.bk, b.p)?.capture)
+      return { verdict: "wrong", miss: "lost" };
+  }
   if (step + 1 >= ENDGAME_LIMIT[piece])
     return { verdict: "wrong", miss: "limit" };
   return { verdict: "next" };
 }
 
-/** 흑 킹이 받는 수(메이트 거리 표로 가장 오래 버티는 수)를 둔 판. 둘 수가 없으면 null */
+/**
+ * 흑 킹이 받는 수를 둔 판. 둘 수가 없으면 null.
+ * 퀸·룩 하나는 메이트 거리 표로 가장 오래 버티는 수, 룩 둘은 짧은 깊이 탐색(`krrkDefense`)
+ */
 export function blackReply(
-  piece: KxkPiece,
-  b: KxkBoard,
-): { board: KxkBoard; from: number; to: number } | null {
+  piece: EndgamePiece,
+  b: DrillBoard,
+): { board: DrillBoard; from: number; to: number } | null {
+  if (piece === "RR") {
+    const reply = krrkDefense(rr(b));
+    if (!reply) return null;
+    const after = krrkBlackPlayed(rr(b), reply.to);
+    return {
+      board: { ...after, frame: b.frame ?? null },
+      from: b.bk,
+      to: reply.to,
+    };
+  }
   const reply = kxkDefense(piece, b.wk, b.bk, b.p);
   if (!reply) return null;
   return { board: { ...b, bk: reply.to }, from: b.bk, to: reply.to };
