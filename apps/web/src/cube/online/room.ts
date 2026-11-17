@@ -3,6 +3,7 @@ import type { CubeMove } from "@game/cube-engine";
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import { type HostIdentity, verifyHostProof } from "@/net/identity";
 import { RaceSession, shiftResume } from "@/net/race/race-session";
 import type {
   PlayResult,
@@ -309,7 +310,20 @@ type RoomMessage =
   /** 되찾기를 확인했다(받은 기기가 대결 메시지를 다시 보낸다) */
   | { type: "cube-seat-ok"; id: string }
   /** 방장이 되찾기를 확인하지 못했다(새 손님으로 들어간다) */
-  | { type: "cube-seat-no"; id: string };
+  | { type: "cube-seat-no"; id: string }
+  /**
+   * 방장 → 이 연결에만: 방장 열쇠 증명(`hostKeyStatement`에 서명, 공개 열쇠 함께). 방장이 새로 고친 뒤 옛 초대 링크로
+   * 처음 들어온 사람이 새 연결을 방장으로 믿는 근거(docs/47 9-11 「옛 링크로 처음 들어오는 사람」)
+   */
+  | { type: "cube-host-key"; key: string; sig: string };
+
+/** 방장 열쇠 증명 글: 서명한 방장 연결과 받는 연결을 함께 묶는다(엿들은 증명을 다른 연결·다른 손님에게 쓰지 못하게) */
+export function hostKeyStatement(hostDevice: string, guestDevice: string) {
+  return ["cube-host-v1", hostDevice, guestDevice].join("|");
+}
+
+/** 방장 열쇠 증명 글자 수 상한(P-256 공개 열쇠 raw 87글자, 서명 86글자, base64url) */
+const HOST_KEY_MAX = 200;
 
 /**
  * 손님이 판 사이(대기실·판 끝)에 나가면 이만큼 자리를 남겨 둔다(ms). 새로고침·탭 다시 열기로 돌아올 시간.
@@ -330,6 +344,16 @@ export interface CubeRoomInit {
   isHost: boolean;
   /** 손님: 초대 링크에 실린 방장 연결 아이디. 있으면 이 아이디가 보낸 방 상태만 받는다(옛 링크면 없다) */
   hostId?: string;
+  /**
+   * 방장: 방 열쇠(방을 열 때 만들고 탭에 남겨 새로고침 뒤에도 같다). 들어오는 연결마다 방장 열쇠 증명을 보낸다.
+   * 지문은 초대 링크(`f`)에 싣는다
+   */
+  hostKey?: Pick<HostIdentity, "fingerprint" | "publicKey" | "sign">;
+  /**
+   * 손님: 초대 링크에 실린 방장 열쇠 지문(`f`). 링크의 방장 연결(`hostId`)이 이미 없을 때(방장이 새로 고침),
+   * 이 지문의 열쇠로 서명한 연결을 방장으로 믿는다. 방 상태를 한 번도 받지 않은 처음 들어온 사람만 쓴다
+   */
+  hostFingerprint?: string;
   name: string;
   /** 이 기기의 크기별 내 평균(ms, 키 "2"~"5"). 방에 알리고, 판정 설정 지문에서 내 칸을 이 값으로 맞춰 본다 */
   avgs?: Record<string, number>;
@@ -481,6 +505,8 @@ export class CubeRoom {
   /** 이 기기의 지금 연결 아이디 */
   readonly device: string;
   readonly isHost: boolean;
+  /** 방장: 방 열쇠 지문(초대 링크의 `f`). 방 열쇠가 없으면 없다 */
+  readonly hostKeyFingerprint: string | undefined;
   /** 남겨 둔 자리를 되찾는 중이면 그 번호(방장이 확인하지 못하면 지운다) */
   reclaiming: number | null = null;
   state: RoomState | null = null;
@@ -504,6 +530,15 @@ export class CubeRoom {
   private linkHost?: string;
   /** 손님: 방장을 기다리는 예약을 거둔다 */
   private hostWait?: () => void;
+  /**
+   * 처음 들어온 손님: 링크의 방장 연결이 아닌 연결이 보낸 방 상태(연결 → 가장 새 것). 그 연결이 방장 열쇠 증명을 보이면 받는다
+   * (docs/47 9-11 「옛 링크로 처음 들어오는 사람」)
+   */
+  private readonly unproven = new Map<string, RoomState>();
+  /** 방장 열쇠 증명을 확인하는 중인 연결 */
+  private readonly proving = new Set<string>();
+  /** 방장: 방장 열쇠 증명을 보낸 연결(들어옴 알림과 인사 어느 쪽이 먼저 와도 한 번만) */
+  private readonly keySent = new Set<string>();
   /** 방장 새로고침: 남겨 둔 컴퓨터 몫(이 세션 시계로 옮긴 것). 그 판을 열 때 쓴다 */
   private resumeBots?: { race: string; bots: Map<string, RaceResume> };
   /** 저장한 컴퓨터 몫의 요약(같으면 다시 적지 않는다) */
@@ -558,6 +593,9 @@ export class CubeRoom {
   constructor(init: CubeRoomInit) {
     this.init = init;
     this.isHost = init.isHost;
+    this.hostKeyFingerprint = init.isHost
+      ? init.hostKey?.fingerprint
+      : undefined;
     this.device = init.transport?.selfId ?? "me";
     this.me = this.device;
     const saved = readSeat(init.seat?.get("seat") ?? null);
@@ -635,6 +673,7 @@ export class CubeRoom {
         this.dropTimers.get(id)?.();
         this.dropTimers.delete(id);
         if (this.isHost) {
+          this.sendHostKey(id);
           // 새로 고친 방장: 방장 자리 증명을 먼저 보낸다(손님은 그 증명을 확인한 연결의 방 상태만 받는다)
           if (this.reclaiming !== null) this.hello();
           this.publish();
@@ -646,6 +685,7 @@ export class CubeRoom {
         if (this.disposed) return;
         this.connected.delete(id);
         this.sentTo.delete(id);
+        this.keySent.delete(id);
         if (!this.isHost && id === this.hostId) this.waitForHost();
         if (this.isHost && this.state?.status !== "racing") this.dropLater(id);
         this.emit();
@@ -1295,6 +1335,74 @@ export class CubeRoom {
     });
   }
 
+  /** 방장: 이 연결에 방장 열쇠 증명을 보낸다(방 열쇠가 있을 때) */
+  private sendHostKey(to: string): void {
+    const key = this.init.hostKey;
+    if (!key || this.keySent.has(to)) return;
+    this.keySent.add(to);
+    key.sign(hostKeyStatement(this.device, to)).then(
+      (sig) => {
+        if (this.disposed || !this.connected.has(to)) return;
+        this.init.transport?.send(
+          {
+            type: "cube-host-key",
+            key: key.publicKey,
+            sig,
+          } satisfies RoomMessage,
+          to,
+        );
+      },
+      () => {
+        // 서명하지 못하면 보내지 않는다(링크의 방장 연결로 들어온 손님은 이것 없이도 들어온다)
+      },
+    );
+  }
+
+  /**
+   * 손님: 방장 열쇠 증명을 기다리나. 방 상태를 한 번도 받지 않은 처음 들어온 손님이고 링크에 방장 열쇠 지문이 있을 때만.
+   * 이미 방장을 정한 손님(방 상태를 받음, 자리를 되찾는 중)은 예전대로 그 방장만 믿는다
+   */
+  private awaitingHostKey(): boolean {
+    return (
+      !this.isHost &&
+      this.init.hostFingerprint !== undefined &&
+      this.reclaiming === null &&
+      this.state === null &&
+      this.hostPeer === undefined
+    );
+  }
+
+  /**
+   * 처음 들어온 손님: 링크의 방장 연결이 아닌 연결이 방장 열쇠 증명을 보냈다. 링크 지문의 열쇠로 「그 연결 | 내 연결」에
+   * 서명했으면 그 연결을 방장으로 정하고, 맡아 둔 방 상태를 받는다(docs/47 9-11 「옛 링크로 처음 들어오는 사람」)
+   */
+  private checkHostKey(
+    msg: { key?: unknown; sig?: unknown },
+    from: string,
+  ): void {
+    if (!this.awaitingHostKey() || from === this.hostId) return;
+    if (this.proving.has(from)) return;
+    const { key, sig } = msg;
+    if (typeof key !== "string" || typeof sig !== "string") return;
+    if (key.length > HOST_KEY_MAX || sig.length > HOST_KEY_MAX) return;
+    const fingerprint = this.init.hostFingerprint as string;
+    this.proving.add(from);
+    void verifyHostProof(
+      fingerprint,
+      { key, sig },
+      hostKeyStatement(from, this.device),
+    ).then((ok) => {
+      this.proving.delete(from);
+      if (!ok || this.disposed || !this.awaitingHostKey()) return;
+      this.hostId = from;
+      const kept = this.unproven.get(from);
+      this.unproven.clear();
+      this.saveSeat();
+      if (kept) this.takeState(kept, from);
+      this.emit();
+    });
+  }
+
   /** 방장이 내 되찾기를 확인하지 못했다: 예전 자리를 버리고 새 손님으로 들어간다 */
   private abandonSeat(): void {
     if (this.reclaiming === null) return;
@@ -1316,6 +1424,9 @@ export class CubeRoom {
   /** 사람 칸의 기기를 이 기기가 믿을 수 있나 */
   private deviceOk(p: RoomPlayer): boolean {
     if (p.id === this.me) return p.device === this.device;
+    // 방장 칸은 이 기기가 정한 방장 연결과 같아야 한다(방장 자리 되찾기 확인이나 방장 열쇠 증명으로만 바뀐다)
+    if (p.id === this.hostPeer && this.hostId !== undefined)
+      return p.device === this.hostId;
     const claim = this.claims.get(p.id);
     if (claim) return claim.device === p.device;
     if (p.device === p.id) return true;
@@ -1568,6 +1679,7 @@ export class CubeRoom {
       // 컴퓨터 아이디 모양(`bot숫자`)의 사람을 표에 넣으면 정직한 손님이 방 상태를 모두 버려 방이 멈춘다
       if (BOT_ID.test(from)) return;
       this.connected.add(from);
+      this.sendHostKey(from);
       const name = cleanName(msg.name) || "손님";
       const avgs = cleanAverages(msg.avgs);
       // 자리를 되찾은 사람의 새 연결은 그 참가자 칸으로 본다(새 사람으로 더하지 않는다)
@@ -1590,6 +1702,10 @@ export class CubeRoom {
       this.takeState(msg.state, from);
       return;
     }
+    if (msg.type === "cube-host-key" && !this.isHost) {
+      this.checkHostKey(msg, from);
+      return;
+    }
     if (msg.type === "cube-chat") {
       if (typeof msg.text !== "string") return;
       // 이름은 메시지에 적힌 것을 쓰지 않고 보낸 기기의 참가자 이름으로(남의 이름 흉내 막기)
@@ -1609,7 +1725,17 @@ export class CubeRoom {
   /** 방장이 알린 방 상태. 이 기기가 확인하지 못한 기기 칸이 있으면 맡아 두고, 그 되찾기를 확인하면 다시 본다 */
   private takeState(next: RoomState, from: string): void {
     // 방 상태(참가자 표·판 번호·진행)는 고정한 방장에게서 온 것만. 그물이라 손님끼리도 직접 보낼 수 있다
-    if (this.hostId !== undefined && from !== this.hostId) return;
+    if (this.hostId !== undefined && from !== this.hostId) {
+      // 처음 들어온 손님: 방장 열쇠 증명을 보이면 받으려고 맡아 둔다(방장이 새로 고쳐 링크의 방장 연결이 없을 때)
+      if (this.awaitingHostKey() && isRoomState(next, () => true)) {
+        const kept = this.unproven.get(from);
+        if (!kept || kept.v < next.v) {
+          if (!kept && this.unproven.size >= MAX_PLAYERS) return;
+          this.unproven.set(from, next);
+        }
+      }
+      return;
+    }
     if (!isRoomState(next, () => true) || next.host !== from) return;
     if (this.state && next.v <= this.state.v) return;
     // 방장 참가자는 바뀌지 않는다(방장이 새로 고쳐도 같은 참가자가 새 연결로 맡는다)
@@ -1635,6 +1761,7 @@ export class CubeRoom {
     if (firstHost) this.saveSeat();
     if (next.round === 0) this.rounds = [];
     this.state = next;
+    this.unproven.clear();
     this.connected.add(from);
     this.hostLeft = false;
     this.hostAway = false;

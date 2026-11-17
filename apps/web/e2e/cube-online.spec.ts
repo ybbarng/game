@@ -445,3 +445,64 @@ test(
     await shot(guest, "online-host-reload-guest", info.project.name);
   },
 );
+
+/**
+ * 방장이 새로 고친 뒤, 그 전에 받은 초대 링크로 **처음** 들어오는 사람(docs/47 9-11 「옛 링크로 처음 들어오는 사람」).
+ * 옛 링크의 방장 연결은 이미 없지만, 새 연결이 링크의 방장 열쇠로 서명해 보여 주면 그 연결을 방장으로 믿고 같은 방 손님이 된다.
+ * 두 탭(`?net=local`), `CUBE_MULTI=1`일 때만
+ */
+test(
+  "온라인 대결: 방장이 새로 고친 뒤 옛 초대 링크로 처음 들어온 사람도 같은 방 손님이 된다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
+    await no3d(context);
+    const host = await context.newPage();
+    await host.goto("/cube/online?net=local");
+    await host.locator("[data-cube-enter]").click();
+    const oldLink = await host.locator("input[readonly]").inputValue();
+    await host.getByLabel("종목").selectOption("2");
+    await host.getByLabel("살펴보기").selectOption("0");
+
+    await host.reload();
+    await expect(host.locator("main[data-cube-online]")).toHaveAttribute(
+      "data-cube-online",
+      "lobby",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    // 새로 고친 방장의 연결 아이디는 바뀌어 옛 링크의 방장 연결(`k`)과 다르다
+    const newLink = await host.locator("input[readonly]").inputValue();
+    expect(new URL(newLink).searchParams.get("k")).not.toBe(
+      new URL(oldLink).searchParams.get("k"),
+    );
+
+    const guest = await context.newPage();
+    await guest.goto(oldLink);
+    await guest.locator("[data-cube-enter]").click();
+    await expect(guest.locator("main[data-cube-online]")).toHaveAttribute(
+      "data-cube-online",
+      "lobby",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    for (const p of [host, guest])
+      await expect(p.locator("[data-cube-players] li")).toHaveCount(2);
+    await shot(guest, "online-host-reload-newcomer", info.project.name);
+
+    // 같은 판을 함께 연다: 둘 다 대결에 들고 같은 섞기
+    await host.locator("[data-cube-start]").click();
+    for (const p of [host, guest])
+      await expect(p.locator("[data-cube-race-phase]")).toHaveAttribute(
+        "data-cube-race-phase",
+        "race",
+        { timeout: SCRAMBLE_TIMEOUT },
+      );
+    const scramble = await host
+      .locator("[data-cube-scramble]")
+      .getAttribute("data-cube-scramble");
+    await expect(guest.locator("[data-cube-scramble]")).toHaveAttribute(
+      "data-cube-scramble",
+      scramble as string,
+    );
+    await expect(guest.locator("[data-cube-my-log]")).toHaveCount(1);
+  },
+);

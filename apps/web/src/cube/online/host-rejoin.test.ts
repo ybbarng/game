@@ -3,12 +3,14 @@ import { type CubeMove, invertMoves, parseMoves } from "@game/cube-engine";
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
+import { createHostIdentity } from "@/net/identity";
 import { DelayNet, OffsetClock, runUntil } from "@/net/race/race-fixture";
 import type { RaceResult } from "@/net/race/types";
 import { BOT_HOST_RELOAD, type Scrambler, scrambleSeed } from "./race-game";
 import {
   CubeRoom,
   HOST_REJOIN_GRACE_MS,
+  hostKeyStatement,
   REJOIN_GRACE_MS,
   type RoomSettings,
 } from "./room";
@@ -458,5 +460,131 @@ describe("큐브 대결 방: 방장 되찾기로 방장 자리를 가로채지 �
     expect(room.me).toBe("x");
     expect(room.reclaiming).toBeNull();
     expect(g.state?.host).toBe("h");
+  });
+});
+
+/**
+ * 시계를 감으며 조건까지 기다린다. 방장 열쇠 서명·확인(WebCrypto)은 비동기라, 한 걸음마다 그 일이 끝날 틈을 준다.
+ * 시간 상한은 멈춘 시험을 잡는 안전장치다
+ */
+async function settle(
+  clock: ManualClock,
+  done: () => boolean,
+  limitMs = 60_000,
+): Promise<void> {
+  const end = clock.now() + limitMs;
+  while (!done()) {
+    if (clock.now() >= end) throw new Error("조건이 맞지 않은 채 시간이 다 감");
+    clock.advance(10);
+    await new Promise((r) => setImmediate(r));
+  }
+}
+
+/** 방장 탭을 방 열쇠와 함께 열고, 새로 고친 뒤 처음 들어오는 사람을 맞을 준비를 한다 */
+async function keyedRoom() {
+  const key = await createHostIdentity();
+  const clock = new ManualClock();
+  const net = new DelayNet(clock);
+  const wall = () => clock.now() + 1_700_000_000_000;
+  const hostStore = memoryStore();
+  const openHost = (id: string, at: ManualClock | OffsetClock) =>
+    new CubeRoom({
+      transport: net.join(id),
+      clock: at,
+      wall,
+      isHost: true,
+      hostKey: key,
+      name: "방장",
+      scrambler: fake,
+      settings: SETTINGS,
+      seat: hostStore,
+    });
+  /** 초대 링크 `?room=…&k=h&f=<지문>`로 들어오는 손님(`f` 없이 옛 꼴 링크도) */
+  const joinGuest = (id: string, withKey = true) =>
+    new CubeRoom({
+      transport: net.join(id),
+      clock,
+      wall,
+      isHost: false,
+      hostId: "h",
+      ...(withKey ? { hostFingerprint: key.fingerprint } : {}),
+      name: `손님 ${id}`,
+      scrambler: fake,
+      seat: memoryStore(),
+    });
+  const host = openHost("h", clock);
+  const g = joinGuest("g");
+  clock.advance(200);
+  // 방장이 새로 고친다: 옛 연결 h는 끊기고 같은 탭 저장소·같은 방 열쇠로 새 연결 h2가 연다
+  host.dispose();
+  net.disconnect("h");
+  clock.advance(1_000);
+  const back = openHost("h2", new OffsetClock(clock, -clock.now() + 3));
+  await settle(clock, () => g.state?.host === "h2");
+  return { key, clock, net, back, g, joinGuest };
+}
+
+describe("큐브 대결 방: 방장이 새로 고친 뒤 옛 초대 링크로 처음 들어오는 사람", () => {
+  it("링크의 방 열쇠로 서명한 새 연결을 방장으로 믿고 같은 방 손님이 되어, 같은 판을 같은 결과로 둔다", async () => {
+    const { clock, back, g, joinGuest } = await keyedRoom();
+    const n = joinGuest("n");
+    await settle(
+      clock,
+      () => n.state?.players.length === 3 && g.state?.players.length === 3,
+    );
+    expect(n.state?.host).toBe("h2");
+    expect(devices(n)).toEqual(devices(back));
+    expect(n.hostAway).toBe(false);
+    expect(back.startRound()).toBe(true);
+    expect(back.state?.race?.players).toEqual(["h", "g", "n"]);
+    finishRound(clock, [back, g, n], 1);
+    expect(n.rounds[0]?.result).toEqual(back.rounds[0]?.result);
+    expect(n.rounds[0]?.result).toEqual(g.rounds[0]?.result);
+  });
+
+  it("링크에 방 열쇠 지문이 없으면 예전처럼 새 연결의 방 상태를 받지 않는다", async () => {
+    const { clock, back, joinGuest } = await keyedRoom();
+    const n = joinGuest("n", false);
+    // 방장은 n을 표에 넣고 방 상태를 보냈다
+    await settle(clock, () => !!back.state?.players.some((p) => p.id === "n"));
+    for (let i = 0; i < 50; i++) {
+      clock.advance(20);
+      await new Promise((r) => setImmediate(r));
+    }
+    expect(n.state).toBeNull();
+  });
+
+  it("다른 연결이 제 열쇠로 서명하거나 방장 증명을 옮겨 보내도 방장으로 믿지 않는다", async () => {
+    const { clock, net, back, joinGuest } = await keyedRoom();
+    // m: 초대 링크를 아는 다른 사람. 방장이 m에게 보낸 증명을 받아 둔다
+    const m = net.join("m");
+    let relayed: unknown;
+    m.onMessage((msg) => {
+      if ((msg as { type?: string }).type === "cube-host-key") relayed = msg;
+    });
+    m.send({ type: "cube-hello", name: "m" });
+    await settle(clock, () => relayed !== undefined);
+    const fakeKey = await createHostIdentity();
+    const n = joinGuest("n");
+    const forged = {
+      ...(back.state as NonNullable<CubeRoom["state"]>),
+      v: 9_999,
+      host: "m",
+      players: [{ id: "h", name: "방장", device: "m" }],
+    };
+    m.send({ type: "cube-room", state: forged }, "n");
+    // 방장이 m에게 준 증명(「h2 | m」)을 그대로 n에게, 그리고 제 열쇠로 「m | n」에 서명한 증명
+    m.send(relayed, "n");
+    m.send(
+      {
+        type: "cube-host-key",
+        key: fakeKey.publicKey,
+        sig: await fakeKey.sign(hostKeyStatement("m", "n")),
+      },
+      "n",
+    );
+    await settle(clock, () => n.state !== null);
+    expect(n.state?.host).toBe("h2");
+    expect(n.state?.v).toBeLessThan(9_999);
   });
 });
