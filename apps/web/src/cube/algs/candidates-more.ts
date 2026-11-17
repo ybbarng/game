@@ -65,7 +65,6 @@ export const MORE_CANDIDATES: Record<string, CandidateSpec[]> = {
   "f2l-39": [{ alg: "R U2 R U R' U R U2 R2", found: true }],
   // 후보가 비어 있던 상황(2026-11-17): 같은 묶음 공식의 거울·거꾸로를 y·d 돌려 쥐기, 윗면 돌리기마다 해 보아 맞는 것과
   // R·U·B 7수까지 찾은 것(found). 자료 공식을 돌려 쥐기만 한 것(R을 F로 바꾼 같은 공식 등)은 뺐다.
-  // f2l-4(R U R' 세 수)·f2l-17·f2l-18은 그런 것만 나와 비워 둔다.
   "f2l-9": [{ alg: "U d R' U R U R' U' R" }],
   "f2l-13": [{ alg: "U d R2 U' R U' R' U2 R2" }],
   "f2l-16": [{ alg: "R U' B U' B' U2 R'", found: true }],
@@ -75,6 +74,18 @@ export const MORE_CANDIDATES: Record<string, CandidateSpec[]> = {
   "f2l-36": [{ alg: "U2 F' U F U R U R'" }],
   "f2l-40": [{ alg: "d R' U R r' U r U2 r' U' r" }],
   "f2l-41": [{ alg: "d r' U r U2 r' U' r R' U' R" }],
+  // 마지막 셋(2026-11-18): 엔진으로 R·U 13수, R·U·F 10수, R·U·L·R·U·D 9수까지 넓혀 찾은 것(found).
+  // f2l-4는 R U R' 세 수보다 짧은 것이 없어 R·U만으로 가장 짧은 다른 길, 17·18은 R·U만(17) 또는
+  // 세 덩이(꺼내기·넣기)로 끊어 치는 것. 18의 F·U만 공식은 17 R·U만 공식의 거울이다.
+  "f2l-4": [{ alg: "R U' R' U' R U' R'", found: true }],
+  "f2l-17": [
+    { alg: "R U2 R' U' R U' R' U' R U' R'", found: true },
+    { alg: "F' U F R U R' U' F' U F", found: true },
+  ],
+  "f2l-18": [
+    { alg: "R U' R' F' U' F U R U' R'", found: true },
+    { alg: "F' U2 F U F' U F U F' U F" },
+  ],
 
   // ── 2×2 오르테가 ──
   "ortega-oll-sune": [
