@@ -7,6 +7,8 @@ import {
   tryPlace,
 } from "@game/baduk-engine";
 
+import { obj, subj, topic, wa } from "@/lib/josa";
+
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
 import {
   defenseFor,
@@ -355,7 +357,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         body: [
           "규칙 배우기에서 패를 따낸 바로 다음에는 상대가 되따낼 수 없다고 배웠어요. 다른 곳에 한 수 둔 뒤에야 되따낼 수 있었죠.",
           "이번에는 패를 두고 서로 버티는 법을 배워요. 먼저 패를 따인 쪽(흑)의 처지예요.",
-          `그림은 백이 방금 ${KO.setup[0]}에 두어 ${KO.ko}의 흑 한 점을 따낸 모양이에요. 흑이 ×에 바로 두면 백 ${KO.setup[0]}을 되따낼 것 같지만, 판 모양이 한 수 전으로 돌아가서 둘 수 없어요.`,
+          `그림은 백이 방금 ${KO.setup[0]}에 두어 ${KO.ko}의 흑 한 점을 따낸 모양이에요. 흑이 ×에 바로 두면 백 ${obj(KO.setup[0])} 되따낼 것 같지만, 판 모양이 한 수 전으로 돌아가서 둘 수 없어요.`,
         ],
         scene: sceneOf(KO, { [KO.ko]: "×" }),
       },
@@ -391,7 +393,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         kind: "explain",
         title: "패를 잇는 때",
         body: [
-          `그림은 흑 ${KO_CONNECT.setup[0]}이 ×(${KO_CONNECT.ko})의 백 한 점을 따내 패가 됐고, 백이 ${KO_CONNECT_THREAT}에 팻감을 둔 모양이에요. △ 흑 ${COUNT[KO_CONNECT_THREATENED]} 점이 단수예요.`,
+          `그림은 흑 ${subj(KO_CONNECT.setup[0])} ×(${KO_CONNECT.ko})의 백 한 점을 따내 패가 됐고, 백이 ${KO_CONNECT_THREAT}에 팻감을 둔 모양이에요. △ 흑 ${COUNT[KO_CONNECT_THREATENED]} 점이 단수예요.`,
           `흑이 받으면 백이 ×에 되따내 패가 이어져요. 흑이 끝내 패를 지면 □ 흑 돌 ${COUNT[KO_CONNECT_LOST.length]} 점을 잃어요. 패에 걸린 한 점과, 백이 되따낼 때 함께 단수가 되어 달아날 곳이 없는 돌이에요.`,
           `노리는 돌(${COUNT[KO_CONNECT_THREATENED]} 점)이 패를 지면 잃는 돌(${COUNT[KO_CONNECT_LOST.length]} 점)보다 적어요. 그래서 흑은 ×에 이어 패를 끝내고, △ 돌은 내줘요.`,
         ],
@@ -678,7 +680,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
           "① 선수가 있으면 선수부터 둬요. 선수가 여럿이면 그 가운데 큰 곳부터예요.",
           "② 선수가 없으면 후수 가운데 큰 곳부터 둬요.",
           "③ 크기가 같으면 어느 곳부터 둬도 괜찮아요.",
-          `이 판에서 세면 ${SENTE_LABEL}는 ${SENTE_SIZES[0]}점짜리, ${GOTE_LABEL}는 ${SENTE_SIZES[1]}점짜리예요. ${SENTE_LABEL}가 크지 않아도 선수라 먼저 둬요. 백이 받으면 다시 흑 차례라 ${GOTE_LABEL}도 흑이 둬요.`,
+          `이 판에서 세면 ${topic(SENTE_LABEL)} ${SENTE_SIZES[0]}점짜리, ${topic(GOTE_LABEL)} ${SENTE_SIZES[1]}점짜리예요. ${subj(SENTE_LABEL)} 크지 않아도 선수라 먼저 둬요. 백이 받으면 다시 흑 차례라 ${GOTE_LABEL}도 흑이 둬요.`,
         ],
         scene: sceneOf(SENTE, endgameMarks(SENTE)),
       },
@@ -727,8 +729,8 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "걸침과 날일자",
         body: [
           "상대 돌이 있는 귀에 다가가, 상대가 귀를 혼자 차지하지 못하게 두는 수를 **걸침**이라고 해요. 그림의 백이 흑 화점에 걸쳤어요.",
-          `백 ${JOSEKI_POINTS.lowApproach}은 흑 ${JOSEKI_POINTS.star}에서 가로로 두 칸, 세로로 한 칸 떨어졌어요. 이렇게 떨어진 자리를 **날일자**라고 해요.`,
-          `가까운 판 끝에서 셋째 줄에 두는 걸침을 **낮은 걸침**, 넷째 줄에 두는 걸침을 **높은 걸침**이라고 해요. 백 ${JOSEKI_POINTS.lowApproach}은 셋째 줄이라 낮은 걸침이에요.`,
+          `백 ${topic(JOSEKI_POINTS.lowApproach)} 흑 ${JOSEKI_POINTS.star}에서 가로로 두 칸, 세로로 한 칸 떨어졌어요. 이렇게 떨어진 자리를 **날일자**라고 해요.`,
+          `가까운 판 끝에서 셋째 줄에 두는 걸침을 **낮은 걸침**, 넷째 줄에 두는 걸침을 **높은 걸침**이라고 해요. 백 ${topic(JOSEKI_POINTS.lowApproach)} 셋째 줄이라 낮은 걸침이에요.`,
         ],
         scene: {
           black: [JOSEKI_POINTS.star],
@@ -753,8 +755,8 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         kind: "explain",
         title: "붙임, 젖힘, 마늘모",
         body: [
-          `상대 돌의 위·아래·왼쪽·오른쪽 바로 옆에 맞닿게 두는 것을 **붙인다**고 해요. 흑 ${JOSEKI_POINTS.attach}이 백 ${JOSEKI_POINTS.highApproach}에 붙였어요.`,
-          `맞붙은 상대 돌이 나아갈 앞을 내 돌의 대각선 자리에서 막는 것을 **젖힌다**고 해요. 백 ${JOSEKI_POINTS.hane}이 흑 ${JOSEKI_POINTS.attach}의 오른쪽을 막아 젖혔어요. 젖힌 뒤 바로 옆에서 한 번 더 젖히는 것을 **양 젖힘**이라고 해요.`,
+          `상대 돌의 위·아래·왼쪽·오른쪽 바로 옆에 맞닿게 두는 것을 **붙인다**고 해요. 흑 ${subj(JOSEKI_POINTS.attach)} 백 ${JOSEKI_POINTS.highApproach}에 붙였어요.`,
+          `맞붙은 상대 돌이 나아갈 앞을 내 돌의 대각선 자리에서 막는 것을 **젖힌다**고 해요. 백 ${subj(JOSEKI_POINTS.hane)} 흑 ${JOSEKI_POINTS.attach}의 오른쪽을 막아 젖혔어요. 젖힌 뒤 바로 옆에서 한 번 더 젖히는 것을 **양 젖힘**이라고 해요.`,
           `내 돌에서 대각선으로 바로 옆 자리에 두는 것을 **마늘모**라고 해요. 그림의 A가 흑 ${JOSEKI_POINTS.komoku}의 마늘모 자리 가운데 하나예요.`,
         ],
         scene: {
@@ -769,7 +771,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "끊는 자리, 서기, 기기",
         body: [
           "대각선으로 놓인 상대 돌 둘 사이의 빈 자리에 두어 둘을 갈라놓는 것을 **끊는다**고 해요. 그 빈 자리를 **끊는 자리**라고 해요.",
-          `그림의 백 ${JOSEKI_POINTS.highApproach}과 ${JOSEKI_POINTS.hane}은 대각선으로 놓여, ×(${JOSEKI_POINTS.cut})가 백이 끊기는 자리예요. 흑이 여기에 두면 백 두 점이 갈라지고, 백이 먼저 두어 이으면 끊기지 않아요.`,
+          `그림의 백 ${wa(JOSEKI_POINTS.highApproach)} ${topic(JOSEKI_POINTS.hane)} 대각선으로 놓여, ×(${JOSEKI_POINTS.cut})가 백이 끊기는 자리예요. 흑이 여기에 두면 백 두 점이 갈라지고, 백이 먼저 두어 이으면 끊기지 않아요.`,
           "내 돌 바로 옆에 판 가운데 쪽으로 곧게 이어 두는 것을 **선다**고 해요.",
           "판 끝에서 둘째 줄을 **2선**이라고 해요. 2선을 따라 한 칸씩 이어 두는 것을 **긴다**고 해요. 2선을 기면 살기는 쉽지만 집이 작아요.",
         ],
@@ -789,7 +791,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "벽과 두터움",
         body: [
           "상대가 차지한 귀 안쪽으로 들어가는 수를 **침입**이라고 해요. 그림은 흑 화점의 삼삼에 백이 침입한 정석이 끝난 모양이에요. 백은 2선을 기어 귀에 살았고, 흑은 바깥에 돌 다섯을 줄지어 두었어요.",
-          `돌이 튼튼해 상대가 잡거나 깨기 어려운 것을 **두텁다**고 해요. 흑 ${JOSEKI_WALL_GAP.between[0]}과 ${JOSEKI_WALL_GAP.between[1]} 사이 ${JOSEKI_WALL_GAP.gap}에 대각선 틈이 있지만, 백이 끊어도 그 돌은 활로가 둘뿐이라, 활로가 셋 이상인 둘레의 흑 돌보다 약해요. 그래서 흑은 귀를 내주었지만, 위쪽 변과 왼쪽 변, 가운데를 바라보는 두터운 벽을 얻었어요.`,
+          `돌이 튼튼해 상대가 잡거나 깨기 어려운 것을 **두텁다**고 해요. 흑 ${wa(JOSEKI_WALL_GAP.between[0])} ${JOSEKI_WALL_GAP.between[1]} 사이 ${JOSEKI_WALL_GAP.gap}에 대각선 틈이 있지만, 백이 끊어도 그 돌은 활로가 둘뿐이라, 활로가 셋 이상인 둘레의 흑 돌보다 약해요. 그래서 흑은 귀를 내주었지만, 위쪽 변과 왼쪽 변, 가운데를 바라보는 두터운 벽을 얻었어요.`,
           "정석이 끝나면 한쪽은 귀 집, 다른 쪽은 바깥 두터움처럼 서로 다른 것을 나눠 가져요.",
         ],
         scene: {
