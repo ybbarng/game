@@ -23,6 +23,7 @@ import {
 } from "@game/onecard-engine";
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
+import { ro } from "@/lib/josa";
 import { claimsVerifier } from "@/net/claim-verify";
 import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
@@ -150,7 +151,7 @@ export function describeAction(action: Action): string {
   switch (action.type) {
     case "play":
       return action.suit
-        ? `${cardName(action.card)} 냄, ${SUIT_NAMES[action.suit]}로 바꿈`
+        ? `${cardName(action.card)} 냄, ${ro(SUIT_NAMES[action.suit])} 바꿈`
         : `${cardName(action.card)} 냄`;
     case "draw":
       return "먹음";

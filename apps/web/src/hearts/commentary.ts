@@ -8,7 +8,7 @@ import {
 
 import type { Commentary, Verdict } from "@/game/kit";
 import { cardLabel } from "@/game/terms";
-import { copula, subj, topic } from "@/lib/josa";
+import { copula, ro, subj, topic } from "@/lib/josa";
 import { signed, verdictOf } from "@/review/commentary";
 
 import { directionLabel } from "./terms";
@@ -35,7 +35,7 @@ export function explainHearts(
 
   if (decision?.kind === "pass") {
     situation.push(
-      `넘기기 단계 · ${directionLabel(view.direction)}으로 ${decision.count}장`,
+      `넘기기 단계 · ${ro(directionLabel(view.direction))} ${decision.count}장`,
     );
     reasons.push(
       "넘길 카드는 ♠Q·♠A·♠K와 높은 하트처럼 먹기 쉬운 카드가 먼저예요. 낮은 스페이드가 많으면 ♠Q를 쥐고 버틸 수도 있어요.",
