@@ -61,16 +61,16 @@ const hanging = (b: KxkBoard) => near(b.p, b.bk) && !near(b.p, b.wk);
  * 판을 보는 방향. 흑 킹 쪽이 v가 작은 쪽이 되게 돌린다.
  * u는 막는 줄을 따라가는 좌표, v는 막는 줄과 엇갈리는 좌표
  */
-type Frame = 0 | 1 | 2 | 3;
-const FRAMES: readonly Frame[] = [0, 1, 2, 3];
-function toFrame(f: Frame, at: number): [number, number] {
+export type Frame = 0 | 1 | 2 | 3;
+export const FRAMES: readonly Frame[] = [0, 1, 2, 3];
+export function toFrame(f: Frame, at: number): [number, number] {
   const [x, y] = xy(at);
   if (f === 0) return [x, y];
   if (f === 1) return [x, 7 - y];
   if (f === 2) return [y, x];
   return [y, 7 - x];
 }
-function fromFrame(f: Frame, u: number, v: number): number {
+export function fromFrame(f: Frame, u: number, v: number): number {
   if (f === 0) return v * 8 + u;
   if (f === 1) return (7 - v) * 8 + u;
   if (f === 2) return u * 8 + v;

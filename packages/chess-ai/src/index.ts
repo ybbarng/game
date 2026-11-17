@@ -2,6 +2,7 @@ export * from "./book";
 export * from "./bots";
 export * from "./expert";
 export * from "./kpk";
+export * from "./krrk";
 export * from "./kxk";
 export * from "./master";
 export * from "./pawn-ending";

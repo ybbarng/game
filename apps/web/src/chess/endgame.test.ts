@@ -1,19 +1,28 @@
-// 기본 엔드게임 단원의 그림과 연습 판정을 본다(endgame.ts). 방법이 정해진 수 안에 메이트하는지는 endgame-guide-*.test.ts
-import { type KxkPiece, kxkAttacks, kxkMated } from "@game/chess-ai";
+// 기본 엔드게임 단원의 그림과 연습 판정을 본다(endgame.ts). 방법이 정해진 수 안에 메이트하는지는
+// endgame-guide-*.test.ts(퀸·룩 하나)와 ladder-guide.test.ts(룩 둘)
+import { krrkCheck, kxkAttacks } from "@game/chess-ai";
 import { squareAt } from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
 import {
+  type DrillBoard,
   drillBoard,
+  drillGuide,
   ENDGAME_LIMIT,
   ENDGAME_SETS,
+  type EndgamePiece,
   endgamePages,
   judgeDrill,
   methodSteps,
 } from "./endgame";
-import { guideMove, whitePlayed } from "./endgame-guide";
 
-const PIECES: readonly KxkPiece[] = ["Q", "R"];
+const PIECES: readonly EndgamePiece[] = ["Q", "R", "RR"];
+
+/** 그림 판의 흑 킹이 체크인가 */
+const inCheck = (piece: EndgamePiece, b: DrillBoard) =>
+  piece === "RR"
+    ? krrkCheck({ wk: b.wk, bk: b.bk, p: b.p, q: b.q ?? -1 })
+    : kxkAttacks(piece, b.p, b.wk, b.bk);
 
 describe.each(PIECES)("%s 단원 그림", (piece) => {
   const pages = endgamePages(piece);
@@ -23,7 +32,7 @@ describe.each(PIECES)("%s 단원 그림", (piece) => {
       if (!page.fen) continue;
       const b = drillBoard(piece, page.fen);
       expect([b.wk, b.bk, b.p].every((at) => at >= 0)).toBe(true);
-      expect(kxkAttacks(piece, b.p, b.wk, b.bk)).toBe(false);
+      expect(inCheck(piece, b)).toBe(false);
     }
   });
 
@@ -34,15 +43,22 @@ describe.each(PIECES)("%s 단원 그림", (piece) => {
       if (!shows || !page.fen) throw new Error("그림과 수가 있어야 한다");
       const b = drillBoard(piece, page.fen);
       const move = { from: squareAt(shows.from), to: squareAt(shows.to) };
-      const guide = guideMove(piece, b);
+      const guide = drillGuide(piece, b);
       expect(guide?.rule).toBe(shows.rule);
       if (shows.rule === "mate") {
         // 메이트 수는 여럿일 수 있다. 보인 수도 메이트여야 한다
-        const after = whitePlayed(b, move);
-        expect(kxkMated(piece, after.wk, after.bk, after.p)).toBe(true);
+        expect(judgeDrill(piece, b, move, 0)).toEqual({ verdict: "solved" });
       } else expect({ from: guide?.from, to: guide?.to }).toEqual(move);
     },
   );
+
+  it("방법의 단계는 이름이 겹치지 않고, 그림이 보이는 단계는 모두 방법에 있다", () => {
+    const steps = methodSteps(piece);
+    expect(new Set(steps.map((s) => s.rule)).size).toBe(steps.length);
+    for (const page of pages)
+      if (page.shows)
+        expect(steps.map((s) => s.rule)).toContain(page.shows.rule);
+  });
 
   it("방법의 단계 글은 마침표로 끝난다", () => {
     for (const s of methodSteps(piece)) expect(s.text.endsWith(".")).toBe(true);
@@ -91,6 +107,25 @@ describe("연습 판정", () => {
       verdict: "wrong",
       miss: "limit",
     });
+  });
+
+  it("룩 둘: 메이트면 성공, 지키지 않은 룩을 흑 킹 옆에 두면 실패, 스테일메이트면 실패", () => {
+    const b = drillBoard("RR", "4k3/R7/8/8/8/8/7R/4K3 w - - 0 1");
+    expect(judgeDrill("RR", b, { from: sq("h2"), to: sq("h8") }, 3)).toEqual({
+      verdict: "solved",
+    });
+    expect(judgeDrill("RR", b, { from: sq("h2"), to: sq("e2") }, 3)).toEqual({
+      verdict: "next",
+    });
+    const hang = drillBoard("RR", "8/8/8/4k3/8/8/R7/4K2R w - - 0 1");
+    expect(judgeDrill("RR", hang, { from: sq("a2"), to: sq("d4") }, 0)).toEqual(
+      { verdict: "wrong", miss: "lost" },
+    );
+    // 흑 킹 a8: b줄과 7번째 가로줄을 막으면 갈 칸이 없는데 체크가 아니다
+    const stale = drillBoard("RR", "k7/8/8/8/8/8/7R/1R2K3 w - - 0 1");
+    expect(
+      judgeDrill("RR", stale, { from: sq("h2"), to: sq("h7") }, 0),
+    ).toEqual({ verdict: "wrong", miss: "stalemate" });
   });
 
   it("정해진 수는 50수 규칙보다 적다", () => {

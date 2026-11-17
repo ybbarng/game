@@ -11,6 +11,7 @@ import {
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
+import { shapeKey } from "./puzzle-shape";
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
 import {
   defenseFor,
@@ -141,6 +142,24 @@ describe("큰 끝내기부터", () => {
 });
 
 describe("선수 끝내기부터", () => {
+  it("선수 자리 둘레 모양이 서로 다른 것이 넷 이상이다(판 대칭으로 돌린 같은 모양은 하나로 센다)", () => {
+    const keys = sente.map((p) =>
+      shapeKey(puzzleState(p).board, PUZZLE_SIZE, solutionOf(p)),
+    );
+    expect(new Set(keys).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(rows(sente))(
+    "%s: 처음 판에는 단수인 돌이 없다(흑·백 모두)",
+    (_id, p) => {
+      const { board } = puzzleState(p);
+      const inAtari = board.flatMap((c, q) =>
+        c && groupOf(board, q).liberties.length === 1 ? [name(q)] : [],
+      );
+      expect(inAtari).toEqual([]);
+    },
+  );
+
   it.each(rows(sente))(
     "%s: 선수 곳은 다른 곳보다 크지 않고, 두면 백 돌이 새로 단수가 되며, 백은 그 돌을 이어 받는다",
     (_id, p) => {
