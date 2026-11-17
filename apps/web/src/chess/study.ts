@@ -232,6 +232,8 @@ export function explainOutside(pos: Position, move: Move): string[] {
     lines.push(
       `흑 킹은 ${subj(file)} 퀸이 되지 않게 막으러 판 가장자리 쪽으로 가야 해요. 그사이 백 킹은 반대쪽 흑 폰(${blackPawns})을 잡으러 가요.`,
     );
+  // 퀸이 된 뒤까지 끝까지 읽어 확인한 사실(docs/26 6절, outside-suite.ts)
+  lines.push("흑이 어떻게 받아도 백이 체크메이트까지 갈 수 있어요.");
   lines.push("다른 수는 모두 비기거나 져요.");
   return lines;
 }
