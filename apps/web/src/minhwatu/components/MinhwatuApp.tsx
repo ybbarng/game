@@ -8,6 +8,7 @@ import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { cn } from "@/lib/cn";
+import { ro, topic } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { useMinhwatuTutorialProgress } from "../progress";
@@ -235,8 +236,8 @@ function MinhwatuRulesScreen({ onBack }: { onBack: () => void }) {
       "약",
       [
         "정해진 카드 묶음을 모두 먹으면 약을 이뤄요. 약을 이루면 나머지 사람 한 사람에게서 그 약의 점수씩 받아요.",
-        `${YAK_NAMES.choyak}은 ${YAK_DESCRIPTIONS.choyak}, ${YAK_NAMES.pungyak}은 ${YAK_DESCRIPTIONS.pungyak}, ${YAK_NAMES.biyak}은 ${YAK_DESCRIPTIONS.biyak}이고, 옵션에서 고른 대로 20점이나 10점이에요.`,
-        `${YAK_NAMES.hongdan}은 ${YAK_DESCRIPTIONS.hongdan}, ${YAK_NAMES.cheongdan}은 ${YAK_DESCRIPTIONS.cheongdan}으로 30점이에요.`,
+        `${topic(YAK_NAMES.choyak)} ${YAK_DESCRIPTIONS.choyak}, ${topic(YAK_NAMES.pungyak)} ${YAK_DESCRIPTIONS.pungyak}, ${topic(YAK_NAMES.biyak)} ${YAK_DESCRIPTIONS.biyak}이고, 옵션에서 고른 대로 20점이나 10점이에요.`,
+        `${topic(YAK_NAMES.hongdan)} ${YAK_DESCRIPTIONS.hongdan}, ${topic(YAK_NAMES.cheongdan)} ${ro(YAK_DESCRIPTIONS.cheongdan)} 30점이에요.`,
         `옵션에서 켜면 ${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점과 ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점도 약으로 세요.`,
       ].join(". "),
     ],
