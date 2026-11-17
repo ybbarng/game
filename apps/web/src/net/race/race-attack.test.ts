@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { autoSolve, type Device, runUntil, setupRace } from "./race-fixture";
+import {
+  autoSolve,
+  bubbleSolution,
+  type Device,
+  runUntil,
+  setupRace,
+} from "./race-fixture";
 import { LEFT_RACE, OTHER_REASON } from "./race-session";
 import type { RaceResult } from "./types";
 
@@ -207,6 +213,100 @@ describe("대결 틀: 공격 재현", () => {
     expect(r.noDecision).toBe(true);
     expect(r.ranking[0]).toBe("p2");
   });
+
+  it("③ 「맞췄다」를 먼저 보내고 그 수는 10초 뒤에 흘려도, 하한은 맞춤을 증명하는 마지막 수가 닿은 때로 잰다(1위가 되지 않음)", () => {
+    const { clock, devices } = setupRace(3);
+    const [cheat, ...honest] = devices as [Device, Device, Device];
+    autoSolve(clock, honest[0] as Device, 300, 100);
+    autoSolve(clock, honest[1] as Device, 400, 100);
+    runUntil(clock, () => cheat.session.snapshot().phase === "race");
+    // 수 수(n)를 미리 정해 「맞췄다」를 0.05초에 보내 둔다
+    const moves = bubbleSolution(cheat.session.startState() as number[]);
+    cheat.transport.send({
+      type: "race-done",
+      race: "r1",
+      attempt: 0,
+      n: moves.length,
+      t: 50,
+    });
+    // 실제로는 10초 뒤에야 그 수들을 보낸다(시각은 모두 0.05초 앞으로 적음)
+    clock.advance(10_000);
+    cheat.transport.send({
+      type: "race-moves",
+      race: "r1",
+      attempt: 0,
+      moves: moves.map((m, i) => ({ i, m: String(m), t: 50 })),
+    });
+    runUntil(clock, finished(honest));
+    const r = sameEverywhere(honest);
+    const p1 = r.players.p1;
+    expect(p1?.status).toBe("done");
+    expect(p1?.reported).toBe(50);
+    // 두 증인 모두 수가 닿은 때(풀림 뒤 약 10초)로 하한을 잰다
+    expect(p1?.usedBound).toBeGreaterThan(9_000);
+    expect(p1?.accepted).toBeGreaterThan(9_000);
+    expect(r.ranking).toEqual(["p2", "p3", "p1"]);
+  });
+
+  /** 풀이 수(sol)로 지어낸 수 기록. 「맞췄다」는 그 뒤에 따로 보낸다 */
+  const forged: {
+    name: string;
+    moves: (sol: number[]) => { i: number; m: string; t: number }[];
+    n: (sol: number[]) => number;
+    reason: string;
+  }[] = [
+    {
+      name: "판에 없는 수",
+      moves: (sol) => [
+        { i: 0, m: "99", t: 10 },
+        ...sol.map((m, k) => ({ i: k + 1, m: String(m), t: 20 })),
+      ],
+      n: (sol) => sol.length + 1,
+      reason: "둘 수 없는 수(1번째)",
+    },
+    {
+      name: "수 시각을 거꾸로 적음",
+      moves: (sol) =>
+        sol.map((m, k) => ({ i: k, m: String(m), t: k === 2 ? 5 : 100 * k })),
+      n: (sol) => sol.length,
+      reason: "시각이 거꾸로 감(3번째)",
+    },
+    {
+      name: "살펴보기 동안(풀림 전) 시각을 단 수",
+      moves: (sol) => sol.map((m, k) => ({ i: k, m: String(m), t: k - 1 })),
+      n: (sol) => sol.length,
+      reason: "살펴보기 중에 둔 수(1번째)",
+    },
+    {
+      name: "맞춘 뒤 더 둔 수를 빼고 수 수를 적게 알림",
+      moves: (sol) => [
+        ...sol.map((m, k) => ({ i: k, m: String(m), t: 100 * k })),
+        { i: sol.length, m: "0", t: 100 * sol.length },
+        { i: sol.length + 1, m: "0", t: 100 * sol.length + 50 },
+      ],
+      n: (sol) => sol.length,
+      reason: "수 수가 맞지 않음",
+    },
+  ];
+
+  it.each(forged)(
+    "다시 적용해 보면 드러나는 지어낸 기록: $name → 그 사람만 DNF($reason)",
+    ({ moves, n, reason }) => {
+      const { clock, devices } = setupRace(3);
+      const [cheat, ...honest] = devices as [Device, Device, Device];
+      autoSolve(clock, honest[0] as Device, 300, 100);
+      autoSolve(clock, honest[1] as Device, 400, 100);
+      runUntil(clock, () => cheat.session.snapshot().phase === "race");
+      const sol = bubbleSolution(cheat.session.startState() as number[]);
+      const base = { race: "r1", attempt: 0 };
+      cheat.transport.send({ type: "race-moves", ...base, moves: moves(sol) });
+      cheat.transport.send({ type: "race-done", ...base, n: n(sol), t: 5_000 });
+      runUntil(clock, finished(honest));
+      const r = sameEverywhere(honest);
+      expect(r.players.p1).toMatchObject({ status: "dnf", reason });
+      expect(r.ranking).toEqual(["p2", "p3", "p1"]);
+    },
+  );
 
   it("기권·DNF 까닭 글은 정한 목록 안에서만 받고, 밖이면 「기타」", () => {
     const { clock, devices } = setupRace(3);
