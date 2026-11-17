@@ -790,7 +790,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "역끝내기냐 큰 후수냐",
         body: [
           `앞의 역끝내기 그림은 세 곳 크기가 같았어요. 이번 그림은 크기가 서로 달라요. 끝내기가 ${SPOT_LABELS.slice(0, 3).join("·")} 세 곳 남았고, 흑 차례예요.`,
-          `${CMP.rev.label}(${CMP.rev.move})는 백의 선수 자리예요. 백이 두면 흑 ${COUNT[CMP.stones]} 점이 단수가 되어 흑이 ${CMP.reply}에 이어 받아야 해요. ${CMP.reply}는 흑 집이라, 이어도 흑 집 한 칸이 흑 돌로 바뀔 뿐 흑 점수는 그대로예요. 흑이 먼저 막으면 역끝내기예요.`,
+          `${topic(`${CMP.rev.label}(${CMP.rev.move})`)} 백의 선수 자리예요. 백이 두면 흑 ${COUNT[CMP.stones]} 점이 단수가 되어 흑이 ${CMP.reply}에 이어 받아야 해요. ${topic(CMP.reply)} 흑 집이라, 이어도 흑 집 한 칸이 흑 돌로 바뀔 뿐 흑 점수는 그대로예요. 흑이 먼저 막으면 역끝내기예요.`,
           `세어 보면 ${topic(CMP.rev.label)} ${CMP.rev.size}점짜리, ${topic(CMP.big.label)} ${CMP.big.size}점짜리, ${topic(CMP.small.label)} ${CMP.small.size}점짜리예요. 역끝내기 ${subj(CMP.rev.label)} ${CMP.small.size > CMP.rev.size ? CMP_GOTES : CMP.big.label}보다 작아요.${CMP.big.size === CMP.small.size ? ` ${topic(CMP_GOTES)} 크기가 같아 어느 쪽을 큰 후수로 봐도 셈은 같아요. 여기서는 ${obj(CMP.big.label)} 큰 후수로 볼게요.` : ""}`,
           `${CMP.rev.label}부터 막으면 그 뒤 백이 ${CMP_GOTES} 가운데 ${CMP.big.label}에 먼저 두고, ${CMP.small.label}에는 흑이 먼저 둬요.`,
           `${CMP.big.label}부터 두면 그 뒤 ${[CMP.rev.label, CMP.small.label].sort().join("·")}에 모두 백이 먼저 둬요. 백이 ${CMP.rev.label}에 두면 흑이 ${CMP.reply}에 받아야 해서, 차례가 다시 백에게 가거든요. 흑은 ${CMP.big.label}에 먼저 두는 대신 ${wa(CMP.rev.label)} 남은 ${obj(CMP.small.label)} 백에게 내줘요.`,

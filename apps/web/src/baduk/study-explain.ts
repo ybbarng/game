@@ -941,7 +941,7 @@ function compareConcept(puzzle: Endgame): string[] {
       : "";
   const same =
     big.size === small.size
-      ? ` ${both([big.label, small.label])}는 크기가 같아 어느 쪽을 큰 후수로 봐도 셈은 같아요.`
+      ? ` ${topic(both([big.label, small.label]))} 크기가 같아 어느 쪽을 큰 후수로 봐도 셈은 같아요.`
       : "";
   return [
     `${spotName(rev)}에 백이 두면 흑 ${subj(points(rev.theirs.stones))} 단수가 되어 흑은 ${reply}에 이어 받아야 해요. 백의 선수 자리라, 흑이 먼저 막으면 역끝내기예요.`,
