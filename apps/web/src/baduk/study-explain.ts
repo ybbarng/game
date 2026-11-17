@@ -805,18 +805,28 @@ function endgameConcept(puzzle: Endgame): string[] {
       return [
         `${sol}에 백이 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 되어, 흑은 ${reply(mine.theirs.replies)}에 이어 받아야 해요. 백의 선수 자리예요.`,
         `흑이 먼저 ${mine.label}에 막는 수는 백 돌을 단수로 몰지 않아 후수예요. 그래도 백의 선수를 없애요. 이렇게 상대의 선수 자리를 먼저 막는 후수 끝내기가 역끝내기예요.`,
-        `${others}부터 두면 백이 ${mine.label}에 선수로 두고, 흑이 받는 사이 남은 곳까지 가져가요. ${mine.label}부터 막으면 백이 ${line.white}에 둔 뒤 흑이 ${line.black}까지 둬, 세 곳 가운데 두 곳을 흑이 가져요.`,
+        `${others}부터 두면 백이 ${mine.label}에 선수로 두고, 흑이 ${reply(mine.theirs.replies)}에 받으면 다시 백 차례라 백이 남은 한 곳도 가져가요. ${mine.label}부터 막으면 백이 ${placeName(puzzle, line.white)}에 둔 뒤 흑이 ${placeName(puzzle, line.black)}까지 둬, 세 곳 가운데 두 곳을 흑이 가져요.`,
       ];
     }
     case "double": {
       const line = playLine(puzzle, mine.move);
       return [
         `${sol}에 흑이 두면 백 ${subj(points(mine.mine.stones))}, 백이 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 돼요. 누가 두어도 상대가 꼭 받아야 하는 곳이라 양선수예요.`,
-        `흑이 먼저 두면 백이 ${line.white}에 이어 받은 사이 흑이 ${line.black}까지 둬요.`,
-        `다른 곳부터 두면 백이 ${mine.label}에 선수로 두고, 흑이 ${reply(mine.theirs.replies)}에 받는 사이 남은 곳까지 가져가요.`,
+        `흑이 먼저 두면 백이 ${placeName(puzzle, line.white)}에 이어 받고, 다시 흑 차례라 ${placeName(puzzle, line.black)}도 흑이 둬, 세 곳 가운데 두 곳을 흑이 가져요.`,
+        `다른 곳부터 두면 백이 ${mine.label}에 선수로 두고, 흑이 ${reply(mine.theirs.replies)}에 받으면 다시 백 차례라 백이 남은 한 곳도 가져가요.`,
       ];
     }
   }
+}
+
+/**
+ * 글에 쓰는 자리 이름: 끝내기 곳이면 그림 이름을 붙여 「A(D9)」, 아니면(받는 자리 등) 좌표만.
+ * 그림 이름 글자(A·B·C)와 좌표 글자(A4·C5)가 섞여 읽히지 않게 곳의 자리는 늘 이름을 붙인다
+ */
+export function placeName(puzzle: Endgame, coord: string): string {
+  const at = pointAt(coord, PUZZLE_SIZE);
+  const i = spotsOf(puzzle).findIndex((s) => s.includes(at));
+  return i < 0 ? coord : `${SPOT_LABELS[i]}(${coord})`;
 }
 
 /** 흑이 `first`에 둔 뒤 백이 끝내기 곳 안에서 가장 좋게 받는 자리와, 그다음 흑이 두는 자리(문제 화면과 같은 읽기) */
@@ -858,20 +868,20 @@ function endgameFacts(puzzle: Endgame): string[] {
     case "sente":
       return [
         `${spotName(mine)}에 두면 백 ${subj(points(mine.mine.stones))} 단수가 되어 백은 ${reply(mine.mine.replies)}에 이어야 해요.`,
-        `${topic(spotName(big))} ${big.size}점짜리로 ${mine.size < big.size ? `${mine.size}점짜리 ${mine.label}보다 크지만` : `${wa(mine.label)} 크기가 같지만`}, 백이 ${reply(mine.mine.replies)}에 받은 사이 흑이 ${named(big.move)}까지 둬요.`,
+        `${topic(spotName(big))} ${big.size}점짜리로 ${mine.size < big.size ? `${mine.size}점짜리 ${mine.label}보다 크지만` : `${wa(mine.label)} 크기가 같지만`}, 선수인 ${mine.label}부터 두면 백이 ${reply(mine.mine.replies)}에 받은 뒤 다시 흑 차례라 ${big.label}까지 흑이 둬요.`,
       ];
     case "reverse": {
       const line = playLine(puzzle, mine.move);
       return [
         `백이 ${spotName(mine)}에 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 되어 흑은 ${reply(mine.theirs.replies)}에 이어야 해요.`,
-        `흑이 ${mine.label}에 먼저 막자 백은 ${line.white}에 두고, 흑이 ${line.black}까지 뒀어요.`,
+        `흑이 ${mine.label}에 먼저 막자 백은 ${placeName(puzzle, line.white)}에 두고 흑이 ${placeName(puzzle, line.black)}까지 둬, 세 곳 가운데 두 곳을 흑이 가졌어요.`,
       ];
     }
     case "double": {
       const line = playLine(puzzle, mine.move);
       return [
-        `${spotName(mine)}에 흑이 두면 백이 ${reply(mine.mine.replies)}에, 백이 두면 흑이 ${reply(mine.theirs.replies)}에 이어야 해요.`,
-        `흑이 먼저 두어 백이 ${line.white}에 받은 사이 ${line.black}까지 뒀어요.`,
+        `${spotName(mine)}에 흑이 두면 백 ${subj(points(mine.mine.stones))} 단수가 되어 백이 ${reply(mine.mine.replies)}에, 백이 두면 흑 ${subj(points(mine.theirs.stones))} 단수가 되어 흑이 ${reply(mine.theirs.replies)}에 이어야 해요.`,
+        `흑이 먼저 두어 백이 ${placeName(puzzle, line.white)}에 받은 뒤 ${placeName(puzzle, line.black)}까지 둬, 세 곳 가운데 두 곳을 흑이 가졌어요.`,
       ];
     }
   }

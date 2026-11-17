@@ -353,6 +353,13 @@ describe("끝내기 단원", () => {
     expect(s.white.stones).toBeGreaterThan(0);
     expect(s.black.stones).toBe(0);
     expect(s.others).toHaveLength(2);
+    // 글의 셈 「흑 돌만큼 1점, 백 돌만큼 1점, 흑이 받는 자리는 흑 집이라 그대로, 1 + 1 = 2」
+    expect(s.sizes).toEqual([2, 2, 2]);
+    expect(spotsOf(p).find((x) => x.includes(key))).toEqual([key]);
+    expect(areaOwners(start)[key]).toBe(0);
+    const blackAtKey = tryPlace(start, key, 1);
+    expect(blackAtKey.ok ? blackAtKey.captured : null).toEqual([]);
+    expect(areaOwners(start)[pointAt(s.white.reply, PUZZLE_SIZE)]).toBe(1);
     for (const [i, spot] of spotsOf(p).entries()) {
       if (spot.includes(key)) continue;
       // 흑이 다른 곳 → 백은 정답 곳(선수) → 흑은 글의 받는 자리 → 백은 남은 곳

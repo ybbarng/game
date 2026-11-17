@@ -20,7 +20,12 @@ import {
   spotSizesOf,
   spotsOf,
 } from "./study";
-import { endgameSpots, playLine, SPOT_LABELS } from "./study-explain";
+import {
+  endgameSpots,
+  placeName,
+  playLine,
+  SPOT_LABELS,
+} from "./study-explain";
 import type { BadukLesson, BadukScene } from "./tutorial";
 
 /*
@@ -256,10 +261,18 @@ function orderStory(p: Extract<BadukPuzzle, { kind: "endgame" }>) {
     /** 백이 두면 새로 단수가 되는 흑 돌 수와 흑이 받는 자리 */
     white: { stones: key.theirs.stones, reply: names(key.theirs.replies) },
     others: rest.map((s) => s.label),
+    /** 그림의 곳 이름 모두(A·B·C) */
+    labels: spots.map((s) => s.label),
     sizes: spots.map((s) => s.size),
     line: playLine(p, key.move),
   };
 }
+
+/** 이어 두는 자리를 글에 쓸 이름(끝내기 곳이면 「A(D9)」) */
+const lineNames = (
+  p: Extract<BadukPuzzle, { kind: "endgame" }>,
+  line: { white: string; black: string },
+) => ({ white: placeName(p, line.white), black: placeName(p, line.black) });
 
 /** 역끝내기 그림(역끝내기 첫 문제) */
 export const ENDGAME_REVERSE_PUZZLE = puzzle("endgame-reverse-1", "endgame");
@@ -718,10 +731,12 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "상대의 선수 자리",
         body: [
           "선수는 백에게도 있어요. 백이 두면 흑이 꼭 받아야 하는 곳이 백의 선수 자리예요.",
-          `그림에서 백이 ${REVERSE_STORY.label}(${REVERSE_STORY.move})에 두면 흑 ${COUNT[REVERSE_STORY.white.stones]} 점이 단수가 되고, 흑은 ${REVERSE_STORY.white.reply}에 이어 받아야 해요. 흑이 먼저 ${REVERSE_STORY.label}에 두면 새로 단수가 되는 백 돌이 없어 흑에게는 후수예요.`,
+          `새 그림에는 끝내기가 ${REVERSE_STORY.labels.join("·")} 세 곳 남았고, 흑 차례예요.`,
+          `백이 ${REVERSE_STORY.label}(${REVERSE_STORY.move})에 두면 흑 ${COUNT[REVERSE_STORY.white.stones]} 점이 단수가 되고, 흑은 ${REVERSE_STORY.white.reply}에 이어 받아야 해요. 흑이 먼저 ${REVERSE_STORY.label}에 두면 새로 단수가 되는 백 돌이 없어 흑에게는 후수예요.`,
           "이렇게 상대의 선수 자리를 내가 먼저 막는 후수 끝내기를 **역끝내기**라고 해요.",
-          `세 곳 모두 ${REVERSE_SIZE}점짜리예요. 흑이 ${REVERSE_STORY.others.join("·")} 가운데 한 곳부터 두면, 백이 ${REVERSE_STORY.label}에 선수로 두고 흑이 받는 사이 남은 곳까지 둬요. 흑은 한 곳만 가져요.`,
-          `${REVERSE_STORY.label}부터 막으면 백이 ${REVERSE_STORY.line.white}에 두고 흑이 ${REVERSE_STORY.line.black}에 둬서, 흑이 두 곳을 가져요.`,
+          `${topic(REVERSE_STORY.label)} 몇 점짜리인지 세 봐요. 흑이 먼저 두면 흑 돌만큼 점수 차가 1점 늘고, 백이 먼저 두면 백 돌만큼 1점 줄어요. 흑이 ${REVERSE_STORY.white.reply}에 이어 받아도 흑 집 한 칸이 흑 돌로 바뀔 뿐이라 흑 점수는 그대로예요. 1 + 1 = ${REVERSE_SIZE}, ${REVERSE_STORY.others.join("·")}도 세어 보면 세 곳 모두 ${REVERSE_SIZE}점짜리예요.`,
+          `흑이 ${REVERSE_STORY.others.join("·")} 가운데 한 곳부터 두면, 백이 ${REVERSE_STORY.label}에 선수로 둬요. 흑이 ${REVERSE_STORY.white.reply}에 받으면 다시 백 차례라 백이 남은 한 곳도 가져가요. 흑은 한 곳만 가져요.`,
+          `${REVERSE_STORY.label}부터 막으면 백이 ${lineNames(ENDGAME_REVERSE_PUZZLE, REVERSE_STORY.line).white}에 두고 흑이 ${lineNames(ENDGAME_REVERSE_PUZZLE, REVERSE_STORY.line).black}에 둬서, 흑이 두 곳을 가져요.`,
         ],
         scene: sceneOf(
           ENDGAME_REVERSE_PUZZLE,
@@ -733,8 +748,8 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "누가 두어도 선수인 곳",
         body: [
           `그림의 ${topic(`${DOUBLE_STORY.label}(${DOUBLE_STORY.move})`)} 흑이 두면 백 ${COUNT[DOUBLE_STORY.black.stones]} 점이, 백이 두면 흑 ${COUNT[DOUBLE_STORY.white.stones]} 점이 단수가 돼요. 누가 두어도 상대가 꼭 받아야 하는 이런 곳을 **양선수**라고 해요.`,
-          `흑이 먼저 두면 백이 ${DOUBLE_STORY.black.reply}에 이어 받은 사이 흑이 ${DOUBLE_STORY.line.black}까지 둬요.`,
-          `흑이 다른 곳부터 두면 백이 ${DOUBLE_STORY.label}에 선수로 두고, 흑이 ${DOUBLE_STORY.white.reply}에 받는 사이 백이 남은 곳까지 둬요. 그래서 양선수는 가장 먼저 둬요.`,
+          `흑이 먼저 두면 백이 ${DOUBLE_STORY.black.reply}에 이어 받고, 다시 흑 차례라 ${lineNames(ENDGAME_DOUBLE_PUZZLE, DOUBLE_STORY.line).black}도 흑이 둬요. 흑이 세 곳 가운데 두 곳을 가져요.`,
+          `흑이 다른 곳부터 두면 백이 ${DOUBLE_STORY.label}에 선수로 둬요. 흑이 ${DOUBLE_STORY.white.reply}에 받으면 다시 백 차례라 백이 남은 한 곳도 가져가요. 그래서 양선수는 가장 먼저 둬요.`,
         ],
         scene: sceneOf(
           ENDGAME_DOUBLE_PUZZLE,
@@ -746,12 +761,12 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "어디부터 둘까",
         body: [
           "끝내기가 여러 곳 남으면 이 순서로 골라요.",
-          "① 양선수가 있으면 양선수부터 둬요.",
+          "① 양선수가 있으면 양선수부터 둬요. 양선수는 상대에게도 선수라, 미루면 상대가 먼저 선수로 가져갈 수 있어요.",
           "② 내 선수가 있으면 선수부터 둬요. 선수가 여럿이면 그 가운데 큰 곳부터예요.",
           "③ 상대의 선수 자리가 있고 남은 후수가 그곳과 크기가 같으면, 상대의 선수 자리부터 막아요(역끝내기).",
-          "④ 그 밖에는 후수 가운데 큰 곳부터 둬요. 역끝내기가 다른 후수보다 작은 판은 이 단원에서 다루지 않아요.",
+          "④ 그 밖에는 후수 가운데 큰 곳부터 둬요. 상대의 선수 자리가 다른 후수보다 작을 때 어느 쪽이 먼저인지는 이 단원에서 다루지 않아요.",
           "⑤ ①~④로 정해지지 않고 크기가 같으면 어느 곳부터 둬도 괜찮아요.",
-          `이 판에서 세면 ${topic(SENTE_LABEL)} ${SENTE_SIZES[0]}점짜리, ${topic(GOTE_LABEL)} ${SENTE_SIZES[1]}점짜리예요. ${subj(SENTE_LABEL)} 크지 않아도 선수라 먼저 둬요. 백이 받으면 다시 흑 차례라 ${GOTE_LABEL}도 흑이 둬요.`,
+          `그림은 「선수와 후수」에서 본 판이에요. 세면 ${topic(SENTE_LABEL)} ${SENTE_SIZES[0]}점짜리, ${topic(GOTE_LABEL)} ${SENTE_SIZES[1]}점짜리예요. ${subj(SENTE_LABEL)} 크지 않아도 흑의 선수라 ②대로 먼저 둬요. 백이 받으면 다시 흑 차례라 ${GOTE_LABEL}도 흑이 둬요.`,
         ],
         scene: sceneOf(SENTE, endgameMarks(SENTE)),
       },
@@ -768,7 +783,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
       },
       {
         kind: "quiz",
-        question: `선수 ${SENTE_SIZES[0]}점짜리와 후수 ${SENTE_SIZES[1]}점짜리가 남았어요. 어디부터 둘까요?`,
+        question: `흑 차례예요. 흑의 선수 ${SENTE_SIZES[0]}점짜리와 후수 ${SENTE_SIZES[1]}점짜리가 남았어요. 어디부터 둘까요?`,
         options: [
           `선수 ${SENTE_SIZES[0]}점짜리`,
           `후수 ${SENTE_SIZES[1]}점짜리`,
@@ -779,11 +794,11 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
       },
       {
         kind: "quiz",
-        question: `${REVERSE_SIZE}점짜리 후수 끝내기가 세 곳 남았어요. 그 가운데 한 곳은 백이 두면 흑 돌이 단수가 되는 곳이에요. 어디부터 둘까요?`,
-        options: ["백이 두면 흑 돌이 단수가 되는 곳", "다른 후수 곳"],
+        question: `흑 차례예요. ${REVERSE_SIZE}점짜리 끝내기가 세 곳 남았어요. 그 가운데 한 곳은 흑이 두면 후수지만, 백이 두면 흑 돌이 단수가 되는 곳이에요. 어디부터 둘까요?`,
+        options: ["백이 두면 흑 돌이 단수가 되는 곳", "다른 곳"],
         answer: 0,
         explain:
-          "다른 곳부터 두면 백이 그곳에 선수로 두고, 내가 받는 사이 남은 곳까지 가져가요. 먼저 막으면(역끝내기) 세 곳 가운데 두 곳을 내가 가져요.",
+          "다른 곳부터 두면 백이 그곳에 선수로 두고, 내가 받은 뒤 다시 백 차례라 남은 곳까지 가져가요. 먼저 막으면(역끝내기) 세 곳 가운데 두 곳을 내가 가져요.",
       },
       {
         kind: "quiz",
