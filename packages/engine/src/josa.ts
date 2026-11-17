@@ -1,6 +1,7 @@
 /*
  * 낱말 뒤 조사를 끝소리 받침으로 고른다. 해설·안내 문장에 이름·카드·수·숫자가 끼어들 때 쓴다.
- * 끝의 괄호 풀이(「차(59)」)·기호(+ # !)는 건너뛰고 그 앞 글자로 본다.
+ * 끝의 괄호 풀이(「차(59)」)·기호(+ # ! 굵은 글씨 표시 **)는 건너뛰고 그 앞 글자로 본다.
+ * JSX처럼 값과 조사를 따로 그려야 하면 `josaOf(값, obj)`로 조사만 받는다.
  * 숫자는 읽는 소리로(0 영·1 일·3 삼·6 육·7 칠·8 팔·10 십은 받침이 있다), 로마자는 이름으로(L 엘·M 엠·N 엔·R 알만 받침).
  * 받침을 모르는 글자(기호만 있는 말 등)는 「이(가)」처럼 둘 다 적는다.
  * 모든 엔진·fair-play·웹이 기대는 이 패키지에 두고 `@game/mighty-engine/josa`로 부른다(웹은 `lib/josa`가 다시 내보낸다).
@@ -9,11 +10,11 @@
 /** 받침이 있으면 true, 없으면 false, 모르면 null. `rieul`은 끝소리가 ㄹ인가(「로」·「으로」를 고를 때) */
 function lastSound(word: string): { batchim: boolean; rieul: boolean } | null {
   let w = word.trim();
-  // 끝의 괄호 풀이와 기호는 읽지 않는다
+  // 끝의 괄호 풀이와 기호(굵은 글씨 표시 ** 포함)는 읽지 않는다
   for (;;) {
     const next = w
       .replace(/\([^()]*\)$/, "")
-      .replace(/[\s+#!?'"」』)\]]+$/, "");
+      .replace(/[\s+#!?*'"」』)\]]+$/, "");
     if (next === w) break;
     w = next;
   }
@@ -60,4 +61,16 @@ export function ro(word: string): string {
   const s = lastSound(word);
   if (s === null) return `${word}(으)로`;
   return `${word}${s.batchim && !s.rieul ? "으로" : "로"}`;
+}
+
+/**
+ * 조사만. 값은 따로 그리고(`<Num>{m}</Num>`) 바로 뒤에 조사를 붙일 때 쓴다: `{josaOf(m, obj)}`.
+ * 「나」→「내가」처럼 값째 바뀌는 꼴은 조사만 떼어 낼 수 없으니 `subj`를 그대로 쓴다.
+ */
+export function josaOf(
+  word: string | number,
+  of: (word: string) => string,
+): string {
+  const w = String(word);
+  return of(w).slice(w.length);
 }

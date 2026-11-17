@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { copula, obj, ro, subj, topic, wa } from "./josa";
+import { copula, josaOf, obj, ro, subj, topic, wa } from "./josa";
 
 describe("조사 고르기", () => {
   it("한글은 끝 글자 받침으로 고른다", () => {
@@ -42,5 +42,24 @@ describe("조사 고르기", () => {
 
   it("받침을 모르면 둘 다 적는다", () => {
     expect(subj("★")).toBe("★이(가)");
+  });
+
+  it("굵은 글씨 표시(**)는 건너뛰고 그 안 낱말로 고른다", () => {
+    expect(copula("**✦30**")).toBe("**✦30**이에요");
+    expect(copula("**✦1,200**")).toBe("**✦1,200**이에요");
+    expect(obj("**벨라트릭스**")).toBe("**벨라트릭스**를");
+  });
+});
+
+describe("조사만 고르기(josaOf)", () => {
+  it("JSX에서 값과 따로 그릴 조사만 돌려준다", () => {
+    expect(josaOf(13, obj)).toBe("을");
+    expect(josaOf(2, ro)).toBe("로");
+    expect(josaOf(3, ro)).toBe("으로");
+    expect(josaOf("상대", wa)).toBe("와");
+  });
+
+  it("받침을 모르면 둘 다 적은 조사를 돌려준다", () => {
+    expect(josaOf("★", subj)).toBe("이(가)");
   });
 });
