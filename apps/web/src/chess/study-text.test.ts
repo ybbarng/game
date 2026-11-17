@@ -49,7 +49,7 @@ describe("체스 수 배우기 글 말투", () => {
   });
 
   it("엔드게임 묶음 소개·단원 쪽 글·방법 단계 설명이 해요체 + 마침표다", () => {
-    const pieces = ["Q", "R"] as const;
+    const pieces = ["Q", "R", "RR"] as const;
     expect(
       toneProblems([
         ...ENDGAME_SETS.map((s) => s.summary),

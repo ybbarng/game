@@ -1,6 +1,5 @@
 "use client";
 
-import { kxkWhiteDistance, kxkWhiteMoves } from "@game/chess-ai";
 import { kingOf, type Move, squareAt } from "@game/chess-engine";
 import { useRef, useState } from "react";
 
@@ -11,9 +10,14 @@ import { obj } from "@/lib/josa";
 
 import {
   blackReply,
+  type DrillBoard,
   type DrillMiss,
+  drillBest,
   drillBoard,
   drillCells,
+  drillGuide,
+  drillMoves,
+  drillPlayed,
   ENDGAME_LIMIT,
   type EndgameDrill,
   type EndgameSet,
@@ -23,7 +27,6 @@ import {
   methodSteps,
   PIECE_WORD,
 } from "../endgame";
-import { guideMove, type KxkBoard, whitePlayed } from "../endgame-guide";
 import { useChessStudyProgress } from "../progress";
 import { useChessSettings } from "../settings";
 import { ChessBoard } from "./ChessBoard";
@@ -205,13 +208,13 @@ function EndgamePractice({
   const miss = useChessStudyProgress((s) => s.miss);
   const [selected, setSelected] = useState<number | null>(null);
   // 「수 보기」로 본 방법의 수. 한 번이라도 보면 푼 것으로 치지 않는다
-  const [shown, setShown] = useState<ReturnType<typeof guideMove>>(null);
+  const [shown, setShown] = useState<ReturnType<typeof drillGuide>>(null);
   const helped = useRef(false);
   const lastMiss = useRef<DrillMiss | null>(null);
   // 지금까지 둔 내 수(판정할 때 센다, 해설에 쓴다)
   const played = useRef(0);
   const start = drillBoard(piece, drill.fen);
-  const run = usePuzzleRun<KxkBoard, Move>({
+  const run = usePuzzleRun<DrillBoard, Move>({
     initial: () => start,
     judge: (state, move, step) => {
       const verdict = judgeDrill(piece, state, move, step);
@@ -220,7 +223,7 @@ function EndgamePractice({
       return verdict.verdict;
     },
     apply: (state, move) => ({
-      state: whitePlayed(state, move),
+      state: drillPlayed(piece, state, move),
       capture: false,
     }),
     reply: (state) => {
@@ -233,7 +236,7 @@ function EndgamePractice({
       };
     },
     explain: (): string[] => {
-      const best = kxkWhiteDistance(piece, start.wk, start.bk, start.p);
+      const best = drillBest(piece, start);
       return [
         `${played.current}수 만에 메이트했어요.`,
         ...(best ? [`이 시작 판은 가장 빠르면 ${best}수예요.`] : []),
@@ -245,14 +248,8 @@ function EndgamePractice({
     miss: () => miss(drill.id),
   });
   const { state, status } = run;
-  const legal: Move[] =
-    status === "play"
-      ? kxkWhiteMoves(piece, state.wk, state.bk, state.p).map((m) => ({
-          from: m.from,
-          to: m.to,
-        }))
-      : [];
-  const guide = status === "play" ? guideMove(piece, state) : null;
+  const legal: Move[] = status === "play" ? drillMoves(piece, state) : [];
+  const guide = status === "play" ? drillGuide(piece, state) : null;
   const step = shown
     ? methodSteps(piece).findIndex((s) => s.rule === shown.rule)
     : -1;
@@ -309,7 +306,7 @@ function EndgamePractice({
           run.restart();
           lastMiss.current = null;
           helped.current = true;
-          setShown(guideMove(piece, start));
+          setShown(drillGuide(piece, start));
           setSelected(null);
           return;
         }

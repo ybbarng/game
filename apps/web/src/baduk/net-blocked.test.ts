@@ -3,6 +3,7 @@
 import { type Cell, groupOf, ladderMoves, pointAt } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
+import { shapeKey } from "./puzzle-shape";
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
 import { PUZZLE_SIZE, puzzleState, targetOf } from "./study";
 
@@ -22,6 +23,13 @@ function ladderSides(board: readonly Cell[], target: number): number[] {
 describe("축이 막히면 장문", () => {
   it("묶음에 문제가 다섯 개 이상이다", () => {
     expect(nets.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("백 돌 둘레 모양이 서로 다른 것이 넷 이상이다(판 대칭으로 돌린 같은 모양은 하나로 센다)", () => {
+    const keys = nets.map((p) =>
+      shapeKey(puzzleState(p).board, PUZZLE_SIZE, targetOf(p)),
+    );
+    expect(new Set(keys).size).toBeGreaterThanOrEqual(4);
   });
 
   it.each(rows)(
