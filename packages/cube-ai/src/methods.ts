@@ -62,11 +62,13 @@ export type SolveMethod =
   | "fourlook"
   | "advanced"
   | "expert"
-  | "yau";
+  | "yau"
+  | "yau-cfop";
 
 /**
  * 모든 크기가 쓰는 해법. `yau`(4×4만: 야우 앞 다섯 단계 + 4단계 마지막 층 CFOP 「3×3처럼」, `yau.ts`, docs/47 10-4)는
- * 4×4 중수만 쓰므로 여기에 넣지 않는다
+ * 4×4 중수만 쓰므로 여기에 넣지 않는다. `yau-cfop`(4×4만: 야우 앞 네 단계 + 십자를 지키는 짧은 엣지 짝 + CFOP 「3×3처럼」)도
+ * 4×4 고수·초고수만 쓴다
  */
 export const SOLVE_METHODS: readonly SolveMethod[] = [
   "beginner",
@@ -770,6 +772,10 @@ export function solveHuman(
   if (level === "yau") {
     if (size !== 4) throw new RangeError(`${size}×${size} 야우는 없다`);
     return solveYauHuman(FOURLOOK3_STEPS, state, opts.until);
+  }
+  if (level === "yau-cfop") {
+    if (size !== 4) throw new RangeError(`${size}×${size} 야우는 없다`);
+    return solveYauHuman(CFOP_STEPS, state, opts.until, "short");
   }
   if (size === 3) {
     if (level === "beginner") return solveBeginner3(state, opts);
