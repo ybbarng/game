@@ -13,11 +13,11 @@
  * - 흑 폰이 없고 백 폰이 하나면 킹+폰 대 킹 승패표(`kpk.ts`)
  * - 둘 수가 없으면 체크일 때 짐(메이트), 아니면 비김(스테일메이트)
  * - 폰이 퀸이 되면 "퀸을 얻은 쪽이 이긴다"로 바로 정하지 않는다(퀸 대 7번째 줄 폰은 비기기도 한다).
- *   상대의 다음 한 수를 모두 본다: 새 퀸을 잡으면 킹과 폰 판으로 돌아가 계속 읽고,
- *   잡지 못하면 상대 폰이 없을 때(퀸+킹 대 킹, 퀸 쪽 차례면 늘 이긴다)나
- *   상대 폰이 둘 이하이고 모두 자기 4번째 줄 이하(퀸이 될 때까지 네 수 이상 남음)일 때만 퀸 쪽 승리로 본다.
- *   뒤의 것은 끝까지 읽은 증명이 아니라 널리 알려진 끝내기 지식에 기댄 보수적인 판정이다(퀸이 비기는 판은
- *   상대 폰이 7번째 줄, 드물게 6번째 줄까지 올라와 킹이 돕는 경우다). 그 밖은 모른다. 퀸 말고 다른 기물로 바꾸는 수는 백에게 더 나을 수 있으므로, 백이 이기지 못한다는 증명에는
+ *   퀸이 생긴 판을 끝까지 읽는 판정(`PromotionJudge`, 보통은 `queen-ending.ts`의 `EndingProver`)을 넣으면 그것에 맡긴다.
+ *   넣지 않으면 상대의 다음 한 수만 보고 확실한 것만 참으로 낸다: 새 퀸을 잡으면 킹과 폰 판으로 돌아가 계속 읽고,
+ *   잡지 못하면 두 편 모두 폰이 없을 때(킹+퀸 대 킹, 퀸 쪽 차례면 늘 이긴다. `kxk.ts` 표로 시험이 확인한다)만 퀸 쪽 승리로,
+ *   상대에게 폰이 없을 때(킹 하나로는 이길 수 없다)만 상대가 못 이긴다고 본다. 그 밖은 모른다.
+ *   퀸 말고 다른 기물로 바꾸는 수는 백에게 더 나을 수 있으므로, 판정을 넣지 않았을 때 백이 이기지 못한다는 증명에는
  *   "흑이 새 기물을 바로 잡는다"만 쓴다(어떤 기물로 바꿔도 같은 칸에서 잡힌다)
  * 같은 판은 기억해 다시 읽지 않는다(증명된 것은 늘, 증명 못 한 것은 읽은 걸음 수와 함께).
  * 칸 번호는 엔진과 같다(y*8+x, a8=0·h1=63). 백 폰은 y가 줄어드는 쪽(끝줄 y=0), 흑 폰은 늘어나는 쪽(끝줄 y=7)으로 간다.
@@ -202,9 +202,29 @@ function keyOf(s: PawnEnding): number {
   return k;
 }
 
-/** 폰이 둘 이하이고 모두 자기 4번째 줄 이하인가(퀸이 될 때까지 네 수 이상 남음) */
+/** 폰이 둘 이하이고 모두 자기 4번째 줄 이하인가(퀸이 될 때까지 네 수 이상 남음). 어림(`guessFar`)에만 쓴다 */
 const allFar = (pawns: readonly number[], side: 0 | 1) =>
   pawns.length <= 2 && pawns.every((p) => (side === 0 ? Y(p) >= 4 : Y(p) <= 3));
+
+/** 폰이 퀸이 된 수(`PawnEndingNext`의 승급 쪽) */
+export type PawnEndingPromotion = Extract<PawnEndingNext, { kind: "promote" }>;
+
+/** 승급 판의 답을 아는지 묻는다. 참·거짓이면 그 답을 쓰고, 모르면 null */
+export type PromotionAnswers = (
+  m: PawnEndingPromotion,
+  goal: "wins" | "holds",
+) => boolean | null;
+
+/**
+ * 폰이 퀸이 된 뒤를 읽는 판정. 둘 다 증명될 때만 참을 낸다(모르면 거짓).
+ * 백이 아닌 다른 기물로 바꾸는 수도 있으므로 `holds`는 그 수들까지 판정이 스스로 본다
+ */
+export interface PromotionJudge {
+  /** 이 승급 뒤 백이 이긴다고 증명되나 */
+  wins(m: PawnEndingPromotion): boolean;
+  /** 이 승급(백이면 어떤 기물로 바꾸든) 뒤 백이 이기지 못한다고 증명되나 */
+  holds(m: PawnEndingPromotion): boolean;
+}
 
 /**
  * 퀸이 된 직후 상대 차례. 상대가 둘 수 있는 수를 모두 센다(퀸의 길은 킹·폰이 막는다)
@@ -308,20 +328,39 @@ function captureOfPromoted(
 }
 
 export class PawnEndingSolver {
-  private winYes = new Set<number>();
+  /** 증명된 판과 증명이 끝난 차례 번호(증명 나무를 거꾸로 돌지 않고 따라가는 데 쓴다) */
+  private winYes = new Map<number, number>();
   private winNo = new Map<number, number>();
-  private holdYes = new Set<number>();
+  private holdYes = new Map<number, number>();
   private holdNo = new Map<number, number>();
+  private stamp = 0;
   /** 읽은 판 수(시험·조사용) */
   nodes = 0;
   /** 흑 폰이 없고 백 폰이 하나일 때 승패표로 끝낼까(시험에서 끄고 읽은 결과를 표와 맞춰 본다) */
   private useKpk: boolean;
-  /** 퀸이 된 뒤 상대 폰이 모두 멀면 퀸 쪽 승리로 볼까(끄면 상대 폰이 없을 때만 퀸 쪽 승리) */
-  private farRule: boolean;
+  /** 퀸이 된 뒤를 맡을 판정(없으면 다음 한 수만 보고 확실한 것만) */
+  private promotion: PromotionJudge | null;
+  /**
+   * 판정을 넣지 않았을 때, 퀸이 된 뒤 상대 폰이 모두 멀면(둘 이하, 자기 4번째 줄 이하) 퀸 쪽 승리로 "어림"할까.
+   * 끝까지 읽은 것이 아니므로 이것으로 얻은 증명은 그대로 믿지 않는다. 증명 나무의 승급 판(`proofPromotions`)을
+   * 끝까지 읽는 판정(`EndingProver`)으로 하나씩 확인하는 데만 쓴다(먼저 빨리 후보 증명을 찾는다)
+   */
+  private guessFar: boolean;
+  /** 어림보다 먼저 묻는 답(끝까지 읽어 이미 아는 승급 판). null이면 어림이나 기본 판정으로 */
+  private known: PromotionAnswers | null;
 
-  constructor(options: { kpk?: boolean; farRule?: boolean } = {}) {
+  constructor(
+    options: {
+      kpk?: boolean;
+      promotion?: PromotionJudge | null;
+      guessFar?: boolean;
+      known?: PromotionAnswers | null;
+    } = {},
+  ) {
     this.useKpk = options.kpk ?? true;
-    this.farRule = options.farRule ?? true;
+    this.promotion = options.promotion ?? null;
+    this.guessFar = options.guessFar ?? false;
+    this.known = options.known ?? null;
   }
 
   /** 백이 이긴다고 plies 걸음 안에 증명되나 */
@@ -339,8 +378,10 @@ export class PawnEndingSolver {
     if (s.stm === 0) result = moves.some((m) => this.winsAfter(m, plies - 1));
     else if (moves.length === 0) result = inCheck(s);
     else result = moves.every((m) => this.winsAfter(m, plies - 1));
-    if (result) this.winYes.add(key);
-    else this.winNo.set(key, plies);
+    // 안쪽에서 같은 판이 먼저 증명됐으면 그 번호를 둔다(먼저 끝난 증명만 따라가게)
+    if (result) {
+      if (!this.winYes.has(key)) this.winYes.set(key, this.stamp++);
+    } else this.winNo.set(key, plies);
     return result;
   }
 
@@ -359,14 +400,18 @@ export class PawnEndingSolver {
     if (s.stm === 0) result = moves.every((m) => this.holdsAfter(m, plies - 1));
     else if (moves.length === 0) result = !inCheck(s);
     else result = moves.some((m) => this.holdsAfter(m, plies - 1));
-    if (result) this.holdYes.add(key);
-    else this.holdNo.set(key, plies);
+    if (result) {
+      if (!this.holdYes.has(key)) this.holdYes.set(key, this.stamp++);
+    } else this.holdNo.set(key, plies);
     return result;
   }
 
   /** 이 수를 둔 뒤 백이 이긴다고 증명되나 */
   winsAfter(m: PawnEndingNext, plies: number): boolean {
     if (m.kind === "pos") return this.wins(m.pos, plies);
+    if (this.promotion) return this.promotion.wins(m);
+    const told = this.known?.(m, "wins");
+    if (told === true || told === false) return told;
     if (m.side === 1) {
       // 흑이 퀸이 됐다: 백이 바로 잡는 길만 믿는다
       const cap = captureOfPromoted(m.after, m.queen);
@@ -376,16 +421,92 @@ export class PawnEndingSolver {
     if (replies === "mate") return true;
     if (replies === "stalemate") return false;
     if (replies.capture && !this.wins(replies.capture, plies - 1)) return false;
-    return replies.others.every(
-      (o) =>
-        !o.promotes &&
-        (o.pawns.length === 0 || (this.farRule && allFar(o.pawns, 1))),
+    // 어림: 흑 폰이 없거나 모두 멀면 이긴 것으로 본다(백 폰이 남아도)
+    if (this.guessFar)
+      return replies.others.every(
+        (o) => !o.promotes && (o.pawns.length === 0 || allFar(o.pawns, 1)),
+      );
+    // 퀸을 잡지 않은 수 뒤: 두 편 모두 폰이 없으면 킹+퀸 대 킹, 백 차례라 늘 이긴다
+    return (
+      m.after.wp.length === 0 &&
+      replies.others.every((o) => !o.promotes && o.pawns.length === 0)
     );
+  }
+
+  /**
+   * 이 수 뒤 물음(`wins`·`holds`)이 plies 걸음 안에 증명되면, 그 증명 나무에서 폰이 퀸이 된 판을 모두 모은다(증명 못 하면 null).
+   * 고르는 쪽(이기려면 백, 막으려면 흑)은 증명에 쓴 수 하나, 받는 쪽은 모든 수를 따라간다. 같은 판은 한 번만.
+   * 나무는 기억해 둔 증명에서 만든다. 판마다 증명이 끝난 차례 번호를 두어, 늘 먼저 끝난 증명 쪽으로만 내려간다
+   * (그래서 나무가 제 자신에 기대는 고리가 생기지 않는다).
+   * 승급 판은 판정(넣은 `PromotionJudge`, 없으면 다음 한 수만 보는 판정)이 참이라고 한 판이다.
+   * 그 판들이 모두 다른 판정으로도 확인되면, 승급 판이 아닌 나머지는 끝까지 읽은 것이므로 증명 전체가 선다
+   */
+  proofPromotions(
+    goal: "wins" | "holds",
+    first: PawnEndingNext,
+    plies: number,
+  ): PawnEndingPromotion[] | null {
+    const proved = (m: PawnEndingNext, p: number) =>
+      goal === "wins" ? this.winsAfter(m, p) : this.holdsAfter(m, p);
+    if (!proved(first, plies)) return null;
+    const yes = goal === "wins" ? this.winYes : this.holdYes;
+    /** 이 판의 증명 차례 번호. 표·끝으로 정해진 판은 -1, 증명되지 않았으면 null */
+    const stampOf = (n: PawnEnding): number | null => {
+      if (n.wp.length === 0) return goal === "holds" ? -1 : null;
+      if (this.useKpk && n.bp.length === 0 && n.wp.length === 1) {
+        const w = kpkWins(n.stm, n.wk, n.bk, n.wp[0] as number);
+        return w === (goal === "wins") ? -1 : null;
+      }
+      return yes.get(keyOf(n)) ?? null;
+    };
+    const out: PawnEndingPromotion[] = [];
+    const seen = new Set<string>();
+    const visitMove = (m: PawnEndingNext) => {
+      if (m.kind === "promote") {
+        const key = `${keyOf(m.after)}:${m.queen}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push(m);
+        }
+        return;
+      }
+      visit(m.pos);
+    };
+    const visit = (n: PawnEnding) => {
+      const key = `${keyOf(n)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const mine = stampOf(n);
+      if (mine === null) throw new Error("증명되지 않은 판이 증명 나무에 있다");
+      if (mine < 0) return;
+      const moves = order(pawnEndingMoves(n), n);
+      // 이 판보다 먼저 증명이 끝난 다음 판(승급 판은 판정이 참이면 된다)
+      const earlier = (m: PawnEndingNext) => {
+        if (m.kind === "promote") return proved(m, plies);
+        const t = stampOf(m.pos);
+        return t !== null && t < mine;
+      };
+      const chooser = goal === "wins" ? 0 : 1;
+      if (n.stm === chooser) {
+        const m = moves.find(earlier);
+        if (!m) throw new Error("증명에 쓴 수를 찾지 못했다");
+        visitMove(m);
+      } else {
+        if (!moves.every(earlier))
+          throw new Error("받는 쪽 수 가운데 먼저 증명되지 않은 것이 있다");
+        for (const m of moves) visitMove(m);
+      }
+    };
+    visitMove(first);
+    return out;
   }
 
   /** 이 수를 둔 뒤 백이 이기지 못한다고 증명되나 */
   holdsAfter(m: PawnEndingNext, plies: number): boolean {
     if (m.kind === "pos") return this.holds(m.pos, plies);
+    if (this.promotion) return this.promotion.holds(m);
+    const told = this.known?.(m, "holds");
+    if (told === true || told === false) return told;
     if (m.side === 0) {
       // 백이 퀸(이나 다른 기물)이 됐다: 흑이 바로 잡는 길만 믿는다
       const cap = captureOfPromoted(m.after, m.queen);
@@ -395,10 +516,11 @@ export class PawnEndingSolver {
     if (replies === "mate" || replies === "stalemate") return true;
     if (replies.capture && !this.holds(replies.capture, plies - 1))
       return false;
+    // 퀸을 잡지 않은 수 뒤 백에게 폰이 없으면 백은 킹 하나라 이길 수 없다(어림: 백 폰이 모두 멀어도)
     return replies.others.every(
       (o) =>
         !o.promotes &&
-        (o.pawns.length === 0 || (this.farRule && allFar(o.pawns, 0))),
+        (o.pawns.length === 0 || (this.guessFar && allFar(o.pawns, 0))),
     );
   }
 }

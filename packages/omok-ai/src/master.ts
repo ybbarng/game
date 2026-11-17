@@ -46,6 +46,9 @@ export interface MasterLimits {
   threatNodes: number;
   /** 상대 몰아붙이기를 끊는 자리를 확정하지 못하면 그 첫 수(급소)를 차지하나 */
   takeKey: boolean;
+  /** 끊는 자리를 확정하지 못했을 때 다시 확인할 짧은 길이(상대 수, 0이면 끔)와 그 확인에만 쓰는 노드 */
+  shortGuardMoves: number;
+  shortGuardNodes: number;
   /** 앞수 읽기 가장 깊은 수와 노드 */
   maxDepth: number;
   searchNodes: number;
@@ -62,6 +65,8 @@ export const MASTER_LIMITS: MasterLimits = {
   maxDepth: 6,
   searchNodes: 6000,
   takeKey: true,
+  shortGuardMoves: 5,
+  shortGuardNodes: 4000,
 };
 
 /** 뿌리에서 볼 후보 수 */
@@ -359,6 +364,22 @@ function guards(
     allowed(board, probe.value, stone, variant)
   )
     found.push(probe.value);
+  // 긴 길을 끊는지 확정하지 못했으면(일반·자유 규칙, 렌주에서 급소를 둘 수 없을 때), 짧은 길(shortGuardMoves수 안)을
+  // 끊는 자리만이라도 남긴다. 따로 둔 노드만 쓴다. 일반 규칙 백 10수째에 5수 만에 지는 자리(G7)를 고르던 것을 막는다
+  // (docs/20 9절: 일반 규칙 고수 상대 120판 88승 31패 → 108승 5패, 렌주는 판이 그대로).
+  if (found.length === 0 && threes && limits.shortGuardMoves > 0) {
+    const spare = new Pool(limits.shortGuardNodes);
+    for (const at of tries) {
+      if (found.length >= GUARD_PICKS || spare.left <= 0) break;
+      if (!allowed(board, at, stone, variant)) continue;
+      board[at] = stone;
+      const check = spare.run(limits.guardNodes, (b) =>
+        hasThreatWin(board, foe, variant, limits.shortGuardMoves, true, b),
+      );
+      board[at] = 0;
+      if (check.done && !check.value) found.push(at);
+    }
+  }
   return found;
 }
 

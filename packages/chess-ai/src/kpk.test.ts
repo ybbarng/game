@@ -2,6 +2,7 @@ import { squareAt } from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
 import { kpkWinningMoves, kpkWins } from "./kpk";
+import { kxkBlackDistance } from "./kxk";
 
 const sq = squareAt;
 const W = 0 as const;
@@ -34,5 +35,41 @@ describe("킹+폰 대 킹 승패표(잘 알려진 판)", () => {
       from: sq("a4"),
       to: sq("a5"),
     });
+  });
+});
+
+describe("킹+폰 대 킹 승패표: 승급하면 정말 이기나", () => {
+  const near = (a: number, b: number) =>
+    Math.max(Math.abs((a & 7) - (b & 7)), Math.abs((a >> 3) - (b >> 3))) <= 1;
+  const pawnAttacks = (p: number, at: number) =>
+    at >> 3 === (p >> 3) - 1 && Math.abs((at & 7) - (p & 7)) === 1;
+
+  it("「무사히 승급하면 이긴다」고 본 판은 퀸이나 룩으로 바꾸면 메이트 거리 표로도 이긴다(스테일메이트 없음)", () => {
+    let promotions = 0;
+    const wrong: string[] = [];
+    for (let p = 8; p < 16; p++)
+      for (let wk = 0; wk < 64; wk++)
+        for (let bk = 0; bk < 64; bk++) {
+          if (wk === bk || wk === p || bk === p || near(wk, bk)) continue;
+          if (pawnAttacks(p, bk)) continue;
+          for (const m of kpkWinningMoves(wk, bk, p)) {
+            if (m.from !== p || m.to !== p - 8) continue;
+            promotions++;
+            const queen = kxkBlackDistance("Q", wk, bk, m.to);
+            const rook = kxkBlackDistance("R", wk, bk, m.to);
+            if (queen === null && rook === null) wrong.push(`${wk} ${bk} ${p}`);
+          }
+        }
+    expect(wrong).toEqual([]);
+    expect(promotions).toBeGreaterThan(10_000);
+  });
+
+  it("퀸으로도 룩으로도 스테일메이트가 되는 승급은 이기는 수로 치지 않고, 그 판은 킹 수로 이긴다", () => {
+    // 백 킹 a3·흑 킹 a1·폰 b7: b8=Q·b8=R 모두 흑 킹이 둘 곳이 없다. Kb3 뒤 Kb1, 그다음 b8=Q+로 이긴다
+    const [wk, bk, p] = [sq("a3"), sq("a1"), sq("b7")];
+    expect(kpkWins(W, wk, bk, p)).toBe(true);
+    const moves = kpkWinningMoves(wk, bk, p);
+    expect(moves.filter((m) => m.from === p)).toEqual([]);
+    expect(moves).toContainEqual({ from: wk, to: sq("b3") });
   });
 });
