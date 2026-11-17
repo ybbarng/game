@@ -199,6 +199,17 @@ export const HEARTS_TUNING = {
   standingWeight: 26,
   /** 게임이 이어질 때 순위를 어림하는 점수 폭. 작을수록 지금 점수 차를 크게 본다 */
   standingSpread: 12,
+  /** 꼴찌 몫의 무게(1등 몫이 1일 때). 0이면 1등만 본다 */
+  standingLast: 0.5,
+  /** 이번 판에 이만큼 받으면 끝 점수에 닿는 사람이 있을 때 순위를 본다(26이면 한 판에 받을 수 있는 최대) */
+  standingReach: 26,
+  /**
+   * 순위로 카드를 바꿀 때 오차를 얼마나 깎는가. 0 이상이면 판 점수로 고른 카드를 기준으로, 같은 추측 판끼리
+   * 짝지은 순위 포함 값의 이득에서 표준 오차(이 배수)를 뺀 값이 0보다 클 때만 바꾼다. 음수면 순위 포함 값으로 바로 고른다
+   */
+  standingZ: 1,
+  /** 넘기기도 순위를 보는가(1 본다, 0 판 점수만) */
+  standingPass: 1,
   /** 문 슛 계획이 보통 계획보다 이만큼(판당 점수) 나아야 노린다 */
   moonMargin: 1,
   /** 문 슛 계획 비교에서 오차를 얼마나 깎는가(같은 추측 판끼리 짝지어 본 차이의 표준 오차 배수) */
@@ -217,7 +228,7 @@ export interface Standing {
  */
 export function standingFor(view: PlayerView): Standing | null {
   const top = Math.max(...view.scores);
-  if (top + 26 < view.rules.endScore) return null;
+  if (top + HEARTS_TUNING.standingReach < view.rules.endScore) return null;
   return { scores: view.scores, endScore: view.rules.endScore };
 }
 
@@ -237,13 +248,124 @@ export function standingValue(
     const mine = totals[seat] ?? 0;
     const lows = totals.filter((t) => t === low).length;
     const highs = totals.filter((t) => t === high).length;
-    return (mine === low ? 1 / lows : 0) - (mine === high ? 0.5 / highs : 0);
+    const lastWeight = HEARTS_TUNING.standingLast;
+    return (
+      (mine === low ? 1 / lows : 0) - (mine === high ? lastWeight / highs : 0)
+    );
   }
   const k = HEARTS_TUNING.standingSpread;
   const win = totals.map((t) => Math.exp(-(t - Math.min(...totals)) / k));
   const last = totals.map((t) => Math.exp((t - Math.max(...totals)) / k));
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-  return (win[seat] ?? 0) / sum(win) - (0.5 * (last[seat] ?? 0)) / sum(last);
+  return (
+    (win[seat] ?? 0) / sum(win) -
+    (HEARTS_TUNING.standingLast * (last[seat] ?? 0)) / sum(last)
+  );
+}
+
+/**
+ * 점수 판을 보는 버리기: 무늬가 떨어져 점수 카드를 버릴 때, 지금 턴을 이기고 있는 사람에게
+ * 점수를 주는 것이 다른 상대에게 주는 것보다 내 순위에 나쁘면 점수 카드 대신 다른 카드를 버리고,
+ * 더 좋으면 쥔 점수 카드를 버린다. 나머지는 바탕 봇(중수)대로 둔다.
+ * 시뮬레이션 안에서 첫 카드 뒤의 내 수(`standingRollout`)가 순위를 보게 하려고 둔다.
+ */
+export function standingAwareBot(
+  base: HeartsBot,
+  standing: Standing,
+): HeartsBot {
+  return {
+    name: `${base.name}+standing`,
+    decide(view, rng) {
+      const action = base.decide(view, rng);
+      const decision = view.decision;
+      const trick = view.trick;
+      if (
+        action.type !== "play" ||
+        decision?.kind !== "play" ||
+        decision.leading ||
+        !trick ||
+        trick.plays.length === 0
+      )
+        return action;
+      const lead = trick.plays[0]?.card as Card;
+      const cards = decision.cards;
+      if (cards.some((c) => suitOf(c) === suitOf(lead))) return action;
+      const target = trickWinner(trick);
+      const me = view.seat;
+      const now = standing.scores.map((s, i) => s + (view.takenPoints[i] ?? 0));
+      /** 점수 p를 자리 t가 받았을 때 내 순위 값 */
+      const valueIf = (t: number, p: number) =>
+        standingValue(
+          now.map((x, i) => (i === t ? x + p : x)),
+          me,
+          standing.endScore,
+        );
+      const worth = (c: Card) => pointsOf([c], view.rules);
+      const points = cards.filter((c) => worth(c) > 0);
+      if (points.length === 0) return action;
+      const p =
+        worth(action.card) > 0
+          ? worth(action.card)
+          : worth(
+              points.includes(QUEEN_OF_SPADES)
+                ? QUEEN_OF_SPADES
+                : ([...points].sort(
+                    (a, b) => rankPower(b) - rankPower(a),
+                  )[0] as Card),
+            );
+      const others = PLAYERS.filter((s) => s !== me && s !== target);
+      const elsewhere =
+        others.reduce((sum, s) => sum + valueIf(s, p), 0) /
+        Math.max(1, others.length);
+      const here = valueIf(target, p);
+      const margin = 0.02;
+      if (worth(action.card) > 0 && here < elsewhere - margin) {
+        const safe = cards.filter((c) => worth(c) === 0);
+        if (safe.length === 0) return action;
+        // 짧은 무늬의 높은 카드(중수의 마지막 버리기 순서)
+        const length = (c: Card) =>
+          view.hand.filter((h) => suitOf(h) === suitOf(c)).length;
+        const pick = [...safe].sort(
+          (a, b) => length(a) - length(b) || rankPower(b) - rankPower(a),
+        )[0] as Card;
+        return { type: "play", card: pick };
+      }
+      if (worth(action.card) === 0 && here > elsewhere + margin) {
+        const pick = points.includes(QUEEN_OF_SPADES)
+          ? QUEEN_OF_SPADES
+          : ([...points].sort(
+              (a, b) => rankPower(b) - rankPower(a),
+            )[0] as Card);
+        return { type: "play", card: pick };
+      }
+      return action;
+    },
+  };
+}
+
+/** 시뮬레이션 안에서 누가 순위를 보는 버리기를 하는가 */
+export type StandingRollout = "none" | "self" | "all";
+
+function withStanding(
+  policy: Policy,
+  standing: Standing | null,
+  rollout: StandingRollout,
+  me: number,
+): Policy {
+  if (!standing || rollout === "none") return policy;
+  const cache = new Map<HeartsBot, HeartsBot>();
+  return (seat) => {
+    const bot = policy(seat);
+    if (rollout === "self" && seat !== me) return bot;
+    // 문 슛 봇은 점수를 모으려는 것이라 버리기를 바꾸지 않는다.
+    if (bot === heartsMoonBot) return bot;
+    let wrapped = cache.get(bot);
+    if (!wrapped) {
+      wrapped = standingAwareBot(bot, standing);
+      cache.set(bot, wrapped);
+    }
+    return wrapped;
+  };
 }
 
 /** 판이 끝난 뒤 (다른 사람 평균 점수 − 내 점수). 게임 끝이 가까우면 순위 값을 더한다. 클수록 좋다 */
@@ -463,6 +585,8 @@ export interface HeartsPlanOptions {
   budget: SearchBudget;
   /** 게임 끝이 가까우면 순위를 본다 */
   standing?: boolean;
+  /** 순위를 볼 때 시뮬레이션 안에서 누가 순위를 보는 버리기를 하는가. 기본 `none` */
+  standingRollout?: StandingRollout;
   /** 문 슛 노리기(막기도 따로 정하지 않으면 함께) */
   moon?: boolean;
   /** 남의 문 슛 막기. 없으면 `moon`을 따른다 */
@@ -489,7 +613,11 @@ export function planHeartsPass(
   const candidates = passCandidates(view.hand, decision.count, moon);
   const plans = moon ? [false, true] : [false];
   if (candidates.length <= 1 && plans.length === 1) return null;
-  const standing = options.standing ? standingFor(view) : null;
+  const standing =
+    options.standing && HEARTS_TUNING.standingPass > 0
+      ? standingFor(view)
+      : null;
+  const rollout = options.standingRollout ?? "none";
   const pool = heartsDeck().filter((c) => !view.hand.includes(c));
   // 후보 × 계획. 0번은 기준 후보의 보통 계획
   const entries = plans.flatMap((shoot) =>
@@ -540,7 +668,13 @@ export function planHeartsPass(
         taken: PLAYERS.map(() => []),
         done: false,
       };
-      playOut(sim, rng, shoot ? shooterPolicy(me) : ALL_NORMAL);
+      playOut(
+        sim,
+        rng,
+        shoot
+          ? shooterPolicy(me)
+          : withStanding(ALL_NORMAL, standing, rollout, me),
+      );
       (samples[i] as number[]).push(utility(sim, me, standing));
     });
   });
@@ -589,6 +723,11 @@ export interface HeartsPlayPlan {
   threat: number | null;
   /** 문 슛 계획이 보통 계획보다 확실히 나을 때 그 계획의 가장 좋은 카드 */
   moonCard: Card | null;
+  /**
+   * 순위를 확실할 때만 볼 때(`standingZ` ≥ 0) 카드마다 추측 판별 순위 포함 값. 이때 `values`는 판 점수만 본 값이다.
+   * 순위를 보지 않거나 순위 포함 값으로 바로 고를 때는 null
+   */
+  standingSamples: number[][] | null;
   worlds: number;
 }
 
@@ -614,9 +753,15 @@ export function planHeartsPlay(
       ),
   );
   const standing = options.standing ? standingFor(view) : null;
+  const rollout = options.standingRollout ?? "none";
   const threat = (options.block ?? options.moon) ? moonThreat(view) : null;
   const shoot = (options.moon ?? false) && moonHopeful(view);
-  const normal = threat !== null ? threatPolicy(threat) : ALL_NORMAL;
+  const normal = withStanding(
+    threat !== null ? threatPolicy(threat) : ALL_NORMAL,
+    standing,
+    rollout,
+    view.seat,
+  );
   const trick = view.trick ?? { leader: view.seat, plays: [] };
   const base: Omit<Sim, "hands"> = {
     rules: view.rules,
@@ -634,6 +779,10 @@ export function planHeartsPlay(
   // 카드마다 추측 판별 값(같은 판끼리 짝지어 비교하려고 모두 남긴다)
   const normalSamples: number[][] = decision.cards.map(() => []);
   const moonSamples: number[][] = decision.cards.map(() => []);
+  // 순위를 확실할 때만 볼 때: 판 점수 값(normal·moon)과 순위 포함 값을 따로 모은다
+  const sure = standing !== null && HEARTS_TUNING.standingZ >= 0;
+  const direct = sure ? null : standing;
+  const standingSamples: number[][] = decision.cards.map(() => []);
   let counted = 0;
   const worlds = runWorlds(options.budget, () => {
     const hands = sampleHeartsHands(view, rng, forgotten);
@@ -643,12 +792,13 @@ export function planHeartsPlay(
       const sim = cloneSim({ ...base, hands });
       apply(sim, view.seat, card);
       playOut(sim, rng, normal);
-      normalSamples[i]?.push(utility(sim, view.seat, standing));
+      normalSamples[i]?.push(utility(sim, view.seat, direct));
+      if (sure) standingSamples[i]?.push(utility(sim, view.seat, standing));
       if (!shoot) return;
       const moonSim = cloneSim({ ...base, hands });
       apply(moonSim, view.seat, card);
       playOut(moonSim, rng, shooterPolicy(view.seat));
-      moonSamples[i]?.push(utility(moonSim, view.seat, standing));
+      moonSamples[i]?.push(utility(moonSim, view.seat, direct));
     });
   });
   if (counted === 0) return null;
@@ -668,8 +818,37 @@ export function planHeartsPlay(
     moonCard: moon
       ? sureMoonCard(values, moon, normalSamples, moonSamples)
       : null,
+    standingSamples: sure ? standingSamples : null,
     worlds,
   };
+}
+
+/**
+ * 판 점수로 고른 카드(`chosen`번)보다 순위 포함 값이 확실히 나은 카드. 같은 추측 판끼리 짝지은 차이의
+ * 평균에서 표준 오차(`standingZ`배)를 뺀 값이 가장 크고 0보다 큰 카드, 없으면 null
+ */
+export function sureStandingCard(
+  cards: readonly Card[],
+  samples: readonly (readonly number[])[],
+  chosen: number,
+): Card | null {
+  const base = samples[chosen] ?? [];
+  let best: Card | null = null;
+  let bestGain = 0;
+  samples.forEach((s, i) => {
+    if (i === chosen || s.length === 0) return;
+    const diffs = s.map((v, w) => v - (base[w] ?? 0));
+    const n = diffs.length;
+    const mean = diffs.reduce((a, b) => a + b, 0) / n;
+    const variance =
+      n > 1 ? diffs.reduce((a, d) => a + (d - mean) ** 2, 0) / (n - 1) : 0;
+    const gain = mean - HEARTS_TUNING.standingZ * Math.sqrt(variance / n);
+    if (gain > bestGain) {
+      bestGain = gain;
+      best = cards[i] ?? null;
+    }
+  });
+  return best;
 }
 
 /**
@@ -744,6 +923,8 @@ export interface HeartsSearchOptions {
   minWorlds?: number;
   /** 게임 끝이 가까우면 순위를 본다. 기본 끔(재 보니 1등 몫이 나아지지 않았다, docs/hearts/02 3절) */
   standing?: boolean;
+  /** 점수 판을 볼 때 시뮬레이션 안의 누가 순위를 보는 버리기를 하는가(`standingAwareBot`). 기본 `none` */
+  standingRollout?: StandingRollout;
   /** 문 슛 노리기. 기본 켬 */
   moon?: boolean;
   /** 남의 문 슛 막기. 기본 켬 */
@@ -774,6 +955,7 @@ export function createHeartsSearchBot(
   const worlds = options.worlds ?? 30;
   const passWorlds = options.passWorlds ?? 24;
   const standing = options.standing ?? false;
+  const standingRollout = options.standingRollout ?? "none";
   const moon = options.moon ?? true;
   const block = options.block ?? true;
   return {
@@ -786,6 +968,7 @@ export function createHeartsSearchBot(
         const plan = planHeartsPass(view, rng, {
           budget: budgetOf(passWorlds),
           standing,
+          standingRollout,
           moon,
         });
         return plan ? { type: "pass", cards: plan.cards } : fallback;
@@ -796,6 +979,7 @@ export function createHeartsSearchBot(
         budget: budgetOf(worlds),
         persona,
         standing,
+        standingRollout,
         moon,
         block,
       });
@@ -809,7 +993,14 @@ export function createHeartsSearchBot(
         rng,
       );
       // 문 슛 계획이 확실히 나으면 그 계획의 가장 좋은 카드
-      const chosen = plan.moonCard ?? card;
+      const ranked = plan.standingSamples
+        ? sureStandingCard(
+            plan.values.map((v) => v.card),
+            plan.standingSamples,
+            plan.values.findIndex((v) => v.card === card),
+          )
+        : null;
+      const chosen = plan.moonCard ?? ranked ?? card;
       return fallback.type === "play" && fallback.card === chosen
         ? fallback
         : { type: "play", card: chosen };
