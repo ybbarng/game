@@ -390,7 +390,31 @@ test(
     await expect(box.locator("[data-cube-next-solve]")).toHaveText(
       "다음 판 2:51.56 안이면 브론즈 I",
     );
+    // 티어 이력: 그래프(그림 설명), 바뀐 순간 넷(최신이 위)
+    const hist = page.locator("[data-cube-tier-history='3']");
+    await expect(hist.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "3×3 티어 이력, 11판. 아이언 I에서 브론즈 II까지.",
+    );
+    await expect(hist.locator("[data-cube-history-dot]")).toHaveCount(4);
+    await expect(hist.locator("[data-cube-history-changes] li")).toHaveText([
+      "11/15 브론즈 III → 브론즈 II",
+      "11/14 브론즈 IV → 브론즈 III",
+      "11/13 아이언 I → 브론즈 IV",
+      "11/12 아이언 I",
+    ]);
     await shot(page, "tiers-cubie", info.project.name);
+    // 휴대폰 너비: 그래프가 칸 폭에 맞춰 다시 그려지고 옆으로 넘치지 않는다
+    await page.setViewportSize({ width: 360, height: 780 });
+    await expect
+      .poll(() =>
+        hist.getByRole("img").evaluate((e) => e.getBoundingClientRect().width),
+      )
+      .toBeLessThanOrEqual(328);
+    await noSideScroll(page);
+    await hist.scrollIntoViewIfNeeded();
+    await shot(page, "tiers-history-phone", info.project.name);
+    await page.setViewportSize({ width: 1280, height: 800 });
     // 크기를 바꿔도 Cubie 기록으로(주소에 남는다)
     await page.locator("[data-cube-tier-size='4']").click();
     await expect(page).toHaveURL(/records=cubie/);

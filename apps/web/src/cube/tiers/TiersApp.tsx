@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { installCaptureHook } from "./emblem3d/capture";
+import { TierHistoryChart } from "./TierHistoryChart";
 import { TierShowcase } from "./TierShowcase";
 import {
   basisFromSearch,
@@ -42,7 +43,7 @@ export function TiersApp() {
       // 찍기 고리는 제품 화면에 없어도 된다
     }
   }, []);
-  const { mine, goal } = useTierProgress(n, basis);
+  const { mine, goal, history } = useTierProgress(n, basis);
 
   const pick = (next: number) => {
     setN(next);
@@ -94,6 +95,7 @@ export function TiersApp() {
         </fieldset>
 
         <TierShowcase n={n} mine={mine} goal={goal} basis={basis} />
+        <TierHistoryChart n={n} history={history} />
 
         <section className="flex flex-col gap-1.5 text-sm text-white/80 leading-relaxed">
           <p>

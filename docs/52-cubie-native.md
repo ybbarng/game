@@ -976,6 +976,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - **글**: 티어 화면 글을 해요체로, 「Ao5」를 처음 보는 사람도 알게 「5판 평균」으로 쓰고 매기는 법 문단에서 「5판 평균(Ao5)」으로 한 번 푼다. 앱 티어표 빈 상태는 사이트 혼자 맞추기로 가는 링크 대신 「Cubie에서 5판 맞추면 생겨요.」.
 - 시험: 앱 `TierSheetTests` 「tiersWindowUsesCubieRecordsLikeRecordsWindow」(고치기 전 실패 확인), 화면 `cube-tiers.spec.ts` 「Cubie 창(records=cubie)은 Cubie 기록으로…」(사용자 3×3 11판 → 브론즈 II 2:35.09), 글 `native-windows-text.test.ts`.
 - **Cubie 새 판이 필요하다**(티어표 창은 앱이 그린다).
+- **같은 날 더한 것**(docs/47 14-8, 사이트와 같은 글·차례): 기록 창 요약 「최근 5판 평균」·「최근 12판 평균」·「최고 5판 평균 2:35.09 · 7~11번」, 그 5판 줄은 호박색 바탕과 빠진 두 판의 괄호 시간, 티어 칸 아래 고른 크기의 다음 판 목표. 티어표 창 큰 칸에 다음 판 목표, 사다리 아래 티어 이력(그래프는 층으로 짓는 `TierHistoryView`, 자리는 `TierHistoryLayout`). 계산은 코어 C 함수 `cubie_best_five`·`cubie_next_solve`·`cubie_tier_history`. 비교판 `docs/cubie-native/compare-windows-records.webp`·`compare-windows-tiers.webp`(네이티브 스크린샷은 문서 보기만 찍어 바탕이 투명이라 비교판의 회색이 비친다. 앱에서는 창 바탕 위).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

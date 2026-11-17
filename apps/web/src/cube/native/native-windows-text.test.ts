@@ -24,6 +24,9 @@ const FILES = import.meta.glob<string>(
     "../../../../cubie/Sources/CubieCore/SettingsSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierProgress.swift",
     "../tiers/progress-view.ts",
+    "../tiers/TierHistoryChart.tsx",
+    "../tiers/history-chart.ts",
+    "../../../../cubie/Sources/CubieCore/TierHistoryLayout.swift",
     "../mini/MiniCubeApp.tsx",
     "../tiers/TiersApp.tsx",
     "../tiers/TierShowcase.tsx",
@@ -95,6 +98,13 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "에 못 닿아요. 최고 5판 평균을 ",
       "초 줄여야 해요.",
     ]));
+
+  it("티어 이력(TierHistoryChart·history-chart, 앱 TierHistoryLayout.swift)", () =>
+    sameText(
+      ["TierHistoryChart.tsx", "history-chart.ts"],
+      "TierHistoryLayout.swift",
+      ["티어 이력", " → ", "에서 ", "까지.", "판.", " 지금 "],
+    ));
 
   it("티어표(TiersApp)", () =>
     // 내 티어 칸 글은 진열(TierShowcase.tsx)로 옮겼다(2026-11-13, 글은 그대로)

@@ -37,7 +37,7 @@ final class NativeTiersWindow: NativeSheetWindow {
     guard let table = TierSheet.parse(n: n, text: text) else { return }
     let mine = TierSheet.mine(store: store, math: math, n: n)
     let book = MiniBook(store: store, math: math)
-    page.show(table: table, mine: mine, goal: book.nextSolve(n))
+    page.show(table: table, mine: mine, goal: book.nextSolve(n), history: book.history(n))
     page.frame.size.width = scroll.contentSize.width
     page.needsLayout = true
   }
@@ -76,6 +76,10 @@ final class TiersPageView: NSView {
   private let device = NUI.paragraph(TierSheet.deviceOnly, color: NUI.white(0.5), lineHeight: 16)
   // 진열: 사다리
   let ladder = TierLadderView()
+  // 티어 이력(docs/47 14-8)
+  private let historyTitle = NUI.label(TierHistoryLayout.title, size: 16, weight: .semibold)
+  let historyView = TierHistoryView(frame: .zero)
+  private let historyList = NUI.paragraph("", size: 14, color: NUI.white(0.8), lineHeight: 20)
   private let sizeTitle = NUI.label("", size: 16, weight: .semibold)
   private let note = NUI.paragraph("", color: NUI.white(0.5), lineHeight: 16)
   private let grid = TierGridView()
@@ -86,7 +90,10 @@ final class TiersPageView: NSView {
   init() {
     super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size))
     back.action = { NUI.openSite("/cube") }
-    for v in [back, title, heroBox, ladder, intro1, intro2, sizeTitle, note, grid, footLine, foot1, foot2] as [NSView] {
+    for v in [
+      back, title, heroBox, ladder, historyTitle, historyView, historyList, intro1, intro2, sizeTitle, note, grid,
+      footLine, foot1, foot2,
+    ] as [NSView] {
       addSubview(v)
     }
     for s in TierSheet.sizes {
@@ -131,10 +138,21 @@ final class TiersPageView: NSView {
     if let table { show(table: table, mine: mine, goal: goal) }
   }
 
-  func show(table: TierSheet.Table, mine: TierInfo?, goal: TierProgress.NextSolve? = nil) {
+  func show(
+    table: TierSheet.Table, mine: TierInfo?, goal: TierProgress.NextSolve? = nil, history: TierProgress.History? = nil
+  ) {
     self.table = table
     self.mine = mine
     self.goal = goal
+    if let history {
+      // 티어 이력(사이트 `TierHistoryChart`): 5판 평균이 아직 없으면 두지 않는다
+      let shown = !history.changes.isEmpty
+      for v in [historyTitle, historyView, historyList] as [NSView] { v.isHidden = !shown }
+      historyView.show(n: table.n, table: table, history: history)
+      historyList.attributedStringValue = NUI.attributed(
+        history.changes.reversed().map { TierHistoryLayout.changeLine($0) }.joined(separator: "\n"), size: 14,
+        color: NUI.white(0.8), lineHeight: 20)
+    }
     let st = TierShowcase.state(table: table, mine: mine, picked: picked)
     state = st
     for (i, s) in TierSheet.sizes.enumerated() {
@@ -302,6 +320,16 @@ final class TiersPageView: NSView {
     let b = TierLadderView.bleed
     ladder.frame = NSRect(x: x0 - b, y: y - b, width: w + b * 2, height: TierLadderView.contentHeight + b * 2)
     y += TierLadderView.contentHeight + 16
+    if !historyView.isHidden {
+      // 사이트 `TierHistoryChart`: 제목 → 그래프(200pt) → 바뀐 순간 목록(gap-2)
+      historyTitle.frame = NSRect(x: x0, y: y, width: w, height: 24)
+      y += 24 + 8
+      historyView.frame = NSRect(x: x0, y: y, width: w, height: CGFloat(TierHistoryLayout.height))
+      y += CGFloat(TierHistoryLayout.height) + 8
+      let lh = NUI.height(historyList, width: w)
+      historyList.frame = NSRect(x: x0, y: y, width: w, height: lh)
+      y += lh + 16
+    }
     for p in [intro1, intro2] {
       let h = NUI.height(p, width: w)
       p.frame = NSRect(x: x0, y: y, width: w, height: h)

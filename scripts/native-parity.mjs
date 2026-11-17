@@ -79,6 +79,14 @@ export const WATCHED = [
     why: "최고 5판 짚기·다음 판 목표 글(앱 TierProgress.swift)",
   },
   {
+    path: `${WEB}cube/tiers/TierHistoryChart.tsx`,
+    why: "티어 이력 그래프(앱 TierHistoryView)",
+  },
+  {
+    path: `${WEB}cube/tiers/history-chart.ts`,
+    why: "티어 이력 그래프 자리 셈(앱 TierHistoryLayout)",
+  },
+  {
     path: `${WEB}cube/tiers/TiersApp.tsx`,
     why: "티어표 창(앱 NativeTiersWindow)",
   },
