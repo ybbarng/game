@@ -665,10 +665,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
   }
 
+  /// 사이트 티어표 창 주소: 앱의 기록 창·메뉴 프로필 칸과 같은 Cubie 기록으로 센다(`records=cubie`, 사이트 `basisFromSearch`)
+  static func tiersPath(_ n: Int) -> String { "/cube/tiers?n=\(n)&records=cubie" }
+
   /// 티어표를 크기 `n`으로(메뉴 「티어표」, 기록 창 「티어표」)
   private func openTiers(n: Int) {
     if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
-      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(n)"), cachePolicy: PageFreshness.load))
+      web.load(URLRequest(url: Config.site(Self.tiersPath(n)), cachePolicy: PageFreshness.load))
     }
     openWindow(.tiers, n: n)
   }
@@ -682,7 +685,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let (path, title, size): (String, String, NSSize) =
       switch kind {
       case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
-      case .tiers: ("/cube/tiers?n=\(cube.state.n)", "Cubie 티어표", NSSize(width: 760, height: 760))
+      case .tiers: (Self.tiersPath(cube.state.n), "Cubie 티어표", NSSize(width: 760, height: 760))
       case .settings: ("/cube/settings", "Cubie 키 배치·색", NSSize(width: 760, height: 720))
       }
     let config = WKWebViewConfiguration()

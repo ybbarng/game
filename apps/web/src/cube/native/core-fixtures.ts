@@ -42,7 +42,17 @@ import {
   parseSplits,
 } from "../records";
 import { replayLength, solveSteps } from "../replay-player";
-import { ao5, bestAo5, myTier, tierName, tierOf } from "../tiers/rank";
+import {
+  ao5,
+  bestAo5,
+  bestFiveDetail,
+  myTier,
+  nextSolve,
+  type TierPlace,
+  tierHistory,
+  tierName,
+  tierOf,
+} from "../tiers/rank";
 import {
   TIER_DATA_DATE,
   TIER_SIZES,
@@ -754,8 +764,102 @@ export function buildRustKeymaps(): string {
   ].join("\n");
 }
 
+/**
+ * 최고 5판·다음 판 목표·티어 이력(docs/47 14-8, `rank.ts` `bestFiveDetail`·`nextSolve`·`tierHistory`). 기록은 새것이
+ * 앞, `at`은 끝난 시각, `no`는 기록 번호(없는 판도 섞는다)
+ */
+export function buildTierProgress(): string {
+  const rng = createRng(1118);
+  const place = (p: TierPlace | null) =>
+    p ? { tier: p.tier, division: p.division, step: p.step } : null;
+  const cases: unknown[] = [];
+  const lists: {
+    n: number;
+    records: (Rec & { at: number; no?: number })[];
+    bestFive: Rec[];
+  }[] = [];
+  // 사용자 3×3 11판(2026-11-18, rank.test.ts와 같다)
+  const user = [
+    138_650, 139_800, 123_810, 186_830, 249_710, 290_000, 330_000, 370_000,
+    415_000, 460_000, 508_450,
+  ].map((ms, i) => ({
+    ms,
+    penalty: 0,
+    no: 11 - i,
+    at: Date.UTC(2026, 10, 10 + Math.floor((10 - i) / 2), 3),
+  }));
+  lists.push({ n: 3, records: user, bestFive: [] });
+  // 다음 판이 몇 초든 닿는 때: 최근 네 판은 1분대, 그 앞은 힌트 판, 최고는 그 앞 5판(브론즈 IV)
+  const any = [60_000, 61_000, 62_000, 63_000, 300_000, 280_000, 290_000]
+    .concat([295_000, 299_000, 300_000])
+    .map((ms, i) => ({
+      ms,
+      penalty: 0,
+      ...(i === 4 ? { hints: 1 } : {}),
+      no: 10 - i,
+      at: Date.UTC(2026, 10, 1, i),
+    }));
+  lists.push({ n: 3, records: any, bestFive: [] });
+  for (const n of TIER_SIZES) {
+    const base = [2, 3, 4, 5, 6, 7].indexOf(n) * 40 + 8;
+    for (let k = 0; k < 6; k++) {
+      const count = 3 + nextInt(rng, 18);
+      // 점점 빨라지는 기록(오래된 판이 뒤)
+      const records = Array.from({ length: count }, (_, i) => ({
+        ...randomRecord(rng, base * (1 + k * 0.6) * (0.7 + (i / count) * 0.8)),
+        at:
+          1_762_000_000_000 + (count - i) * 3_600_000 * (1 + nextInt(rng, 30)),
+        ...(nextInt(rng, 5) === 0 ? {} : { no: count - i }),
+      }));
+      const bestFive =
+        k === 5
+          ? Array.from({ length: 5 }, () => randomRecord(rng, base * 0.9))
+          : [];
+      lists.push({ n, records, bestFive });
+    }
+  }
+  for (const { n, records, bestFive } of lists) {
+    const next = nextSolve(n, records, bestFive);
+    const h = tierHistory(n, records);
+    cases.push({
+      n,
+      records,
+      bestFive,
+      detail: bestFiveDetail(records, bestFive),
+      next: next
+        ? {
+            kind: next.kind,
+            to: place(next.to),
+            cutMs: next.cutMs,
+            value:
+              next.kind === "within"
+                ? next.ms
+                : next.kind === "out"
+                  ? next.gapMs
+                  : null,
+          }
+        : null,
+      points: h.points,
+      changes: h.changes.map((c) => ({
+        no: c.no,
+        at: c.at,
+        from: place(c.from),
+        to: place(c.to),
+        ms: c.ms,
+      })),
+    });
+  }
+  return fixtureJson(
+    {
+      what: "기록(새것이 앞, at 끝난 시각, no 번호) → 최고 5판(빠진 판 자리)·다음 판 목표·티어 이력",
+    },
+    cases,
+  );
+}
+
 /** 자료 파일 전부(파일 이름 → 내용) */
 export const BUILDERS = {
+  "fixtures/tier-progress.json": buildTierProgress,
   "fixtures/scramble.json": buildScramble,
   "fixtures/moves.json": buildMoves,
   "fixtures/spot.json": buildSpot,

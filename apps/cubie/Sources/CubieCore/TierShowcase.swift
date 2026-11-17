@@ -203,9 +203,11 @@ public enum TierShowcase {
     return cut.isFinite ? "\(TierSheet.cutText(cut)) 이하" : TierSheet.cutText(cut)
   }
 
-  /// 고른 티어의 기준(「Ao5 6.5초 이하」, 아이언 「다 맞춤」)
+  public static let average = "5판 평균 "
+
+  /// 고른 티어의 기준(「5판 평균 6.5초 이하」, 아이언 「다 맞춤」)
   public static func cutLine(_ cut: Double) -> String {
-    cut.isFinite ? "Ao5 \(TierSheet.cutText(cut)) 이하" : TierSheet.solvedAll
+    cut.isFinite ? "\(average)\(TierSheet.cutText(cut)) 이하" : TierSheet.solvedAll
   }
 
   /// 구간 넷의 기준(「IV 1:00 · III 52초 · II 46초 · I 40초」). 구간이 하나면 nil

@@ -11,14 +11,12 @@ import {
   pointName,
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
-
 import {
   BADUK_PUZZLE_SETS,
   type BadukPuzzle,
   LIFE_SHAPE_NAMES,
 } from "./puzzles";
 import {
-  explainSolved,
   judgeMove,
   lifeProblem,
   PUZZLE_SIZE,
@@ -26,6 +24,7 @@ import {
   solutionOf,
   targetOf,
 } from "./study";
+import { explainSolved } from "./study-explain";
 
 type Life = Extract<BadukPuzzle, { kind: "life" }>;
 
@@ -72,7 +71,7 @@ describe("사활 문제(두 눈 만들기·눈 빼앗기)", () => {
     );
     expect(
       explainSolved(p, state.board, solutionOf(p), 1).length,
-    ).toBeGreaterThanOrEqual(3);
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 

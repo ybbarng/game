@@ -195,7 +195,7 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "14초",
   );
   await expect(page.locator("[data-cube-tier-mine-box]")).toContainText(
-    "아직 Ao5가 없습니다",
+    "아직 5판 평균이 없어요",
   );
   await expect(page.locator("[data-cube-tier-mine]")).toHaveCount(0);
   // 진열: 기록이 없으면 내 티어 칸은 처음 얻을 아이언을 잠긴 채로 보이고, 다음 티어 칸은 없다
@@ -266,7 +266,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   const next = page.locator("[data-cube-next-tier]");
   await expect(next).toHaveAttribute("data-cube-next-tier", "master");
   await expect(next.locator("[data-cube-next-gap]")).toHaveText("3.40초");
-  await expect(next).toContainText("Ao5 10초 이하");
+  await expect(next).toContainText("5판 평균 10초 이하");
   // 정지 그림: 내 티어(3D 대신) + 다음 티어
   await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 2);
   // 사다리: 다이아몬드가 내 칸이고 처음 보고 있는 칸이라 그 칸만 제 밝기, 나머지 아홉은 같은 중간 밝기
@@ -310,7 +310,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   // 다른 크기는 아직 없다
   await page.locator("[data-cube-tier-size='4']").click();
   await expect(page.locator("[data-cube-tier-mine-box]")).toContainText(
-    "아직 Ao5가 없습니다",
+    "아직 5판 평균이 없어요",
   );
 
   // 혼자 맞추기 기록 칸: 지금 티어, 누르면 그 크기 티어표
@@ -329,6 +329,140 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   await expect(page).toHaveURL(/\/cube\/tiers\?n=3$/);
   await expect(page.locator("[data-cube-my-tier]")).toHaveText("다이아몬드 IV");
 });
+
+/**
+ * 2026-11-18 사용자 기록(Cubie 3×3 11판, 기록 창은 최고 5판 평균 2:35.09 = 브론즈 II). 1번과 7~11번은 사용자 스크린샷의
+ * 시간이고, 2~6번은 그 사이를 채운 느린 판이다(최고 5판 평균은 7~11번에서 나온다)
+ */
+const USER_3X3 = [
+  508_450, 460_000, 415_000, 370_000, 330_000, 290_000, 249_710, 186_830,
+  123_810, 139_800, 138_650,
+];
+
+/** Cubie 기록(`cube.mini.v1`)만 넣는다. 사이트 혼자 맞추기 기록은 없다 */
+async function seedCubieRecords(page: Page) {
+  await page.addInitScript((times) => {
+    if (localStorage.getItem("cube.mini.v1")) return;
+    const list = times.map((ms, i) => ({
+      at: Date.UTC(2026, 10, 10 + Math.floor(i / 2), 12),
+      no: i + 1,
+      n: 3,
+      mode: "solo",
+      ms,
+      penalty: 0,
+      moves: 120,
+      scramble: "R U R' U'",
+    }));
+    list.reverse();
+    localStorage.setItem(
+      "cube.mini.v1",
+      JSON.stringify({
+        version: 1,
+        n: 3,
+        mirror: true,
+        records: { 3: list },
+        best5: {},
+      }),
+    );
+  }, USER_3X3);
+}
+
+test(
+  "Cubie 창(records=cubie)은 Cubie 기록으로 티어를 매긴다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await no3d(page);
+    await seedCubieRecords(page);
+    await page.goto("/cube/tiers?n=3&records=cubie");
+    const box = page.locator("[data-cube-tier-mine-box]");
+    await expect(page.locator("[data-cube-my-tier]")).toHaveText("브론즈 II");
+    await expect(box).toContainText("내 최고 5판 평균 2:35.09");
+    await expect(page.locator("[data-cube-tier-basis]")).toHaveText(
+      "Cubie 기록 기준이에요. 기록은 이 기기에만 저장돼요.",
+    );
+    await expect(page.locator("[data-cube-tier-mine]")).toHaveAttribute(
+      "data-cube-tier-row",
+      "bronze",
+    );
+    // 다음 판 목표(docs/47 14-8): 다음 판 2:51.56 안이면 바로 위 구간
+    await expect(box.locator("[data-cube-next-solve]")).toHaveText(
+      "다음 판 2:51.56 안이면 브론즈 I",
+    );
+    // 티어 이력: 그래프(그림 설명), 바뀐 순간 넷(최신이 위)
+    const hist = page.locator("[data-cube-tier-history='3']");
+    await expect(hist.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "3×3 티어 이력, 11판. 아이언 I에서 브론즈 II까지.",
+    );
+    await expect(hist.locator("[data-cube-history-dot]")).toHaveCount(4);
+    await expect(hist.locator("[data-cube-history-changes] li")).toHaveText([
+      "11/15 브론즈 III → 브론즈 II",
+      "11/14 브론즈 IV → 브론즈 III",
+      "11/13 아이언 I → 브론즈 IV",
+      "11/12 아이언 I",
+    ]);
+    await shot(page, "tiers-cubie", info.project.name);
+    // 휴대폰 너비: 그래프가 칸 폭에 맞춰 다시 그려지고 옆으로 넘치지 않는다
+    await page.setViewportSize({ width: 360, height: 780 });
+    await expect
+      .poll(() =>
+        hist.getByRole("img").evaluate((e) => e.getBoundingClientRect().width),
+      )
+      .toBeLessThanOrEqual(328);
+    await noSideScroll(page);
+    await hist.scrollIntoViewIfNeeded();
+    await shot(page, "tiers-history-phone", info.project.name);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    // 크기를 바꿔도 Cubie 기록으로(주소에 남는다)
+    await page.locator("[data-cube-tier-size='4']").click();
+    await expect(page).toHaveURL(/records=cubie/);
+    await expect(page.locator("[data-cube-tier-none]")).toHaveText(
+      "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.",
+    );
+    // 브라우저의 사이트 티어 화면은 사이트 혼자 맞추기 기록 그대로(Cubie 기록을 섞지 않는다)
+    await page.goto("/cube/tiers?n=3");
+    await expect(page.locator("[data-cube-my-tier]")).toHaveCount(0);
+    await expect(page.locator("[data-cube-tier-basis]")).toHaveAttribute(
+      "data-cube-tier-basis",
+      "solo",
+    );
+  },
+);
+
+test(
+  "Cubie 기록 화면은 티어를 정한 최고 5판과 빠진 두 판, 다음 판 목표를 보인다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await seedCubieRecords(page);
+    await page.setViewportSize({ width: 380, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    const sum = page.locator("[data-mini-summary]");
+    await expect(sum).toContainText("최근 5판 평균");
+    await expect(sum).toContainText("최근 12판 평균");
+    await expect(page.locator("[data-mini-best5]")).toHaveText(
+      "2:35.09 · 7~11번",
+    );
+    // 7~11번이 짚이고, 빠진 가장 빠른 판(9번)·가장 느린 판(7번)은 괄호
+    await expect(page.locator("[data-mini-best-five]")).toHaveCount(5);
+    await expect(page.locator("[data-mini-best-five='fast']")).toContainText(
+      "(2:03.81)",
+    );
+    await expect(page.locator("[data-mini-best-five='slow']")).toContainText(
+      "(4:09.71)",
+    );
+    await expect(page.locator("[data-mini-next-solve]")).toHaveText(
+      "다음 판 2:51.56 안이면 브론즈 I",
+    );
+    await expect(
+      page.locator("[data-mini-tiers] a", { hasText: "티어표" }),
+    ).toHaveAttribute("href", "/cube/tiers?n=3&records=cubie");
+    await shot(page, "mini-records-best5", info.project.name);
+  },
+);
 
 test("없앤 엠블럼 미리보기 주소로 들어오면 티어 화면으로 간다", {
   tag: "@only-desktop",

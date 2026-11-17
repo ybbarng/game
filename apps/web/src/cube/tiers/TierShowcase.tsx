@@ -15,8 +15,9 @@ import {
   spriteSrc,
 } from "./emblem3d/poster";
 import { ladderRing } from "./ladderRing";
-import { type MyTier, nextTier, tierName } from "./rank";
-import { cutText, TIER_TONE } from "./TierTable";
+import { nextSolveText } from "./progress-view";
+import { type MyTier, type NextSolve, nextTier, tierName } from "./rank";
+import { cutText, TIER_TONE, type TierBasis } from "./TierTable";
 import {
   DIVISIONS,
   TIER_IDS,
@@ -84,14 +85,26 @@ const LADDER_REST: CSSProperties = {
 export const MINE_BG = "bg-white/10";
 
 /** 진열 전체: 위쪽 큰 칸과 사다리. 고른 티어를 둘이 함께 쓴다 */
-export function TierShowcase({ n, mine }: { n: number; mine: MyTier | null }) {
+export function TierShowcase({
+  n,
+  mine,
+  goal = null,
+  basis = "solo",
+}: {
+  n: number;
+  mine: MyTier | null;
+  /** 다음 판 목표(`rank.ts` `nextSolve`) */
+  goal?: NextSolve | null;
+  /** 티어를 매긴 기록(사이트 혼자 맞추기·Cubie 기록) */
+  basis?: TierBasis;
+}) {
   const [picked, setPicked] = useState<TierId | null>(null);
   const myTier = mine?.place.tier ?? null;
   const pick = (t: TierId) =>
     setPicked((p) => (p === t || t === myTier ? null : t));
   return (
     <>
-      <TierHero n={n} mine={mine} picked={picked} />
+      <TierHero n={n} mine={mine} goal={goal} picked={picked} basis={basis} />
       <TierLadder n={n} mine={mine} picked={picked} onPick={pick} />
     </>
   );
@@ -101,11 +114,15 @@ export function TierShowcase({ n, mine }: { n: number; mine: MyTier | null }) {
 function TierHero({
   n,
   mine,
+  goal,
   picked,
+  basis,
 }: {
   n: number;
   mine: MyTier | null;
+  goal: NextSolve | null;
   picked: TierId | null;
+  basis: TierBasis;
 }) {
   const tier: TierId = picked ?? mine?.place.tier ?? "iron";
   const next = !picked && mine ? nextTier(n, mine.ao5) : null;
@@ -152,7 +169,7 @@ function TierHero({
               <>
                 <span className="block font-semibold tabular-nums">
                   {Number.isFinite(row.cuts[0] as number)
-                    ? `Ao5 ${cutText(row.cuts[0] as number)} 이하`
+                    ? `5판 평균 ${cutText(row.cuts[0] as number)} 이하`
                     : "다 맞춤"}
                 </span>
                 {row.cuts.length === 4 && (
@@ -173,18 +190,36 @@ function TierHero({
             >
               {tierName(mine.place)}
             </span>
-            <span className="text-white/70">내 최고 Ao5 </span>
+            <span className="text-white/70">내 최고 5판 평균 </span>
             <span className="font-mono font-semibold tabular-nums">
               {formatMs(mine.ao5)}
             </span>
+            {goal && (
+              <span
+                data-cube-next-solve={goal.kind}
+                className="mt-1 block text-white/80 text-xs"
+              >
+                {nextSolveText(goal)}
+              </span>
+            )}
+          </p>
+        ) : basis === "cubie" ? (
+          <p
+            data-cube-tier-none
+            className="text-center text-white/70 sm:text-left"
+          >
+            이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.
           </p>
         ) : (
-          <p className="text-center text-white/70 sm:text-left">
-            이 크기는 아직 Ao5가 없습니다.{" "}
+          <p
+            data-cube-tier-none
+            className="text-center text-white/70 sm:text-left"
+          >
+            이 크기는 아직 5판 평균이 없어요.{" "}
             <a href="/cube/solo" className="text-sky-300 hover:underline">
               혼자 맞추기
             </a>
-            에서 5번 맞추면 생깁니다.
+            에서 5판 맞추면 생겨요.
           </p>
         )}
         {next && (
@@ -207,7 +242,7 @@ function TierHero({
                 </span>
               </span>
               <span className="block text-white/50 text-xs">
-                Ao5 {cutText(next.cutMs / 1000)} 이하
+                5판 평균 {cutText(next.cutMs / 1000)} 이하
               </span>
             </p>
           </div>
@@ -241,8 +276,14 @@ function TierHero({
             </p>
           </div>
         )}
-        <p className="text-center text-white/50 text-xs sm:text-left">
-          기록은 이 기기에만 저장됩니다.
+        <p
+          data-cube-tier-basis={basis}
+          className="text-center text-white/50 text-xs sm:text-left"
+        >
+          {basis === "cubie"
+            ? "Cubie 기록 기준이에요."
+            : "혼자 맞추기 기록 기준이에요."}{" "}
+          기록은 이 기기에만 저장돼요.
         </p>
       </div>
     </section>

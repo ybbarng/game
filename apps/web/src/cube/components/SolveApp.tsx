@@ -89,7 +89,14 @@ import {
 } from "../scramble-show";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
-import { type MyTier, myTier } from "../tiers/rank";
+import {
+  bestFiveView,
+  nextSolveText,
+  RECENT5_LABEL,
+  RECENT12_LABEL,
+  rangeText,
+} from "../tiers/progress-view";
+import { type MyTier, myTier, nextSolve } from "../tiers/rank";
 import { TierLink } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
@@ -787,6 +794,15 @@ export function SolveApp({
     () => (mode === "solo" ? myTier(n, records, loadBestFive(n)) : null),
     [mode, n, records],
   );
+  // 티어를 정한 5판(기록 줄에 짚는다)과 다음 판 목표(docs/47 14-8)
+  const best5 = useMemo(
+    () => (mode === "solo" ? bestFiveView(records, loadBestFive(n)) : null),
+    [mode, n, records],
+  );
+  const goal = useMemo(
+    () => (mode === "solo" ? nextSolve(n, records, loadBestFive(n)) : null),
+    [mode, n, records],
+  );
   const tierUp =
     tierNow && (!priorTier || tierNow.place.step > priorTier.place.step)
       ? tierNow
@@ -1155,11 +1171,11 @@ export function SolveApp({
               <dl className="grid grid-cols-3 gap-1 text-center">
                 <Stat label="최고" value={formatMs(best ?? undefined)} />
                 <Stat
-                  label="5번 평균"
+                  label={RECENT5_LABEL}
                   value={formatMs(averageOf(records, 5))}
                 />
                 <Stat
-                  label="12번 평균"
+                  label={RECENT12_LABEL}
                   value={formatMs(averageOf(records, 12))}
                 />
               </dl>
@@ -1170,8 +1186,14 @@ export function SolveApp({
                   <TierLink mine={tierNow} />
                   <span className="text-white/40">
                     {" "}
-                    · 최고 Ao5 {formatMs(tierNow.ao5)}
+                    · 최고 5판 평균(Ao5) {formatMs(tierNow.ao5)}
+                    {best5 ? ` · ${rangeText(best5)}` : ""}
                   </span>
+                </p>
+              )}
+              {goal && (
+                <p className="text-xs" data-cube-next-solve={goal.kind}>
+                  {nextSolveText(goal)}
                 </p>
               )}
               {records.length === 0 ? (
@@ -1180,31 +1202,48 @@ export function SolveApp({
                 </p>
               ) : (
                 <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
-                  {records.slice(0, 30).map((r, i) => (
-                    <li
-                      key={`${r.at}-${r.scramble}`}
-                      title={splitTitle(n, method, r)}
-                      className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
-                    >
-                      <span className="w-6 text-right text-white/40 text-xs">
-                        {r.no ?? records.length - i}
-                      </span>
-                      <span className="w-16 font-mono tabular-nums">
-                        {formatMs(resultMs(r))}
-                        {r.penalty > 0 && r.ms !== null ? "+" : ""}
-                      </span>
-                      <span className="text-white/50 text-xs">{r.moves}수</span>
-                      {r.replay && (
-                        <button
-                          type="button"
-                          onClick={() => replay(r)}
-                          className="ml-auto text-sky-300 text-xs hover:underline"
+                  {records.slice(0, 30).map((r, i) => {
+                    const mark =
+                      r.no === undefined ? undefined : best5?.marks.get(r.no);
+                    const out = mark === "fast" || mark === "slow";
+                    const time = `${formatMs(resultMs(r))}${r.penalty > 0 && r.ms !== null ? "+" : ""}`;
+                    return (
+                      <li
+                        key={`${r.at}-${r.scramble}`}
+                        title={splitTitle(n, method, r)}
+                        {...(mark ? { "data-cube-best-five": mark } : {})}
+                        className={cn(
+                          "flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5",
+                          mark && "bg-amber-300/10",
+                        )}
+                      >
+                        <span className="w-6 text-right text-white/40 text-xs">
+                          {r.no ?? records.length - i}
+                        </span>
+                        {/* 최고 5판 평균에서 빠진 가장 빠른·느린 판은 대회 표기처럼 괄호 */}
+                        <span
+                          className={cn(
+                            "w-20 font-mono tabular-nums",
+                            out ? "text-white/50" : mark && "text-amber-100",
+                          )}
                         >
-                          다시 보기
-                        </button>
-                      )}
-                    </li>
-                  ))}
+                          {out ? `(${time})` : time}
+                        </span>
+                        <span className="text-white/50 text-xs">
+                          {r.moves}수
+                        </span>
+                        {r.replay && (
+                          <button
+                            type="button"
+                            onClick={() => replay(r)}
+                            className="ml-auto text-sky-300 text-xs hover:underline"
+                          >
+                            다시 보기
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
               {last && (
