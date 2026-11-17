@@ -654,8 +654,26 @@ export function solveEndgame(
   toPlay: Stone,
   passed = false,
 ): EndgameResult {
+  const reader = endgameReader(board, area);
+  const { score, best } = reader.choose(board, toPlay, passed);
+  return { score, best };
+}
+
+/** 끝내기 읽기에서 한 판의 수 하나(null은 쉬기)와 그 뒤 두 편이 가장 좋게 둘 때 끝난 판의 점수 차 */
+export interface EndgameChoice {
+  at: number | null;
+  score: number;
+}
+
+/**
+ * 끝내기 읽기 도구(`solveEndgame`과 같은 읽기). 읽은 판을 기억해 두어, 같은 장면에서 첫 수마다의 결과(`choose`)와
+ * 두 편이 끝까지 가장 좋게 둔 수순(`line`)을 여러 번 물어도 다시 읽지 않는다.
+ * 읽는 길의 같은 판 금지는 `start`부터 센다(`line`은 둔 수의 판을 길에 더한다)
+ */
+export function endgameReader(start: Board, area: readonly number[]) {
   const memo = new Map<string, number>();
-  const path = new Set([boardHash(board)]);
+  const path = new Set([boardHash(start)]);
+  const board = start;
   /** 이 편이 둘 수 있는 자리: 정한 자리, 단수인 자기 무리의 활로 가운데 자기 집, 단수인 상대 무리를 따내는 자리 */
   const size = sizeOf(board);
   const touching = new Set(area.flatMap((a) => [...neighbors(a, size)]));
@@ -693,27 +711,61 @@ export function solveEndgame(
     memo.set(key, result);
     return result;
   };
-  const after = (at: number | null): number | null => {
-    if (at === null)
-      return passed ? scoreOf(board) : value(board, other(toPlay), true);
-    const next = place(board, at, toPlay, path);
-    if (!next) return null;
-    path.add(next.key);
-    const v = value(next.board, other(toPlay), false);
-    path.delete(next.key);
-    return v;
+  /** `b`에서 `toPlay`가 둘 수마다의 결과와, 가장 좋은 점수 차와 그 수들(자리 차례, 쉬기는 끝) */
+  const choose = (b: Board, toPlay: Stone, passed = false) => {
+    const choices: EndgameChoice[] = [];
+    for (const at of [...movesFor(b, toPlay), null]) {
+      if (at === null) {
+        choices.push({
+          at,
+          score: passed ? scoreOf(b) : value(b, other(toPlay), true),
+        });
+        continue;
+      }
+      const next = place(b, at, toPlay, path);
+      if (!next) continue;
+      path.add(next.key);
+      choices.push({ at, score: value(next.board, other(toPlay), false) });
+      path.delete(next.key);
+    }
+    let score: number | null = null;
+    let best: (number | null)[] = [];
+    for (const { at, score: v } of choices) {
+      if (score === null || (toPlay === 1 ? v > score : v < score)) {
+        score = v;
+        best = [at];
+      } else if (v === score) best.push(at);
+    }
+    return { score: score ?? scoreOf(b), best, choices };
   };
-  let score: number | null = null;
-  let best: (number | null)[] = [];
-  for (const at of [...movesFor(board, toPlay), null]) {
-    const v = after(at);
-    if (v === null) continue;
-    if (score === null || (toPlay === 1 ? v > score : v < score)) {
-      score = v;
-      best = [at];
-    } else if (v === score) best.push(at);
-  }
-  return { score: score ?? scoreOf(board), best };
+  /**
+   * `b`에서 `toPlay`부터 두 편이 끝까지 가장 좋게 둔 수순(쉬기는 빼고)과 끝난 판의 점수 차.
+   * 늘 가장 좋은 수 가운데 첫 것(`best[0]`)을 둔다. 문제 화면이 받는 수를 고르는 것과 같다
+   */
+  const line = (b: Board, toPlay: Stone, passed = false) => {
+    const moves: number[] = [];
+    const added: string[] = [];
+    let now = b;
+    let turn = toPlay;
+    let passes = passed ? 1 : 0;
+    while (passes < 2) {
+      const move = choose(now, turn, passes > 0).best[0] ?? null;
+      if (move === null) passes++;
+      else {
+        const next = place(now, move, turn, path);
+        if (!next) throw new Error("끝내기 수순을 둘 수 없다");
+        path.add(next.key);
+        added.push(next.key);
+        now = next.board;
+        moves.push(move);
+        passes = 0;
+      }
+      turn = other(turn);
+    }
+    for (const key of added) path.delete(key);
+    return { moves, score: scoreOf(now) };
+  };
+  return { choose, line };
 }
 
 /**
