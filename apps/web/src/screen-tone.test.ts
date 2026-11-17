@@ -19,6 +19,7 @@ const files: Record<string, string> = import.meta.glob(
     "!./**/*.test.{ts,tsx}",
     "!../../../packages/**/*.{test,strength,bench}.ts",
     "!../../../packages/**/*-fixture.ts",
+    "!../../../packages/engine/src/josa.ts", // 조사 도우미(「이에요」·「예요」는 글이 아니라 고를 조사 조각)
     "!./net/*-case.ts", // 시험 이름표
     "!./net/chat.ts", // 빠른 채팅(「아깝다」)은 사람이 하는 말
     "!../../../packages/galaxy-engine/src/{cards,requests}.ts", // 우주국 공문은 「~습니다」(docs/48 「말투」)

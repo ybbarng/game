@@ -1,5 +1,6 @@
 import { HWATU_DECK } from "@game/hwatu";
 import { type Card, fullDeck } from "@game/mighty-engine";
+import { obj, subj } from "@game/mighty-engine/josa";
 
 import type { KeyProof } from "./proof";
 import {
@@ -425,7 +426,7 @@ export function playSlot(
   slot: number,
 ): Card {
   if (deal.owners[slot] !== party)
-    throw new Error(`${party}번이 남의 자리 ${slot}을 내려 했다`);
+    throw new Error(`${party}번이 남의 자리 ${obj(String(slot))} 내려 했다`);
   const owner = parties.find((p) => p.id === party) as Party;
   deal.ledger.publish(slot, party, owner.revealKey(slot, "play"));
   const card = deal.ledger.open(
@@ -433,7 +434,7 @@ export function playSlot(
     parties.map((p) => p.id),
   );
   if (card === null)
-    throw new Error(`자리 ${slot}을 열 수 없다(열쇠가 틀렸다)`);
+    throw new Error(`자리 ${obj(String(slot))} 열 수 없다(열쇠가 틀렸다)`);
   return card;
 }
 
@@ -459,7 +460,7 @@ export function finalAudit(
     if (card === null)
       return {
         ok: false,
-        reason: `자리 ${slot}이 카드가 아니에요(섞기 조작).`,
+        reason: `자리 ${subj(String(slot))} 카드가 아니에요(섞기 조작).`,
       };
     cards.push(card);
   }

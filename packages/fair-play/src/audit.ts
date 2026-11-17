@@ -8,6 +8,7 @@ import {
   type RuleSet,
   step,
 } from "@game/mighty-engine";
+import { obj } from "@game/mighty-engine/josa";
 
 import { cardText, slotOfToken } from "./blind";
 
@@ -122,7 +123,7 @@ export function checkReplay(
           ok: false,
           index: index - 1,
           seat: lastKill.killed,
-          reason: `죽이기에 불린 ${cardText(lastKill.card)}를 갖고 있으면서 없다고 했어요.`,
+          reason: `죽이기에 불린 ${obj(cardText(lastKill.card))} 갖고 있으면서 없다고 했어요.`,
         };
       return {
         ok: false,
@@ -167,7 +168,7 @@ function blameOf(
   )
     return {
       seat: realKill.killed,
-      reason: `죽이기에 불린 ${cardText(realKill.card)}를 갖고 있으면서 없다고 했어요.`,
+      reason: `죽이기에 불린 ${obj(cardText(realKill.card))} 갖고 있으면서 없다고 했어요.`,
     };
   const realFriend = real.find((e) => e.type === "friendRevealed");
   const seenFriend = seen.find((e) => e.type === "friendRevealed");
