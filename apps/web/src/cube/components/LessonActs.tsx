@@ -13,6 +13,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { copula } from "@/lib/josa";
 import { stickersFromState } from "../bridge";
 import type { Command } from "../input";
 import {
@@ -147,7 +148,7 @@ export function FindPanel({
       if (!p) return;
       setFound([p.piece]);
       setMiss(
-        `그건 ${colorNames(p.colors)} ${pieceName(p.type)}이에요(색 ${p.colors.length}개).`,
+        `그건 ${colorNames(p.colors)} ${copula(pieceName(p.type))}(색 ${p.colors.length}개).`,
       );
       playCubeCue(settings, "cubeTurn");
       if (!passed) {
@@ -176,7 +177,7 @@ export function FindPanel({
           : slot.length > 1
             ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 센터 사이예요. 다시 찾아보세요.`
             : p
-              ? `그건 ${hidden ? "" : `${colorNames(p.colors)} `}${pieceName(p.type)}이에요. 다시 찾아보세요.`
+              ? `그건 ${hidden ? "" : `${colorNames(p.colors)} `}${copula(pieceName(p.type))}. 다시 찾아보세요.`
               : "다시 찾아보세요.",
       );
       if (r.piece !== null)

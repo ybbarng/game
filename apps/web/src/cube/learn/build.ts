@@ -7,6 +7,8 @@ import {
   piecesOfKind,
 } from "@game/cube-engine";
 
+import { topic } from "@/lib/josa";
+
 export type BuildPhase =
   | "whole"
   | "core"
@@ -235,7 +237,7 @@ export function buildSay(v: BuildVerdict, b: BuildState): string {
         return `그 자리는 ${color(v.pair)} 맞은편이라 ${color(OPPOSITE_FACE[v.pair as 0] as number)} 자리예요.`;
       const next = buildNext(b);
       const mine = next === null ? 0 : (facesOf(next)[0] as number);
-      return `${color(mine)}은 ${color(v.pair)} 맞은편에 위치해요.`;
+      return `${topic(color(mine))} ${color(v.pair)} 맞은편에 위치해요.`;
     }
     case "mirror":
       return "여기 끼우면 맞출 수 없는 큐브가 돼요. 흰색이 위, 초록색이 앞이면 빨간색은 오른쪽에 위치해요. 흰-초록-빨강 코너 블럭의 세 색은 정해진 돌림 차례로 붙어 있어서, 빨간색·주황색 센터 블럭을 바꿔 끼우면 그 차례가 거울처럼 뒤집혀요. 그러면 코너 블럭을 어떻게 돌려 끼워도 세 색이 함께 맞지 않아요.";
@@ -244,11 +246,5 @@ export function buildSay(v: BuildVerdict, b: BuildState): string {
   }
 }
 
-/** 낱말 뒤 「은/는」(마지막 글자 받침으로 고른다) */
-export function topic(word: string): string {
-  const code = word.charCodeAt(word.length - 1) - 0xac00;
-  const batchim = code >= 0 && code < 11172 && code % 28 !== 0;
-  return `${word}${batchim ? "은" : "는"}`;
-}
-
-export { B, D, F, L, R, U };
+/** 면 글자 상수와 「은/는」 조사 도우미(topic, `lib/josa`)를 이 모듈에서도 부를 수 있게 다시 내보낸다 */
+export { B, D, F, L, R, topic, U };

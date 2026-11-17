@@ -11,6 +11,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { obj } from "@/lib/josa";
 import type { StickerMarks } from "../../bridge";
 import { COUNT_PLANS, groupDigits, reassemblyCount } from "../../math/counts";
 import { invariants, rotatePieceInPlace, swapPieces } from "../../math/pieces";
@@ -203,7 +204,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           />
           <p className="text-white/70 text-xs" data-reassemble-picked>
             {swapFrom !== null
-              ? `${pieceName(N, swapFrom)}: 맞바꿀 다른 ${topo.pieces[swapFrom]?.kind === "corner" ? "코너 블럭" : "엣지 블럭"}을 고르는 중.`
+              ? `${pieceName(N, swapFrom)}: 맞바꿀 다른 ${obj(topo.pieces[swapFrom]?.kind === "corner" ? "코너 블럭" : "엣지 블럭")} 고르는 중.`
               : picked !== null
                 ? `고른 조각: ${pieceName(N, picked)} ${kind === "corner" ? "코너" : "엣지"} 블럭.`
                 : "고른 조각 없음."}

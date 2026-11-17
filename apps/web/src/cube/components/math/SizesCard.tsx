@@ -4,6 +4,7 @@ import { solvedCube } from "@game/cube-engine";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { obj, topic } from "@/lib/josa";
 import { PARITY_4X4 } from "../../learn/algs-big";
 import { invertText, stateAfter } from "../../math/pieces";
 import { sizeFacts } from "../../math/sizes";
@@ -182,7 +183,7 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
             const name = many
               ? `${i === 0 ? "바깥" : "안쪽"} 날개 묶음`
               : "날개";
-            if (w.length === 0) return `${name}은 그대로예요.`;
+            if (w.length === 0) return `${topic(name)} 그대로예요.`;
             const swaps = w.reduce((a, k) => a + k - 1, 0);
             return `${name}${many ? "에서" : ""} ${w.join("개, ")}개가 한 바퀴 돌아요. 맞바꾸기 ${swaps}번이라 홀짝이 ${swaps % 2 ? "바뀌어요" : "그대로예요"}.`;
           })
@@ -226,7 +227,7 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
       <Quiz
         key={n}
         id={`sizes-${n}`}
-        question={`${n}×${n}을 3×3처럼 맞추는 단계에서 PLL 패리티, 곧 엣지 한 줄 둘만 자리가 바뀐 꼴이 생길 수 있을까요?`}
+        question={`${obj(`${n}×${n}`)} 3×3처럼 맞추는 단계에서 PLL 패리티, 곧 엣지 한 줄 둘만 자리가 바뀐 꼴이 생길 수 있을까요?`}
         choices={["생길 수 있다", "생기지 않는다"]}
         answer={f.pllParity ? 0 : 1}
         why={

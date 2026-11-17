@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { copula, topic } from "@/lib/josa";
 import type { StickerMarks } from "../bridge";
 import {
   type Command,
@@ -414,7 +415,7 @@ function FacesStep({ onDone }: { onDone: () => void }) {
             if (next >= ASK.length) onDone();
           } else
             setMiss(
-              `그건 ${FACE_NAME[face]} 면이에요. ${word.letter}는 ${word.ko}이에요.`,
+              `그건 ${FACE_NAME[face]} 면이에요. ${topic(word.letter)} ${copula(word.ko)}.`,
             );
         }}
       />
