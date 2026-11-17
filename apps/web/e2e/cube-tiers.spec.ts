@@ -386,6 +386,10 @@ test(
       "data-cube-tier-row",
       "bronze",
     );
+    // 다음 판 목표(docs/47 14-8): 다음 판 2:51.56 안이면 바로 위 구간
+    await expect(box.locator("[data-cube-next-solve]")).toHaveText(
+      "다음 판 2:51.56 안이면 브론즈 I",
+    );
     await shot(page, "tiers-cubie", info.project.name);
     // 크기를 바꿔도 Cubie 기록으로(주소에 남는다)
     await page.locator("[data-cube-tier-size='4']").click();
@@ -400,6 +404,39 @@ test(
       "data-cube-tier-basis",
       "solo",
     );
+  },
+);
+
+test(
+  "Cubie 기록 화면은 티어를 정한 최고 5판과 빠진 두 판, 다음 판 목표를 보인다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await seedCubieRecords(page);
+    await page.setViewportSize({ width: 380, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    const sum = page.locator("[data-mini-summary]");
+    await expect(sum).toContainText("최근 5판 평균");
+    await expect(sum).toContainText("최근 12판 평균");
+    await expect(page.locator("[data-mini-best5]")).toHaveText(
+      "2:35.09 · 7~11번",
+    );
+    // 7~11번이 짚이고, 빠진 가장 빠른 판(9번)·가장 느린 판(7번)은 괄호
+    await expect(page.locator("[data-mini-best-five]")).toHaveCount(5);
+    await expect(page.locator("[data-mini-best-five='fast']")).toContainText(
+      "(2:03.81)",
+    );
+    await expect(page.locator("[data-mini-best-five='slow']")).toContainText(
+      "(4:09.71)",
+    );
+    await expect(page.locator("[data-mini-next-solve]")).toHaveText(
+      "다음 판 2:51.56 안이면 브론즈 I",
+    );
+    await expect(
+      page.locator("[data-mini-tiers] a", { hasText: "티어표" }),
+    ).toHaveAttribute("href", "/cube/tiers?n=3&records=cubie");
+    await shot(page, "mini-records-best5", info.project.name);
   },
 );
 

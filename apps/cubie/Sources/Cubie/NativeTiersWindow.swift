@@ -36,7 +36,8 @@ final class NativeTiersWindow: NativeSheetWindow {
     let text = NativeCore.string { cubie_tier_table(UInt32(n), $0, $1) }
     guard let table = TierSheet.parse(n: n, text: text) else { return }
     let mine = TierSheet.mine(store: store, math: math, n: n)
-    page.show(table: table, mine: mine)
+    let book = MiniBook(store: store, math: math)
+    page.show(table: table, mine: mine, goal: book.nextSolve(n))
     page.frame.size.width = scroll.contentSize.width
     page.needsLayout = true
   }
@@ -51,6 +52,9 @@ final class TiersPageView: NSView {
   var onSize: ((Int) -> Void)?
   private var table: TierSheet.Table?
   private var mine: TierInfo?
+  /// 다음 판 목표(사이트 `data-cube-next-solve`, 내 티어를 볼 때만)
+  private var goal: TierProgress.NextSolve?
+  private let heroGoal = NUI.paragraph("", color: NUI.white(0.8), lineHeight: 16)
   /// 사다리에서 고른 티어(nil이면 내 티어). 크기를 바꿔도 남는다(사이트와 같음)
   private(set) var picked: Int?
   private(set) var state: TierShowcase.State?
@@ -114,7 +118,7 @@ final class TiersPageView: NSView {
 
   /// 위쪽 큰 칸 안의 것들(테두리 상자 위에 겹쳐 놓는다)
   private var heroParts: [NSView] {
-    [hero, pips, heroName, heroLine, heroSub, noneLine, nextBox, pickedBox, device]
+    [hero, pips, heroName, heroLine, heroSub, heroGoal, noneLine, nextBox, pickedBox, device]
   }
 
   @objc private func openCredit() {
@@ -124,12 +128,13 @@ final class TiersPageView: NSView {
   /// 사다리 칸을 눌렀다(같은 칸·내 칸이면 내 티어로)
   func pick(_ tier: Int) {
     picked = TierShowcase.pick(picked, tapped: tier, mine: mine?.tier)
-    if let table { show(table: table, mine: mine) }
+    if let table { show(table: table, mine: mine, goal: goal) }
   }
 
-  func show(table: TierSheet.Table, mine: TierInfo?) {
+  func show(table: TierSheet.Table, mine: TierInfo?, goal: TierProgress.NextSolve? = nil) {
     self.table = table
     self.mine = mine
+    self.goal = goal
     let st = TierShowcase.state(table: table, mine: mine, picked: picked)
     state = st
     for (i, s) in TierSheet.sizes.enumerated() {
@@ -187,6 +192,9 @@ final class TiersPageView: NSView {
     heroName.isHidden = none
     heroLine.isHidden = none
     heroSub.isHidden = true
+    let goalText = st.picked == nil && mine != nil ? goal.map(TierProgress.nextSolveText) : nil
+    heroGoal.isHidden = goalText == nil
+    heroGoal.attributedStringValue = NUI.attributed(goalText ?? "", size: 12, color: NUI.white(0.8), lineHeight: 16)
     if st.picked != nil {
       heroName.attributedStringValue = text(label, 24, .bold, tone(st.hero))
       if let cut = row?.cuts.first {
@@ -258,6 +266,7 @@ final class TiersPageView: NSView {
       let nameH: CGFloat = 32
       var h = nameH + 20
       if !heroSub.isHidden { h += 16 }
+      if !heroGoal.isHidden { h += 4 + NUI.height(heroGoal, width: rw) }
       blocks.append((heroName, h))
     }
     if !nextBox.isHidden { blocks.append((nextBox, nextBox.height)) }
@@ -276,6 +285,7 @@ final class TiersPageView: NSView {
         heroName.frame = NSRect(x: rx, y: ry, width: rw, height: 32)
         heroLine.frame = NSRect(x: rx, y: ry + 32, width: rw, height: 20)
         heroSub.frame = NSRect(x: rx, y: ry + 52, width: rw, height: 16)
+        heroGoal.frame = NSRect(x: rx, y: ry + 56, width: rw, height: NUI.height(heroGoal, width: rw))
       default:
         v.frame = NSRect(x: rx, y: ry, width: rw, height: h)
       }

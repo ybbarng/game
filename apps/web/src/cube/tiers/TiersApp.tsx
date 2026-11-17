@@ -9,7 +9,7 @@ import {
   basisFromSearch,
   type TierBasis,
   TierTable,
-  useMyTier,
+  useTierProgress,
 } from "./TierTable";
 import {
   TIER_DATA_DATE,
@@ -42,7 +42,7 @@ export function TiersApp() {
       // 찍기 고리는 제품 화면에 없어도 된다
     }
   }, []);
-  const mine = useMyTier(n, 0, basis);
+  const { mine, goal } = useTierProgress(n, basis);
 
   const pick = (next: number) => {
     setN(next);
@@ -93,7 +93,7 @@ export function TiersApp() {
           ))}
         </fieldset>
 
-        <TierShowcase n={n} mine={mine} basis={basis} />
+        <TierShowcase n={n} mine={mine} goal={goal} basis={basis} />
 
         <section className="flex flex-col gap-1.5 text-sm text-white/80 leading-relaxed">
           <p>

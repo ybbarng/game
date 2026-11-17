@@ -194,6 +194,34 @@ bool cubie_best_ao5(const CubieTimeable *recs, uint32_t count, double *ms, uint3
 bool cubie_my_tier(uint32_t n, const CubieTimeable *recs, uint32_t count, const CubieTimeable *best5,
                    uint32_t best5_count, CubieTier *out);
 
+/// 티어를 정한 5판(사이트 bestFiveDetail)
+typedef struct CubieBestFive {
+  double ms;      // 최고 5판 평균(ms)
+  uint32_t kept;  // 1 따로 남겨 둔 최고 5판, 0 기록 목록 안
+  uint32_t at;    // 목록이면 그 5판의 첫 자리(새것이 앞)
+  uint32_t fast;  // 그 5판 안에서 빠진 가장 빠른 판의 자리(0~4)
+  uint32_t slow;  // 가장 느린 판의 자리
+} CubieBestFive;
+
+bool cubie_best_five(const CubieTimeable *recs, uint32_t count, const CubieTimeable *best5, uint32_t best5_count,
+                     CubieBestFive *out);
+
+/// 다음 판 목표(사이트 nextSolve)
+typedef struct CubieNextSolve {
+  uint32_t kind;     // 0 그 시간 안이면 닿음, 1 몇 초든 닿음, 2 다음 판 하나로는 못 닿음
+  uint32_t tier;     // 닿을 구간: 0 아이언 … 9 챌린저
+  int32_t division;  // 0 IV … 3 I, 없으면 -1
+  double cut_ms;     // 그 구간 상한(ms)
+  double value;      // kind 0: 다음 판 시간 상한(ms), 2: 지금 최고에서 줄일 시간(ms)
+} CubieNextSolve;
+
+bool cubie_next_solve(uint32_t n, const CubieTimeable *recs, uint32_t count, const CubieTimeable *best5,
+                      uint32_t best5_count, CubieNextSolve *out);
+/// 티어 이력 글: 판마다 「p\t번호\t시각\t최고 5판 평균(없으면 -)」, 바뀐 순간마다 「c\t번호\t시각\t전 티어\t전 구간\t새 티어\t새 구간\t평균」
+/// (구간 없으면 -1, 첫 티어면 전 티어 -1). nos·ats는 recs와 같은 칸 수. 글 바이트 수
+uint32_t cubie_tier_history(uint32_t n, const CubieTimeable *recs, const uint32_t *nos, const double *ats, uint32_t count,
+                            uint8_t *out, uint32_t len);
+
 /// 기록 창 요약(사이트 summarize, 코어 summary.rs). 값이 없으면 NaN, DNF면 무한대
 typedef struct CubieSummary {
   uint32_t count;

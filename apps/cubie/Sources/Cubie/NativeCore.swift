@@ -62,7 +62,7 @@ struct RustTierMath: TierMath {
   static let labels = ["아이언", "브론즈", "실버", "골드", "플래티넘", "에메랄드", "다이아몬드", "마스터", "그랜드마스터", "챌린저"]
   static let divisions = ["IV", "III", "II", "I"]
 
-  private func c(_ list: [Timeable]) -> [CubieTimeable] {
+  fileprivate func c(_ list: [Timeable]) -> [CubieTimeable] {
     list.map { CubieTimeable(ms: $0.ms ?? -1, penalty: $0.penalty, hints: UInt32(max(0, $0.hints))) }
   }
 
@@ -92,5 +92,56 @@ struct RustTierMath: TierMath {
     let division = out.division >= 0 ? Int(out.division) : nil
     let name = Self.labels[min(tier, Self.labels.count - 1)] + (division.map { " " + Self.divisions[$0] } ?? "")
     return TierInfo(ao5: out.ao5, tier: tier, division: division, name: name)
+  }
+}
+
+/// 최고 5판·다음 판·이력(코어 `tier.rs` `best_five_detail`·`next_solve`·`tier_history`, docs/47 14-8)
+extension RustTierMath: TierProgressMath {
+  func bestFive(records: [Timeable], bestFive: [Timeable]) -> TierProgress.BestFive? {
+    var out = CubieBestFive()
+    let r = c(records)
+    let b = c(bestFive)
+    let ok = r.withUnsafeBufferPointer { rp in
+      b.withUnsafeBufferPointer { bp in
+        cubie_best_five(rp.baseAddress, UInt32(rp.count), bp.baseAddress, UInt32(bp.count), &out)
+      }
+    }
+    guard ok else { return nil }
+    return TierProgress.BestFive(ms: out.ms, kept: out.kept != 0, at: Int(out.at), fast: Int(out.fast), slow: Int(out.slow))
+  }
+
+  func nextSolve(n: Int, records: [Timeable], bestFive: [Timeable]) -> TierProgress.NextSolve? {
+    var out = CubieNextSolve()
+    let r = c(records)
+    let b = c(bestFive)
+    let ok = r.withUnsafeBufferPointer { rp in
+      b.withUnsafeBufferPointer { bp in
+        cubie_next_solve(UInt32(n), rp.baseAddress, UInt32(rp.count), bp.baseAddress, UInt32(bp.count), &out)
+      }
+    }
+    guard ok else { return nil }
+    let goal: TierProgress.Goal =
+      switch out.kind {
+      case 0: .within(out.value)
+      case 1: .any
+      default: .out(out.value)
+      }
+    return TierProgress.NextSolve(
+      tier: Int(out.tier), division: out.division >= 0 ? Int(out.division) : nil, cutMs: out.cut_ms, goal: goal)
+  }
+
+  func history(n: Int, records: [Timeable], nos: [Int], ats: [Double]) -> TierProgress.History {
+    let r = c(records)
+    let no = nos.map { UInt32(max(0, $0)) }
+    let text = r.withUnsafeBufferPointer { rp in
+      no.withUnsafeBufferPointer { np in
+        ats.withUnsafeBufferPointer { ap in
+          NativeCore.string {
+            cubie_tier_history(UInt32(n), rp.baseAddress, np.baseAddress, ap.baseAddress, UInt32(rp.count), $0, $1)
+          }
+        }
+      }
+    }
+    return TierProgress.parseHistory(text)
   }
 }

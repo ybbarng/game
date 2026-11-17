@@ -15,7 +15,8 @@ import {
   spriteSrc,
 } from "./emblem3d/poster";
 import { ladderRing } from "./ladderRing";
-import { type MyTier, nextTier, tierName } from "./rank";
+import { nextSolveText } from "./progress-view";
+import { type MyTier, type NextSolve, nextTier, tierName } from "./rank";
 import { cutText, TIER_TONE, type TierBasis } from "./TierTable";
 import {
   DIVISIONS,
@@ -87,10 +88,13 @@ export const MINE_BG = "bg-white/10";
 export function TierShowcase({
   n,
   mine,
+  goal = null,
   basis = "solo",
 }: {
   n: number;
   mine: MyTier | null;
+  /** 다음 판 목표(`rank.ts` `nextSolve`) */
+  goal?: NextSolve | null;
   /** 티어를 매긴 기록(사이트 혼자 맞추기·Cubie 기록) */
   basis?: TierBasis;
 }) {
@@ -100,7 +104,7 @@ export function TierShowcase({
     setPicked((p) => (p === t || t === myTier ? null : t));
   return (
     <>
-      <TierHero n={n} mine={mine} picked={picked} basis={basis} />
+      <TierHero n={n} mine={mine} goal={goal} picked={picked} basis={basis} />
       <TierLadder n={n} mine={mine} picked={picked} onPick={pick} />
     </>
   );
@@ -110,11 +114,13 @@ export function TierShowcase({
 function TierHero({
   n,
   mine,
+  goal,
   picked,
   basis,
 }: {
   n: number;
   mine: MyTier | null;
+  goal: NextSolve | null;
   picked: TierId | null;
   basis: TierBasis;
 }) {
@@ -188,6 +194,14 @@ function TierHero({
             <span className="font-mono font-semibold tabular-nums">
               {formatMs(mine.ao5)}
             </span>
+            {goal && (
+              <span
+                data-cube-next-solve={goal.kind}
+                className="mt-1 block text-white/80 text-xs"
+              >
+                {nextSolveText(goal)}
+              </span>
+            )}
           </p>
         ) : basis === "cubie" ? (
           <p

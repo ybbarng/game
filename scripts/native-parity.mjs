@@ -75,6 +75,10 @@ export const WATCHED = [
   { path: `${WEB}cube/records.ts`, why: "기록 한 판" },
   { path: `${WEB}cube/tiers/rank.ts`, why: "Ao5·티어" },
   {
+    path: `${WEB}cube/tiers/progress-view.ts`,
+    why: "최고 5판 짚기·다음 판 목표 글(앱 TierProgress.swift)",
+  },
+  {
     path: `${WEB}cube/tiers/TiersApp.tsx`,
     why: "티어표 창(앱 NativeTiersWindow)",
   },

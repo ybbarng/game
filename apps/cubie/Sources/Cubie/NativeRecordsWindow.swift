@@ -99,6 +99,8 @@ final class RecordsRootView: FlippedView {
   private let tiersLink = Chip(RecordsSheet.tiersLink, look: Chip.Look(text: NUI.white(0.7), padX: 0))
   private var tierButtons: [TierCell] = []
   private let tiersNote = NUI.paragraph(RecordsSheet.tiersNote, color: NUI.white(0.5), lineHeight: 16)
+  /// 고른 크기의 다음 판 목표(사이트 `data-mini-next-solve`)
+  private let goalLine = NUI.paragraph("", color: .white, lineHeight: 16)
   private let tiersLine = FlippedView()
 
   private let title = NUI.label(RecordsSheet.title, size: 14, weight: .bold)
@@ -117,7 +119,7 @@ final class RecordsRootView: FlippedView {
     super.init(frame: NSRect(origin: .zero, size: NativeRecordsWindow.size))
     fill = NUI.color(NUI.Hex.neutral950)
     addSubview(tiers)
-    for v in [tiersTitle, tiersBasis, tiersLink, tiersNote, tiersLine] as [NSView] { tiers.addSubview(v) }
+    for v in [tiersTitle, tiersBasis, tiersLink, goalLine, tiersNote, tiersLine] as [NSView] { tiers.addSubview(v) }
     tiersLink.action = { [weak self] in self?.owner?.openTiers() }
     tiersLine.fill = NUI.white(0.1)
     for s in RecordsSheet.sizes {
@@ -143,6 +145,8 @@ final class RecordsRootView: FlippedView {
       summary.addSubview(l)
       summary.addSubview(v)
     }
+    // 티어를 정한 「최고 5판 평균」은 사이트처럼 호박색 이름(`text-amber-200/80`)
+    summaryLabels.last?.textColor = NUI.color(NUI.Hex.amber200, 0.8)
     addSubview(summary)
     addSubview(empty)
     scroll.drawsBackground = false
@@ -167,9 +171,17 @@ final class RecordsRootView: FlippedView {
     for (i, v) in [sum.best, sum.mean, sum.ao5, sum.ao12].enumerated() {
       NUI.set(summaryValues[i], RecordsSheet.summaryText(v), color: .white)
     }
+    // 티어를 정한 5판(최고 5판 평균): 요약에 값과 번호, 기록 줄에 그 5판과 빠진 두 판
+    let best5 = book.bestFiveView(n)
+    NUI.set(summaryValues[4], RecordsSheet.best5Text(best5), color: .white)
+    let goal = book.nextSolve(n)
+    goalLine.isHidden = goal == nil
+    goalLine.attributedStringValue = NUI.attributed(
+      goal.map(TierProgress.nextSolveText) ?? "", size: 12, color: .white, lineHeight: 16)
     rows.forEach { $0.removeFromSuperview() }
     rows = records.map { r in
-      let row = RecordRowView(row: RecordsSheet.row(r))
+      let line = RecordsSheet.row(r)
+      let row = RecordRowView(row: line, mark: best5?.marks[line.no])
       let watchingThis =
         watching.map {
           ($0["at"] as? NSNumber)?.doubleValue == row.row.at && ($0["no"] as? NSNumber)?.intValue == row.row.no
@@ -217,6 +229,11 @@ final class RecordsRootView: FlippedView {
       c.frame = NSRect(x: 8 + CGFloat(i % 3) * (cellW + 4), y: y + CGFloat(i / 3) * (TierCell.height + 4), width: cellW, height: TierCell.height)
     }
     y += TierCell.height * 2 + 4 + 4
+    if !goalLine.isHidden {
+      let gh = NUI.height(goalLine, width: inner)
+      goalLine.frame = NSRect(x: 8, y: y, width: inner, height: gh)
+      y += gh + 4
+    }
     let nh = NUI.height(tiersNote, width: inner)
     tiersNote.frame = NSRect(x: 8, y: y, width: inner, height: nh)
     y += nh + 8
@@ -342,14 +359,22 @@ final class RecordRowView: FlippedView {
   private var parts: [NSView] = []
   private let line = FlippedView()
 
-  init(row: RecordsSheet.Row) {
+  /// 티어를 정한 5판이면 그 몫(밝은 바탕, 빠진 두 판은 괄호·흐리게, 사이트 `data-mini-best-five`)
+  let mark: TierProgress.Mark?
+
+  init(row: RecordsSheet.Row, mark: TierProgress.Mark? = nil) {
     self.row = row
+    self.mark = mark
     super.init(frame: .zero)
+    if mark != nil { fill = NUI.color(NUI.Hex.amber300, 0.1) }
     line.fill = NUI.white(0.1)
     addSubview(line)
     let no = NUI.label("\(row.no)", color: NUI.white(0.4))
     let when = NUI.label(row.when, color: NUI.white(0.6))
-    let time = NUI.label(row.time, weight: .semibold)
+    let out = mark == .fast || mark == .slow
+    let time = NUI.label(
+      RecordsSheet.timeText(row.time, mark: mark), weight: .semibold,
+      color: out ? NUI.white(0.5) : mark != nil ? NUI.color(NUI.Hex.amber100) : .white)
     parts = [no, when, time]
     var badges: [NSView] = []
     if row.synthetic {

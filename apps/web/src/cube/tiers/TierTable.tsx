@@ -3,10 +3,17 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { miniTier } from "../mini/store";
-import { loadBestFive, loadRecords } from "../records";
+import { loadMiniBestFive, loadMiniRecords, miniTier } from "../mini/store";
+import { loadBestFive, loadRecords, type SolveRecord } from "../records";
 import { EmblemStill } from "./EmblemStill";
-import { type MyTier, myTier, tierName } from "./rank";
+import {
+  type MyTier,
+  myTier,
+  type NextSolve,
+  nextSolve,
+  tierHistory,
+  tierName,
+} from "./rank";
 import { DIVISIONS, TIER_LABEL, TIER_TABLE, type TierId } from "./table";
 
 /**
@@ -56,14 +63,52 @@ export function basisFromSearch(search: string): TierBasis {
   }
 }
 
+/** 그 기록의 크기 `n` 기록(새것이 앞)과 따로 남겨 둔 최고 5판 */
+export function loadTierRecords(
+  n: number,
+  basis: TierBasis = "solo",
+): { records: SolveRecord[]; bestFive: SolveRecord[] } {
+  return basis === "cubie"
+    ? { records: loadMiniRecords(n), bestFive: loadMiniBestFive(n) }
+    : { records: loadRecords("solo", n), bestFive: loadBestFive(n) };
+}
+
 /** 그 기록으로 센 크기 `n`의 최고 티어 */
 export function loadMyTier(
   n: number,
   basis: TierBasis = "solo",
 ): MyTier | null {
-  return basis === "cubie"
-    ? miniTier(n)
-    : myTier(n, loadRecords("solo", n), loadBestFive(n));
+  if (basis === "cubie") return miniTier(n);
+  const { records, bestFive } = loadTierRecords(n, basis);
+  return myTier(n, records, bestFive);
+}
+
+/** 티어 화면이 보이는 내 기록: 지금 티어, 다음 판 목표, 티어 이력(docs/47 14-8) */
+export interface TierProgress {
+  mine: MyTier | null;
+  goal: NextSolve | null;
+  history: ReturnType<typeof tierHistory>;
+}
+
+export function loadTierProgress(n: number, basis: TierBasis): TierProgress {
+  const { records, bestFive } = loadTierRecords(n, basis);
+  return {
+    mine: myTier(n, records, bestFive),
+    goal: nextSolve(n, records, bestFive),
+    history: tierHistory(n, records),
+  };
+}
+
+export function useTierProgress(n: number, basis: TierBasis): TierProgress {
+  const [p, setP] = useState<TierProgress>({
+    mine: null,
+    goal: null,
+    history: { points: [], changes: [] },
+  });
+  useEffect(() => {
+    setP(loadTierProgress(n, basis));
+  }, [n, basis]);
+  return p;
 }
 
 /** 이 기기의 크기 `n` 최고 티어(기록이 바뀌면 `version`을 바꿔 다시 읽는다) */

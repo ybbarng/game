@@ -14,7 +14,10 @@ use cube_core::scramble::{scramble, ScrambleEvent};
 use cube_core::spot::{last_layer_hint, spot_case, spot_hold, LastLayerHint};
 use cube_core::state::{apply_moves, face_colors, is_solved_with};
 use cube_core::summary::{mini_summary, RecentAverage};
-use cube_core::tier::{ao5, best_ao5, my_tier, tier_of, Timeable, DIVISIONS};
+use cube_core::tier::{
+    ao5, best_ao5, best_five_detail, my_tier, next_solve, tier_history, tier_of, Dated,
+    NextSolveKind, TierPlace, Timeable, DIVISIONS,
+};
 use cube_core::{data, parse_moves, solved_cube};
 use json::Json;
 
@@ -281,6 +284,137 @@ fn tiers_match_site() {
             }
             other => panic!("모르는 사례 {other}"),
         }
+    }
+    r.finish();
+}
+
+fn place_triple(p: &Json) -> Option<(String, Option<String>, usize)> {
+    (!p.is_null()).then(|| {
+        (
+            p.get("tier").str().to_string(),
+            p.get("division").opt_str().map(str::to_string),
+            p.get("step").num() as usize,
+        )
+    })
+}
+
+fn place_triple_core(p: Option<TierPlace>) -> Option<(String, Option<String>, usize)> {
+    p.map(|p| {
+        (
+            p.tier_id().to_string(),
+            p.division.map(|d| DIVISIONS[d].to_string()),
+            p.step,
+        )
+    })
+}
+
+#[test]
+fn tier_progress_matches_site() {
+    let mut r = Report::new("최고 5판·다음 판 목표·티어 이력");
+    for c in cases(include_str!("../fixtures/tier-progress.json")) {
+        r.total += 1;
+        let n = c.get("n").num() as usize;
+        let recs = c.get("records").arr();
+        let records: Vec<Timeable> = recs.iter().map(timeable).collect();
+        let best_five: Vec<Timeable> = c.get("bestFive").arr().iter().map(timeable).collect();
+        let what = format!("{n}×{n} 기록 {}판", records.len());
+
+        let d = c.get("detail");
+        let want = (!d.is_null()).then(|| {
+            (
+                d.get("ms").num(),
+                d.get("from").str() == "kept",
+                d.get("at").num() as usize,
+                d.get("fast").num() as usize,
+                d.get("slow").num() as usize,
+            )
+        });
+        let have =
+            best_five_detail(&records, &best_five).map(|b| (b.ms, b.kept, b.at, b.fast, b.slow));
+        r.check(&format!("{what} 최고 5판"), have, want);
+
+        let nx = c.get("next");
+        let want = (!nx.is_null()).then(|| {
+            (
+                nx.get("kind").str().to_string(),
+                place_triple(nx.get("to")),
+                nx.get("cutMs").num(),
+                nx.get("value").opt_num(),
+            )
+        });
+        let have = next_solve(n, &records, &best_five).map(|s| {
+            let (kind, value) = match s.kind {
+                NextSolveKind::Within(ms) => ("within", Some(ms)),
+                NextSolveKind::Any => ("any", None),
+                NextSolveKind::Out(gap) => ("out", Some(gap)),
+            };
+            (
+                kind.to_string(),
+                place_triple_core(Some(s.to)),
+                s.cut_ms,
+                value,
+            )
+        });
+        r.check(&format!("{what} 다음 판"), have, want);
+
+        let dated: Vec<Dated> = recs
+            .iter()
+            .map(|j| Dated {
+                t: timeable(j),
+                no: j.get("no").opt_num().unwrap_or(0.0) as u32,
+                at: j.get("at").num(),
+            })
+            .collect();
+        let (points, changes) = tier_history(n, &dated);
+        let want: Vec<(u32, f64, Option<f64>)> = c
+            .get("points")
+            .arr()
+            .iter()
+            .map(|p| {
+                (
+                    p.get("no").num() as u32,
+                    p.get("at").num(),
+                    p.get("ms").opt_num(),
+                )
+            })
+            .collect();
+        let have: Vec<(u32, f64, Option<f64>)> =
+            points.iter().map(|p| (p.no, p.at, p.ms)).collect();
+        r.check(&format!("{what} 이력 점"), have, want);
+        type Change = (
+            u32,
+            f64,
+            Option<(String, Option<String>, usize)>,
+            Option<(String, Option<String>, usize)>,
+            f64,
+        );
+        let want: Vec<Change> = c
+            .get("changes")
+            .arr()
+            .iter()
+            .map(|x| {
+                (
+                    x.get("no").num() as u32,
+                    x.get("at").num(),
+                    place_triple(x.get("from")),
+                    place_triple(x.get("to")),
+                    x.get("ms").num(),
+                )
+            })
+            .collect();
+        let have: Vec<Change> = changes
+            .iter()
+            .map(|x| {
+                (
+                    x.no,
+                    x.at,
+                    place_triple_core(x.from),
+                    place_triple_core(Some(x.to)),
+                    x.ms,
+                )
+            })
+            .collect();
+        r.check(&format!("{what} 바뀐 순간"), have, want);
     }
     r.finish();
 }

@@ -22,6 +22,8 @@ const FILES = import.meta.glob<string>(
     "../../../../cubie/Sources/CubieCore/TierSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierShowcase.swift",
     "../../../../cubie/Sources/CubieCore/SettingsSheet.swift",
+    "../../../../cubie/Sources/CubieCore/TierProgress.swift",
+    "../tiers/progress-view.ts",
     "../mini/MiniCubeApp.tsx",
     "../tiers/TiersApp.tsx",
     "../tiers/TierShowcase.tsx",
@@ -65,12 +67,10 @@ function sameText(
 describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
   it("기록 창(MiniCubeApp RecordsPage)", () =>
     sameText("MiniCubeApp.tsx", "RecordsSheet.swift", [
-      "Cubie 기록 기준 · 최고 Ao5",
+      "Cubie 기록 기준 · 최고 5판 평균(Ao5)",
       "티어표",
       "5판 뒤에",
       "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자 맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.",
-      "5번 평균",
-      "12번 평균",
       "아직 기록이 없어요.",
       "다른 프로그램 입력",
       "마우스·화면",
@@ -79,6 +79,21 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "이어 보기",
       "멈추기",
       "처음부터",
+    ]));
+
+  it("최고 5판·다음 판 목표(progress-view, 앱 TierProgress.swift)", () =>
+    sameText("progress-view.ts", "TierProgress.swift", [
+      '"최근 5판 평균"',
+      '"최근 12판 평균"',
+      '"최고 5판 평균"',
+      "~",
+      "번",
+      "다음 판 ",
+      " 안이면 ",
+      "다음 판을 맞추면 ",
+      "다음 판 하나로는 ",
+      "에 못 닿아요. 최고 5판 평균을 ",
+      "초 줄여야 해요.",
     ]));
 
   it("티어표(TiersApp)", () =>

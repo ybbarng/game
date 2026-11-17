@@ -53,7 +53,20 @@ import {
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { EmblemStill } from "../tiers/EmblemStill";
-import { type MyTier, tierName } from "../tiers/rank";
+import {
+  BEST5_LABEL,
+  bestFiveView,
+  nextSolveText,
+  RECENT5_LABEL,
+  RECENT12_LABEL,
+  rangeText,
+} from "../tiers/progress-view";
+import {
+  type MyTier,
+  type NextSolve,
+  nextSolve,
+  tierName,
+} from "../tiers/rank";
 import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
@@ -251,10 +264,12 @@ function MiniTiers({
   onSize: (n: number) => void;
 }) {
   const [tiers, setTiers] = useState<(MyTier | null)[]>([]);
+  const [goal, setGoal] = useState<NextSolve | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: version은 기록이 바뀐 때를 알리는 값
   useEffect(() => {
     setTiers(MINI_SIZES.map((s) => miniTier(s)));
-  }, [version]);
+    setGoal(nextSolve(n, loadMiniRecords(n), loadMiniBestFive(n)));
+  }, [version, n]);
   return (
     <section
       data-mini-tiers
@@ -262,7 +277,9 @@ function MiniTiers({
     >
       <div className="flex items-baseline gap-2">
         <h2 className="font-bold text-sm">티어</h2>
-        <span className="text-white/60">Cubie 기록 기준 · 최고 Ao5</span>
+        <span className="text-white/60">
+          Cubie 기록 기준 · 최고 5판 평균(Ao5)
+        </span>
         <a
           href={`/cube/tiers?n=${n}&records=cubie`}
           className="ml-auto text-white/70 underline-offset-2 hover:underline"
@@ -314,6 +331,11 @@ function MiniTiers({
           );
         })}
       </ul>
+      {goal && (
+        <p data-mini-next-solve={goal.kind} className="break-keep">
+          {nextSolveText(goal)}
+        </p>
+      )}
       <p className="break-keep text-white/50">
         Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자
         맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.
@@ -1823,6 +1845,11 @@ function RecordsPanel({
   orbit?: boolean;
 }) {
   const sum = summarize(records);
+  // 티어를 정한 5판(최고 5판 평균): 요약에 값과 번호, 기록 줄에 그 5판과 빠진 두 판. 기록이 바뀌면 남겨 둔 최고 5판도 다시 읽는다
+  const best5 = useMemo(
+    () => bestFiveView(records, loadMiniBestFive(n)),
+    [records, n],
+  );
   const [watching, setWatching] = useState<MiniRecord | null>(null);
   // 크기를 바꾸면 보던 판을 닫는다
   // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
@@ -1870,10 +1897,14 @@ function RecordsPanel({
         <dd data-mini-best>{formatMs(sum.best ?? undefined)}</dd>
         <dt className="text-white/60">평균</dt>
         <dd>{formatMs(sum.mean ?? undefined)}</dd>
-        <dt className="text-white/60">5번 평균</dt>
+        <dt className="text-white/60">{RECENT5_LABEL}</dt>
         <dd>{formatMs(sum.ao5)}</dd>
-        <dt className="text-white/60">12번 평균</dt>
+        <dt className="text-white/60">{RECENT12_LABEL}</dt>
         <dd>{formatMs(sum.ao12)}</dd>
+        <dt className="text-amber-200/80">{BEST5_LABEL}</dt>
+        <dd data-mini-best5>
+          {best5 ? `${formatMs(best5.ms)} · ${rangeText(best5)}` : "-"}
+        </dd>
       </dl>
       {/* 다시 보는 동안은 큐브·거울이 남은 높이의 3/4, 기록 목록이 1/4(목록은 그 안에서 굴린다) */}
       {watching && (
@@ -1888,55 +1919,72 @@ function RecordsPanel({
         <p className="text-white/60">아직 기록이 없어요.</p>
       ) : (
         <ol className="min-h-12 flex-1 overflow-y-auto tabular-nums">
-          {records.map((r) => (
-            <li
-              key={`${r.no}-${r.at}`}
-              data-mini-record
-              className="flex gap-2 border-white/10 border-b py-0.5"
-            >
-              <span className="w-6 text-white/40">{r.no}</span>
-              <span className="w-20 text-white/60">{shortTime(r.at)}</span>
-              <span className="flex-1 font-semibold">{formatMs(r.ms)}</span>
-              {/* 실제 키보드가 아닌 입력이 섞인 판만 표시(막지는 않는다) */}
-              {r.keyOrigin === "synthetic" && (
+          {records.map((r) => {
+            const mark =
+              r.no === undefined ? undefined : best5?.marks.get(r.no);
+            const out = mark === "fast" || mark === "slow";
+            return (
+              <li
+                key={`${r.no}-${r.at}`}
+                data-mini-record
+                {...(mark ? { "data-mini-best-five": mark } : {})}
+                className={cn(
+                  "flex gap-2 border-white/10 border-b py-0.5",
+                  mark && "bg-amber-300/10",
+                )}
+              >
+                <span className="w-6 text-white/40">{r.no}</span>
+                <span className="w-20 text-white/60">{shortTime(r.at)}</span>
+                {/* 최고 5판 평균에서 빠진 가장 빠른·느린 판은 대회 표기처럼 괄호 */}
                 <span
-                  data-mini-source="synthetic"
-                  className="rounded bg-amber-500/25 px-1 text-amber-200"
+                  className={cn(
+                    "flex-1 font-semibold",
+                    out ? "text-white/50" : mark && "text-amber-100",
+                  )}
                 >
-                  다른 프로그램 입력
+                  {out ? `(${formatMs(r.ms)})` : formatMs(r.ms)}
                 </span>
-              )}
-              {r.inputs?.includes("swipe") && (
-                <span
-                  data-mini-source="swipe"
-                  className="rounded bg-white/10 px-1 text-white/70"
-                >
-                  마우스·화면
-                </span>
-              )}
-              {(r.hints ?? 0) > 0 && (
-                <span
-                  data-mini-record-hints={r.hints}
-                  title="힌트를 본 판이 든 5판은 티어에 넣지 않아요"
-                  className="rounded bg-sky-500/25 px-1 text-sky-200"
-                >
-                  힌트 {r.hints}번
-                </span>
-              )}
-              <span className="text-white/60">{r.moves}수</span>
-              {hasReplay(r) && (
-                <button
-                  type="button"
-                  data-mini-replay-open={r.no}
-                  aria-pressed={watching?.at === r.at && watching.no === r.no}
-                  onClick={() => setWatching(r)}
-                  className="rounded bg-white/10 px-1 hover:bg-white/20"
-                >
-                  다시 보기
-                </button>
-              )}
-            </li>
-          ))}
+                {/* 실제 키보드가 아닌 입력이 섞인 판만 표시(막지는 않는다) */}
+                {r.keyOrigin === "synthetic" && (
+                  <span
+                    data-mini-source="synthetic"
+                    className="rounded bg-amber-500/25 px-1 text-amber-200"
+                  >
+                    다른 프로그램 입력
+                  </span>
+                )}
+                {r.inputs?.includes("swipe") && (
+                  <span
+                    data-mini-source="swipe"
+                    className="rounded bg-white/10 px-1 text-white/70"
+                  >
+                    마우스·화면
+                  </span>
+                )}
+                {(r.hints ?? 0) > 0 && (
+                  <span
+                    data-mini-record-hints={r.hints}
+                    title="힌트를 본 판이 든 5판은 티어에 넣지 않아요"
+                    className="rounded bg-sky-500/25 px-1 text-sky-200"
+                  >
+                    힌트 {r.hints}번
+                  </span>
+                )}
+                <span className="text-white/60">{r.moves}수</span>
+                {hasReplay(r) && (
+                  <button
+                    type="button"
+                    data-mini-replay-open={r.no}
+                    aria-pressed={watching?.at === r.at && watching.no === r.no}
+                    onClick={() => setWatching(r)}
+                    className="rounded bg-white/10 px-1 hover:bg-white/20"
+                  >
+                    다시 보기
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>
