@@ -136,7 +136,7 @@ export class FairGuestSeat {
       if (!events.some((e) => e.type === "killAttempt" && e.card === card))
         this.coordinator.incident({
           seat: 0,
-          reason: `방장이 죽이기 없이 ${cardText(card)}의 주인을 물었다(남의 카드 떠보기)`,
+          reason: `방장이 죽이기 없이 ${cardText(card)}의 주인을 물었어요(남의 카드 떠보기).`,
         });
     }
     this.last = view;

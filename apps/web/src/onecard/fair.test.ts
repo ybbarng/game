@@ -126,7 +126,7 @@ describe("원카드 멘탈 포커 연결 코드", () => {
     expect(result).toMatchObject({
       ok: false,
       seat: 0,
-      reason: "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸다",
+      reason: "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸어요.",
     });
   });
 
@@ -140,7 +140,7 @@ describe("원카드 멘탈 포커 연결 코드", () => {
   it("다시 펴지 않을 때 더미를 모두에게 열었거나 다시 편 만큼 열지 않았으면 짚는다", () => {
     expect(check({ asked: ASKED.slice(1) })).toMatchObject({
       ok: false,
-      reason: "방장이 처음 카드를 엔진과 다르게 다시 폈다",
+      reason: "방장이 처음 카드를 엔진과 다르게 다시 폈어요.",
     });
     expect(check({ asked: [{ to: 1 }, ...ASKED.slice(1)] })).toMatchObject({
       ok: false,

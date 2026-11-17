@@ -23,7 +23,7 @@ describe("다시 섞기 입력을 바꾼 방장(세 번째 다시 섞기)", () =
       ok: false,
       index: THIRD_RESHUFFLE_STEP,
       seat: 0,
-      reason: "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸다",
+      reason: "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸어요.",
     });
   });
 

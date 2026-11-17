@@ -108,7 +108,7 @@ describe("마지막 카드 제한", () => {
 
   it("마지막 한 장이 공격 카드면 낼 수 없고, 두 장일 때는 낼 수 있다", () => {
     const f = face("H5", "H");
-    expect(playProblem(f, ["H2"], "H2")).toMatch(/끝낼 수 없다/);
+    expect(playProblem(f, ["H2"], "H2")).toMatch(/끝낼 수 없어요/);
     expect(playProblem(f, ["H2", "S9"], "H2")).toBeNull();
   });
 

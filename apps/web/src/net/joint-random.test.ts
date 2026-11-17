@@ -51,13 +51,13 @@ describe("함께 정한 난수: 순수 부분", () => {
     [
       "공개하지 않음",
       (r: { seat: number; secret: string }[]) => r.filter((x) => x.seat !== 1),
-      "공개하지 않았다",
+      "공개하지 않았어요.",
     ],
     [
       "약속과 다른 값",
       (r: { seat: number; secret: string }[]) =>
         r.map((x) => (x.seat === 1 ? { ...x, secret: "secretZZZZ9" } : x)),
-      "약속과 다른 값을 냈다",
+      "약속과 다른 값을 냈어요.",
     ],
   ])(
     "%s: 그 자리가 잘못한 사람이 되고 값은 정직한 사람만으로 정한다",
@@ -123,7 +123,9 @@ describe("함께 정한 난수: 순수 부분", () => {
       S.map((secret, seat) => ({ seat, secret })).filter((r) => r.seat !== 2),
     );
     expect(outcome.fallback).toBe(false);
-    expect(outcome.faulted).toEqual([{ seat: 2, reason: "약속하지 않았다" }]);
+    expect(outcome.faulted).toEqual([
+      { seat: 2, reason: "약속하지 않았어요." },
+    ]);
     expect(outcome.secrets).toEqual([S[0], S[1]]);
   });
 
@@ -176,7 +178,9 @@ describe("함께 정한 난수: 순수 부분", () => {
     const commits = await commitsFor("r3");
     const reveals = S.map((secret, seat) => ({ seat, secret }));
     const missing = await jointOutcome("r3", [0, 1, 2, 3], commits, reveals);
-    expect(missing.faulted).toEqual([{ seat: 3, reason: "약속하지 않았다" }]);
+    expect(missing.faulted).toEqual([
+      { seat: 3, reason: "약속하지 않았어요." },
+    ]);
     const otherScope = await jointOutcome("r4", [0, 1, 2], commits, reveals);
     expect(otherScope.honest).toEqual([]);
   });
@@ -242,7 +246,7 @@ describe("함께 정한 난수: 방 흐름", () => {
     const [a, b] = await Promise.all(outcomes);
     expect(a).toEqual(b);
     expect(a?.honest).toEqual([0, 1]);
-    expect(a?.faulted).toEqual([{ seat: 2, reason: "공개하지 않았다" }]);
+    expect(a?.faulted).toEqual([{ seat: 2, reason: "공개하지 않았어요." }]);
     if (!a) throw new Error("결과 없음");
     expect(await jointTiebreak(a, [1, 2], "tie")).toEqual([1, 2]);
   });

@@ -287,7 +287,7 @@ export class FairHostTable {
     action: Action,
   ): Promise<Prepared> {
     await this.gate;
-    if (this.halted) return { ok: false, error: "판을 멈췄다" };
+    if (this.halted) return { ok: false, error: "판을 멈췄어요." };
     const state = this.hooks.state();
     switch (action.type) {
       case "play":
@@ -307,7 +307,7 @@ export class FairHostTable {
             continue;
           }
           const slot = this.mySlotOf(card, seat);
-          if (slot === null) return { ok: false, error: "손에 없는 카드다" };
+          if (slot === null) return { ok: false, error: "손에 없는 카드예요." };
           discard.push(tokenOf(slot));
         }
         return { ok: true, action: { ...action, discard } };
@@ -338,24 +338,24 @@ export class FairHostTable {
     let slot: number | null;
     if (this.deviceOf(seat) === 0) {
       slot = this.mySlotOf(action.card, seat);
-      if (slot === null) return { ok: false, error: "손에 없는 카드다" };
+      if (slot === null) return { ok: false, error: "손에 없는 카드예요." };
       // 다시 계산한 뒤(마지막 턴)에는 손패가 진짜 카드라 자리 표가 없다.
       this.device.reveal(deal, [slot], "play");
     } else {
       slot = (action as { deckSlot?: number }).deckSlot ?? null;
       if (slot === null || this.coordinator.seatOwners.get(slot) !== seat)
-        return this.cheat(seat, "자기 자리가 아닌 카드를 내려 했다");
+        return this.cheat(seat, "자기 자리가 아닌 카드를 내려 했어요.");
       const opened = await this.waitFor(() =>
         this.device.ledger(deal)?.has(slot as number, seat)
           ? this.device.open(deal, slot as number)
           : undefined,
       );
       if (opened === undefined)
-        return { ok: false, error: "카드 열쇠가 오지 않았다" };
+        return { ok: false, error: "카드 열쇠가 오지 않았어요." };
       if (opened !== action.card)
         return this.cheat(
           seat,
-          `낸다고 한 카드(${cardText(action.card)})와 열쇠로 연 카드(${opened ? cardText(opened) : "카드 아님"})가 다르다`,
+          `낸다고 한 카드(${cardText(action.card)})와 열쇠로 연 카드(${opened ? cardText(opened) : "카드 아님"})가 달라요.`,
         );
     }
     const withSlot = { ...action, deckSlot: slot } as Action;
@@ -423,7 +423,7 @@ export class FairHostTable {
       }
       return map;
     });
-    if (!cards) return { ok: false, error: "패를 공개하지 않았다" };
+    if (!cards) return { ok: false, error: "패를 공개하지 않았어요." };
     this.hooks.patch((s) => revealInHand(s, seat, cards));
     return { ok: true, action };
   }
@@ -507,7 +507,7 @@ export class FairHostTable {
     if (result && "problem" in result) {
       this.coordinator.incident({
         seat: result.problem,
-        reason: "가졌다고 한 카드가 열쇠로 연 카드와 다르다",
+        reason: "가졌다고 한 카드가 열쇠로 연 카드와 달라요.",
       });
       return null;
     }

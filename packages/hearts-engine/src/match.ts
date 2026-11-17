@@ -294,7 +294,8 @@ export function step(
   action: Action,
 ): StepResult {
   if (action.type === "retire") {
-    if (current.round.phase === "gameOver") return fail("이미 끝난 게임이다");
+    if (current.round.phase === "gameOver")
+      return fail("이미 끝난 게임이에요.");
     const state = clone(current);
     state.round.phase = "gameOver";
     state.round.turn = null;
@@ -307,14 +308,14 @@ export function step(
     };
   }
   const decision = decisionFor(current, seat);
-  if (decision === null) return fail("지금은 차례가 아니다");
+  if (decision === null) return fail("지금은 차례가 아니에요.");
   const state = clone(current);
   const { round, rules } = state;
   const events: GameEvent[] = [];
 
   switch (action.type) {
     case "pass": {
-      if (decision.kind !== "pass") return fail("카드를 넘길 때가 아니다");
+      if (decision.kind !== "pass") return fail("카드를 넘길 때가 아니에요.");
       const hand = round.hands[seat] ?? [];
       const cards = action.cards;
       if (
@@ -323,7 +324,7 @@ export function step(
         new Set(cards).size !== cards.length ||
         !cards.every((c) => hand.includes(c))
       )
-        return fail(`손에 있는 카드 ${decision.count}장을 골라야 한다`);
+        return fail(`손에 있는 카드 ${decision.count}장을 골라야 해요.`);
       round.passes[seat] = [...cards];
       events.push({ type: "passChosen", seat });
       if (round.passes.every((p) => p !== null)) {
@@ -346,9 +347,10 @@ export function step(
 
     case "play": {
       if (decision.kind !== "play" || round.trick === null)
-        return fail("카드를 낼 차례가 아니다");
+        return fail("카드를 낼 차례가 아니에요.");
       const { card } = action;
-      if (!decision.cards.includes(card)) return fail("지금 낼 수 없는 카드다");
+      if (!decision.cards.includes(card))
+        return fail("지금 낼 수 없는 카드예요.");
       const hand = round.hands[seat] ?? [];
       const slot =
         Number.isInteger(action.slot) &&
@@ -396,7 +398,7 @@ export function step(
     }
 
     case "continue": {
-      if (decision.kind !== "continue") return fail("판이 끝나지 않았다");
+      if (decision.kind !== "continue") return fail("판이 끝나지 않았어요.");
       round.continued[seat] = true;
       if (round.continued.every(Boolean)) {
         state.roundNumber++;

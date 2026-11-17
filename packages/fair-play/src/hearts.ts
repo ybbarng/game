@@ -56,7 +56,7 @@ export function heartsBlindStep(
   if (action.type !== "play" || hand.includes(action.card))
     return step(input, seat, action);
   if (slot === undefined || !hand.includes(tokenOf(slot)))
-    return { ok: false, error: "그 자리의 카드가 아니다" };
+    return { ok: false, error: "그 자리의 카드가 아니에요." };
   const state: MatchState = JSON.parse(JSON.stringify(input));
   state.round.hands[seat] = [action.card];
   const { slot: shown, ...rest } = action;
@@ -151,7 +151,7 @@ export class HeartsRenegeWatch {
     if (this.revealed.has(play.card))
       return {
         seat: play.seat,
-        reason: `${cardText(play.card)}가 두 번 나왔다`,
+        reason: `${cardText(play.card)}가 두 번 나왔어요.`,
         duplicate: true,
       };
     this.revealed.add(play.card);
@@ -168,7 +168,7 @@ export class HeartsRenegeWatch {
       if (!allowed.includes(past.card))
         return {
           seat: play.seat,
-          reason: `${past.trickIndex + 1}번째 턴에 ${cardText(past.card)}를 냈는데, 그때 ${cardText(play.card)}가 손에 있었다: ${describeHearts(past)}`,
+          reason: `${past.trickIndex + 1}번째 턴에 ${cardText(past.card)}를 냈는데, 그때 ${cardText(play.card)}가 손에 있었어요. ${describeHearts(past)}`,
         };
     }
     this.plays.push(play);
@@ -178,9 +178,9 @@ export class HeartsRenegeWatch {
 
 function describeHearts(past: PastPlay): string {
   if (past.before.plays.length > 0)
-    return "선 무늬가 있었는데 따라 내지 않았다";
-  if (past.trickIndex === 0) return "첫 선은 ♣2로 해야 한다";
-  return "하트가 깨지기 전에 다른 무늬가 있었는데 하트로 선을 잡았다";
+    return "선 무늬가 있었는데 따라 내지 않았어요.";
+  if (past.trickIndex === 0) return "첫 선은 ♣2로 해야 해요.";
+  return "하트가 깨지기 전에 다른 무늬가 있었는데 하트로 선을 잡았어요.";
 }
 
 /** 기록 속 자리 표를 진짜 카드로 바꾸고 엔진이 모르는 칸(카드 자리)을 뺀다 */
@@ -243,7 +243,7 @@ export function checkHeartsReplay(
 ): HeartsReplayCheck {
   const first = deals.get(1);
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없다" };
+    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
   let state = createMatch({ rules, seed, presetHands: first.hands }).state;
   const states = [state];
   for (const [index, entry] of log.entries()) {
@@ -273,7 +273,7 @@ export function checkHeartsReplay(
         ok: false,
         index,
         seat: 0,
-        reason: `방장이 진행한 결과가 진짜 카드로 다시 계산한 것과 다르다(${entry.seat}번 차례)`,
+        reason: `방장이 진행한 결과가 진짜 카드로 다시 계산한 것과 달라요(${entry.seat}번 차례).`,
       };
     delete result.state.presetHands;
     state = result.state;

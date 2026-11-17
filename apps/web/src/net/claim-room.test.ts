@@ -179,7 +179,7 @@ describe("실시간 청구 1층: 방 전체", () => {
     ]);
     expect(troubles).toEqual([]);
     await tick(clock, 1_000);
-    const omitted = "방장이 1번 자리의 청구(0번 판)를 발표하지 않았다";
+    const omitted = "방장이 1번 자리의 청구(0번 판)를 발표하지 않았어요.";
     // 영희(직접 받은 증인)와 철수(청구한 본인) 모두 자기 기기가 찾아 알리고, 방장은 그 알림을 받는다.
     expect(troubles.sort()).toEqual(
       [

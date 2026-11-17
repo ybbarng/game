@@ -223,7 +223,7 @@ describe("숫자야구 온라인 방", () => {
         : { type: "answer", strikes: 0, balls: 1 };
     };
     await play(room, () => room.rejected.length > 0 || over(room));
-    expect(room.rejected).toContain("앞에서 한 답과 맞지 않는다");
+    expect(room.rejected).toContain("앞에서 한 답과 맞지 않아요.");
   });
 
   it("참가자가 답하지 않고 끊기면 컴퓨터가 대신 답하지 못해 기다리고, 끝내기로 참가자가 진다", async () => {

@@ -301,7 +301,7 @@ describe("ClaimHub 2층: 반응 시간 겨루기", () => {
     t.clock.advance(500);
     await until(() =>
       t.objections.some((o) =>
-        o.includes("방장 발표의 순서가 반응 시간 겨루기 순서와 다르다"),
+        o.includes("방장 발표의 순서가 반응 시간 겨루기 순서와 달라요."),
       ),
     );
   });
@@ -328,7 +328,7 @@ describe("ClaimHub 2층: 반응 시간 겨루기", () => {
     // 발표는 시계를 감은 뒤(마이크로태스크)에 나가므로 손님에게 닿을 시간을 더 준다
     t.clock.advance(500);
     await until(() =>
-      t.objections.includes("g1:0:방장이 자기 반응 시간을 줄여 발표했다"),
+      t.objections.includes("g1:0:방장이 자기 반응 시간을 줄여 발표했어요."),
     );
   });
 
@@ -354,7 +354,7 @@ describe("ClaimHub 2층: 반응 시간 겨루기", () => {
     // 발표는 시계를 감은 뒤(마이크로태스크)에 나가므로 손님에게 닿을 시간을 더 준다
     t.clock.advance(500);
     await until(() =>
-      t.objections.includes("g1:0:방장이 내 반응 시간을 늘려 발표했다"),
+      t.objections.includes("g1:0:방장이 내 반응 시간을 늘려 발표했어요."),
     );
     expect(t.objections.some((o) => o.startsWith("g2:"))).toBe(false);
   });
@@ -373,7 +373,7 @@ describe("ClaimHub 2층: 반응 시간 겨루기", () => {
     // 발표는 시계를 감은 뒤(마이크로태스크)에 나가므로 손님에게 닿을 시간을 더 준다
     t.clock.advance(500);
     await until(() =>
-      t.objections.includes("g2:0:방장 발표에 반응 시간이 없다"),
+      t.objections.includes("g2:0:방장 발표에 반응 시간이 없어요."),
     );
   });
 });

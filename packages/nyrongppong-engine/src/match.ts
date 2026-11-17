@@ -331,9 +331,9 @@ export function step(
 ): StepResult {
   const n = state.rules.players;
   if (!Number.isInteger(seat) || seat < 0 || seat >= n)
-    return fail("없는 자리다");
+    return fail("없는 자리예요.");
   if (action.type === "retire") {
-    if (state.phase === "gameOver") return fail("이미 끝난 게임이다");
+    if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
     const next = clone(state);
     next.phase = "gameOver";
     next.call = null;
@@ -345,8 +345,8 @@ export function step(
     };
   }
   if (action.type === "continue") {
-    if (state.phase !== "roundEnd") return fail("판이 끝나지 않았다");
-    if (state.continued[seat]) return fail("이미 눌렀다");
+    if (state.phase !== "roundEnd") return fail("판이 끝나지 않았어요.");
+    if (state.continued[seat]) return fail("이미 눌렀어요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     next.continued[seat] = true;
@@ -360,23 +360,23 @@ export function step(
     action.type === "timeout"
   ) {
     if (state.phase !== "call" || !state.call)
-      return fail("뽕을 부를 때가 아니다");
+      return fail("뽕을 부를 때가 아니에요.");
     const next = clone(state);
     const call = next.call as NonNullable<NyrongppongState["call"]>;
     const spent = Math.max(0, action.spent ?? 0);
     if (action.type === "timeout") {
       if (call.used + spent < callWindowMs(state.rules))
-        return fail("아직 시간이 남았다");
+        return fail("아직 시간이 남았어요.");
       for (const r of call.responses) if (r.answer === null) r.answer = "pass";
     } else {
       const mine = call.responses.find((r) => r.seat === seat);
-      if (!mine) return fail("뽕할 수 있는 패가 없다");
-      if (mine.answer !== null) return fail("이미 정했다");
+      if (!mine) return fail("뽕할 수 있는 패가 없어요.");
+      if (mine.answer !== null) return fail("이미 정했어요.");
       if (
         action.type === "call" &&
         sameMonthIn(state.hands[seat] ?? [], call.card).length < 2
       )
-        return fail("뽕할 수 있는 패가 없다");
+        return fail("뽕할 수 있는 패가 없어요.");
       mine.answer = action.type;
     }
     call.used += spent;
@@ -386,11 +386,11 @@ export function step(
   }
 
   if (state.phase !== "draw" && state.phase !== "discard")
-    return fail("판이 진행 중이 아니다");
-  if (state.turn !== seat) return fail("차례가 아니다");
+    return fail("판이 진행 중이 아니에요.");
+  if (state.turn !== seat) return fail("차례가 아니에요.");
 
   if (action.type === "draw" || action.type === "stop") {
-    if (state.phase !== "draw") return fail("지금은 버릴 차례다");
+    if (state.phase !== "draw") return fail("지금은 버릴 차례예요.");
     const next = clone(state);
     const events: GameEvent[] = [];
     if (action.type === "draw") {
@@ -399,7 +399,7 @@ export function step(
     }
     // 멘탈 포커 판은 손패 합과 상관없이 묻는다. 스톱은 정말 할 수 있을 때만 받는다.
     if (!canStop(state, seat))
-      return fail("스톱할 수 없다(손패 합이 한도보다 크다)");
+      return fail("스톱할 수 없어요(손패 합이 한도보다 커요).");
     const values = handScores(next);
     const mine = values[seat] as number;
     const success = values.every((v, s) => s === seat || v > mine);
@@ -411,12 +411,12 @@ export function step(
     return { ok: true, state: next, events };
   }
 
-  if (state.phase !== "discard") return fail("먼저 한 장 가져와야 한다");
+  if (state.phase !== "discard") return fail("먼저 한 장 가져와야 해요.");
   const hand = state.hands[seat] ?? [];
 
   if (action.type === "declare") {
     const yak = findYak(hand);
-    if (!yak) return fail("약이 아니다");
+    if (!yak) return fail("약이 아니에요.");
     const next = clone(state);
     const events: GameEvent[] = [{ type: "declared", seat, yak }];
     const scores = handScores(next).map((v, s) => (s === seat ? yak.value : v));
@@ -424,8 +424,8 @@ export function step(
     return { ok: true, state: next, events };
   }
 
-  if (action.type !== "discard") return fail("모르는 행동이다");
-  if (!hand.includes(action.card)) return fail("손에 없는 카드다");
+  if (action.type !== "discard") return fail("모르는 행동이에요.");
+  if (!hand.includes(action.card)) return fail("손에 없는 카드예요.");
   const next = clone(state);
   next.hands[seat] = hand.filter((id) => id !== action.card);
   next.pile.push(action.card);

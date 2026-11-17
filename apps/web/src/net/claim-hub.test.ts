@@ -115,8 +115,8 @@ describe("ClaimHub", () => {
     g1.claim({ button: targetOf(0) });
     clock.advance(200);
     expect(objections).toEqual([
-      "g1:0:방장이 1번 자리의 청구(0번 판)를 다르게 판정했다",
-      "g2:0:방장이 1번 자리의 청구(0번 판)를 다르게 판정했다",
+      "g1:0:방장이 1번 자리의 청구(0번 판)를 다르게 판정했어요.",
+      "g2:0:방장이 1번 자리의 청구(0번 판)를 다르게 판정했어요.",
     ]);
   });
 
@@ -139,7 +139,7 @@ describe("ClaimHub", () => {
     host.claim({ button: targetOf(0) });
     clock.advance(200);
     expect(objections).toEqual([
-      "g1:0:방장 발표에 내가 보내지 않은 내 청구가 있다",
+      "g1:0:방장 발표에 내가 보내지 않은 내 청구가 있어요.",
     ]);
   });
 
@@ -157,8 +157,8 @@ describe("ClaimHub", () => {
     show(2);
     clock.advance(200);
     expect(objections).toEqual([
-      "g1:0:방장 발표의 판 번호(0)가 내가 받은 판(2)과 다르다",
-      "g2:0:방장 발표의 판 번호(0)가 내가 받은 판(2)과 다르다",
+      "g1:0:방장 발표의 판 번호(0)가 내가 받은 판(2)과 달라요.",
+      "g2:0:방장 발표의 판 번호(0)가 내가 받은 판(2)과 달라요.",
     ]);
   });
 
@@ -174,7 +174,7 @@ describe("ClaimHub", () => {
     g1.claim({ button: targetOf(0) });
     clock.advance(200);
     expect(objections).toContain(
-      "g2:null:방장 발표 속 1번 자리 청구가 내가 직접 받은 것과 다르다",
+      "g2:null:방장 발표 속 1번 자리 청구가 내가 직접 받은 것과 달라요.",
     );
   });
 
@@ -187,8 +187,8 @@ describe("ClaimHub", () => {
     g2.claim({ button: targetOf(0) });
     clock.advance(200);
     expect(objections).toEqual([
-      "g1:0:방장 발표의 처리 순서가 정해진 순서와 다르다",
-      "g2:0:방장 발표의 처리 순서가 정해진 순서와 다르다",
+      "g1:0:방장 발표의 처리 순서가 정해진 순서와 달라요.",
+      "g2:0:방장 발표의 처리 순서가 정해진 순서와 달라요.",
     ]);
   });
 
@@ -210,8 +210,8 @@ describe("ClaimHub", () => {
       reason: "stale",
     });
     expect(objections).toEqual([
-      "g1:0:방장이 1번 자리의 청구(0번 판)를 늦게 발표해 늦음으로 버렸다",
-      "g2:0:방장이 1번 자리의 청구(0번 판)를 늦게 발표해 늦음으로 버렸다",
+      "g1:0:방장이 1번 자리의 청구(0번 판)를 늦게 발표해 늦음으로 버렸어요.",
+      "g2:0:방장이 1번 자리의 청구(0번 판)를 늦게 발표해 늦음으로 버렸어요.",
     ]);
   });
 
@@ -264,7 +264,7 @@ describe("ClaimHub", () => {
     after.host.claim({ button: targetOf(1) });
     after.clock.advance(200);
     expect(after.objections).toEqual([
-      "g1:0:방장 발표에 내가 보내지 않은 내 청구가 있다",
+      "g1:0:방장 발표에 내가 보내지 않은 내 청구가 있어요.",
     ]);
   });
 

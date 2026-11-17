@@ -250,19 +250,19 @@ describe("봉인 → 공개 → 열기", () => {
       step(revealed, seat, { type: "open", gesture, salt });
     expect(open({ ...STEADY_GESTURE, strength: 41 })).toEqual({
       ok: false,
-      error: "봉인한 몸짓이 아니다",
+      error: "봉인한 몸짓이 아니에요.",
     });
     expect(open(STEADY_GESTURE, "5b".repeat(32))).toEqual({
       ok: false,
-      error: "봉인한 몸짓이 아니다",
+      error: "봉인한 몸짓이 아니에요.",
     });
     expect(open({ ...STEADY_GESTURE, height: 5 })).toEqual({
       ok: false,
-      error: "몸짓 값이 규칙에 맞지 않다",
+      error: "몸짓 값이 규칙에 맞지 않아요.",
     });
     expect(open(STEADY_GESTURE, SALT, 1 - thrower)).toEqual({
       ok: false,
-      error: "던진 사람이 아니다",
+      error: "던진 사람이 아니에요.",
     });
     // 고리가 모두 공개되기 전에는 열 수 없다.
     const early = must(state, thrower, {
@@ -289,7 +289,7 @@ describe("봉인 → 공개 → 열기", () => {
     );
     expect(step(revealed, thrower, { type: "unopened", index: 1 })).toEqual({
       ok: false,
-      error: "기다리던 던지기가 아니다",
+      error: "기다리던 던지기가 아니에요.",
     });
     const result = step(revealed, thrower, { type: "unopened", index: 0 });
     if (!result.ok) throw new Error(result.error);

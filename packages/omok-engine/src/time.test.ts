@@ -48,7 +48,7 @@ describe("오목 개인 시간", () => {
     const seat = seatToMove(state) as number;
     expect(step(state, seat, { type: "timeout", spent: 100_000 })).toEqual({
       ok: false,
-      error: "아직 시간이 남았다",
+      error: "아직 시간이 남았어요.",
     });
     const { state: after } = must(state, seat, {
       type: "timeout",

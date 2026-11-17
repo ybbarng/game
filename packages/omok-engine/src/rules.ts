@@ -55,10 +55,10 @@ export function decodeOmokRules(
   text: string,
 ): { ok: true; rules: OmokRules } | { ok: false; reason: string } {
   const match = /^o1-([sfr])([1-5])(-t\d)?$/.exec(text.trim());
-  if (!match) return { ok: false, reason: "오목 규칙 문자열 형식이 아니다" };
+  if (!match) return { ok: false, reason: "오목 규칙 문자열 형식이 아니에요." };
   const [, code, wins, tail] = match;
   const time = decodeTimePreset(tail);
-  if (time === null) return { ok: false, reason: "모르는 시간 규칙이다" };
+  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요." };
   const variant = (Object.keys(VARIANT_CODES) as Variant[]).find(
     (v) => VARIANT_CODES[v] === code,
   ) as Variant;

@@ -45,7 +45,7 @@ export function describeAction(action: Action): string {
 
 /** 정산 내역 줄(광 3점, 고도리 5점, 2고 +2 …). 판 끝 결과 상자에 쓴다 */
 export function settlementLines(s: Settlement): string[] {
-  if (s.kind === "nagari") return ["아무도 점수를 못 냈다(나가리)"];
+  if (s.kind === "nagari") return ["아무도 점수를 못 냈어요(나가리)."];
   if (s.kind === "chongtong")
     return [`총통(${s.month ? MONTH_NAMES[s.month] : ""} 넉 장) ${s.points}점`];
   const b = s.breakdown;

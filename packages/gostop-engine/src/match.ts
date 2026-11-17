@@ -263,12 +263,12 @@ function playCard(
   events: GameEvent[],
 ): string | null {
   const hand = s.hands[seat] as string[];
-  if (!hand.includes(card)) return "손에 없는 카드다";
+  if (!hand.includes(card)) return "손에 없는 카드예요.";
   const m = monthOf(card);
   const sameInHand = hand.filter((id) => monthOf(id) === m);
   if (shake) {
     if (sameInHand.length !== 3 || floorOf(s, m).length !== 0)
-      return "흔들기는 같은 달 석 장을 들고 바닥에 그 달이 없을 때만 한다";
+      return "흔들기는 같은 달 석 장을 들고 바닥에 그 달이 없을 때만 해요.";
   }
   remove(hand, [card]);
   remove(s.revealed[seat] as string[], [card]);
@@ -320,7 +320,7 @@ function bomb(
   const cards = hand.filter((id) => monthOf(id) === month);
   const onFloor = floorOf(s, month);
   if (cards.length !== 3 || onFloor.length !== 1)
-    return "폭탄은 같은 달 석 장을 들고 바닥에 그 달이 한 장 있을 때만 한다";
+    return "폭탄은 같은 달 석 장을 들고 바닥에 그 달이 한 장 있을 때만 해요.";
   remove(hand, cards);
   remove(s.revealed[seat] as string[], cards);
   remove(s.floor, onFloor);
@@ -593,8 +593,8 @@ export function step(
   seat: number,
   action: Action,
 ): StepResult {
-  if (seat < 0 || seat >= state.rules.players) return fail("없는 자리다");
-  if (state.phase === "gameOver") return fail("게임이 끝났다");
+  if (seat < 0 || seat >= state.rules.players) return fail("없는 자리예요.");
+  if (state.phase === "gameOver") return fail("게임이 끝났어요.");
   const s = cloneState(state);
   const events: GameEvent[] = [];
   if (action.type === "retire") {
@@ -605,8 +605,8 @@ export function step(
   }
   if (s.phase === "roundEnd") {
     if (action.type !== "continue")
-      return fail("판이 끝났다. 다음 판을 누른다");
-    if (s.continued[seat]) return fail("이미 다음 판을 눌렀다");
+      return fail("판이 끝났어요. 다음 판을 눌러 주세요.");
+    if (s.continued[seat]) return fail("이미 다음 판을 눌렀어요.");
     s.continued[seat] = true;
     if (s.continued.every(Boolean)) {
       s.roundNumber += 1;
@@ -615,7 +615,7 @@ export function step(
     }
     return { ok: true, state: s, events };
   }
-  if (seat !== s.turn) return fail("내 차례가 아니다");
+  if (seat !== s.turn) return fail("내 차례가 아니에요.");
   let error: string | null = null;
   switch (s.stage) {
     case "play":
@@ -625,23 +625,23 @@ export function step(
         error = bomb(s, seat, action.month, events);
       else if (action.type === "flip") {
         if ((s.flipOwed[seat] ?? 0) <= 0)
-          error = "뒤집기만 하는 차례가 남지 않았다";
+          error = "뒤집기만 하는 차례가 남지 않았어요.";
         else {
           s.flipOwed[seat] = (s.flipOwed[seat] ?? 0) - 1;
           events.push({ type: "flipOnly", seat });
           flipPhase(s, seat, newPending(null), events);
         }
-      } else error = "카드를 낼 차례다";
+      } else error = "카드를 낼 차례예요.";
       break;
     case "chooseHand":
     case "chooseFlip": {
       const p = s.pending;
       if (action.type !== "choose" || !p) {
-        error = "먹을 바닥 카드를 고를 차례다";
+        error = "먹을 바닥 카드를 고를 차례예요.";
         break;
       }
       if (!p.options.includes(action.card)) {
-        error = "고를 수 있는 카드가 아니다";
+        error = "고를 수 있는 카드가 아니에요.";
         break;
       }
       remove(s.floor, [action.card]);
@@ -673,7 +673,7 @@ export function step(
       } else if (action.type === "stop") {
         events.push({ type: "stopped", seat, score });
         settleStop(s, seat, events);
-      } else error = "고 또는 스톱을 고를 차례다";
+      } else error = "고 또는 스톱을 고를 차례예요.";
       break;
     }
   }
