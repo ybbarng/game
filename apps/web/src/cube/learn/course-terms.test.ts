@@ -13,7 +13,7 @@ import {
 import { loosePieceWords, movedPieceWords } from "./glossary-333";
 import { COURSES, courseById } from "./index";
 import { coursePlaces, courseSummaries } from "./term-places";
-import type { Course } from "./types";
+import { type Course, GOALS } from "./types";
 
 /** 먼저 배우는 과정부터 차례로(겹치면 한 번만) */
 function chain(course: Course, seen = new Set<string>()): Course[] {
@@ -213,14 +213,11 @@ describe("큐브 중급 과정 조각 이름(블럭)", () => {
 // 한 면의 센터 블럭 둘씩은 「위 두 칸·아래 두 칸」(「윗줄·아랫줄」 아님)
 describe("큰 큐브 줄·칸 낱말", () => {
   const OLD =
-    /윗줄|아랫줄|(?<!오른쪽|왼쪽) (위|아래) 칸|한 줄로|한 줄이|한 줄에|한 줄의|묶은 줄|안쪽 줄|면의 줄/;
+    /윗줄|아랫줄|(?<!오른쪽|왼쪽) (위|아래) 칸|한 줄로|한 줄이|한 줄에|한 줄의|한 줄\)|묶은 줄|안쪽 줄|면의 줄|엣지 [한두세열] 줄|묶인 줄/;
   for (const course of COURSES) {
     if (course.size < 4) continue;
     it(`${course.title}: 옛 꼴(윗줄·위 칸·한 줄로 등)을 쓰지 않는다`, () => {
-      const found = [
-        ...courseSummaries(course),
-        ...coursePlaces(course),
-      ].flatMap(({ where, text }) => {
+      const found = bigCourseTexts(course).flatMap(({ where, text }) => {
         const m = text.match(OLD);
         return m
           ? [`${where}: …${text.slice(m.index ?? 0, (m.index ?? 0) + 12)}…`]
@@ -230,6 +227,39 @@ describe("큰 큐브 줄·칸 낱말", () => {
     });
   }
 });
+
+// 큰 큐브에서 「엣지 블럭」은 조각 하나(날개, 5×5 가운데 엣지 블럭)다. 날개가 붙은 덩이는 「엣지」라서(docs/47 1-1)
+// 「흰-파랑 엣지 블럭의 제자리」처럼 덩이를 「엣지 블럭」으로 부르지 않는다. 조각을 세거나(「엣지 블럭 둘」·「셋」),
+// 「가운데 엣지 블럭」, 3×3과 견주는 「3×3의 엣지 블럭」, 뜻을 알리는 「엣지 블럭(날개)」만 쓴다(docs/47 16-23)
+describe("큰 큐브 엣지 낱말", () => {
+  const PIECE_OK =
+    /(가운데 |3×3의 )엣지 블럭|엣지 블럭( ?(둘|셋|두 개|세 개|하나)|\(날개\))/g;
+  for (const course of COURSES) {
+    if (course.size < 4) continue;
+    it(`${course.title}: 날개가 붙은 덩이를 「엣지 블럭」으로 부르지 않는다`, () => {
+      const found = bigCourseTexts(course).flatMap(({ where, text }) => {
+        const rest = text.replace(PIECE_OK, "");
+        const at = rest.indexOf("엣지 블럭");
+        return at < 0
+          ? []
+          : [`${where}: …${rest.slice(Math.max(0, at - 8), at + 12)}…`];
+      });
+      expect(found).toEqual([]);
+    });
+  }
+});
+
+/** 큰 큐브 과정의 글: 단원 요약·단계 글과 해 보기 화면의 「목표:」 글(GOALS) */
+function bigCourseTexts(course: Course): { where: string; text: string }[] {
+  const goals = course.lessons.flatMap((l) =>
+    l.steps.flatMap((s, si) =>
+      s.goal
+        ? [{ where: `${l.title} ${si + 1}번 목표`, text: GOALS[s.goal] }]
+        : [],
+    ),
+  );
+  return [...courseSummaries(course), ...coursePlaces(course), ...goals];
+}
 
 // OLL 모양 이름(「T 모양」)과 PLL 공식 이름(「T퍼뮤」)은 같은 글자를 쓰니 늘 「모양」·「퍼뮤」를 붙여 구별한다
 // (2026-11-10, docs/47 16-16). 수네·안티수네도 모양은 「수네 모양」, 공식은 「수네」.
