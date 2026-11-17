@@ -588,7 +588,7 @@ export function HanDrill({ count }: { count: number }) {
           ? "내가 한이라 먼저 골라요."
           : !cho
             ? "초가 내 차림을 보고 고르는 중이에요."
-            : `초가 ${setupLabel(cho)}(${FORMATION[cho]})를 골랐어요.`}
+            : `초가 ${obj(`${setupLabel(cho)}(${FORMATION[cho]})`)} 골랐어요.`}
       </p>
       {han && cho && moved && first && (
         <div

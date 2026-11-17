@@ -443,7 +443,7 @@ const salaryMission: Mission = {
 const buyMission: Mission = {
   kind: "mission",
   title: "별 사기",
-  objective: `주사위를 굴려 멈춘 **${ko("Sirius")}**(${money(boardStar("Sirius").value)})를 사세요.`,
+  objective: `주사위를 굴려 멈춘 ${obj(`**${ko("Sirius")}**(${money(boardStar("Sirius").value)})`)} 사세요.`,
   hint: "사기 창에서 **사기**를 눌러요.",
   scenario: BUY,
   check: until(
@@ -463,7 +463,7 @@ const buyMission: Mission = {
 const completeMission: Mission = {
   kind: "mission",
   title: "완성하고 2단 올리기",
-  objective: `오리온자리 별 ${ko("Betelgeuse")}·${obj(ko("Rigel"))} 가졌어요. 남은 오리온자리 별 **${ko("Bellatrix")}**를 사서 ${obj(groupKo("Ori"))} 완성하고, 정거장 하나를 **2단**으로 올리세요.`,
+  objective: `오리온자리 별 ${ko("Betelgeuse")}·${obj(ko("Rigel"))} 가졌어요. 남은 오리온자리 별 ${obj(`**${ko("Bellatrix")}**`)} 사서 ${obj(groupKo("Ori"))} 완성하고, 정거장 하나를 **2단**으로 올리세요.`,
   hint: `산 뒤 **정거장 관리**를 열어 ${groupKo("Ori")} 별의 **올리기**를 눌러요.`,
   scenario: COMPLETE,
   check: until(
@@ -644,7 +644,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "정거장 이용료",
         body: [
           "남의 별에 멈추면 그 별 주인에게 **정거장 이용료**를 내요. 내 별에 멈추면 이용료를 내지 않아요.",
-          `1단 정거장의 이용료는 별 값의 ${pct(NUMBERS.rent.single)}(10 단위로 반올림)예요.`,
+          `1단 정거장의 이용료는 별 값의 ${copula(`${pct(NUMBERS.rent.single)}(10 단위로 반올림)`)}.`,
         ],
         scene: SIRIUS_ALONE,
       },
@@ -653,7 +653,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         question: `${ko("Sirius")}(${money(boardStar("Sirius").value)}) 1단 정거장에 멈췄어요. 이용료는?`,
         scene: { ...SIRIUS_ALONE, marked: [squareOfStar("Sirius")] },
         ...amountOptions(SIRIUS_RENT, 20, 1),
-        explain: `별 값의 ${obj(pct(NUMBERS.rent.single))} 10 단위로 반올림해 **${money(SIRIUS_RENT)}**이에요.`,
+        explain: `별 값의 ${obj(pct(NUMBERS.rent.single))} 10 단위로 반올림해 ${copula(`**${money(SIRIUS_RENT)}**`)}.`,
       },
       buyMission,
     ],
@@ -689,7 +689,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         question: `${obj(groupKo("Ori"))} 완성하고 ${ko("Rigel")}(${money(boardStar("Rigel").value)})에 **2단**을 올렸어요. ${ko("Rigel")} 이용료는?`,
         scene: { ...ORION_DONE, marked: [squareOfStar("Rigel")] },
         ...amountOptions(RIGEL_LEVEL2_RENT, 40, 2),
-        explain: `2단은 별 값의 ${pct(NUMBERS.rent.level2)}라 **${money(RIGEL_LEVEL2_RENT)}**이에요.`,
+        explain: `2단은 별 값의 ${pct(NUMBERS.rent.level2)}라 ${copula(`**${money(RIGEL_LEVEL2_RENT)}**`)}.`,
       },
       completeMission,
     ],
@@ -717,14 +717,14 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
           FAR_STARS.filter((id) => matchesFact(boardStar(id).star, "far"))
             .map((id) => `${ko(id)}(${lyOf(id)})`)
             .join("·"),
-        )}. ${ko("Bellatrix")}(${lyOf("Bellatrix")})는 빠져서 **${money(FAR_PAY)}**이에요.`,
+        )}. ${topic(`${ko("Bellatrix")}(${lyOf("Bellatrix")})`)} 빠져서 ${copula(`**${money(FAR_PAY)}**`)}.`,
       },
       {
         kind: "quiz",
         question: `${obj(BRIGHT_STARS.map((id) => `${ko(id)}(${magText(boardStar(id).star.mag)})`).join("·"))} 가졌어요. 「${cardById(2).title}」 공문은 「${cardById(2).text}」예요. 얼마를 받을까요?`,
         scene: { kind: "board", stars: mine(...BRIGHT_STARS), card: 2 },
         ...amountOptions(BRIGHT_PAY, CARD_AMOUNTS.firstMagnitude, 2),
-        explain: `${FACT_LIMITS.firstMagnitude}등급까지라 ${ko("Adhara")}(${magText(boardStar("Adhara").star.mag)})도 들어가고 ${ko("Wezen")}(${magText(boardStar("Wezen").star.mag)})은 빠져요. **${money(BRIGHT_PAY)}**이에요.`,
+        explain: `${FACT_LIMITS.firstMagnitude}등급까지라 ${ko("Adhara")}(${magText(boardStar("Adhara").star.mag)})도 들어가고 ${topic(`${ko("Wezen")}(${magText(boardStar("Wezen").star.mag)})`)} 빠져요. ${copula(`**${money(BRIGHT_PAY)}**`)}.`,
       },
       {
         kind: "explain",
@@ -830,7 +830,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
           question: `${groupKo(group)}에서 반짝이는 별의 이름은?`,
           scene: { kind: "sky", group, star: id },
           ...placed(ko(id), others.map(ko), at),
-          explain: `**${ko(id)}**(${magText(boardStar(id).star.mag)})예요. ${fact}`,
+          explain: `${copula(`**${ko(id)}**(${magText(boardStar(id).star.mag)})`)}. ${fact}`,
         }),
       ),
       ...COMPARE_QUIZ.map((q, i) => compareStep(q, i % 2)),

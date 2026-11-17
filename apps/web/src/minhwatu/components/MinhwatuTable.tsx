@@ -484,7 +484,7 @@ export function MinhwatuTable({
           : "내 차례 — 낼 패를 누르세요."
       : online
         ? `${name(view.turn)}의 차례`
-        : `${name(view.turn)}(컴퓨터)가 생각하는 중…`;
+        : `${subj(`${name(view.turn)}(컴퓨터)`)} 생각하는 중…`;
   else if (view.retired) status = "게임을 끝냈어요.";
   else if (gameOver) {
     const best = Math.max(...view.totals);

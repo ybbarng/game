@@ -1,3 +1,5 @@
+import { copula } from "@/lib/josa";
+
 import { magText } from "./format";
 import {
   compareExplain,
@@ -79,7 +81,7 @@ export function starQuestion(
         groups.map((x) => x.ko),
         random,
       ),
-      explain: `**${g.ko}**예요. ${SHAPE_HINTS[g.id] ?? ""}`,
+      explain: `${copula(`**${g.ko}**`)}. ${SHAPE_HINTS[g.id] ?? ""}`,
     };
   }
   if (kind === "star") {
@@ -100,7 +102,7 @@ export function starQuestion(
       scene: { kind: "sky", group: g.id, star: s.star.id },
       options,
       answer: options.indexOf(s.star.ko),
-      explain: `**${s.star.ko}**(${magText(s.star.mag)})예요.`,
+      explain: `${copula(`**${s.star.ko}**(${magText(s.star.mag)})`)}.`,
     };
   }
   // 견주기: 값이 다른 두 별

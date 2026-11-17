@@ -396,7 +396,7 @@ function FacesStep({ onDone }: { onDone: () => void }) {
       >
         {word
           ? (miss ??
-            `${word.letter}(${word.word})는 어느 면일까요? 그 면의 칸을 눌러 보세요.`)
+            `${topic(`${word.letter}(${word.word})`)} 어느 면일까요? 그 면의 칸을 눌러 보세요.`)
           : "여섯 면을 다 찾았어요. 영어 머리글자라 외우기 쉬워요."}
       </p>
       <StillCube
