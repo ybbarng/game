@@ -127,8 +127,11 @@ export const HERO_SHOW_BIG_CASES: readonly (readonly [
   ),
 );
 
-/** 4×4 야우(씨앗 넷: 패리티가 나오는 판, 첫 면 색이 흰색이 아닌 판을 함께) */
-export const HERO_SHOW_YAU_SEEDS: readonly number[] = [1, 2, 3, 4];
+/**
+ * 4×4 야우(씨앗 다섯: 패리티가 나오는 판, 첫 면 색이 흰색이 아닌 판, 흰 십자 셋 뒤 흰-주황 엣지 블럭까지 제자리라 옆 센터
+ * 쥐기를 흰-주황 자리로 골라야 하는 판 1029(첫 면 노랑, docs/47 16-22)을 함께)
+ */
+export const HERO_SHOW_YAU_SEEDS: readonly number[] = [1, 2, 3, 4, 1029];
 
 export function buildHeroShowYau(): string {
   return heroShowJson(["4-yau"], [...HERO_SHOW_YAU_SEEDS]);

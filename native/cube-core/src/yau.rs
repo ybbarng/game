@@ -1535,13 +1535,15 @@ fn run_yau_last_cross(ls: &[Line], start: &State) -> R<Vec<String>> {
 
 // ── 야우 잇기(yau-solve.ts)와 시연 꼴(yau-hero.ts) ────
 
-/// 흰 면 아래·흰 십자 엣지 셋(앞·왼쪽·뒤)이 되는 쥐기(돌리기 적은 것 먼저)
+/// 옆 센터를 시작하는 쥐기(돌리기 적은 것 먼저): 흰 면 아래, 흰 십자 셋 단계가 비워 둔 흰-주황 자리를 오른쪽으로.
+/// 흰-주황 엣지 블럭이 우연히 제자리에 들어 흰 십자 넷이 다 있어도 오른쪽(작업대)은 흰-주황 자리라, R이 넣은 십자
+/// 엣지를 빼내지 않는다(사이트 `yau.ts` `sideHold`의 `orange`, docs/47 16-22)
 fn side_hold(s: &State) -> R<String> {
     let mut holds = rotations(["", "x", "x2", "x'", "z", "z'"]);
     holds.sort_by_key(|h| h.split(' ').count());
     holds
         .into_iter()
-        .find(|h| yau_side_targets(&play(4, s, h)).is_ok())
+        .find(|h| matches!(yau_side_targets(&play(4, s, h)), Ok(fc) if fc[RR] == ORANGE))
         .ok_or(SolveError("흰 십자 셋이 맞지 않았다"))
 }
 
