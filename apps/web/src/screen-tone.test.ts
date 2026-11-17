@@ -12,8 +12,18 @@ import { sentenceProblem, sentencesOf } from "@/study/tone";
 const files: Record<string, string> = import.meta.glob(
   [
     "./{baduk,baseball,chess,galaxy,game,gostop,hearts,hwatu,janggi,minhwatu,nyrongppong,omok,onecard,yut,review,stats,components}/**/*.{ts,tsx}",
-    "./net/{audit-text,bot-plan}.ts", // 판 끝 검증 알림 글(그 밖의 net 검증 실패 사유는 아직 해라체, docs/standing-rules.md 3절)
+    // 온라인 방 안내와 판 끝 검증 실패 사유(검증 알림 「공정성 확인 실패: …」에 그대로 들어간다)
+    "./net/**/*.ts",
+    // 엔진이 돌려주는 거절 사유(잘못 누르면 화면 알림으로 그대로 보인다)와 멘탈 포커 검증 실패 사유
+    "../../../packages/{*-engine,engine,fair-play}/src/**/*.ts",
     "!./**/*.test.{ts,tsx}",
+    "!../../../packages/**/*.{test,strength,bench}.ts",
+    "!../../../packages/**/*-fixture.ts",
+    "!./net/*-case.ts", // 시험 이름표
+    "!./net/chat.ts", // 빠른 채팅(「아깝다」)은 사람이 하는 말
+    "!../../../packages/galaxy-engine/src/{cards,requests}.ts", // 우주국 공문은 「~습니다」(docs/48 「말투」)
+    // 큐브 표기 오류는 Rust 코어(native/cube-core notation.rs, 공통 자료 moves.json)와 같은 글을 내야 해서 함께 고쳐야 한다(docs/standing-rules.md 3절 「남은 것」)
+    "!../../../packages/cube-engine/src/notation.ts",
     // 따로 정한 말투나 따로 보는 시험이 있는 글
     "!./components/learn/**", // 보안 배우기: 학습 글, learn-terms.test.tsx
     "!./components/security/**", // 보안 설명(/security)
@@ -47,10 +57,15 @@ const NAMES = ["노기루다", "다"];
 const LABEL_KEYS = new Set(["label", "title"]);
 
 const HANGUL = /[가-힣]/;
-/** 합쇼체 끝말(「~니다」)은 글 어디에 있어도 해요체가 아니다(「선입니다 — 낼 카드를…」, 「못했습니다: …」) */
+/** 「니」 앞 글자가 ㅂ 받침이면 합쇼체 끝말이다(「입니다」·「없습니다」, 해라체 「아니다」는 아니다) */
+const formal = (word: string) => {
+  const before = word.charCodeAt(word.length - 3) - 0xac00;
+  return word.endsWith("니다") && before >= 0 && before % 28 === 17;
+};
+/** 합쇼체 끝말(「~ㅂ니다」)은 글 어디에 있어도 해요체가 아니다(「선입니다 — 낼 카드를…」, 「못했습니다: …」) */
 const FORMAL = /[가-힣]+니다(?![가-힣])/g;
-/** 「—」 앞에서 끝나는 해라체 문장(「끝났다 — 다시…」) */
-const PLAIN_BEFORE_DASH = /[가-힣]+(?<!니)다(?=\s*—)/g;
+/** 「—」·「:」 앞에서 끝나는 해라체 문장(「끝났다 — 다시…」, 「손에 있었다: ${사유}」) */
+const PLAIN_BEFORE_DASH = /[가-힣]+다(?=\s*[—:])/g;
 /** 글 끝에서 서술어로 끝났는가(뒤에 단추 같은 태그가 이어져도 문장이 끝난 것) */
 const ENDS_AS_SENTENCE = /(다|요|죠)$/;
 
@@ -64,9 +79,11 @@ type Text = { text: string; whole: boolean; beforeTag?: boolean };
 function textProblems({ text, whole, beforeTag }: Text): string[] {
   if (NAMES.includes(text)) return [];
   const out = [
-    ...[...text.matchAll(FORMAL)].map((m) => `합쇼체: ${m[0]} (${text})`),
+    ...[...text.matchAll(FORMAL)]
+      .filter((m) => formal(m[0]))
+      .map((m) => `합쇼체: ${m[0]} (${text})`),
     ...[...text.matchAll(PLAIN_BEFORE_DASH)]
-      .filter((m) => !NAMES.includes(m[0]))
+      .filter((m) => !NAMES.includes(m[0]) && !formal(m[0]))
       .map((m) => `해라체: ${m[0]} (${text})`),
   ];
   const sentences = sentencesOf(text).filter(
@@ -97,12 +114,22 @@ describe("게임 화면 글 말투", () => {
     expect(whole("노기루다")).toEqual([]);
   });
 
-  it("합쇼체와 「—」 앞 해라체는 글 가운데에서도 걸린다", () => {
+  it("합쇼체와 「—」·「:」 앞 해라체는 글 가운데에서도 걸린다", () => {
     expect(whole("내가 선입니다 — 낼 카드를 고르세요.")).toEqual([
       "합쇼체: 선입니다 (내가 선입니다 — 낼 카드를 고르세요.)",
     ]);
     expect(whole("끝났다 — 다시 해요.")).toEqual([
       "해라체: 끝났다 (끝났다 — 다시 해요.)",
+    ]);
+    expect(whole("그때 ○가 손에 있었다: ○")).toEqual([
+      "해라체: 있었다 (그때 ○가 손에 있었다: ○)",
+    ]);
+  });
+
+  it("「아니다」는 합쇼체가 아니라 해라체로 걸린다", () => {
+    expect(whole("차례가 아니다")).toEqual(["마침표 없는 문장: 차례가 아니다"]);
+    expect(whole("차례가 아니다 — 기다려요.")).toEqual([
+      "해라체: 아니다 (차례가 아니다 — 기다려요.)",
     ]);
   });
 

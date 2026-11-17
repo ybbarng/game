@@ -59,7 +59,7 @@ describe("멘탈 포커 온라인 대전", () => {
       await until(() => incidents.length > 0);
       const own = incidents.filter((i) => i.own);
       expect(own[0]?.seat).toBe(guests[0]?.seat);
-      expect(own[0]?.reason).toMatch(/없다고 했다/);
+      expect(own[0]?.reason).toMatch(/없다고 했어요/);
     });
   });
 });

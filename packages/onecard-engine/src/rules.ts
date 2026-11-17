@@ -243,7 +243,8 @@ export function decodeOnecardRules(
       : `^o1-p([2-5])h([57])a${ATTACK}\\.${ATTACK}\\.${ATTACK}\\.${ATTACK}\\.${ATTACK}` +
           "f([asn])b(0|15|20|24)e([01])c([12])x([012])w(0|1000|2000)t(2000|3000|5000)r([01])j([01])(s0)?$",
   ).exec(trimmed);
-  if (!match) return { ok: false, reason: "원카드 규칙 문자열 형식이 아니다" };
+  if (!match)
+    return { ok: false, reason: "원카드 규칙 문자열 형식이 아니에요." };
   const [
     ,
     players,

@@ -50,7 +50,7 @@ describe("다시 섞기 사슬·섞기 증명을 꾸민 참가자(세 번째 다
     const { net } = await playRound({ net: onecardNet({ rewrite }) });
     expect(settled(net.incidents[0])).toEqual({
       seat: 1,
-      reason: "섞기 증명이 맞지 않는다(섞을 때 카드를 바꿨다)",
+      reason: "섞기 증명이 맞지 않아요(섞을 때 카드를 바꿨어요).",
     });
     expect(net.incidents[1]).toEqual([]);
   });

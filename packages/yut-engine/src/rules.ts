@@ -74,15 +74,16 @@ export function decodeYutRules(
     /^y(?:1-([234])([st])([2-5])([bn])([56])([pl])|2-([234])([st])([2-5])([bn])([56])([pl])([kx]))(-t\d)?$/.exec(
       text.trim(),
     );
-  if (!match) return { ok: false, reason: "윷놀이 규칙 문자열 형식이 아니다" };
+  if (!match)
+    return { ok: false, reason: "윷놀이 규칙 문자열 형식이 아니에요." };
   const second = match[7] !== undefined;
   const parts = second ? match.slice(7, 14) : match.slice(1, 7);
   const [players, mode, pieces, backDo, flat, home, nak] = parts;
   const tail = match[14];
   if (mode === "t" && players !== "4")
-    return { ok: false, reason: "편 놀이는 넷이서만 한다" };
+    return { ok: false, reason: "편 놀이는 넷이서만 해요." };
   const time = decodeTimePreset(tail);
-  if (time === null) return { ok: false, reason: "모르는 시간 규칙이다" };
+  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요." };
   return {
     ok: true,
     rules: {

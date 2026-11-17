@@ -180,7 +180,7 @@ describe("손님 시계 확인: 방장이 적은 시간을 참가자 기기가 �
     expect(result).toMatchObject({
       ok: false,
       reason: expect.stringMatching(
-        new RegExp(`${room.seat}번 자리 시간을 .*많이 적었다`),
+        new RegExp(`${room.seat}번 자리 시간을 .*많이 적었어요`),
       ),
     });
   });
@@ -197,7 +197,7 @@ describe("손님 시계 확인: 방장이 적은 시간을 참가자 기기가 �
     expect(await room.audit()).toMatchObject({
       ok: false,
       reason: expect.stringMatching(
-        new RegExp(`${1 - room.seat}번 자리 시간을 .*적게 적었다`),
+        new RegExp(`${1 - room.seat}번 자리 시간을 .*적게 적었어요`),
       ),
     });
   });

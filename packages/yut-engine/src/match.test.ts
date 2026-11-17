@@ -167,7 +167,7 @@ describe("잘못된 행동 거절", () => {
     // 판 2는 봉인 없이 던질 수 없다.
     expect(step(state, state.turn, { type: "throw" })).toEqual({
       ok: false,
-      error: "몸짓 봉인이 없다",
+      error: "몸짓 봉인이 없어요.",
     });
   });
 

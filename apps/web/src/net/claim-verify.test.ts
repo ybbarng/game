@@ -65,7 +65,7 @@ describe("claimsVerifier: 끊긴 구간", () => {
     const base = { claimsResolved: got, partial: true, complete: true };
     expect(run([7, 0, 3], { ...base, gaps: [1] })).toContain("끊긴 구간 밖");
     expect(run([0, 3, 9], { ...base, gaps: [1] })).toContain(
-      "받은 발표보다 많다",
+      "받은 발표보다 많아요",
     );
   });
 
@@ -93,7 +93,7 @@ describe("claimsVerifier: 끊긴 구간", () => {
       gaps: [1],
       complete: true,
     };
-    expect(run([0, 1], context)).toContain("빠졌다");
+    expect(run([0, 1], context)).toContain("빠졌어요");
   });
 
   it("구간을 모르면(예전 호출) 받은 것이 차례대로 있는지만 본다", () => {

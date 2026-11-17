@@ -72,7 +72,7 @@ describe("은하 한 바퀴 시간 상한: 참가자 기기가 정말 그만큼 
     const result = await timeUpAfter(CAP, 60_000);
     expect(result).toMatchObject({
       ok: false,
-      reason: expect.stringMatching(/시간 창이 내 기기에서 .*초 일찍 닫혔다/),
+      reason: expect.stringMatching(/시간 창이 내 기기에서 .*초 일찍 닫혔어요/),
     });
   });
 });

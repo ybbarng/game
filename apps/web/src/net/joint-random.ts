@@ -59,6 +59,8 @@ export interface JointOutcome {
 const SECRET_PATTERN = /^[A-Za-z0-9]{8,128}$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const SCOPE_PATTERN = /^[A-Za-z0-9:._-]{1,64}$/;
+/** 약속을 내지 않은 자리의 사유. 공개만 빠뜨린 자리와 가르는 데도 쓴다(`jointTiebreak`) */
+const NOT_COMMITTED = "약속하지 않았어요.";
 
 export function jointCommit(scope: string, secret: string): Promise<string> {
   return sha256Hex(`joint-commit|${scope}|${secret}`);
@@ -87,15 +89,15 @@ export async function jointOutcome(
   for (const seat of [...new Set(seats)].sort((a, b) => a - b)) {
     const hash = hashes.get(seat);
     const secret = secrets.get(seat);
-    if (hash === undefined) faulted.push({ seat, reason: "약속하지 않았다" });
+    if (hash === undefined) faulted.push({ seat, reason: NOT_COMMITTED });
     else if (secret === undefined) {
-      faulted.push({ seat, reason: "공개하지 않았다" });
+      faulted.push({ seat, reason: "공개하지 않았어요." });
       fallback = true;
     } else if (
       !SECRET_PATTERN.test(secret) ||
       (await jointCommit(scope, secret)) !== hash
     ) {
-      faulted.push({ seat, reason: "약속과 다른 값을 냈다" });
+      faulted.push({ seat, reason: "약속과 다른 값을 냈어요." });
       fallback = true;
     } else {
       honest.push(seat);
@@ -150,7 +152,7 @@ export async function jointTiebreak(
   const honest = seats.filter((s) => outcome.honest.includes(s));
   const faulted = seats.filter((s) => !outcome.honest.includes(s));
   const revealFaulted = faulted.some((s) =>
-    outcome.faulted.some((f) => f.seat === s && f.reason !== "약속하지 않았다"),
+    outcome.faulted.some((f) => f.seat === s && f.reason !== NOT_COMMITTED),
   );
   const tiedSecrets = honest.map(
     (s) => `${s}:${outcome.secrets[outcome.honest.indexOf(s)]}`,

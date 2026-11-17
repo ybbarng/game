@@ -52,7 +52,7 @@ describe("오목 진행", () => {
       type: "place",
       at: indexOf(7, 7),
     });
-    expect(occupied).toEqual({ ok: false, error: "이미 돌이 있다" });
+    expect(occupied).toEqual({ ok: false, error: "이미 돌이 있어요." });
   });
 
   it("첫 판 흑은 시드에 따라 두 자리 모두 나온다", () => {

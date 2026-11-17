@@ -36,13 +36,13 @@ export function decodeHeartsRules(text: string): DecodeResult {
   const match = /^h1-([cln])([osx])([bx])([qx])([fp])(j?)(\d)-(\d{2,4})$/.exec(
     text.trim(),
   );
-  if (!match) return { ok: false, reason: "하트 규칙 문자열 형식이 아니다" };
+  if (!match) return { ok: false, reason: "하트 규칙 문자열 형식이 아니에요." };
   const [, passing, moon, breakFlag, queen, first, jack, count, end] = match;
   const endScore = Number(end);
   const passCount = Number(count);
-  if (endScore < 10) return { ok: false, reason: "끝 점수가 너무 작다" };
+  if (endScore < 10) return { ok: false, reason: "끝 점수가 너무 작아요." };
   if (passCount < 1 || passCount > 4)
-    return { ok: false, reason: "넘기는 장수는 1~4장이다" };
+    return { ok: false, reason: "넘기는 장수는 1~4장이에요." };
   return {
     ok: true,
     rules: {

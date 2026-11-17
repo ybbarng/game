@@ -370,7 +370,7 @@ export function step(
   action: Action,
 ): StepResult {
   if (action.type === "retire") {
-    if (input.round.phase === "gameOver") return fail("이미 끝난 게임이다");
+    if (input.round.phase === "gameOver") return fail("이미 끝난 게임이에요.");
     const state: MatchState = structuredJsonClone(input);
     state.round.phase = "gameOver";
     state.round.turn = null;
@@ -382,7 +382,7 @@ export function step(
   }
 
   const decision = decisionFor(input, seat);
-  if (decision === null) return fail("지금은 이 자리의 차례가 아니다");
+  if (decision === null) return fail("지금은 이 자리의 차례가 아니에요.");
 
   const state: MatchState = structuredJsonClone(input);
   const { rules, round } = state;
@@ -391,9 +391,9 @@ export function step(
   switch (action.type) {
     case "pick": {
       if (decision.kind !== "pick" || round.pickOffer === null)
-        return fail("고를 차례가 아니다");
+        return fail("고를 차례가 아니에요.");
       if (action.index !== 0 && action.index !== 1)
-        return fail("0이나 1만 고를 수 있다");
+        return fail("0이나 1만 고를 수 있어요.");
       const picked = round.pickOffer[action.index];
       handOf(round, seat).push(picked);
       round.pickOffer = null;
@@ -412,7 +412,7 @@ export function step(
 
     case "dealMiss": {
       if (decision.kind !== "election" || !decision.canDealMiss)
-        return fail("딜미스가 아니다");
+        return fail("딜미스가 아니에요.");
       events.push({ type: "dealMiss", seat, hand: [...handOf(round, seat)] });
       startRound(state, round.beginner, events);
       break;
@@ -420,7 +420,7 @@ export function step(
 
     case "pass": {
       if (decision.kind !== "election" || !decision.canPass)
-        return fail("포기할 수 없다");
+        return fail("포기할 수 없어요.");
       const { election } = round;
       election.passed[seat] = true;
       election.log.push({ seat, bid: null });
@@ -445,14 +445,14 @@ export function step(
     }
 
     case "bid": {
-      if (decision.kind !== "election") return fail("공약할 차례가 아니다");
+      if (decision.kind !== "election") return fail("공약할 차례가 아니에요.");
       const { goal } = action;
       if (
         !decision.bids.some(
           (g) => g.kiruda === goal.kiruda && g.score === goal.score,
         )
       ) {
-        return fail("유효하지 않은 공약이다");
+        return fail("유효하지 않은 공약이에요.");
       }
       const { election } = round;
       election.goal = { ...goal };
@@ -476,9 +476,9 @@ export function step(
     }
 
     case "kill": {
-      if (decision.kind !== "kill") return fail("죽일 차례가 아니다");
+      if (decision.kind !== "kill") return fail("죽일 차례가 아니에요.");
       if (!decision.candidates.includes(action.card))
-        return fail("없는 카드다");
+        return fail("없는 카드예요.");
       const target = round.players.find(
         (s) => s !== seat && handOf(round, s).includes(action.card),
       );
@@ -515,14 +515,14 @@ export function step(
 
     case "exchange": {
       if (decision.kind !== "exchange")
-        return fail("카드를 버릴 차례가 아니다");
+        return fail("카드를 버릴 차례가 아니에요.");
       const { goal, discard } = action;
       if (
         !decision.goals.some(
           (g) => g.kiruda === goal.kiruda && g.score === goal.score,
         )
       ) {
-        return fail("유효하지 않은 공약 변경이다");
+        return fail("유효하지 않은 공약 변경이에요.");
       }
       const hand = handOf(round, seat);
       if (
@@ -531,7 +531,7 @@ export function step(
         !discard.every((c) => hand.includes(c))
       ) {
         return fail(
-          `손에 있는 카드 ${decision.discardCount}장을 골라 버려야 한다`,
+          `손에 있는 카드 ${decision.discardCount}장을 골라 버려야 해요.`,
         );
       }
       round.hands[seat] = hand.filter((c) => !discard.includes(c));
@@ -550,10 +550,10 @@ export function step(
 
     case "friend": {
       if (decision.kind !== "friend")
-        return fail("프렌드를 정할 차례가 아니다");
+        return fail("프렌드를 정할 차례가 아니에요.");
       const { friend } = action;
       if (!decision.options.some((o) => sameFriend(o, friend)))
-        return fail("지정할 수 없는 프렌드다");
+        return fail("지정할 수 없는 프렌드예요.");
       round.friendDeclaration = friend;
       events.push({ type: "friendDeclared", friend });
       switch (friend.kind) {
@@ -580,19 +580,20 @@ export function step(
 
     case "play": {
       if (decision.kind !== "play" || round.trick === null)
-        return fail("카드를 낼 차례가 아니다");
+        return fail("카드를 낼 차례가 아니에요.");
       const { card } = action;
-      if (!decision.cards.includes(card)) return fail("지금 낼 수 없는 카드다");
+      if (!decision.cards.includes(card))
+        return fail("지금 낼 수 없는 카드예요.");
       const leadingJoker = decision.leading && isJoker(card);
       if (
         leadingJoker &&
         (action.jokerSuit === undefined || !SUITS.includes(action.jokerSuit))
       ) {
-        return fail("선으로 조커를 내면 무늬를 정해야 한다");
+        return fail("선으로 조커를 내면 무늬를 정해야 해요.");
       }
       const jokerCall = action.jokerCall === true;
       if (jokerCall && decision.jokerCallCard !== card)
-        return fail("조커콜을 선언할 수 없다");
+        return fail("조커콜을 선언할 수 없어요.");
 
       const handSize = handOf(round, seat).length;
       const slot =
@@ -629,7 +630,8 @@ export function step(
     }
 
     case "continue": {
-      if (decision.kind !== "continue") return fail("판이 아직 끝나지 않았다");
+      if (decision.kind !== "continue")
+        return fail("판이 아직 끝나지 않았어요.");
       round.continued[seat] = true;
       if (state.order.every((s) => round.continued[s])) {
         const friend = round.friend;

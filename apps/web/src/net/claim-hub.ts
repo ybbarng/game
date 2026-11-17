@@ -399,7 +399,7 @@ export class ClaimHub<View = unknown> {
         this.raise(
           `omit:${claim.claimId}`,
           0,
-          `방장이 ${claim.seat}번 자리의 청구(${claim.seen}번 판)를 발표하지 않았다`,
+          `방장이 ${claim.seat}번 자리의 청구(${claim.seen}번 판)를 발표하지 않았어요.`,
         );
     });
     this.received.set(claim.claimId, entry);
@@ -511,20 +511,20 @@ export class ClaimHub<View = unknown> {
         this.raise(
           `${tag}:at`,
           0,
-          `방장 발표의 판 번호(${resolved.at})가 내가 받은 판(${this.latest})과 다르다`,
+          `방장 발표의 판 번호(${resolved.at})가 내가 받은 판(${this.latest})과 달라요.`,
         );
     }
     const claims = resolved.entries.map((e) => e.claim);
     const ids = new Set(claims.map((c) => c.claimId));
     if (ids.size !== claims.length)
-      this.raise(`${tag}:dup`, 0, "방장 발표에 같은 청구가 두 번 있다");
+      this.raise(`${tag}:dup`, 0, "방장 발표에 같은 청구가 두 번 있어요.");
     // 1층 순서는 (판, 자리, 아이디). 2층 게임은 겨루기 순서라 따로 맞춰 본다(`checkRace`)
     const ordered = [...claims].sort(compareClaims);
     if (!this.race && ordered.some((c, i) => c !== claims[i]))
       this.raise(
         `${tag}:order`,
         0,
-        "방장 발표의 처리 순서가 정해진 순서와 다르다",
+        "방장 발표의 처리 순서가 정해진 순서와 달라요.",
       );
     const me = this.options.mySeat();
     const expected = new Map(
@@ -542,7 +542,7 @@ export class ClaimHub<View = unknown> {
         this.raise(
           `fake:${id}`,
           0,
-          "방장 발표에 내가 보내지 않은 내 청구가 있다",
+          "방장 발표에 내가 보내지 않은 내 청구가 있어요.",
         );
       const got = this.received.get(id);
       if (got) {
@@ -576,7 +576,7 @@ export class ClaimHub<View = unknown> {
     const tag = `batch${resolved.batch}`;
     const info = resolved.race;
     if (!info) {
-      this.raise(`${tag}:race`, 0, "방장 발표에 반응 시간이 없다");
+      this.raise(`${tag}:race`, 0, "방장 발표에 반응 시간이 없어요.");
       return;
     }
     const me = this.options.mySeat();
@@ -593,7 +593,7 @@ export class ClaimHub<View = unknown> {
         this.raise(
           `${tag}:rt-low:${claim.claimId}`,
           0,
-          `방장이 ${claim.seat}번 자리의 반응 시간을 보고보다 줄였다`,
+          `방장이 ${claim.seat}번 자리의 반응 시간을 보고보다 줄였어요.`,
         );
       if (claim.seat === me && this.mine.has(claim.claimId) && toHost) {
         // 정직한 방장이 늘릴 수 있는 것: 그때 왕복 − 봐준 왕복(상한 C) + 그리기·흔들림
@@ -605,7 +605,7 @@ export class ClaimHub<View = unknown> {
           this.raise(
             `${tag}:rt-high:${claim.claimId}`,
             0,
-            "방장이 내 반응 시간을 늘려 발표했다",
+            "방장이 내 반응 시간을 늘려 발표했어요.",
           );
       }
       const got = gotAt.get(claim.claimId);
@@ -618,7 +618,7 @@ export class ClaimHub<View = unknown> {
           this.raise(
             `${tag}:host-rt:${claim.claimId}`,
             0,
-            "방장이 자기 반응 시간을 줄여 발표했다",
+            "방장이 자기 반응 시간을 줄여 발표했어요.",
           );
       }
       if (!this.boards.has(claim.seen)) boardsKnown = false;
@@ -631,7 +631,7 @@ export class ClaimHub<View = unknown> {
       this.raise(
         `${tag}:race-order`,
         0,
-        "방장 발표의 순서가 반응 시간 겨루기 순서와 다르다",
+        "방장 발표의 순서가 반응 시간 겨루기 순서와 달라요.",
       );
   }
 
@@ -662,7 +662,7 @@ export class ClaimHub<View = unknown> {
       this.raise(
         `late:${entry.claim.claimId}`,
         0,
-        `방장이 ${entry.claim.seat}번 자리의 청구(${entry.claim.seen}번 판)를 늦게 발표해 늦음으로 버렸다`,
+        `방장이 ${entry.claim.seat}번 자리의 청구(${entry.claim.seen}번 판)를 늦게 발표해 늦음으로 버렸어요.`,
       );
   }
 
@@ -682,7 +682,7 @@ export class ClaimHub<View = unknown> {
       this.raise(
         `${tag}:judge:${entry.claim.claimId}`,
         0,
-        `방장이 ${entry.claim.seat}번 자리의 청구(${entry.claim.seen}번 판)를 다르게 판정했다`,
+        `방장이 ${entry.claim.seat}번 자리의 청구(${entry.claim.seen}번 판)를 다르게 판정했어요.`,
       );
   }
 
@@ -692,7 +692,7 @@ export class ClaimHub<View = unknown> {
     this.raise(
       `content:${direct.claimId}`,
       null,
-      `방장 발표 속 ${direct.seat}번 자리 청구가 내가 직접 받은 것과 다르다`,
+      `방장 발표 속 ${direct.seat}번 자리 청구가 내가 직접 받은 것과 달라요.`,
     );
   }
 

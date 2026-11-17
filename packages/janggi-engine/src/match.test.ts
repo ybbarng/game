@@ -48,7 +48,7 @@ describe("상차림과 차례", () => {
     expect(seatToMove(state)).toBe(han);
     expect(
       step(state, state.choSeat, { type: "setup", setup: "NENE" }),
-    ).toEqual({ ok: false, error: "차례가 아니다" });
+    ).toEqual({ ok: false, error: "차례가 아니에요." });
     const after = started();
     expect(after.phase).toBe("play");
     expect(seatToMove(after)).toBe(after.choSeat);
@@ -61,11 +61,11 @@ describe("상차림과 차례", () => {
     expect(step(state, cho, move("71", "61")).ok).toBe(true);
     expect(step(state, cho, move("41", "51"))).toEqual({
       ok: false,
-      error: "둘 수 없는 수다",
+      error: "둘 수 없는 수예요.",
     });
     expect(step(state, cho, move("01", "41"))).toEqual({
       ok: false,
-      error: "둘 수 없는 수다",
+      error: "둘 수 없는 수예요.",
     });
     const after = must(state, cho, move("71", "61")).state;
     expect(seatToMove(after)).toBe(1 - cho);
@@ -109,12 +109,12 @@ describe("장군과 외통", () => {
     expect(view.check).toBe("c");
     expect(step(state, 0, { type: "pass" })).toEqual({
       ok: false,
-      error: "장군을 받을 때는 쉴 수 없다",
+      error: "장군을 받을 때는 쉴 수 없어요.",
     });
     // 차로 막거나(91 → 94는 줄이 달라 못 막는다) 궁이 비킨다.
     expect(step(state, 0, move("91", "92"))).toEqual({
       ok: false,
-      error: "궁이 잡히는 수는 둘 수 없다",
+      error: "궁이 잡히는 수는 둘 수 없어요.",
     });
     expect(step(state, 0, move("95", "94")).ok).toBe(true);
   });
