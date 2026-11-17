@@ -9,6 +9,7 @@
 import {
   type Board,
   captureMoves,
+  endgameReader,
   groupOf,
   ladderMoves,
   neighbors,
@@ -773,6 +774,8 @@ function spotWhat(
 }
 
 function endgameConcept(puzzle: Endgame): string[] {
+  // 역끝내기냐 큰 후수냐는 곳 읽기를 compareStory가 한 번에 한다
+  if (puzzle.mode === "compare") return compareConcept(puzzle);
   const spots = endgameSpots(puzzle);
   const reply = (r: number[]) => r.map(named).join("·");
   const right = solutionOf(puzzle);
@@ -849,8 +852,131 @@ export function playLine(
   return { white: named(w), black: named(b) };
 }
 
+type CompareStory = ReturnType<typeof readCompare>;
+const compareCache = new Map<string, CompareStory>();
+
+/**
+ * 역끝내기냐 큰 후수냐: 역끝내기 곳(백의 선수 자리)·큰 후수·작은 후수와, 흑이 역끝내기부터 둘 때·큰 후수부터 둘 때
+ * 두 편이 세 곳 안에서 끝까지 가장 좋게 두었을 때(문제 화면과 같은 읽기) 끝난 판의 점수 차.
+ * 곳 하나는 누가 먼저 두느냐에 따라 점수 차가 그 크기만큼 달라진다. 두 순서는 세 곳 모두 먼저 두는 쪽이 서로 바뀌는 셈이라,
+ * 점수 차의 차이가 (역끝내기 + 작은 후수) − 큰 후수다. 글은 이 셈과 곳마다 먼저 두는 쪽을 말하므로,
+ * 판마다 맞는지 endgame-compare.test.ts·endgame-compare-line.test.ts가 엔진으로 본다. 끝까지 읽어 무거우니 문제마다 한 번만 센다
+ */
+export function compareStory(puzzle: Endgame): CompareStory {
+  const known = compareCache.get(puzzle.id);
+  if (known) return known;
+  const story = readCompare(puzzle);
+  compareCache.set(puzzle.id, story);
+  return story;
+}
+
+function readCompare(puzzle: Endgame) {
+  const spots = endgameSpots(puzzle);
+  const rev = spots.find((s) => s.whiteSente && !s.blackSente);
+  const gotes = spots.filter((s) => s !== rev).sort((a, b) => b.size - a.size);
+  const [first, second] = gotes;
+  if (
+    !rev ||
+    !first ||
+    !second ||
+    gotes.some((g) => g.whiteSente || g.blackSente)
+  )
+    throw new Error(`${puzzle.id}: 역끝내기 하나와 후수 둘이 아니다`);
+  const area = spotsOf(puzzle).flat();
+  const start = puzzleState(puzzle).board;
+  // 한 읽기 도구로 처음 판의 첫 수마다 결과와 두 순서의 수순을 함께 읽는다(읽은 판을 다시 읽지 않는다)
+  const reader = endgameReader(start, area);
+  /** 흑이 `opening`에 둔 뒤 두 편이 끝까지 가장 좋게 둔 수순(흑의 첫 수 포함)과 끝난 판의 점수 차 */
+  const lineFrom = (opening: number) => {
+    const placed = tryPlace(start, opening, 1);
+    if (!placed.ok) throw new Error(`${puzzle.id}: 첫 수를 둘 수 없다`);
+    const read = reader.line(placed.board, 2);
+    return { moves: [opening, ...read.moves], score: read.score };
+  };
+  const revFirst = lineFrom(rev.move);
+  // 두 후수 크기가 같으면, 역끝내기부터 막은 뒤 백이 먼저 두는 곳을 큰 후수로 부른다(어느 쪽이든 셈은 같다)
+  const reply = revFirst.moves[1];
+  const [big, small] =
+    first.size === second.size &&
+    reply !== undefined &&
+    second.spot.includes(reply)
+      ? [second, first]
+      : [first, second];
+  const bigFirst = lineFrom(big.move);
+  return {
+    rev,
+    big,
+    small,
+    /**
+     * 처음 판에서 흑의 가장 좋은 첫 수들(`solveEndgame`의 `best`와 같다). 해설에는 쓰지 않아 물을 때 읽는다.
+     * 두 순서의 수순을 읽은 판을 기억하고 있어 처음부터 따로 읽는 것보다 가볍다
+     */
+    best: () => reader.choose(start, 1).best,
+    /** 흑이 역끝내기부터 둘 때 끝까지 둔 수순(흑의 첫 수부터 흑·백 번갈아)과 끝난 판의 점수 차(흑 − 백) */
+    revFirst,
+    /** 흑이 큰 후수부터 둘 때 끝까지 둔 수순과 끝난 판의 점수 차 */
+    bigFirst,
+    revFirstScore: revFirst.score,
+    bigFirstScore: bigFirst.score,
+    /** 역끝내기부터 두는 것이 정답인가 */
+    revWins: revFirst.score > bigFirst.score,
+    /** 두 순서의 점수 차 차이(늘 양수) */
+    gap: Math.abs(revFirst.score - bigFirst.score),
+  };
+}
+
+/** 곳 이름 둘을 그림 차례로 「A·C」 */
+const both = (labels: string[]) => [...labels].sort().join("·");
+
+function compareConcept(puzzle: Endgame): string[] {
+  const c = compareStory(puzzle);
+  const { rev, big, small } = c;
+  const reply = rev.theirs.replies.map(named).join("·");
+  const sum = rev.size + small.size;
+  // 작은 후수가 역끝내기와 크기가 같은 판에서만 「두 배」라고 말한다
+  // 작은 후수가 역끝내기와 크기가 같은 판에서만 「두 배」라고 말한다
+  const twice =
+    small.size === rev.size
+      ? ` ${subj(small.label)} 역끝내기와 같은 ${rev.size}점짜리라, 역끝내기를 미루면 그 두 배인 ${sum}점을 내주는 셈이에요.`
+      : "";
+  const same =
+    big.size === small.size
+      ? ` ${topic(both([big.label, small.label]))} 크기가 같아 어느 쪽을 큰 후수로 봐도 셈은 같아요.`
+      : "";
+  return [
+    `${spotName(rev)}에 백이 두면 흑 ${subj(points(rev.theirs.stones))} 단수가 되어 흑은 ${reply}에 이어 받아야 해요. 백의 선수 자리라, 흑이 먼저 막으면 역끝내기예요.`,
+    `${topic(rev.label)} ${rev.size}점짜리, ${topic(spotName(big))} ${big.size}점짜리, ${topic(spotName(small))} ${small.size}점짜리예요. 역끝내기 ${subj(rev.label)} ${small.size > rev.size ? both([big.label, small.label]) : big.label}보다 작아요.${same}`,
+    `${rev.label}부터 막으면 그 뒤 ${big.label}에는 백이, ${small.label}에는 흑이 먼저 둬요. ${big.label}부터 두면 그 뒤 ${both([rev.label, small.label])}에 모두 백이 먼저 둬요. 백이 ${rev.label}에 두면 흑이 ${reply}에 받아야 해서, 차례가 다시 백에게 가거든요.`,
+    `끝내기 한 곳은 누가 먼저 두느냐에 따라 점수 차가 그 크기만큼 달라져요. ${rev.label}부터 두면 흑이 ${both([rev.label, small.label])}에 먼저 두고, ${big.label}부터 두면 흑이 ${big.label}에만 먼저 둬요. 그래서 ${rev.size} + ${small.size} = ${sum}점과 ${big.size}점을 견줘요.${twice}`,
+    c.revWins
+      ? `${sum}점이 더 커서 ${rev.label}부터 막았어요. ${big.label}부터 둘 때보다 점수 차가 ${c.gap}점 더 커요.`
+      : `${big.size}점이 더 커서 ${big.label}부터 뒀어요. ${rev.label}부터 막을 때보다 점수 차가 ${c.gap}점 더 커요.`,
+  ];
+}
+
+function compareFacts(puzzle: Endgame): string[] {
+  const c = compareStory(puzzle);
+  const { rev, big, small } = c;
+  const reply = rev.theirs.replies.map(named).join("·");
+  const sum = rev.size + small.size;
+  return [
+    `백이 ${spotName(rev)}에 두면 흑 ${subj(points(rev.theirs.stones))} 단수가 되어 흑은 ${reply}에 이어야 해요. 백의 선수 자리라, 흑이 먼저 막으면 역끝내기예요.`,
+    `${spotName(rev)} ${rev.size}점과 ${spotName(small)} ${small.size}점을 더하면 ${sum}점, ${topic(spotName(big))} ${big.size}점짜리예요.`,
+    // 작은 후수가 역끝내기와 크기가 같은 판에서만 「두 배」라고 말한다
+    ...(small.size === rev.size
+      ? [
+          `${subj(spotName(small))} 역끝내기와 같은 ${rev.size}점짜리라, ${rev.label}부터 막지 않으면 그 두 배인 ${sum}점을 내주는 셈이에요.`,
+        ]
+      : []),
+    c.revWins
+      ? `그래서 ${spotName(rev)}부터 막아 ${both([rev.label, small.label])}에 흑이 먼저 뒀고, ${big.label}부터 둘 때보다 점수 차가 ${c.gap}점 더 커요.`
+      : `그래서 ${spotName(big)}부터 뒀어요. ${both([rev.label, small.label])}에 백이 먼저 두어도 ${rev.label}부터 막을 때보다 점수 차가 ${c.gap}점 더 커요.`,
+  ];
+}
+
 /** 끝내기 뒤 문제: 이 판의 크기·받는 자리·점수 차만 */
 function endgameFacts(puzzle: Endgame): string[] {
+  if (puzzle.mode === "compare") return compareFacts(puzzle);
   const { board } = puzzleState(puzzle);
   const spots = endgameSpots(puzzle);
   const right = solutionOf(puzzle);

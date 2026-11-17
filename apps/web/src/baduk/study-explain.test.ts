@@ -1,10 +1,11 @@
 // 바둑 문제 해설(study-explain.ts): 묶음 첫 문제는 개념을 풀어 쓰고, 뒤 문제는 같은 문장을 되풀이하지 않고 그 판의 사실을 짚는다.
 // 처음 보는 독자 검토의 「해설이 문제마다 거의 같은 세 문장」 지적(2026-11-17)을 다시 받지 않게 본다.
-import { type BadukState, step } from "@game/baduk-engine";
+import { type BadukState, solveEndgame, step } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
 import {
   defenseFor,
+  endgameArea,
   judgeMove,
   koPointOf,
   puzzleState,
@@ -30,13 +31,18 @@ function solvedLines(p: BadukPuzzle): string[] {
     const theirs = step(state, 1, defenseFor(p, state, i));
     if (!theirs.ok) throw new Error(`${p.id}: ${theirs.error}`);
     state = theirs.state;
-    // 다음 정답: 패로 버티기는 되따낼 자리, 그 밖은 판정이 받아 주는 첫 수
+    // 다음 정답: 패로 버티기는 되따낼 자리, 끝내기는 판정이 받아 주는 가장 좋은 수 가운데 첫 것
+    // (빈 점마다 판정하면 세 곳 끝내기는 빈 점마다 끝까지 읽어 느리다), 그 밖은 판정이 받아 주는 첫 수
     const next =
       p.kind === "kofight"
         ? koPointOf(p)
-        : state.board.findIndex(
-            (c, at) => c === 0 && judgeMove(p, state, at, i + 1) !== "wrong",
-          );
+        : p.kind === "endgame"
+          ? (solveEndgame(state.board, endgameArea(p), 1).best.find(
+              (m) => m !== null,
+            ) ?? -1)
+          : state.board.findIndex(
+              (c, at) => c === 0 && judgeMove(p, state, at, i + 1) !== "wrong",
+            );
     if (next < 0) throw new Error(`${p.id}: 다음 수가 없다`);
     move = next;
   }
@@ -123,6 +129,23 @@ describe("뒤 문제 해설은 엔진으로 센 그 판의 사실이다", () => 
     expect(linesOf("endgame-double-3")).toEqual([
       "B(D4)에 흑이 두면 백 한 점이 단수가 되어 백이 E3에, 백이 두면 흑 한 점이 단수가 되어 흑이 C5에 이어야 해요.",
       "흑이 먼저 두어 백이 E3에 받은 뒤 A(A4)까지 둬, 세 곳 가운데 두 곳을 흑이 가졌어요.",
+    ]);
+  });
+
+  it("역끝내기냐 큰 후수냐(큰 후수부터): 받는 자리, 역끝내기 + 작은 후수와 큰 후수의 셈, 작은 후수가 같은 크기일 때만 「두 배」, 점수 차 차이", () => {
+    expect(linesOf("endgame-compare-2")).toEqual([
+      "백이 C(E2)에 두면 흑 세 점이 단수가 되어 흑은 F1에 이어야 해요. 백의 선수 자리라, 흑이 먼저 막으면 역끝내기예요.",
+      "C(E2) 2점과 B(E5) 2점을 더하면 4점, A(E9)는 6점짜리예요.",
+      "B(E5)가 역끝내기와 같은 2점짜리라, C부터 막지 않으면 그 두 배인 4점을 내주는 셈이에요.",
+      "그래서 A(E9)부터 뒀어요. B·C에 백이 먼저 두어도 C부터 막을 때보다 점수 차가 2점 더 커요.",
+    ]);
+  });
+
+  it("역끝내기냐 큰 후수냐(역끝내기부터): 작은 후수가 역끝내기보다 커서 「두 배」라고 하지 않는다", () => {
+    expect(linesOf("endgame-compare-3")).toEqual([
+      "백이 B(E6)에 두면 흑 세 점이 단수가 되어 흑은 F5에 이어야 해요. 백의 선수 자리라, 흑이 먼저 막으면 역끝내기예요.",
+      "B(E6) 2점과 C(E2) 4점을 더하면 6점, A(E9)는 4점짜리예요.",
+      "그래서 B(E6)부터 막아 B·C에 흑이 먼저 뒀고, A부터 둘 때보다 점수 차가 2점 더 커요.",
     ]);
   });
 

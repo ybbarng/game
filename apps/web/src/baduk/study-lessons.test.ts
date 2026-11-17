@@ -28,8 +28,10 @@ import {
   BREAKER_LESSON_PUZZLE,
   BREAKER_RIGHT_PATH,
   BREAKER_WRONG_PATH,
+  COMPARE_STORY,
   CORNER_POINTS,
   DOUBLE_STORY,
+  ENDGAME_COMPARE_PUZZLE,
   ENDGAME_DOUBLE_PUZZLE,
   ENDGAME_REVERSE_PUZZLE,
   ENDGAME_SENTE_PUZZLE,
@@ -405,6 +407,64 @@ describe("끝내기 단원", () => {
       (x, j) => j !== other && !x.includes(key),
     );
     expect(bestIn(three, p, 2).some((m) => spotOf(p, m) === third)).toBe(true);
+  });
+
+  it("역끝내기냐 큰 후수냐 그림: 글의 곳·크기·받는 자리·점수 차가 엔진 읽기와 같고, 역끝내기가 다른 두 곳보다 작은데도 먼저이며, 퀴즈 답이 그 판의 정답이다", () => {
+    const p = ENDGAME_COMPARE_PUZZLE;
+    const s = COMPARE_STORY;
+    const start = puzzleState(p).board;
+    const rev = pointAt(s.rev.move, PUZZLE_SIZE);
+    expect(p.solution).toBe(s.rev.move);
+    expect(s.revWins).toBe(true);
+    // 백이 B에 두면 흑 돌이 단수가 되어 흑은 글의 자리에 이어 받는다
+    const white = place(start, rev, 2);
+    const reply = pointAt(s.reply, PUZZLE_SIZE);
+    const groups = new Map(
+      neighbors(rev, PUZZLE_SIZE)
+        .filter((q) => white[q] === 1)
+        .map((q) => groupOf(white, q))
+        .map((g) => [Math.min(...g.stones), g] as const),
+    );
+    const inAtari = [...groups.values()].filter(
+      (g) => g.liberties.length === 1,
+    );
+    expect(inAtari.map((g) => g.liberties)).toEqual([[reply]]);
+    expect(inAtari[0]?.stones).toHaveLength(s.stones);
+    // 글 「받는 자리는 흑 집이라 이어도 흑 점수는 그대로」
+    expect(areaOwners(start)[reply]).toBe(1);
+    const connected = place(white, reply, 1);
+    expect(areaScore(connected).black).toBe(areaScore(white).black);
+    // 크기: 역끝내기 2점, 다른 두 곳 4점(글의 「2 + 4 = 6점과 4점」)
+    const sizes = Object.fromEntries(
+      spotsOf(p).map((_spot, i) => [["A", "B", "C"][i], spotSizesOf(p)[i]]),
+    );
+    expect(sizes).toEqual({
+      [s.rev.label]: 2,
+      [s.big.label]: 4,
+      [s.small.label]: 4,
+    });
+    // 흑이 B부터 막을 때와 A부터 둘 때의 점수 차 차이가 글의 「2점」
+    const area = spotsOf(p).flat();
+    const after = (at: number) =>
+      solveEndgame(place(start, at, 1), area, 2).score;
+    const big = spotMoveOf(
+      start,
+      spotsOf(p)[["A", "B", "C"].indexOf(s.big.label)] as number[],
+    );
+    expect(after(rev) - after(big)).toBe(s.gap);
+    expect(s.gap).toBe(2);
+    const lesson = BADUK_STUDY_LESSONS.find((l) => l.id === "lesson-endgame");
+    const quiz = lesson?.steps.find(
+      (x) => x.kind === "quiz" && x.question.includes("백의 선수 자리 2점짜리"),
+    );
+    expect(quiz?.kind === "quiz" ? quiz.answer : null).toBe(0);
+    // 작은 후수가 역끝내기와 크기가 다른 판이라 「두 배」라고 하지 않는다
+    const step = lesson?.steps.find(
+      (x) => x.kind === "explain" && x.title === "역끝내기냐 큰 후수냐",
+    );
+    expect(step?.kind === "explain" ? step.body.join(" ") : "").not.toMatch(
+      /두 배/,
+    );
   });
 
   it("퀴즈 보기는 서로 다르다", () => {
