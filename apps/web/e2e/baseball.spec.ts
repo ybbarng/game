@@ -8,6 +8,13 @@ for (const a of "123456789")
     for (const c of "123456789")
       if (a !== b && b !== c && a !== c) NUMBERS.push(a + b + c);
 
+/**
+ * 혼자 하기 판 씨앗(`?seed=`). 컴퓨터 비밀(`seatKey(씨앗, 1)`)과 컴퓨터 물음이 이것으로 정해진다. 씨앗 1이면 컴퓨터
+ * 비밀은 495다. `Math.random`을 덮어 정하지 않는다: 효과음이 소리 상자를 처음 만들 때 오디오 표본율만큼 난수를
+ * 불러 기기마다 판 씨앗이 달라진다(docs/standing-rules.md 4절)
+ */
+const SEED = 1;
+
 const status = (page: Page) => page.getByRole("status").first();
 const over = (page: Page) => page.getByRole("button", { name: "다시 하기" });
 /** 내가 물은 줄들(전광판 아래 "내 공격" 기록. 휴대폰 세로에서 탭에 가려져도 센다) */
@@ -155,17 +162,6 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   page,
 }, info) => {
   const touch = info.project.name.startsWith("phone");
-  // 판을 늘 같게 둔다. 무작위면 504판에 한 판은 컴퓨터 비밀이 123이라 첫 물음(123)에 판이 끝나
-  // 무르기를 확인하지 못한다(2026-10-30 CI에서 두 번)
-  await page.addInitScript(() => {
-    let s = 1;
-    Math.random = () => {
-      s = (s + 0x6d2b79f5) | 0;
-      let t = Math.imul(s ^ (s >>> 15), 1 | s);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
-    };
-  });
   await page.goto("/");
   await page
     .getByRole("link", { name: /숫자야구/ })
@@ -174,6 +170,9 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   await expect(page).toHaveURL(/\/baseball$/);
   await expect(page.getByRole("heading", { name: "숫자야구" })).toBeVisible();
   await page.screenshot({ path: info.outputPath("baseball-home.png") });
+  // 판을 늘 같게 둔다. 무작위면 504판에 한 판은 컴퓨터 비밀이 123이라 첫 물음(123)에 판이 끝나
+  // 무르기를 확인하지 못한다(2026-10-30 CI에서 두 번). 판 씨앗은 주소로 준다(SEED 설명)
+  await page.goto(`/baseball?seed=${SEED}`);
   await startSolo(page);
 
   await expect(page.getByRole("button", { name: "무작위" })).toBeVisible();
@@ -231,6 +230,10 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   // 판 끝: 두 사람 비밀과 다시 계산한 결과
   await expect(page.locator("[data-reveal]")).toHaveCount(2);
   await expect(page.getByText("약속·답 모두 맞음 ✓")).toHaveCount(2);
+  // 주소 씨앗이 판을 정했다(컴퓨터 자리 1의 비밀)
+  await expect(
+    page.locator('[data-reveal="1"]').getByRole("img", { name: "4 9 5" }),
+  ).toBeVisible();
   await page.screenshot({ path: info.outputPath("baseball-end.png") });
 
   // 다 끝난 게임은 이어하기에 남지 않는다.
@@ -247,16 +250,7 @@ test(
   async ({ page }, info) => {
     // 두 화면 크기를 이 시험 안에서 바꿔 본다
     // 판을 늘 같게 둔다(첫 시험과 같은 씨앗)
-    await page.addInitScript(() => {
-      let s = 1;
-      Math.random = () => {
-        s = (s + 0x6d2b79f5) | 0;
-        let t = Math.imul(s ^ (s >>> 15), 1 | s);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
-      };
-    });
-    await page.goto("/baseball");
+    await page.goto(`/baseball?seed=${SEED}`);
     await startSolo(page);
     await chooseRandomSecret(page);
     // 두 사람 기록에 줄이 쌓인 뒤에 본다(기록이 늘어도 패드가 밀려나지 않아야 한다).
