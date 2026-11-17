@@ -323,6 +323,7 @@ export function JanggiBoard({
             key={arrived && lastMove ? `${i}:${lastMove.from}` : i}
             data-piece={cell}
             data-point={pointName(i)}
+            data-movable={movable.has(i) ? "" : undefined}
             className={cn(
               movable.has(i) && "cursor-pointer",
               arrived && "jg-slide",

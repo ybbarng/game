@@ -1088,29 +1088,69 @@ test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 �
   await page.screenshot({ path: info.outputPath("janggi-master.png") });
 });
 
-/** 둘 수 있는 내 기물(초)을 판 차례대로 찾아 처음 보이는 갈 곳으로 옮긴다(기물이 옮겨 다녀도 이어 둘 수 있게) */
-async function playAny(page: Page) {
+/**
+ * 둘 수 있는 내 기물(초, `data-movable`) 가운데 판 차례로 첫 기물을 골라 처음 보이는 갈 곳으로 옮긴다.
+ * 고르는 수가 판 모양에만 달려 있어 기기 속도와 상관없이 같은 수가 된다
+ */
+async function playFirstMovable(page: Page) {
   const from = await page
-    .locator('[data-piece^="c"]')
-    .evaluateAll((els) => els.map((el) => el.getAttribute("data-point")));
-  for (const point of from) {
-    if (!point) continue;
-    await tapPoint(page, point, false);
-    const target = page.locator("[data-target]").first();
-    const shown = await target
-      .waitFor({ timeout: 1500 })
-      .then(() => true)
-      .catch(() => false);
-    if (!shown) continue;
-    const to = (await target.getAttribute("data-target")) as string;
-    await tapPoint(page, to, false);
-    await expect(
-      page.locator(`[data-point="${to}"][data-piece^="c"]`),
-    ).toHaveCount(1);
-    return;
-  }
-  throw new Error("둘 수가 없다");
+    .locator('[data-piece^="c"][data-movable]')
+    .first()
+    .getAttribute("data-point");
+  if (!from) throw new Error("둘 수가 없다");
+  await tapPoint(page, from, false);
+  const target = page.locator("[data-target]").first();
+  await target.waitFor();
+  const to = (await target.getAttribute("data-target")) as string;
+  await tapPoint(page, to, false);
+  await expect(
+    page.locator(`[data-point="${to}"][data-piece^="c"]`),
+  ).toHaveCount(1);
 }
+
+/**
+ * 초고수와 스무 수(두 편 열 수씩)를 둔 중반 판의 이어하기 저장본. 이 판을 실제로 두어 저장된 것을 옮겼다.
+ * 씨앗을 `Math.random`으로 정하면 기기마다 판이 달라진다: 효과음이 소리 상자를 만들 때 잡음을 `Math.random`으로
+ * 채워 그 횟수가 오디오 표본율을 따른다(48kHz면 22만 번, 44.1kHz면 20만 번, 2026-11-18 CI에서 다른 판이 됨).
+ * 그래서 씨앗과 기록을 저장본으로 넣는다. 사람 자리는 1번이고 초(먼저 두는 편)다.
+ */
+const MASTER_MIDGAME = {
+  version: 1,
+  rules: { bikjang: "score", winsToFinish: 1 },
+  seed: 1154969930,
+  humanSeat: 1,
+  level: 3,
+  log: [
+    { seat: 0, action: { type: "setup", setup: "NENE" }, bot: true },
+    { seat: 1, action: { type: "setup", setup: "ENEN" } },
+    ...[
+      [54, 45],
+      [2, 21],
+      [45, 36],
+      [27, 36],
+      [56, 47],
+      [25, 20],
+      [47, 38],
+      [29, 38],
+      [58, 49],
+      [20, 83],
+      [49, 40],
+      [83, 81],
+      [40, 31],
+      [6, 31],
+      [60, 51],
+      [19, 22],
+      [76, 77],
+      [81, 84],
+      [51, 42],
+      [31, 56],
+    ].map(([from, to], i) => ({
+      seat: i % 2 === 0 ? 1 : 0,
+      action: { type: "move", from, to },
+      ...(i % 2 === 1 ? { bot: true } : {}),
+    })),
+  ],
+};
 
 /** 노림 줄에 나올 수 있는 글 전부 */
 const PLAN_NOTES = (Object.keys(MASTER_PLAN_LABELS) as MasterPlanId[]).map(
@@ -1121,32 +1161,26 @@ test(
   "장기 초고수: 중반까지 두어도 휴대폰에서 화면이 굳지 않고 노림 줄이 잘리지 않는다(CPU 4배 느리게)",
   { tag: "@only-phone-portrait" },
   async ({ page }, info) => {
-    // 판 씨앗을 정해 언제 돌려도 같은 판이 되게 한다(컴퓨터는 판 씨앗의 난수만 쓴다).
-    await page.addInitScript(() => {
-      let s = 20261118;
-      Math.random = () => {
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        return s / 2 ** 32;
-      };
-    });
+    // 중반 판(스무 수째)을 이어하기로 연다. 컴퓨터는 저장본 씨앗의 난수만 쓰고, 내 수는 판 모양으로만 고르니
+    // 어느 기기에서 돌려도 같은 판이 된다.
+    await page.addInitScript(
+      (saved) => localStorage.setItem("janggi-save", saved),
+      JSON.stringify(MASTER_MIDGAME),
+    );
     await page.goto("/janggi");
-    await startSolo(page, "초고수");
-    await page.getByRole("button", { name: "상마상마" }).click();
-    await expect(page.getByRole("status")).toContainText("내 차례");
+    await ready(page);
+    await page.getByRole("button", { name: /하던 게임 이어하기/ }).click();
+    await expect(page.locator("[data-move-count]")).toHaveAttribute(
+      "data-move-count",
+      "20",
+    );
     // 장군을 받으면 상태 줄은 「장군! 궁을 지키세요.」다. 둘 다 내 차례다.
     const myTurn = /내 차례|궁을 지키세요/;
+    await expect(page.getByRole("status")).toContainText(myTurn);
     const plan = page.locator("[data-plan]");
     const fits = () => plan.evaluate((el) => el.scrollWidth <= el.clientWidth);
-    // 중반까지: 내 수 열 개(두 편 합 스무 수 남짓)를 보통 속도로 둔다.
-    const seen = new Set<string>();
-    for (let i = 0; i < 10; i++) {
-      await playAny(page);
-      await expect(page.getByRole("status")).toContainText(myTurn, {
-        timeout: 15_000,
-      });
-      seen.add((await plan.textContent()) ?? "");
-      expect(await fits()).toBe(true);
-    }
+    const seen = new Set<string>([(await plan.textContent()) ?? ""]);
+    expect(await fits()).toBe(true);
     await page.screenshot({ path: info.outputPath("janggi-master-mid.png") });
     // 휴대폰처럼 CPU를 4배 느리게 하고, 네 수 동안 화면 스레드의 긴 작업(50ms 넘는 일)과 프레임 간격을 잰다.
     await page.evaluate(() => {
@@ -1162,13 +1196,18 @@ test(
     for (let i = 0; i < 4; i++) {
       // 컴퓨터는 내 수가 들어가자마자 생각을 시작하니 내 수 전부터 잰다.
       await watchFrames(page);
-      await playAny(page);
+      await playFirstMovable(page);
       await expect(page.getByRole("status")).toContainText(myTurn, {
         timeout: 30_000,
       });
       maxGap = Math.max(maxGap, (await stopFrames(page)).maxGap);
       seen.add((await plan.textContent()) ?? "");
+      expect(await fits()).toBe(true);
     }
+    await expect(page.locator("[data-move-count]")).toHaveAttribute(
+      "data-move-count",
+      "28",
+    );
     const long = await page.evaluate(
       () => (window as unknown as { __long: number[] }).__long,
     );
