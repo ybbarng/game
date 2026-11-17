@@ -143,6 +143,8 @@ interface Record_<State> {
   log: { m: string; t: number }[];
   /** 받았지만 앞 수가 모자라 아직 못 적용한 수 */
   raw: Map<number, { m: string; t: number; arrivedAt: number }>;
+  /** 다시 적용한 마지막 수가 이 기기에 닿은 시각(남의 수만) */
+  lastArrivedAt?: number;
   done?: { n: number; t: number; arrivedAt: number };
   /** 이 사람에 대해 증인들이 본 하한 */
   bounds: Map<string, number | null>;
@@ -1413,7 +1415,12 @@ export class RaceSession<Move, State> {
       a.revealedAt !== undefined &&
       this.witness(this.self, rec.id)
     ) {
-      const bound = this.boundAt(rec.id, done.arrivedAt);
+      // 「맞췄다」는 그 수들이 모두 닿아 다시 적용해 본 뒤에야 확인된다. 「맞췄다」만 먼저 보내고 수는 나중에 흘리면
+      // 하한이 앞당겨지므로(docs/47 9-2 표 ⑤), 둘 가운데 늦게 닿은 때로 잰다. 정직한 기기는 수를 먼저 보내 같다
+      const bound = this.boundAt(
+        rec.id,
+        Math.max(done.arrivedAt, rec.lastArrivedAt ?? done.arrivedAt),
+      );
       rec.bounds.set(this.self, bound);
       this.broadcast({
         type: "race-bound",
@@ -1450,6 +1457,7 @@ export class RaceSession<Move, State> {
       rec.applied++;
       rec.moveTimes.push(mv.t);
       rec.log.push({ m: mv.m, t: mv.t });
+      rec.lastArrivedAt = mv.arrivedAt;
       // 수마다 같은 하한: 몰아서 보낸 수는 보고 시각이 하한보다 이르다(표시만, docs/46 3-3)
       const lb = this.boundAt(rec.id, mv.arrivedAt);
       if (lb !== null && mv.t < lb) rec.lateMoves++;
