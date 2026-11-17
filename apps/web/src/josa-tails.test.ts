@@ -3,16 +3,25 @@
  * 그대로 붙인 글을 잡는다(docs/standing-rules.md 3절 「이름·카드·수 뒤 조사는 조사 도우미로」).
  * 「${카드}가 두 번 나왔어요」는 카드가 ♠10이면 「♠10가」가 된다. 자리 값을 모르니 `subj`·`obj` 등
  * (`@game/mighty-engine/josa`, 웹은 `lib/josa`)으로 고른다.
- * 보는 곳: 엔진·화투·멘탈 포커·컴퓨터 패키지의 소스(거절 사유·검증 실패 사유·오류 글)와 웹 온라인 방(`net/`).
+ * 보는 곳: 엔진·화투·멘탈 포커·컴퓨터 패키지의 소스(거절 사유·검증 실패 사유·오류 글)와 웹 소스 전체
+ * (게임 폴더·`components`·`review`·`stats`·튜토리얼·수 배우기·큐브·별 따기·온라인 방 `net/`). 시험·시험 자료·시험 틀은 뺀다.
+ * JSX 본문(`{n}을`)은 템플릿 자리가 아니라 보지 않는다.
  */
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: 소스에서 찾은 템플릿 자리를 글 그대로 적어 견준다
 import { describe, expect, it } from "vitest";
 
 const files: Record<string, string> = import.meta.glob(
   [
-    "./net/**/*.ts",
+    "./**/*.{ts,tsx}",
     "../../../packages/{engine,*-engine,hwatu,fair-play,ai,*-ai}/src/**/*.ts",
-    "!./**/*.test.ts",
+    "!./**/*.test.{ts,tsx}",
+    "!./**/*-fixture.ts", // 시험 자료
+    "!./**/*-suite.ts", // 시험 틀
+    "!./**/__test__/**", // 시험 도우미
+    "!./cube/native/{core-fixtures*,fixture-test-util}.ts", // 공통 시험 자료 만들기(시험 전용)
+    "!./net/*-case.ts", // 시험 이름표
+    "!./hwatu/card-table-sim.ts", // 시험·시연용 흉내
+    "!./lib/josa.ts", // 조사 도우미 자신
     "!../../../packages/**/*.test.ts",
   ],
   { query: "?raw", import: "default", eager: true },
@@ -27,6 +36,36 @@ const EXCEPTIONS: { file: string; place: string; why: string }[] = [
     file: "packages/baseball-engine/src/match.ts",
     place: '${rules.zero ? "" : "(1~9)"}로',
     why: "자리 값은 빈 글이나 「(1~9)」라 늘 「숫자로」·「숫자(1~9)로」로 읽힌다",
+  },
+  {
+    file: "apps/web/src/game/mighty-commentary.ts",
+    place: '${ruling ? "여당" : "야당"}으로',
+    why: "둘 다 「당」(ㅇ 받침)으로 끝난다",
+  },
+  {
+    file: "apps/web/src/omok/study.ts",
+    place: '${direct ? "화월" : "포월"}이에요',
+    why: "둘 다 「월」(받침)로 끝난다",
+  },
+  {
+    file: "apps/web/src/galaxy/components/GalaxyGame.tsx",
+    place: "${rank}이에요",
+    why: "rank는 늘 「n등」(ㅇ 받침)이다",
+  },
+  {
+    file: "apps/web/src/stats/achievements.ts",
+    place: "${unit}을",
+    why: "unit은 「판」·「게임」뿐이라 늘 받침이 있다",
+  },
+  {
+    file: "apps/web/src/cube/math/counts.ts",
+    place: "${power[1]}은",
+    why: "「10^k」는 「10의 k제곱」으로 읽어 늘 「제곱」(받침)으로 끝난다",
+  },
+  {
+    file: "apps/web/src/stardraw/learn/toys-draw.tsx",
+    place: '${changed ? displayRound(changed, liveFrom).label : ""}로',
+    why: "회차 표시(`displayRound().label`)는 늘 「n회」(받침 없음)로 끝나고, 이 글은 바뀐 일정(changed)이 있을 때만 보인다",
   },
 ];
 
@@ -82,8 +121,8 @@ describe("템플릿 자리 뒤 조사", () => {
     ]);
   });
 
-  it("엔진·멘탈 포커·컴퓨터·온라인 방 글은 자리 뒤 조사를 도우미로 고른다", () => {
-    expect(Object.keys(files).length).toBeGreaterThan(100);
+  it("엔진·멘탈 포커·컴퓨터 패키지와 웹 화면 글은 자리 뒤 조사를 도우미로 고른다", () => {
+    expect(Object.keys(files).length).toBeGreaterThan(1000);
     const problems: string[] = [];
     for (const [key, source] of Object.entries(files)) {
       const file = repoPath(key);
