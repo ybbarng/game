@@ -22,8 +22,6 @@ const files: Record<string, string> = import.meta.glob(
     "!./net/*-case.ts", // 시험 이름표
     "!./net/chat.ts", // 빠른 채팅(「아깝다」)은 사람이 하는 말
     "!../../../packages/galaxy-engine/src/{cards,requests}.ts", // 우주국 공문은 「~습니다」(docs/48 「말투」)
-    // 큐브 표기 오류는 Rust 코어(native/cube-core notation.rs, 공통 자료 moves.json)와 같은 글을 내야 해서 함께 고쳐야 한다(docs/standing-rules.md 3절 「남은 것」)
-    "!../../../packages/cube-engine/src/notation.ts",
     // 따로 정한 말투나 따로 보는 시험이 있는 글
     "!./components/learn/**", // 보안 배우기: 학습 글, learn-terms.test.tsx
     "!./components/security/**", // 보안 설명(/security)
