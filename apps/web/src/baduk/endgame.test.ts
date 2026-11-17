@@ -10,13 +10,11 @@ import {
   tryPlace,
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
-
 import { shapeKey } from "./puzzle-shape";
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
 import {
   defenseFor,
   endgameArea,
-  explainSolved,
   judgeMove,
   PUZZLE_SIZE,
   puzzleState,
@@ -25,6 +23,7 @@ import {
   spotSizesOf,
   spotsOf,
 } from "./study";
+import { explainSolved } from "./study-explain";
 
 type Endgame = Extract<BadukPuzzle, { kind: "endgame" }>;
 
@@ -134,9 +133,18 @@ describe("큰 끝내기부터", () => {
       expect(judgeMove(p, state, solutionOf(p), 0)).toBe("solved");
       expect(judgeMove(p, state, small, 0)).toBe("wrong");
       const lines = explainSolved(p, state.board, solutionOf(p), 1);
-      expect(lines[0]).toBe(
-        `A는 ${spotSizesOf(p)[0]}점짜리, B는 ${spotSizesOf(p)[1]}점짜리 후수 끝내기예요.`,
-      );
+      const sizes = spotSizesOf(p);
+      // 첫 문제는 두 곳 크기를 함께 알리고, 뒤 문제는 정답 곳의 크기와 견준 차이를 말한다(study-explain.ts)
+      if (p === bigger[0])
+        expect(lines[0]).toBe(
+          `A는 ${sizes[0]}점짜리, B는 ${sizes[1]}점짜리 후수 끝내기예요.`,
+        );
+      else {
+        const mine = sizes[spotIndex(p, solutionOf(p))] as number;
+        const other = sizes[1 - spotIndex(p, solutionOf(p))] as number;
+        expect(lines.join(" ")).toContain(`${mine}점짜리예요.`);
+        expect(lines.join(" ")).toContain(`${mine - other}점 더 커요.`);
+      }
     },
   );
 });
@@ -240,9 +248,14 @@ describe("선수 끝내기부터", () => {
       const answered = play(after, reply.at);
       expect(judgeMove(p, answered, gote, 1)).toBe("solved");
       const lines = explainSolved(p, answered.board, gote, 2);
-      expect(lines).toHaveLength(3);
-      // 새로 단수가 된 백 돌 수를 낱말로 센다(0이면 「백  점」이 된다)
-      expect(lines[0]).toMatch(/백 (한|두|세|네) 점이 단수가 돼요\./);
+      expect(lines.length).toBeGreaterThanOrEqual(2);
+      // 새로 단수가 된 백 돌 수를 낱말로 센다(0이면 「백  점」이 된다). 뒤 문제는 백이 받는 자리(문제 화면의 받는 수)까지 짚는다
+      if (p === sente[0])
+        expect(lines[0]).toMatch(/백 (한|두|세|네) 점이 단수가 돼요\./);
+      else
+        expect(lines[0]).toContain(
+          `점이 단수가 되어 백은 ${name(reply.at)}에 이어야 해요.`,
+        );
     },
   );
 });

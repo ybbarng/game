@@ -56,6 +56,8 @@ const TERMS: OrderedTerm[] = [
   { term: "몇 점짜리", use: /점짜리/, define: /\*\*몇 점짜리\*\*/ },
   { term: "선수", use: /선수/, define: /\*\*선수\*\*라고/ },
   { term: "후수", use: /후수/, define: /\*\*후수\*\*라고/ },
+  { term: "역끝내기", use: /역끝내기/, define: /\*\*역끝내기\*\*라고/ },
+  { term: "양선수", use: /양선수/, define: /\*\*양선수\*\*라고/ },
 ];
 
 termOrderSuite(

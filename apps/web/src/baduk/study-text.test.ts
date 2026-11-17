@@ -2,11 +2,11 @@
 import { describe, expect, it } from "vitest";
 
 import { lessonTexts, lineTexts, toneProblems } from "@/study/tone";
-
 import { BADUK_FUSEKI, BADUK_FUSEKI_SET } from "./fuseki";
 import { BADUK_JOSEKI, BADUK_JOSEKI_SET } from "./joseki";
 import { BADUK_PUZZLE_SETS } from "./puzzles";
-import { explainSolved, puzzleState, solutionOf } from "./study";
+import { puzzleState, solutionOf } from "./study";
+import { explainSolved } from "./study-explain";
 import {
   BADUK_STUDY_LESSON_SUMMARY,
   BADUK_STUDY_LESSONS,
