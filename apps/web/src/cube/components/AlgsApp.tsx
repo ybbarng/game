@@ -4,6 +4,7 @@ import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { ro } from "@/lib/josa";
 import { type Candidate, candidatesOf, dataAlgTags } from "../algs/candidates";
 import {
   caseById,
@@ -735,7 +736,7 @@ function CaseDetail({
               disabled={!baseReadable}
               onClick={() => transform((a) => regripAlg(n, a, g))}
             >
-              {g}로 쥐기
+              {ro(g)} 쥐기
             </ToolButton>
           ))}
           <ToolButton

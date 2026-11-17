@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@game/fair-play": "workspace:*",
+    "@game/mighty-engine": "workspace:*",
     "@game/stardraw-core": "workspace:*"
   },
   "devDependencies": {

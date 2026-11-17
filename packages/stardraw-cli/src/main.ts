@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { obj, wa } from "@game/mighty-engine/josa";
 import {
   checkPublicLedger,
   fetchFailure,
@@ -243,14 +244,14 @@ function sourceNotes(
     out.push(`서버가 닫은 ${pending.server}회차까지 모두 앵커에 있습니다`);
   if (compared && "error" in compared)
     out.push(
-      `실패    두 원천 대조: ${compared.other}를 받지 못했습니다(${compared.error})`,
+      `실패    두 원천 대조: ${obj(compared.other)} 받지 못했습니다(${compared.error})`,
     );
   else if (compared && compared.differences.length === 0)
     out.push(
-      `통과    두 원천 대조: ${compared.other}와 겹치는 ${compared.rounds}회차가 같습니다`,
+      `통과    두 원천 대조: ${wa(compared.other)} 겹치는 ${compared.rounds}회차가 같습니다`,
     );
   else if (compared) {
-    out.push(`실패    두 원천 대조: ${compared.other}와 다릅니다`);
+    out.push(`실패    두 원천 대조: ${wa(compared.other)} 다릅니다`);
     for (const d of compared.differences) out.push(`        ${d}`);
   }
   return out;

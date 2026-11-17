@@ -19,6 +19,7 @@ import {
   xyOf,
 } from "@game/janggi-engine";
 import { adviseWith } from "@/game/bot-runner";
+import { topic } from "@/lib/josa";
 
 import { threatenedPieces } from "./danger";
 import type { JanggiPuzzle } from "./puzzles";
@@ -139,7 +140,7 @@ export function explainMate(board: Board, move: Move): string[] {
     guarded.set(who, [...(guarded.get(who) ?? []), pointName(to)]);
   }
   for (const [who, squares] of guarded)
-    lines.push(`궁이 피할 ${squares.join("·")}는 ${subj(who)} 지켜요.`);
+    lines.push(`궁이 피할 ${topic(squares.join("·"))} ${subj(who)} 지켜요.`);
   if (escapes.length === 0)
     lines.push("궁 둘레가 막혀 궁이 움직일 곳이 없어요.");
   lines.push("막거나 잡을 수도 없어 외통이에요.");

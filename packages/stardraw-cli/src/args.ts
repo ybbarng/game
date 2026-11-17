@@ -1,5 +1,7 @@
 /** 명령줄 읽기(시험하기 쉽게 따로 둔다) */
 
+import { topic } from "@game/mighty-engine/josa";
+
 export const DEFAULT_API = "https://game.byb.kr/stardraw-api";
 export const DEFAULT_SITE = "https://game.byb.kr";
 
@@ -113,7 +115,7 @@ export function parseArgs(argv: readonly string[]): Command {
   while (args.length > 0) {
     const a = args.shift() as string;
     const only = (k: "ledger" | "site" | "watch") => {
-      if (kind !== k) throw new Error(`${a}는 ${k} 명령에서만 씁니다`);
+      if (kind !== k) throw new Error(`${topic(a)} ${k} 명령에서만 씁니다`);
     };
     switch (a) {
       case "--json":

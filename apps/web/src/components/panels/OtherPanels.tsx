@@ -20,6 +20,7 @@ import {
   slangTerms,
 } from "@/game/terms";
 import { cn } from "@/lib/cn";
+import { ro } from "@/lib/josa";
 
 import { CardArt } from "../card-art/CardArt";
 import { SuitMark, SuitText } from "../SuitText";
@@ -134,7 +135,7 @@ export function LeadChoicePanel({
         kind === "jokerSuit" ? (
           "조커로 부를 무늬를 고르세요."
         ) : (
-          <SuitText text={`${cardLabel(card)}로 조커콜을 할까요?`} />
+          <SuitText text={`${ro(cardLabel(card))} 조커콜을 할까요?`} />
         )
       }
     >

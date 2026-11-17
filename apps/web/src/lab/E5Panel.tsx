@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 
 import { useStimulusShown } from "@/game/stimulus-shown";
+import { wa } from "@/lib/josa";
 import { ExportButtons } from "./ExportButtons";
 import { E5Session, parseConfig } from "./e5-session";
 
@@ -141,7 +142,7 @@ export function E5Panel() {
           .filter((s) => s.n > 0)
           .map((s) => (
             <li key={s.peer}>
-              {s.peer}와 같은 자극을 받은 시각 차이(나 − 상대): 평균{" "}
+              {wa(s.peer)} 같은 자극을 받은 시각 차이(나 − 상대): 평균{" "}
               {s.meanMs ?? "?"} ms ({s.n}회)
             </li>
           ))}

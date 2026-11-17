@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { copula, topic } from "@/lib/josa";
 import type { StickerMarks } from "../bridge";
 import {
   type Command,
@@ -395,7 +396,7 @@ function FacesStep({ onDone }: { onDone: () => void }) {
       >
         {word
           ? (miss ??
-            `${word.letter}(${word.word})는 어느 면일까요? 그 면의 칸을 눌러 보세요.`)
+            `${topic(`${word.letter}(${word.word})`)} 어느 면일까요? 그 면의 칸을 눌러 보세요.`)
           : "여섯 면을 다 찾았어요. 영어 머리글자라 외우기 쉬워요."}
       </p>
       <StillCube
@@ -414,7 +415,7 @@ function FacesStep({ onDone }: { onDone: () => void }) {
             if (next >= ASK.length) onDone();
           } else
             setMiss(
-              `그건 ${FACE_NAME[face]} 면이에요. ${word.letter}는 ${word.ko}이에요.`,
+              `그건 ${FACE_NAME[face]} 면이에요. ${topic(word.letter)} ${copula(word.ko)}.`,
             );
         }}
       />

@@ -1,3 +1,4 @@
+import { topic } from "@game/mighty-engine/josa";
 import {
   alignedEpoch,
   DEFAULT_GATE_TRIES,
@@ -121,7 +122,8 @@ const int = (name: string, fallback: number): number => {
   const v = env(name);
   if (v === undefined) return fallback;
   const n = Number(v);
-  if (!Number.isInteger(n)) throw new Error(`${name}는 정수여야 한다: ${v}`);
+  if (!Number.isInteger(n))
+    throw new Error(`${topic(name)} 정수여야 한다: ${v}`);
   return n;
 };
 
@@ -294,7 +296,7 @@ export function originProblems(
     for (const o of policy.origins)
       if (!DEFAULT_WEBAUTHN_POLICY.origins.includes(o))
         problems.push(
-          `STARDRAW_ORIGINS의 ${o}는 공개 장부 검사가 받지 않는 출처다(받는 출처: ${DEFAULT_WEBAUTHN_POLICY.origins.join(", ")})`,
+          `STARDRAW_ORIGINS의 ${topic(o)} 공개 장부 검사가 받지 않는 출처다(받는 출처: ${DEFAULT_WEBAUTHN_POLICY.origins.join(", ")})`,
         );
   return problems;
 }

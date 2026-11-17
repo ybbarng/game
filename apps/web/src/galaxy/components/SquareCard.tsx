@@ -11,6 +11,7 @@ import {
 import { useLayoutEffect, useRef, useState } from "react";
 import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
+import { obj } from "@/lib/josa";
 import {
   money,
   SEASON_NAMES,
@@ -32,14 +33,14 @@ export function cornerHelp(view: GalaxyView, square: number): string[] {
   switch (kind) {
     case "base":
       return [
-        `출발 칸이에요. 지나가거나 멈추면 우주국 지원금 ${money(NUMBERS.salary)}을 받아요.`,
+        `출발 칸이에요. 지나가거나 멈추면 우주국 지원금 ${obj(money(NUMBERS.salary))} 받아요.`,
         `별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 5분의 1만큼 덜 받아요.`,
       ];
     case "asteroid":
       return [
         "주사위를 굴려 여기 멈추면 아무 일도 없어요.",
         "우주국 공문 「궤도 이탈」을 받거나, 한 차례에 더블(주사위 두 개가 같은 숫자)이 세 번 연달아 나오면 여기에 걸려요.",
-        `걸리면 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가 굴리거나, 주사위를 굴려 더블이 나오면 그 눈만큼 나가요. 더블이 아니면 그 차례는 쉬고, 그다음 차례에 그냥 나가요.`,
+        `걸리면 다음 차례에 ${obj(money(NUMBERS.asteroidFine))} 내고 바로 나가 굴리거나, 주사위를 굴려 더블이 나오면 그 눈만큼 나가요. 더블이 아니면 그 차례는 쉬고, 그다음 차례에 그냥 나가요.`,
       ];
     case "observatory": {
       const amounts =

@@ -71,11 +71,11 @@ export function eventLine(
       const about = e.square !== undefined ? squareName(board, e.square) : "";
       switch (e.reason) {
         case "rent":
-          return `${subject(who(e.from))} ${about}에 도착해 ${who(e.to)}에게 이용료 ${money(e.amount)}을 냈어요.`;
+          return `${subject(who(e.from))} ${about}에 도착해 ${who(e.to)}에게 이용료 ${obj(money(e.amount))} 냈어요.`;
         case "salary":
-          return `${subject(who(e.to))} 우주국을 지나며 지원금 ${money(e.amount)}을 받았어요.`;
+          return `${subject(who(e.to))} 우주국을 지나며 지원금 ${obj(money(e.amount))} 받았어요.`;
         case "observatory":
-          return `${subject(who(e.to))} 관측지에 도착해 관측 지원금 ${money(e.amount)}을 받았어요.`;
+          return `${subject(who(e.to))} 관측지에 도착해 관측 지원금 ${obj(money(e.amount))} 받았어요.`;
         case "fine":
           return `${who(e.from)} · 소행성대를 나가며 ${money(e.amount)}`;
         case "card":

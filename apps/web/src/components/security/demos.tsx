@@ -32,6 +32,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SuitText } from "@/components/SuitText";
 import { cardLabel, goalLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";
+import { obj, subj } from "@/lib/josa";
 import { commit, deriveSeed } from "@/net/fairness";
 import {
   createHostIdentity,
@@ -674,7 +675,7 @@ export function ChatRoutingDemo() {
           ? "방장은 모든 말을 거치므로 남의 이름으로 말을 지어낼 수 있습니다. 지금 구조의 한계입니다."
           : people[sender] === people[claim]
             ? "자기 이름으로 말했습니다."
-            : `${people[sender]}가 ${people[claim]}인 척했지만 방장이 연결 기준으로 ${people[sender]}라고 붙였습니다.`}
+            : `${subj(people[sender] as string)} ${people[claim]}인 척했지만 방장이 연결 기준으로 ${people[sender]}라고 붙였습니다.`}
       </Result>
     </Box>
   );
@@ -829,8 +830,8 @@ export function MentalPokerDemo() {
         log: [
           ...s.log,
           opened === said
-            ? `4. ${MP_SUBJECT[owner]} ${slot}번 칸 열쇠를 공개하고 ${cardLabel(said)}를 냈습니다. 모두가 열어 보니 ${cardLabel(opened as Card)}, 맞습니다.`
-            : `⚠ ${MP_SUBJECT[owner]} ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? `${cardLabel(opened)}입니다` : "카드가 아닙니다"}. 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힙니다.`,
+            ? `4. ${MP_SUBJECT[owner]} ${slot}번 칸 열쇠를 공개하고 ${obj(cardLabel(said))} 냈습니다. 모두가 열어 보니 ${cardLabel(opened as Card)}, 맞습니다.`
+            : `⚠ ${MP_SUBJECT[owner]} ${obj(cardLabel(said))} 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? `${cardLabel(opened)}입니다` : "카드가 아닙니다"}. 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힙니다.`,
         ],
       };
     });

@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import type { Clock } from "@game/fair-play";
+import { obj, ro } from "@game/mighty-engine/josa";
 import {
   acceptFrom,
   activeDirector,
@@ -1430,7 +1431,7 @@ export class StardrawServer {
     );
     for (const s of designations.skipped)
       this.o.log?.(
-        `설정의 국장 열쇠 ${directorFingerprint(s.pub)}를 싣지 않는다: ${s.reason}`,
+        `설정의 국장 열쇠 ${obj(directorFingerprint(s.pub))} 싣지 않는다: ${s.reason}`,
       );
     const sealOps = await Promise.all(
       designations.bodies.map((b) => signAsSeal(b, this.sealFor(round))),
@@ -1850,7 +1851,7 @@ export class StardrawServer {
         !email.endsWith(`@${domain}`)
       )
         throw new EntryError(
-          `${affiliation?.fields.method ?? "기관 계정"}으로 로그인해 주세요`,
+          `${ro(affiliation?.fields.method ?? "기관 계정")} 로그인해 주세요`,
           403,
         );
       account = createHmac("sha256", this.o.store.qualAccountKey())
@@ -2165,7 +2166,7 @@ export class StardrawServer {
         );
         this.setMirrored(branch, from, last);
         this.o.log?.(
-          `앵커 저장소 ${branch}에 ${mirrorCommitMessage(ledger, from, last)}를 올렸다`,
+          `앵커 저장소 ${branch}에 ${obj(mirrorCommitMessage(ledger, from, last))} 올렸다`,
         );
       } catch (err) {
         this.mirrorFailed(
@@ -2224,7 +2225,7 @@ export class StardrawServer {
             message,
           );
         store.setLightMirrored(branch, last);
-        this.o.log?.(`앵커 저장소 ${branch}에 ${message}을 올렸다`);
+        this.o.log?.(`앵커 저장소 ${branch}에 ${obj(message)} 올렸다`);
       } catch (err) {
         this.mirrorFailed(
           `${branch}에 ${from}회차부터 가벼운 기록 사본을 채우지`,

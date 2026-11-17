@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { copula, obj, ro, subj, topic } from "./josa";
+import { copula, josaOf, obj, ro, subj, topic, wa } from "./josa";
 
 describe("조사 고르기", () => {
   it("한글은 끝 글자 받침으로 고른다", () => {
@@ -10,6 +10,8 @@ describe("조사 고르기", () => {
     expect(obj("포")).toBe("포를");
     expect(copula("쉬기")).toBe("쉬기예요");
     expect(copula("윷")).toBe("윷이에요");
+    expect(wa("퀸")).toBe("퀸과");
+    expect(wa("D4")).toBe("D4와");
   });
 
   it("「나」는 「내가」로 쓴다", () => {
@@ -40,5 +42,24 @@ describe("조사 고르기", () => {
 
   it("받침을 모르면 둘 다 적는다", () => {
     expect(subj("★")).toBe("★이(가)");
+  });
+
+  it("굵은 글씨 표시(**)는 건너뛰고 그 안 낱말로 고른다", () => {
+    expect(copula("**✦30**")).toBe("**✦30**이에요");
+    expect(copula("**✦1,200**")).toBe("**✦1,200**이에요");
+    expect(obj("**벨라트릭스**")).toBe("**벨라트릭스**를");
+  });
+});
+
+describe("조사만 고르기(josaOf)", () => {
+  it("JSX에서 값과 따로 그릴 조사만 돌려준다", () => {
+    expect(josaOf(13, obj)).toBe("을");
+    expect(josaOf(2, ro)).toBe("로");
+    expect(josaOf(3, ro)).toBe("으로");
+    expect(josaOf("상대", wa)).toBe("와");
+  });
+
+  it("받침을 모르면 둘 다 적은 조사를 돌려준다", () => {
+    expect(josaOf("★", subj)).toBe("이(가)");
   });
 });

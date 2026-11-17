@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { PuzzleScreen, usePuzzleRun } from "@/components/study/PuzzleScreen";
 import type { ReviewRun } from "@/components/study/review-run";
 import { RichText } from "@/components/tutorial/RichText";
+import { obj } from "@/lib/josa";
 
 import {
   blackReply,
@@ -169,8 +170,8 @@ function missText(
     };
   if (miss === "lost")
     return {
-      status: `흑 킹이 ${word}을 잡을 수 있어요.`,
-      hint: `흑 킹 바로 옆에는 내 킹이 지킬 때만 ${word}을 둬요. 킹 둘만 남으면 비겨요.`,
+      status: `흑 킹이 ${obj(word)} 잡을 수 있어요.`,
+      hint: `흑 킹 바로 옆에는 내 킹이 지킬 때만 ${obj(word)} 둬요. 킹 둘만 남으면 비겨요.`,
     };
   return {
     status: `${limit}수 안에 메이트하지 못했어요.`,

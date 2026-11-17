@@ -12,6 +12,8 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { topic } from "@/lib/josa";
+
 import type { Command } from "../../input";
 import {
   COMMUTATOR_EXAMPLES,
@@ -425,7 +427,7 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
       </div>
       <Lead>
         「켤레」는 A B A' 꼴이에요. A로 조각을 B가 일하는 자리로 옮기고, B를
-        하고, A'로 되돌려 놓아요. 예를 들어 {conjugate("R", "U")}는 R로
+        하고, A'로 되돌려 놓아요. 예를 들어 {topic(conjugate("R", "U"))} R로
         앞-오른쪽 줄의 조각을 윗면으로 올려 U로 함께 돌린 뒤, R'로 오른쪽 면을
         되돌려 놓아요. 공식이 다루는 자리와 바꾸고 싶은 조각의 자리가 다를 때 이
         꼴을 써요. A는 바꾸고 싶은 조각을 공식이 다루는 자리로 옮기는 수
