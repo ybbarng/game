@@ -1640,7 +1640,7 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
   lifeSet(
     "live",
     "두 눈 만들기",
-    "눈이 둘이면 상대가 아무리 두어도 잡히지 않아요. 눈을 둘로 나누는 자리를 찾아요.",
+    "눈이 둘이면 상대가 아무리 두어도 잡히지 않아요. 무리 안의 빈 칸(눈 자리)을 둘로 나누는 자리를 찾아요.",
     LIVE,
   ),
   lifeSet(
@@ -1651,7 +1651,7 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
   ),
   shapeSet(
     "이름 있는 모양",
-    "직삼·곡삼·T자 네 집·오궁도화·매화육궁처럼 이름 있는 눈 모양은 급소 하나로 살고 죽어요. 급소를 먼저 차지해요.",
+    "직삼·곡삼·T자 네 집·오궁도화·뭉친 다섯 집·매화육궁처럼 이름 있는 눈 모양은 급소 하나로 살고 죽어요. 급소를 먼저 차지해요.",
     SHAPES,
   ),
   koFightSet(
@@ -1663,7 +1663,7 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
   koFightSet(
     "answer",
     "팻감 받기",
-    "내가 패를 따냈더니 상대가 팻감을 썼어요. 노리는 돌이 패에 걸린 돌보다 많으면 받아요.",
+    "내가 패를 따냈더니 상대가 팻감을 썼어요. 노리는 돌이 패를 지면 잃는 돌보다 많으면 받아요.",
     KO_ANSWERS,
   ),
   koFightSet(

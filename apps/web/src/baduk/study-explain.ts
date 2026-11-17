@@ -20,7 +20,7 @@ import {
   xyOf,
 } from "@game/baduk-engine";
 
-import { copula, obj, ro, subj, topic, wa } from "@/lib/josa";
+import { copula, hasBatchim, obj, ro, subj, topic, wa } from "@/lib/josa";
 
 import {
   BADUK_PUZZLE_SETS,
@@ -47,7 +47,22 @@ type Life = Extract<BadukPuzzle, { kind: "life" }>;
 const at = (name: string) => pointAt(name, PUZZLE_SIZE);
 const named = (p: number) => pointName(p, PUZZLE_SIZE);
 
-const COUNT = ["", "한", "두", "세", "네", "다섯", "여섯", "일곱", "여덟"];
+/** 셀 낱말. 열까지는 한글, 그 위는 숫자로 쓴다(한 문제 안에서 꼴이 섞이지 않게) */
+const COUNT = [
+  "",
+  "한",
+  "두",
+  "세",
+  "네",
+  "다섯",
+  "여섯",
+  "일곱",
+  "여덟",
+  "아홉",
+  "열",
+];
+/** 「네 번」·「12번」 */
+const times = (n: number) => (COUNT[n] ? `${COUNT[n]} 번` : `${n}번`);
 /** 「한 점」·「12점」 */
 const points = (n: number) => (COUNT[n] ? `${COUNT[n]} 점` : `${n}점`);
 /** 「세 수」·「12수」 */
@@ -152,6 +167,13 @@ function captureConcept(
 ): string[] {
   const size = groupOf(before, targetOf(puzzle)).stones.length;
   const firstMove = named(solutionOf(puzzle));
+  const koExit = (() => {
+    const placed = tryPlace(puzzleState(puzzle).board, solutionOf(puzzle), 1);
+    const exit = placed.ok
+      ? groupOf(placed.board, targetOf(puzzle)).liberties[0]
+      : undefined;
+    return exit === undefined ? null : named(exit);
+  })();
   const lines: Record<Capture["theme"], string[]> = {
     atari: [
       `${firstMove}에서 단수를 쳐요. 백이 넓은 쪽으로 달아날 길을 먼저 막아요.`,
@@ -162,16 +184,18 @@ function captureConcept(
       "백은 한쪽으로만 뻗을 수 있고, 끝내 판 끝이나 흑 돌에 막혀 잡혀요.",
     ],
     net: [
-      `${firstMove}: 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문).`,
-      "백이 어느 쪽으로 나와도 다음 단수에 잡혀요.",
+      `${firstMove}에 둬요. 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문).`,
+      "백이 어느 쪽으로 뻗어도 다음 단수에 잡혀요.",
     ],
     snapback: [
-      `${firstMove}: 일부러 한 점을 내줘요(먹여치기). 백 무리는 단수가 돼요.`,
+      `${firstMove}에 둬요. 일부러 한 점을 내줘요(먹여치기). 백 무리는 단수가 돼요.`,
       `백이 이 돌을 따내도 활로가 하나뿐이라, 흑이 ${firstMove}에 다시 두어 되따내요(환격).`,
     ],
     ko: [
-      `${firstMove}: 패를 따내며 단수를 쳐요.`,
-      "백은 바로 되따낼 수 없어요(같은 판 모양 금지). 한 번 다른 곳에 두어야 해서 달아날 틈이 없어요.",
+      `${firstMove}에 두어 패를 따내며 단수를 쳐요.`,
+      koExit
+        ? `백은 바로 되따낼 수 없고(같은 판 모양 금지), ${ro(koExit)} 뻗어도 활로가 하나뿐이라 다음 수에 따내요.`
+        : "백은 바로 되따낼 수 없어요(같은 판 모양 금지).",
     ],
     "long-ladder": [
       `${firstMove}에서 단수를 쳐 백을 판 끝까지 몰았어요(긴 축).`,
@@ -179,7 +203,7 @@ function captureConcept(
     ],
     "blocked-net": [
       `${(puzzle.breakers ?? []).join("·")} 백 돌이 축머리예요. 어느 쪽에서 단수를 쳐도 백이 뻗다가 축머리와 이어져 축으로는 못 잡아요.`,
-      `${firstMove}: 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문). 백이 달아나려고 뻗어도 흑이 막아 따내요.`,
+      `${firstMove}에 둬요. 바로 단수 치지 않고 한 칸 떨어져 길을 막아요(장문). 백이 달아나려고 뻗어도 흑이 막아 따내요.`,
     ],
     breaker: [
       `${puzzle.breaker ?? ""} 백 돌이 축머리예요. 그쪽으로 몰면 백이 이 돌과 이어져 활로가 늘고 빠져나가요.`,
@@ -197,16 +221,32 @@ function wrongSides(puzzle: Capture): number[] {
   );
 }
 
-/** 반대쪽에서 단수를 치면 백이 정답 자리로 뻗어 활로가 몇이 되나. 「D4에서 치면 C3으로 뻗어 활로가 3개로 늘어요.」 */
+/**
+ * 반대쪽에서 단수를 치면 어떻게 되나. 단수 방향은 백이 정답 자리로 뻗어 활로가 몇이 되는지(옆 백 돌과 이어지면 그것도),
+ * 축은 그쪽에서 몰면 축이 되지 않는다는 것(축 읽기 `ladderMoves`로 확인한다)
+ */
 function wrongSideLine(puzzle: Capture): string | null {
   const { board } = puzzleState(puzzle);
+  const target = targetOf(puzzle);
   const right = solutionOf(puzzle);
+  const startSize = groupOf(board, target).stones.length;
   for (const w of wrongSides(puzzle)) {
     const hit = tryPlace(board, w, 1);
     if (!hit.ok) continue;
-    const libs = libertiesAfterExtend(hit.board, right);
-    if (libs === null || libs < 2) continue;
-    return `반대쪽 ${named(w)}에서 치면 백이 ${ro(named(right))} 뻗어 활로가 ${ro(libsText(libs))} 늘어요.`;
+    const out = tryPlace(hit.board, right, 2);
+    if (!out.ok) continue;
+    const g = groupOf(out.board, right);
+    const libs = g.liberties.length;
+    if (puzzle.theme === "atari") {
+      if (libs < 2) continue;
+      const joined =
+        g.stones.length > startSize + 1 ? "옆 백 돌과 이어져 " : "";
+      return `반대쪽 ${named(w)}에서 치면 백이 ${ro(named(right))} 뻗어 ${joined}활로가 ${ro(libsText(libs))} 늘어요.`;
+    }
+    if (ladderMoves(board, 1, target, w) !== null) continue;
+    return libs >= 3
+      ? `반대쪽 ${named(w)}에서 치면 백이 ${ro(named(right))} 뻗어 활로가 ${ro(libsText(libs))} 늘고 빠져나가요.`
+      : `반대쪽 ${named(w)}에서 치면 백이 ${ro(named(right))} 뻗고, 그 뒤로 어느 쪽에서 단수를 쳐도 축이 이어지지 않아 빠져나가요.`;
   }
   return null;
 }
@@ -240,7 +280,7 @@ function captureFacts(puzzle: Capture, before: Board, move: number): string[] {
       push(wrongSideLine(puzzle));
       if (size > startSize)
         out.push(
-          `${named(move)}에서 백이 뻗은 돌까지 백 돌 ${size}개를 따냈어요.`,
+          `${named(move)}에 두어 뻗은 돌까지 백 돌 ${size}개를 따냈어요.`,
         );
       return out;
     }
@@ -251,7 +291,8 @@ function captureFacts(puzzle: Capture, before: Board, move: number): string[] {
         ? "판 끝 줄에 닿아"
         : "흑 돌에 막혀";
       out.push(
-        `${firstMove}에서 몰자 백은 ${grown}번 뻗어 ${subj(points(size))} 됐지만, ${wall} ${named(move)}에서 잡혔어요.`,
+        `${firstMove}에서 몰자 백은 ${times(grown)} 뻗었어요.`,
+        `${wall} 더 뻗을 곳이 없어, ${named(move)}에 두어 백 돌 ${size}개를 따냈어요.`,
       );
       push(wrongSideLine(puzzle));
       return out;
@@ -272,8 +313,8 @@ function captureFacts(puzzle: Capture, before: Board, move: number): string[] {
         }
       out.push(
         rightLen === null
-          ? `${firstMove}쪽 길에는 축머리가 없어 잡혀요.`
-          : `${firstMove}쪽 길에는 축머리가 없어 ${movesText(rightLen)} 만에 백 돌 ${size}개를 따냈어요.`,
+          ? `${firstMove} 쪽 길에는 축머리가 없어 잡혀요.`
+          : `${firstMove} 쪽 길에는 축머리가 없어 ${movesText(rightLen)} 만에 백 돌 ${size}개를 따냈어요.`,
       );
       return out;
     }
@@ -289,7 +330,7 @@ function captureFacts(puzzle: Capture, before: Board, move: number): string[] {
   }
 }
 
-/** 축이 막히면 장문: 축머리마다 어느 쪽 축을 막는지. 축머리를 치우면 그쪽 단수가 축이 된다 */
+/** 축이 막히면 장문: 축머리마다 어느 쪽 축을 깨는지. 축머리를 치우면 그쪽 단수가 축이 된다 */
 function breakerSidesLine(puzzle: Capture): string | null {
   const { board } = puzzleState(puzzle);
   const target = targetOf(puzzle);
@@ -300,13 +341,13 @@ function breakerSidesLine(puzzle: Capture): string | null {
     without[at(name)] = 0;
     const side = libs.find((l) => ladderMoves(without, 1, target, l) !== null);
     if (side === undefined) return null;
-    pairs.push(`${named(side)}에서 치는 축은 ${name}`);
+    pairs.push(`${named(side)}에서 치면 ${name} 축머리에`);
   }
   if (pairs.length !== 2) return null;
-  return `${pairs.join(", ")} 백 돌에 막혀요.`;
+  return `${pairs.join(", ")} 백이 닿아 축이 깨져요.`;
 }
 
-/** 장문 자리와 백이 나올 길: 장문 수가 활로 몇 곳에 붙었는지, 백이 나오면 흑이 어디로 막는지 */
+/** 장문 자리와 백이 뻗을 길: 장문 수가 백 돌·활로와 어떻게 닿는지, 백이 뻗으면 흑이 어디로 막는지 */
 function netLines(puzzle: Capture): string[] {
   const { board } = puzzleState(puzzle);
   const target = targetOf(puzzle);
@@ -315,33 +356,47 @@ function netLines(puzzle: Capture): string[] {
   const touching = libs.filter((l) =>
     neighbors(right, PUZZLE_SIZE).includes(l),
   );
-  const out: string[] = [];
+  const [tx, ty] = xyOf(target, PUZZLE_SIZE);
+  const [rx, ry] = xyOf(right, PUZZLE_SIZE);
+  const diagonal = Math.abs(tx - rx) === 1 && Math.abs(ty - ry) === 1;
   const libNames = libs.map(named).join("·");
-  out.push(
-    touching.length === libs.length
-      ? `${topic(named(right))} 백이 나올 두 자리 ${libNames}에 모두 붙은 자리예요.`
-      : `${topic(named(right))} 백 돌에서 한 칸 떨어져 ${libNames} 쪽 길을 함께 막는 자리예요.`,
-  );
+  const replies: { exit: number; answer: number }[] = [];
   const placed = tryPlace(board, right, 1);
-  if (!placed.ok) return out;
-  const replies: string[] = [];
-  for (const l of groupOf(placed.board, target).liberties.sort(
-    (a, b) => a - b,
-  )) {
-    const out1 = tryPlace(placed.board, l, 2);
-    if (!out1.ok) continue;
-    const answer = captureMoves(
-      out1.board,
-      1,
-      target,
-      Math.max(1, puzzle.within - 1),
-    )[0];
-    if (answer === undefined) continue;
-    replies.push(`${ro(named(l))} 나오면 ${named(answer)}`);
+  if (placed.ok)
+    for (const l of groupOf(placed.board, target).liberties.sort(
+      (a, b) => a - b,
+    )) {
+      const out1 = tryPlace(placed.board, l, 2);
+      if (!out1.ok) continue;
+      const answer = captureMoves(
+        out1.board,
+        1,
+        target,
+        Math.max(1, puzzle.within - 1),
+      )[0];
+      if (answer !== undefined) replies.push({ exit: l, answer });
+    }
+  const out: string[] = [];
+  if (touching.length === libs.length)
+    out.push(
+      diagonal
+        ? `${topic(named(right))} 백 돌과는 대각선으로 한 칸 떨어져 있고, 백이 뻗을 두 자리 ${libNames}에는 모두 붙어 있어요.`
+        : `${topic(named(right))} 백이 뻗을 두 자리 ${libNames}에 모두 붙어 있어요.`,
+    );
+  else {
+    // 활로에 붙지 않은 장문: 백이 뻗은 뒤 흑이 둘 자리를 미리 받쳐 준다
+    const backed = replies.find((r) =>
+      neighbors(right, PUZZLE_SIZE).includes(r.answer),
+    );
+    out.push(
+      backed
+        ? `${topic(named(right))} 백이 ${ro(named(backed.exit))} 뻗을 때 둘 ${named(backed.answer)}에 붙어, 그 돌을 미리 받쳐 주는 자리예요.`
+        : `${topic(named(right))} 백이 뻗어 갈 길 앞을 미리 막는 자리예요.`,
+    );
   }
   if (replies.length > 0)
     out.push(
-      `백이 ${replies.join(", ")}에 두어 ${movesText(puzzle.within)} 안에 따내요.`,
+      `백이 ${replies.map((r) => `${ro(named(r.exit))} 뻗으면 ${named(r.answer)}`).join(", ")}에 두어 ${movesText(puzzle.within)} 안에 따내요.`,
     );
   return out;
 }
@@ -379,7 +434,7 @@ function koCaptureFacts(puzzle: Capture): string[] {
   const taken = placed.captured.map(named).join("·");
   const g = groupOf(placed.board, target);
   const out = [
-    `${named(right)}에서 ${taken} 백 돌을 따내며 △ 백 ${obj(points(g.stones.length))} 단수로 몰아요. 백이 ${taken}에 바로 되따내면 같은 판 모양이 돼요.`,
+    `${named(right)}에 두어 ${taken} 백 돌을 따내며 △ 백 ${obj(points(g.stones.length))} 단수로 몰아요. 백이 ${taken}에 바로 되따내면 같은 판 모양이 되어 둘 수 없어요.`,
   ];
   const exit = g.liberties[0];
   if (exit !== undefined) {
@@ -436,22 +491,38 @@ function eyeSplitLines(puzzle: Life, owner: Stone): string[] {
   const { board } = puzzleState(puzzle);
   const area = puzzle.area.map(at);
   const vital = solutionOf(puzzle);
-  const total = area.filter((p) => board[p] === 0).length;
+  const enemyStone: Stone = owner === 1 ? 2 : 1;
   const mine = tryPlace(board, vital, owner);
-  const theirs = tryPlace(board, vital, owner === 1 ? 2 : 1);
+  const theirs = tryPlace(board, vital, enemyStone);
   const who = owner === 1 ? "흑" : "백";
   const enemy = owner === 1 ? "백" : "흑";
   const out: string[] = [];
   if (mine.ok) {
     const parts = emptyParts(mine.board, area);
-    const took = mine.captured.length;
-    const taking = took > 0 ? `안쪽 ${enemy} 돌 ${took}개를 따내며 ` : "";
+    const taken = [...mine.captured].sort((a, b) => a - b).map(named);
+    const taking =
+      taken.length > 0 ? `${taken.join("·")} ${enemy} 돌을 따내며 ` : "";
     if (parts.length >= 2) {
-      const split = `${subj(who)} ${named(vital)}에 두면 ${taking}눈 자리 ${subj(cells(total))} ${ro(partsText(parts))} 나뉘`;
+      const split = `${subj(who)} ${named(vital)}에 두면 ${taking}눈 자리가 ${ro(partsText(parts))} 나뉘`;
       out.push(
         owner === 1
           ? `${split}어요.`
           : `${split}니, 흑이 먼저 ${obj(named(vital))} 차지해요.`,
+      );
+    }
+    // 눈 자리 안에 남은 상대 돌: 활로가 하나뿐이면 주인이 그 자리에 두어 따낼 수 있다
+    const seen = new Set<number>();
+    for (const p of area) {
+      if (mine.board[p] !== enemyStone || seen.has(p)) continue;
+      const g = groupOf(mine.board, p);
+      for (const s of g.stones) seen.add(s);
+      const [lib] = g.liberties;
+      if (g.liberties.length !== 1 || lib === undefined) continue;
+      const capture = tryPlace(mine.board, lib, owner);
+      if (!capture.ok || capture.board[p] !== 0) continue;
+      const names = [...g.stones].sort((a, b) => a - b).map(named);
+      out.push(
+        `눈 자리 안의 ${names.join("·")} ${enemy} 돌은 활로가 ${named(lib)} 하나뿐이라, ${subj(who)} ${named(lib)}에 두면 따내요.`,
       );
     }
   }
@@ -461,31 +532,40 @@ function eyeSplitLines(puzzle: Life, owner: Stone): string[] {
     // 남은 눈 자리가 두 칸 이하 한 덩이면 두 눈으로 나눌 수 없다(세 칸 넘으면 이 말로는 모자라 쓰지 않는다)
     if (parts.length === 1 && rest !== undefined && rest.length <= 2)
       out.push(
-        `${subj(enemy)} 먼저 ${named(vital)}에 두면 남은 눈 자리 ${rest.map(named).join("·")} ${subj(cells(rest.length))} 한 덩이라 눈이 하나뿐이에요.`,
+        rest.length === 1
+          ? `${subj(enemy)} 먼저 ${named(vital)}에 두면 남은 눈 자리가 ${named(rest[0] as number)} 한 칸뿐이라 눈이 하나예요.`
+          : `${subj(enemy)} 먼저 ${named(vital)}에 두면 남은 눈 자리가 ${rest.map(named).join("·")} 두 칸뿐이라 두 눈으로 나눌 수 없어요.`,
       );
   }
   // 정답 말고 흑이 둘 수 있는 눈 자리는 모두 반대 결과다(life.test.ts `lifeWrongMovesFail`)
-  const others = area.filter(
-    (p) => p !== vital && board[p] === 0 && tryPlace(board, p, 1).ok,
-  );
+  const others = area
+    .filter((p) => p !== vital && board[p] === 0 && tryPlace(board, p, 1).ok)
+    .sort((a, b) => a - b)
+    .map(named);
   const result = owner === 1 ? "흑이 잡혀요" : "백이 살아요";
-  if (others.length === 1)
+  if (others.length > 0)
     out.push(
-      `${named(vital)} 말고 흑이 둘 수 있는 눈 자리는 ${named(others[0] as number)} 하나인데, 거기에 두면 ${result}.`,
-    );
-  else if (others.length > 1)
-    out.push(
-      `${named(vital)} 말고 흑이 둘 수 있는 눈 자리 ${others.map(named).join("·")} 가운데 어디에 두어도 ${result}.`,
+      others.length <= 2
+        ? `${orText(others)}에 두면 ${result}.`
+        : `${others.join("·")} 가운데 어디에 두어도 ${result}.`,
     );
   // 나뉘는 모양을 짚지 못한 판(눈 자리가 한 덩이로 남는 판)은 급소가 눈 자리 몇 칸의 어디인지부터 말한다
   if (out.length < 2)
     out.unshift(
       `${named(vital)}: ${who} 눈 자리 ${area
         .filter((p) => board[p] === 0)
+        .sort((a, b) => a - b)
         .map(named)
-        .join("·")} ${cells(total)} 가운데 급소예요.`,
+        .join("·")} 가운데 급소예요.`,
     );
   return out;
+}
+
+/** 「C9나 B8」·「A9」 */
+function orText(names: readonly string[]): string {
+  const [a, b] = names;
+  if (b === undefined) return a ?? "";
+  return `${a}${hasBatchim(a ?? "") ? "이나" : "나"} ${b}`;
 }
 
 /** 같은 묶음에서 이 문제보다 앞에 같은 모양 문제가 있나 */
@@ -518,7 +598,7 @@ function explainShape(puzzle: Life, shape: LifeShape, first: boolean) {
     puzzle.goal === "live"
       ? [
           head,
-          `${move}에 두면 눈 자리가 떨어진 두 눈 이상으로 나뉘어 살아요.`,
+          `${move}에 두면 눈 자리가 떨어진 두 눈으로 나뉘어 살아요.`,
           "백이 먼저 이 급소를 차지하면 한 눈뿐이라 잡혀요.",
         ]
       : [
@@ -541,13 +621,13 @@ function explainLife(
   if (puzzle.goal === "live")
     return [
       took > 0
-        ? `${named(move)}: 안쪽 백 돌을 따내며 눈 자리를 둘로 나눠요.`
-        : `${named(move)}: 눈 자리를 둘로 나눠요.`,
+        ? `${named(move)}에 두어 안쪽 백 돌을 따내며 눈 자리를 둘로 나눠요.`
+        : `${named(move)}에 두어 눈 자리를 둘로 나눠요.`,
       "떨어진 두 눈이 있으면 백은 어느 눈에도 들어올 수 없어 잡히지 않아요.",
       "다른 자리에 두면 백이 먼저 그 자리를 차지해 한 눈뿐이 돼요.",
     ];
   return [
-    `${named(move)}: 백 눈 자리의 급소에 둬요.`,
+    `${named(move)}에 둬요. 백 눈 자리의 급소예요.`,
     "백은 눈을 둘로 나눌 수 없어 한 눈뿐이에요. 결국 따낼 수 있어요.",
     "다른 자리에 두면 백이 그 자리를 차지해 두 눈을 만들어요.",
   ];
@@ -570,7 +650,7 @@ function koFightConcept(puzzle: KoFight): string[] {
   if (puzzle.mode === "connect")
     return [
       `백 ${topic(threat)} 팻감이에요. 흑 ${subj(points(size))} 단수가 됐어요.`,
-      `패를 지면 흑 ${obj(points(loss))} 잃어요. 패에 걸린 한 점에, 백이 되따내면 함께 단수가 되어 살릴 수 없는 ${obj(points(loss - 1))} 더한 수예요.`,
+      `패를 지면 흑 ${obj(points(loss))} 잃어요. 패에 걸린 한 점과, 백이 되따내면 함께 단수가 되어 살릴 수 없는 ${obj(points(loss - 1))} 더한 거예요.`,
       `노리는 돌(${points(size)})이 패를 지면 잃는 돌(${points(loss)})보다 적어요. 그래서 ${ko}에 이어 패를 끝내고, 노린 돌은 내줘요.`,
     ];
   return [
@@ -592,7 +672,7 @@ function koFightFacts(puzzle: KoFight): string[] {
     return [
       lib === undefined
         ? `${puzzle.solution}에 두면 백 ${subj(points(size))} 단수가 돼요.`
-        : `${puzzle.solution}에 두면 백 ${subj(points(size))} 단수가 되어, 받지 않으면 흑이 ${named(lib)}에서 따내요.`,
+        : `${puzzle.solution}에 두면 백 ${subj(points(size))} 단수가 되어, 받지 않으면 흑이 ${named(lib)}에 두어 따내요.`,
       `백이 ${puzzle.reply ?? ""}에 받은 사이 ${ko}에 되따냈어요.`,
     ];
   }
@@ -600,12 +680,12 @@ function koFightFacts(puzzle: KoFight): string[] {
   const loss = koLossOf(puzzle);
   if (puzzle.mode === "connect")
     return [
-      `백 ${threat}의 팻감이 노리는 흑 돌은 ${points(size)}, 패를 지면 잃는 흑 돌은 ${subj(points(loss))}에요.`,
-      `${ko}에 이어 ${obj(points(loss))} 지키고, ${topic(points(size))} 내줘요.`,
+      `백 ${threat}의 팻감이 노리는 흑 돌은 ${points(size)}, 패를 지면 잃는 흑 돌은 ${copula(points(loss))}.`,
+      `패 자리 ${ko}에 이어 패를 끝내고, ${obj(points(loss))} 지키는 대신 ${topic(points(size))} 내줘요.`,
     ];
   return [
     `백 ${threat}의 팻감에 흑 ${subj(points(size))} 단수가 됐어요.`,
-    `패를 지면 잃는 ${points(loss)}보다 많은 ${obj(points(size))} ${puzzle.solution}에 이어 지켰어요.`,
+    `${puzzle.solution}에 두어 받아, 패를 지면 잃는 ${points(loss)}보다 많은 ${obj(points(size))} 살렸어요.`,
   ];
 }
 
@@ -678,8 +758,14 @@ function spotWhat(
   s: { label: string; move: number; spot: readonly number[] },
 ): string {
   const black = tryPlace(board, s.move, 1);
-  if (black.ok && black.captured.length > 0)
-    return `${spotName(s)}에 흑이 두면 단수인 백 ${obj(points(black.captured.length))} 따내요.`;
+  if (black.ok && black.captured.length > 0) {
+    const taken = [...black.captured].sort((a, b) => a - b).map(named);
+    // 백이 먼저 그 자리에 두면 단수인 돌을 이어 살린다(백이 고르는 수가 같은 자리일 때만 말한다)
+    const saves = whiteSpotMove(board, s.spot) === s.move;
+    return saves
+      ? `${spotName(s)}에 흑이 두면 단수인 ${taken.join("·")} 백 돌을 따내고, 백이 먼저 두면 그 돌을 이어 살려요.`
+      : `${spotName(s)}에 흑이 두면 단수인 ${taken.join("·")} 백 돌을 따내요.`;
+  }
   const empty = s.spot.filter((p) => board[p] === 0);
   if (empty.length === 1)
     return `${topic(spotName(s))} 흑 돌과 백 돌 사이에 낀 빈 점 하나예요.`;
@@ -708,7 +794,7 @@ function endgameConcept(puzzle: Endgame): string[] {
           : `${wa(other.label)} 같은 ${mine.size}점짜리지만`;
       return [
         `${sol}에 두면 백 ${subj(points(mine.mine.stones))} 단수가 돼요. 백이 받지 않으면 흑이 따내니 백이 받아야 해요. 그래서 선수예요.`,
-        `${compare}, 선수라 먼저 뒀어요. 백이 받은 사이 ${other.label}도 흑이 먼저 뒀어요.`,
+        `${compare}, 선수라 먼저 뒀어요. 백이 받은 사이 ${other.label}도 흑이 뒀어요.`,
         `${other.label}부터 두면 후수라 차례가 백에게 넘어가고, 백이 ${mine.label}에 먼저 둬요.`,
       ];
     }
@@ -728,7 +814,7 @@ function endgameFacts(puzzle: Endgame): string[] {
   switch (puzzle.mode) {
     case "bigger":
       return [
-        `${spotWhat(board, mine)} 그래서 ${mine.size}점짜리예요.`,
+        `${spotWhat(board, mine)} 누가 먼저 두느냐에 따라 점수 차가 ${mine.size}점 달라져 ${mine.size}점짜리예요.`,
         `${topic(spotName(big))} ${big.size}점짜리라 ${subj(mine.label)} ${mine.size - big.size}점 더 커요.`,
       ];
     case "sente":
