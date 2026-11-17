@@ -34,15 +34,14 @@ enum NativeWindowShot {
       records.watch(first)
       ok = shoot(records.window, name: "native-records-replay", dir: dir) && ok
     }
-    // 티어표 진열(docs/52 5-11): 내 티어를 보는 때, 사다리에서 챌린저를 고른 때, 혼자 맞추기 기록이 없을 때
+    // 티어표 진열(docs/52 5-11): 내 티어를 보는 때, 사다리에서 챌린저를 고른 때, Cubie 기록이 없을 때
     let tiers = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok
     tiers.page.pick(9)
     ok = shoot(tiers.window, name: "native-tiers-pick", dir: dir, fullHeight: true) && ok
-    var noSolo = values
-    noSolo[TierSheet.recordsKey] = nil
-    noSolo[TierSheet.bestFiveKey] = nil
-    let empty = NativeTiersWindow(store: MemoryStore(noSolo), math: RustTierMath(), n: book.n)
+    var noRecords = values
+    noRecords[MiniBook.key] = nil
+    let empty = NativeTiersWindow(store: MemoryStore(noRecords), math: RustTierMath(), n: book.n)
     ok = shoot(empty.window, name: "native-tiers-none", dir: dir, fullHeight: true) && ok
     let settingsWindow = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
     ok = shoot(settingsWindow.window, name: "native-settings", dir: dir, fullHeight: true) && ok

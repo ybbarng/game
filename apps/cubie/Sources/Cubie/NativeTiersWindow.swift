@@ -4,9 +4,9 @@ import CubieNativeC
 
 /// 네이티브 티어표 창(docs/52 5-8·5-11): 사이트 티어 화면(`/cube/tiers`, `TiersApp.tsx`·`TierShowcase.tsx`·`TierTable.tsx`)과
 /// 같은 글·차례·동작. 크기 단추, 진열(위쪽 큰 칸에 내 티어 엠블럼을 천천히 흔들고 다음 티어까지 줄일 시간, 열 티어 사다리),
-/// 티어 매기는 법, 크기별 기준표(구간 상한·WCA 경기자 비율), WCA 출처. 내 티어는 사이트처럼 이 기기의 혼자 맞추기 기록으로.
-/// 표 값은 코어가 사이트 표에서 만든 자료(`cubie_tier_table`), 엠블럼은 앱에 묶은 그림이다. 사이트로 가는 글(「← 큐브」·
-/// 「혼자 맞추기」·WCA 주소)은 기본 브라우저로 연다
+/// 티어 매기는 법, 크기별 기준표(구간 상한·WCA 경기자 비율), WCA 출처. 내 티어는 기록 창·메뉴 프로필 칸과 같은 Cubie 기록으로
+/// (`TierSheet.mine`, 사이트 `?records=cubie`). 표 값은 코어가 사이트 표에서 만든 자료(`cubie_tier_table`), 엠블럼은 앱에
+/// 묶은 그림이다. 사이트로 가는 글(「← 큐브」·WCA 주소)은 기본 브라우저로 연다
 @MainActor
 final class NativeTiersWindow: NativeSheetWindow {
   static let size = NSSize(width: 760, height: 820)
@@ -35,8 +35,7 @@ final class NativeTiersWindow: NativeSheetWindow {
     n = TierSheet.sizes.contains(size) ? size : 3
     let text = NativeCore.string { cubie_tier_table(UInt32(n), $0, $1) }
     guard let table = TierSheet.parse(n: n, text: text) else { return }
-    let solo = TierSheet.soloRecords(store: store, n: n)
-    let mine = math.myTier(n: n, records: solo.records, bestFive: solo.bestFive)
+    let mine = TierSheet.mine(store: store, math: math, n: n)
     page.show(table: table, mine: mine)
     page.frame.size.width = scroll.contentSize.width
     page.needsLayout = true
@@ -67,12 +66,10 @@ final class TiersPageView: NSView {
   private let heroName = NSTextField(labelWithString: "")
   private let heroLine = NSTextField(labelWithString: "")
   private let heroSub = NSTextField(labelWithString: "")
-  private let noneLine = NUI.label(TierSheet.noneBefore.trimmingCharacters(in: .whitespaces), size: 14, color: NUI.white(0.7))
-  private let noneLink = Chip(TierSheet.noneLink, look: Chip.Look(text: NUI.color(NUI.Hex.sky300), size: 14, padX: 0))
-  private let noneAfter = NUI.label(TierSheet.noneAfter, size: 14, color: NUI.white(0.7))
+  private let noneLine = NUI.paragraph(TierSheet.none, size: 14, color: NUI.white(0.7), lineHeight: 20)
   private let nextBox = InfoBox()
   private let pickedBox = InfoBox()
-  private let device = NUI.label(TierSheet.deviceOnly, color: NUI.white(0.5))
+  private let device = NUI.paragraph(TierSheet.deviceOnly, color: NUI.white(0.5), lineHeight: 16)
   // 진열: 사다리
   let ladder = TierLadderView()
   private let sizeTitle = NUI.label("", size: 16, weight: .semibold)
@@ -85,7 +82,6 @@ final class TiersPageView: NSView {
   init() {
     super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size))
     back.action = { NUI.openSite("/cube") }
-    noneLink.action = { NUI.openSite("/cube/solo") }
     for v in [back, title, heroBox, ladder, intro1, intro2, sizeTitle, note, grid, footLine, foot1, foot2] as [NSView] {
       addSubview(v)
     }
@@ -118,7 +114,7 @@ final class TiersPageView: NSView {
 
   /// 위쪽 큰 칸 안의 것들(테두리 상자 위에 겹쳐 놓는다)
   private var heroParts: [NSView] {
-    [hero, pips, heroName, heroLine, heroSub, noneLine, noneLink, noneAfter, nextBox, pickedBox, device]
+    [hero, pips, heroName, heroLine, heroSub, noneLine, nextBox, pickedBox, device]
   }
 
   @objc private func openCredit() {
@@ -187,7 +183,7 @@ final class TiersPageView: NSView {
     pips.count = st.pips ?? 0
     let row = table.rows.indices.contains(st.hero) ? table.rows[st.hero] : nil
     let none = mine == nil && st.picked == nil
-    for v in [noneLine, noneLink, noneAfter] as [NSView] { v.isHidden = !none }
+    noneLine.isHidden = !none
     heroName.isHidden = none
     heroLine.isHidden = none
     heroSub.isHidden = true
@@ -216,7 +212,7 @@ final class TiersPageView: NSView {
           text(TierShowcase.until + " ", 14),
           text(MiniBook.formatMs(next.gapMs) + "초", 14, .semibold, .white, mono: true),
         ]),
-        line2: text("Ao5 \(TierSheet.cutText(next.cutMs / 1000)) 이하", 12, .regular, NUI.white(0.5)))
+        line2: text(TierShowcase.cutLine(next.cutMs / 1000), 12, .regular, NUI.white(0.5)))
     }
     pickedBox.isHidden = !(st.picked != nil && mine != nil)
     if let mine, st.picked != nil {
@@ -257,8 +253,7 @@ final class TiersPageView: NSView {
     let rw = w - rx - 16
     var blocks: [(NSView, CGFloat)] = []
     if !noneLine.isHidden {
-      blocks.append((noneLine, 20))
-      blocks.append((noneLink, 20))
+      blocks.append((noneLine, NUI.height(noneLine, width: rw)))
     } else {
       let nameH: CGFloat = 32
       var h = nameH + 20
@@ -267,7 +262,7 @@ final class TiersPageView: NSView {
     }
     if !nextBox.isHidden { blocks.append((nextBox, nextBox.height)) }
     if !pickedBox.isHidden { blocks.append((pickedBox, pickedBox.height)) }
-    blocks.append((device, 16))
+    blocks.append((device, NUI.height(device, width: rw)))
     let rightH = blocks.map(\.1).reduce(0, +) + CGFloat(blocks.count - 1) * 12
     let boxH = max(leftH, rightH) + 32
     heroBox.frame = NSRect(x: x0, y: y, width: w, height: boxH)
@@ -281,14 +276,6 @@ final class TiersPageView: NSView {
         heroName.frame = NSRect(x: rx, y: ry, width: rw, height: 32)
         heroLine.frame = NSRect(x: rx, y: ry + 32, width: rw, height: 20)
         heroSub.frame = NSRect(x: rx, y: ry + 52, width: rw, height: 16)
-      case noneLine:
-        noneLine.frame = NSRect(x: rx, y: ry, width: rw, height: 20)
-      case noneLink:
-        let lf = noneLink.fit
-        noneLink.frame = NSRect(x: rx, y: ry, width: lf.width, height: 20)
-        noneAfter.frame = NSRect(x: noneLink.frame.maxX, y: ry, width: NUI.width(noneAfter), height: 20)
-      case device:
-        device.frame = NSRect(x: rx, y: ry, width: rw, height: 16)
       default:
         v.frame = NSRect(x: rx, y: ry, width: rw, height: h)
       }

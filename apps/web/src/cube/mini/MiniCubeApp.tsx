@@ -264,7 +264,7 @@ function MiniTiers({
         <h2 className="font-bold text-sm">티어</h2>
         <span className="text-white/60">Cubie 기록 기준 · 최고 Ao5</span>
         <a
-          href={`/cube/tiers?n=${n}`}
+          href={`/cube/tiers?n=${n}&records=cubie`}
           className="ml-auto text-white/70 underline-offset-2 hover:underline"
         >
           티어표

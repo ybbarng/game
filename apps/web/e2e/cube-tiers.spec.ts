@@ -195,7 +195,7 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "14초",
   );
   await expect(page.locator("[data-cube-tier-mine-box]")).toContainText(
-    "아직 Ao5가 없습니다",
+    "아직 5판 평균이 없어요",
   );
   await expect(page.locator("[data-cube-tier-mine]")).toHaveCount(0);
   // 진열: 기록이 없으면 내 티어 칸은 처음 얻을 아이언을 잠긴 채로 보이고, 다음 티어 칸은 없다
@@ -266,7 +266,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   const next = page.locator("[data-cube-next-tier]");
   await expect(next).toHaveAttribute("data-cube-next-tier", "master");
   await expect(next.locator("[data-cube-next-gap]")).toHaveText("3.40초");
-  await expect(next).toContainText("Ao5 10초 이하");
+  await expect(next).toContainText("5판 평균 10초 이하");
   // 정지 그림: 내 티어(3D 대신) + 다음 티어
   await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 2);
   // 사다리: 다이아몬드가 내 칸이고 처음 보고 있는 칸이라 그 칸만 제 밝기, 나머지 아홉은 같은 중간 밝기
@@ -310,7 +310,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   // 다른 크기는 아직 없다
   await page.locator("[data-cube-tier-size='4']").click();
   await expect(page.locator("[data-cube-tier-mine-box]")).toContainText(
-    "아직 Ao5가 없습니다",
+    "아직 5판 평균이 없어요",
   );
 
   // 혼자 맞추기 기록 칸: 지금 티어, 누르면 그 크기 티어표
@@ -329,6 +329,79 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   await expect(page).toHaveURL(/\/cube\/tiers\?n=3$/);
   await expect(page.locator("[data-cube-my-tier]")).toHaveText("다이아몬드 IV");
 });
+
+/**
+ * 2026-11-18 사용자 기록(Cubie 3×3 11판, 기록 창은 최고 5판 평균 2:35.09 = 브론즈 II). 1번과 7~11번은 사용자 스크린샷의
+ * 시간이고, 2~6번은 그 사이를 채운 느린 판이다(최고 5판 평균은 7~11번에서 나온다)
+ */
+const USER_3X3 = [
+  508_450, 460_000, 415_000, 370_000, 330_000, 290_000, 249_710, 186_830,
+  123_810, 139_800, 138_650,
+];
+
+/** Cubie 기록(`cube.mini.v1`)만 넣는다. 사이트 혼자 맞추기 기록은 없다 */
+async function seedCubieRecords(page: Page) {
+  await page.addInitScript((times) => {
+    if (localStorage.getItem("cube.mini.v1")) return;
+    const list = times.map((ms, i) => ({
+      at: Date.UTC(2026, 10, 10 + Math.floor(i / 2), 12),
+      no: i + 1,
+      n: 3,
+      mode: "solo",
+      ms,
+      penalty: 0,
+      moves: 120,
+      scramble: "R U R' U'",
+    }));
+    list.reverse();
+    localStorage.setItem(
+      "cube.mini.v1",
+      JSON.stringify({
+        version: 1,
+        n: 3,
+        mirror: true,
+        records: { 3: list },
+        best5: {},
+      }),
+    );
+  }, USER_3X3);
+}
+
+test(
+  "Cubie 창(records=cubie)은 Cubie 기록으로 티어를 매긴다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await no3d(page);
+    await seedCubieRecords(page);
+    await page.goto("/cube/tiers?n=3&records=cubie");
+    const box = page.locator("[data-cube-tier-mine-box]");
+    await expect(page.locator("[data-cube-my-tier]")).toHaveText("브론즈 II");
+    await expect(box).toContainText("내 최고 5판 평균 2:35.09");
+    await expect(page.locator("[data-cube-tier-basis]")).toHaveText(
+      "Cubie 기록 기준이에요. 기록은 이 기기에만 저장돼요.",
+    );
+    await expect(page.locator("[data-cube-tier-mine]")).toHaveAttribute(
+      "data-cube-tier-row",
+      "bronze",
+    );
+    await shot(page, "tiers-cubie", info.project.name);
+    // 크기를 바꿔도 Cubie 기록으로(주소에 남는다)
+    await page.locator("[data-cube-tier-size='4']").click();
+    await expect(page).toHaveURL(/records=cubie/);
+    await expect(page.locator("[data-cube-tier-none]")).toHaveText(
+      "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.",
+    );
+    // 브라우저의 사이트 티어 화면은 사이트 혼자 맞추기 기록 그대로(Cubie 기록을 섞지 않는다)
+    await page.goto("/cube/tiers?n=3");
+    await expect(page.locator("[data-cube-my-tier]")).toHaveCount(0);
+    await expect(page.locator("[data-cube-tier-basis]")).toHaveAttribute(
+      "data-cube-tier-basis",
+      "solo",
+    );
+  },
+);
 
 test("없앤 엠블럼 미리보기 주소로 들어오면 티어 화면으로 간다", {
   tag: "@only-desktop",

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { miniTier } from "../mini/store";
 import { loadBestFive, loadRecords } from "../records";
 import { EmblemStill } from "./EmblemStill";
 import { type MyTier, myTier, tierName } from "./rank";
@@ -38,13 +39,44 @@ export function cutText(sec: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
-/** 이 기기의 크기 `n` 혼자 맞추기 최고 티어(기록이 바뀌면 `version`을 바꿔 다시 읽는다) */
-export function useMyTier(n: number, version: unknown = 0): MyTier | null {
+/**
+ * 티어를 매기는 기록: 사이트 혼자 맞추기(`solo`), Cubie 기록(`cubie`, 미니 모드 `mini/store.ts`). Cubie 앱이 여는 사이트
+ * 창은 주소에 `records=cubie`를 붙여 앱의 기록 창·메뉴 프로필 칸과 같은 기록으로 센다(2026-11-18)
+ */
+export type TierBasis = "solo" | "cubie";
+
+/** 주소의 `?records=cubie`면 Cubie 기록, 아니면 혼자 맞추기 */
+export function basisFromSearch(search: string): TierBasis {
+  try {
+    return new URLSearchParams(search).get("records") === "cubie"
+      ? "cubie"
+      : "solo";
+  } catch {
+    return "solo";
+  }
+}
+
+/** 그 기록으로 센 크기 `n`의 최고 티어 */
+export function loadMyTier(
+  n: number,
+  basis: TierBasis = "solo",
+): MyTier | null {
+  return basis === "cubie"
+    ? miniTier(n)
+    : myTier(n, loadRecords("solo", n), loadBestFive(n));
+}
+
+/** 이 기기의 크기 `n` 최고 티어(기록이 바뀌면 `version`을 바꿔 다시 읽는다) */
+export function useMyTier(
+  n: number,
+  version: unknown = 0,
+  basis: TierBasis = "solo",
+): MyTier | null {
   const [mine, setMine] = useState<MyTier | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: version은 다시 읽을 때를 알리는 값
   useEffect(() => {
-    setMine(myTier(n, loadRecords("solo", n), loadBestFive(n)));
-  }, [n, version]);
+    setMine(loadMyTier(n, basis));
+  }, [n, version, basis]);
   return mine;
 }
 
@@ -86,7 +118,7 @@ export function TierTable({ n, mine }: { n: number; mine?: MyTier | null }) {
       className="w-full table-fixed border-separate border-spacing-y-1 text-sm tabular-nums"
     >
       <caption className="sr-only">
-        {n}×{n} 티어 기준(최고 Ao5가 칸의 시간 이하면 그 구간)
+        {n}×{n} 티어 기준(최고 5판 평균이 칸의 시간 이하면 그 구간)
       </caption>
       <thead className="text-white/50 text-xs">
         <tr>

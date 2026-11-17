@@ -69,7 +69,8 @@ struct TierShowcaseTests {
   }
 
   @Test func textsLikeTheSite() {
-    #expect(TierShowcase.cutLine(6.5) == "Ao5 6.5초 이하")
+    // 2026-11-18 「Ao5」를 처음 보는 사람도 알게 「5판 평균」으로(사이트 진열과 같은 글)
+    #expect(TierShowcase.cutLine(6.5) == "5판 평균 6.5초 이하")
     #expect(TierShowcase.cutLine(.infinity) == "다 맞춤")
     #expect(TierShowcase.divisionsLine([60, 52, 46, 40]) == "IV 1:00 · III 52초 · II 46초 · I 40초")
     #expect(TierShowcase.divisionsLine([6.5]) == nil)
