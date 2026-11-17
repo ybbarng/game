@@ -18,6 +18,7 @@ import {
   targetOf,
 } from "../src/baduk/study";
 import { useTestSpeed } from "./fast";
+import { slowCpu, stopFrames, watchFrames } from "./frames";
 import { expect, type Page, ready, test } from "./test";
 import { linesBreakAtSpaces } from "./word-wrap";
 
@@ -1051,3 +1052,100 @@ test("바둑 초고수: 옵션에서 고르고, 생각하는 동안 「생각하
   // 계산은 웹 워커에서 돌아 화면이 멈추지 않고, 컴퓨터 수가 오기 전에 상태 줄이 먼저 바뀐다.
   expect(seen).toContain("컴퓨터가 생각하는 중…");
 });
+
+/** 초고수 중반 시험의 판 씨앗(주소 `?seed=`) */
+const MID_SEED = 20261118;
+
+/** 9줄 자리를 가운데에서 가까운 차례로(1선은 뺀다). 같은 거리는 이름 차례 */
+const NEAR_CENTER = Array.from({ length: SIZE * SIZE }, (_, i) => ({
+  x: i % SIZE,
+  y: Math.floor(i / SIZE),
+}))
+  .filter(({ x, y }) => x > 0 && y > 0 && x < SIZE - 1 && y < SIZE - 1)
+  .map(({ x, y }) => ({
+    name: `${COLUMNS[x]}${SIZE - y}`,
+    far: Math.max(Math.abs(x - 4), Math.abs(y - 4)),
+  }))
+  .sort((a, b) => a.far - b.far || a.name.localeCompare(b.name))
+  .map((p) => p.name);
+
+/**
+ * 빈 이웃이 있는 빈 자리 하나에 흑을 두고 컴퓨터 답을 기다린다. 빈 이웃이 있으면 스스로 단수도 패도 아니라
+ * 늘 둘 수 있다. 판 씨앗을 고정하면 컴퓨터 수도 같아 언제 돌려도 같은 판이 된다
+ */
+async function playNearCenter(page: Page, touch: boolean) {
+  const taken = new Set(
+    await stones(page).evaluateAll((els) =>
+      els.map((el) => el.getAttribute("data-point")),
+    ),
+  );
+  const empty = (name: string) => !taken.has(name);
+  const name = NEAR_CENTER.find((p) => {
+    if (!empty(p)) return false;
+    const x = COLUMNS.indexOf(p[0] as string);
+    const row = Number(p.slice(1));
+    return [
+      [x - 1, row],
+      [x + 1, row],
+      [x, row - 1],
+      [x, row + 1],
+    ].some(([nx, ny]) => empty(`${COLUMNS[nx as number]}${ny}`));
+  });
+  if (!name) throw new Error("둘 곳이 없다");
+  await placeAt(page, name, touch);
+  // 쉬면 상태 줄이 「상대가 쉬었어요」다. 둘 다 내 차례다.
+  await expect(page.getByRole("status")).toContainText(
+    /내 차례|상대가 쉬었어요/,
+    { timeout: 30_000 },
+  );
+}
+
+test(
+  "바둑 초고수: 중반까지 두어도 휴대폰에서 화면이 굳지 않는다(CPU 4배 느리게, 워커 계산)",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 주소 씨앗으로 판을 정해 언제 돌려도 같은 판이 되게 한다(컴퓨터는 판 씨앗의 난수만 쓴다).
+    // Math.random을 덮지 않는다(효과음이 기기마다 다른 횟수로 불러 씨앗이 흔들린다, e2e-math-random.test.ts).
+    await page.goto(`/baduk?seed=${MID_SEED}`);
+    await startSolo(page, "초고수");
+    await expect(page.getByRole("status")).toContainText("내 차례");
+    // 옵션 화면을 오가도 주소 씨앗이 남아 이 판이 그 씨앗으로 열렸다(이어하기 저장본의 씨앗).
+    await playNearCenter(page, true);
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem("baduk-save") ?? "{}").seed,
+      ),
+    ).toBe(MID_SEED);
+    // 중반까지: 내 수 여섯 개(두 편 합 열두 수, 9줄 판의 15%)를 보통 속도로 둔다.
+    for (let i = 1; i < 6; i++) await playNearCenter(page, true);
+    // 휴대폰처럼 CPU를 4배 느리게 하고, 네 수 동안 화면 스레드의 긴 작업(50ms 넘는 일)과 프레임 간격을 잰다.
+    await page.evaluate(() => {
+      const w = window as unknown as { __long: number[] };
+      w.__long = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries())
+          w.__long.push(Math.round(e.duration));
+      }).observe({ type: "longtask" });
+    });
+    await slowCpu(page, 4);
+    let maxGap = 0;
+    for (let i = 0; i < 4; i++) {
+      // 컴퓨터는 내 수가 들어가자마자 생각을 시작하니 내 수 전부터 잰다.
+      await watchFrames(page);
+      await playNearCenter(page, true);
+      maxGap = Math.max(maxGap, (await stopFrames(page)).maxGap);
+    }
+    const long = await page.evaluate(
+      () => (window as unknown as { __long: number[] }).__long,
+    );
+    await slowCpu(page, 1);
+    const note = `중반 CPU 4배: 가장 긴 프레임 간격 ${maxGap}ms, 긴 작업 ${long.length}개 가장 긴 ${Math.max(0, ...long)}ms, 돌 ${await stones(page).count()}개`;
+    info.annotations.push({ type: "frames", description: note });
+    console.info(`[바둑 초고수] ${note}`);
+    await page.screenshot({ path: info.outputPath("baduk-master-mid.png") });
+    // 컴퓨터 수는 워커에서 세니 화면 스레드는 돌을 그리는 일만 한다. 화면 스레드에서 세면 이 맥에서 긴 작업이
+    // 730ms 남짓 생긴다(2026-11-18). CI 기기 속도에 흔들리지 않게 넉넉히 400ms로 가린다.
+    expect(maxGap).toBeLessThan(400);
+    expect(Math.max(0, ...long)).toBeLessThan(400);
+  },
+);
