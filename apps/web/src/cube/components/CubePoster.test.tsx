@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
@@ -20,6 +20,25 @@ import {
   SCENE_CUBIE_RADIUS,
   SCENE_STICKER,
 } from "./cube-poster-art";
+
+declare global {
+  interface ImportMeta {
+    glob<T>(
+      pattern: string | string[],
+      options: { query: "?raw"; import: "default"; eager: true },
+    ): Record<string, T>;
+  }
+}
+
+// 3D 장면 코드는 import.meta.glob(?raw)으로 글로만 읽는다(three를 불러오지 않는다). 모듈 그래프에 잡혀
+// cube-view.ts가 바뀌면 `vitest --changed`가 이 시험을 돈다
+const CUBE_VIEW_SOURCE = Object.values(
+  import.meta.glob<string>("../view/cube-view.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+)[0] as string;
 
 const W = 192;
 const H = 160;
@@ -88,7 +107,7 @@ describe("비스듬한 큐브 그림", () => {
   });
 
   it("3D 장면(cube-view.ts)과 같은 카메라·조각 값을 쓴다", () => {
-    const src = readFileSync(join(__dirname, "../view/cube-view.ts"), "utf8");
+    const src = CUBE_VIEW_SOURCE;
     expect(src).toContain(`const DEFAULT_YAW = ${SCENE_CAMERA.yaw};`);
     expect(src).toContain(`const DEFAULT_PITCH = ${SCENE_CAMERA.pitch};`);
     expect(src).toContain(`PerspectiveCamera(${SCENE_CAMERA.fov},`);
@@ -121,6 +140,7 @@ describe("첫 화면 대기 그림 고르기", () => {
     expect(heroPosterSrc({ ...base, colors: custom })).toBeNull();
   });
 
+  // 그림 파일은 vitest.config.ts forceRerunTriggers(public/cube/hero)로 바뀌면 전부 돈다
   it("크기·색 묶음마다 이미지가 있다", () => {
     const dir = join(__dirname, "../../../public/cube/hero");
     for (const n of HERO_SIZES)
