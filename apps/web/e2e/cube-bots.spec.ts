@@ -93,11 +93,11 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
   await page.locator("[data-cube-vs-size]").selectOption("3");
   // 기록이 없으니 「내 실력에 맞춤」은 초보 목표(약 1분)
   for (const [value, label, time] of [
-    ["4:novice", "입문", "약 2분"],
-    ["4:casual", "초보", "약 1분"],
-    ["4:club", "중수", "약 35초"],
-    ["4:fast", "고수", "약 18초"],
-    ["4:pro", "초고수", "약 10초"],
+    ["6:novice", "입문", "약 2분"],
+    ["6:casual", "초보", "약 1분"],
+    ["6:club", "중수", "약 35초"],
+    ["6:fast", "고수", "약 18초"],
+    ["6:pro", "초고수", "약 10초"],
     ["fit", "내 실력에 맞춤", "약 1분"],
   ] as const) {
     const b = page.locator(`[data-cube-bot-level="${value}"]`);
@@ -105,11 +105,11 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
     await expect(b).toContainText(time);
   }
   await page.locator("[data-cube-vs-size]").selectOption("2");
-  await expect(page.locator('[data-cube-bot-level="4:pro"]')).toContainText(
+  await expect(page.locator('[data-cube-bot-level="6:pro"]')).toContainText(
     "약 3초",
   );
   await page.getByRole("button", { name: "초고수", exact: true }).click();
-  await expect(page.locator('[data-cube-bot-level="4:pro"]')).toHaveAttribute(
+  await expect(page.locator('[data-cube-bot-level="6:pro"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -130,44 +130,49 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
 });
 
 /**
- * 4×4 중수 컴퓨터는 야우로 맞춘다(docs/47 10-4, 계획 표 4): 칩이 센터 둘 → 십자 셋 → 센터 → 십자 → 엣지 짝 차례로
- * 처음 켜진다(축소법이면 센터 다음이 엣지 짝이고 십자는 그 뒤). 시계를 감아 컴퓨터 계획대로 둔 수를 본다
+ * 4×4 중수·초고수 컴퓨터는 야우로 맞춘다(docs/47 10-4·10-5, 계획 표 5. 고수·초고수는 엣지 짝만 짧은 길): 칩이 센터 둘 → 십자 셋 →
+ * 센터 → 십자 → 엣지 짝 차례로 처음 켜진다(축소법이면 센터 다음이 엣지 짝이고 십자는 그 뒤). 시계를 감아 컴퓨터 계획대로 둔 수를 본다
  */
-test("컴퓨터와 대결: 4×4 중수 컴퓨터는 야우 차례로 맞춘다", async ({
-  page,
-}, info) => {
-  await page.clock.install();
-  await page.goto("/cube/vs");
-  await page.locator("[data-cube-vs-size]").selectOption("4");
-  await expect(page.locator('[data-cube-bot-level="4:club"]')).toContainText(
-    "약 2분 40초",
-  );
-  await page.getByRole("button", { name: "중수", exact: true }).click();
-  await page.getByLabel("15초 살펴보기").uncheck();
-  await page.locator("[data-cube-vs-start]").click();
-  await expect(page.locator("[data-cube-race-phase]")).toHaveAttribute(
-    "data-cube-race-phase",
-    "race",
-    { timeout: SCRAMBLE_TIMEOUT },
-  );
-  const bot = page.locator("[data-cube-bot-planned]");
-  await expect(bot).toHaveCount(1, { timeout: SCRAMBLE_TIMEOUT });
-  const stages = bot.locator("[data-cube-peer-stages]").first();
-  const seen = async () =>
-    ((await stages.getAttribute("data-cube-peer-stages")) ?? "")
-      .split(/[ +]/)
-      .filter(Boolean);
-  // 엣지 짝까지는 한 판(평균 2분 40초)의 앞 2분 남짓. 5초씩 감으며 본다(상한은 멈춘 시험을 잡는 안전장치)
-  for (let k = 0; k < 120 && !(await seen()).includes("edges"); k++)
-    await page.clock.fastForward(5_000);
-  const ids = await seen();
-  const order = ["centers2", "cross3", "centers", "cross", "edges"].map((id) =>
-    ids.indexOf(id),
-  );
-  expect(order.every((i) => i >= 0)).toBe(true);
-  expect(order).toEqual([...order].sort((a, b) => a - b));
-  await shot(page, "bots-yau", info.project.name);
-});
+for (const [value, label, time, step] of [
+  ["6:club", "중수", "약 2분 40초", 5_000],
+  ["6:pro", "초고수", "약 45초", 1_500],
+] as const) {
+  test(`컴퓨터와 대결: 4×4 ${label} 컴퓨터는 야우 차례로 맞춘다`, async ({
+    page,
+  }, info) => {
+    await page.clock.install();
+    await page.goto("/cube/vs");
+    await page.locator("[data-cube-vs-size]").selectOption("4");
+    await expect(
+      page.locator(`[data-cube-bot-level="${value}"]`),
+    ).toContainText(time);
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await page.getByLabel("15초 살펴보기").uncheck();
+    await page.locator("[data-cube-vs-start]").click();
+    await expect(page.locator("[data-cube-race-phase]")).toHaveAttribute(
+      "data-cube-race-phase",
+      "race",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    const bot = page.locator("[data-cube-bot-planned]");
+    await expect(bot).toHaveCount(1, { timeout: SCRAMBLE_TIMEOUT });
+    const stages = bot.locator("[data-cube-peer-stages]").first();
+    const seen = async () =>
+      ((await stages.getAttribute("data-cube-peer-stages")) ?? "")
+        .split(/[ +]/)
+        .filter(Boolean);
+    // 엣지 짝까지는 한 판의 앞 3분의 2 남짓. 조금씩 감으며 본다(상한은 멈춘 시험을 잡는 안전장치)
+    for (let k = 0; k < 120 && !(await seen()).includes("edges"); k++)
+      await page.clock.fastForward(step);
+    const ids = await seen();
+    const order = ["centers2", "cross3", "centers", "cross", "edges"].map(
+      (id) => ids.indexOf(id),
+    );
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    await shot(page, `bots-yau-${value.slice(2)}`, info.project.name);
+  });
+}
 
 test("오늘의 섞기: 컴퓨터와 겨루면 같은 섞기를 나란히 맞추고, 기록은 혼자 하기 그대로", async ({
   page,
@@ -180,7 +185,7 @@ test("오늘의 섞기: 컴퓨터와 겨루면 같은 섞기를 나란히 맞추
   await pauseClock(page);
   await page.locator("[data-cube-size]").selectOption("2");
   // 2×2 초고수(평균 약 3초): 수 사이 1초씩 느리게 맞추면 컴퓨터가 이긴다
-  await page.locator("[data-cube-rival-pick]").selectOption("4:pro");
+  await page.locator("[data-cube-rival-pick]").selectOption("6:pro");
   const text = await receiveWithRival(page);
   await expect(page.locator("[data-cube-daily-attempt]")).toHaveAttribute(
     "data-cube-daily-attempt",
@@ -226,7 +231,7 @@ test("제한 도전: 컴퓨터도 같은 체력 규칙으로 겨루고, 점수�
   await pauseClock(page);
   await page.locator("[data-cube-size]").selectOption("2");
   // 2×2 입문(평균 약 45초): 빨리 맞추면 내가 이긴다
-  await page.locator("[data-cube-rival-pick]").selectOption("4:novice");
+  await page.locator("[data-cube-rival-pick]").selectOption("6:novice");
   const text = await receiveWithRival(page);
   // 씨앗이 고정됐는지(안 되면 운에 맡긴 시험으로 돌아간다)
   expect(text).toBe("U R' U' F U' R2 F U F R U'");

@@ -433,7 +433,7 @@ export interface YauCrossCase {
 export const YAU_CROSS_CASES: YauCrossCase[] = [
   {
     id: "down-front",
-    shape: "넣을 엣지 블럭의 날개가 아래-앞(넣을 자리)에 있음",
+    shape: "넣을 엣지의 날개가 아래-앞(넣을 자리)에 있음",
     hold: "다른 날개가 가운데 층 앞쪽(앞-오른쪽·앞-왼쪽)이면 그 날개의 층을 반 바퀴(2U2·2D2) 돌려 뒤쪽에",
     alg: "F",
     next: "가운데 층",
