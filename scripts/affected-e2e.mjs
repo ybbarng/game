@@ -255,7 +255,12 @@ export function loadContext(root) {
   }
 
   // 웹 파일의 import: 게임 사이 기댐과, 어느 게임(또는 공통)이 어느 패키지를 쓰는지
-  const isCode = (n) => /\.(ts|tsx|mjs|js)$/.test(n) && !/\.test\./.test(n);
+  // 시험 전용 파일(시험·시험 자료 -fixture·시험 틀 -suite·시험 이름표 -case)은 화면 코드가 아니다. 시험 자료가 모든 게임
+  // 엔진을 불러도(game/bot-plan-fixture.ts) 그 엔진을 「모든 화면이 쓰는 패키지」로 세지 않는다
+  const isCode = (n) =>
+    /\.(ts|tsx|mjs|js)$/.test(n) &&
+    !/\.test\./.test(n) &&
+    !/-(fixture|suite|case)\.(ts|tsx)$/.test(n);
   const gameDeps = {}; // 게임 B → B를 불러 쓰는 게임들
   const pkgUsers = {}; // 패키지 이름 → 그것을 불러 쓰는 묶음 id(또는 COMMON, spec:<이름>)
   const addTo = (map, key, value) => {
