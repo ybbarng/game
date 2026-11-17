@@ -57,7 +57,7 @@ export function playGalaxy(options: PlayOptions): {
     const result = step(state, seat, action);
     if (!result.ok)
       throw new Error(
-        `${bot.name}(${seat}번 자리)이 둘 수 없는 수 ${JSON.stringify(action)}: ${result.error}`,
+        `${bot.name}(${seat}번 자리): 둘 수 없는 수 ${JSON.stringify(action)}: ${result.error}`,
       );
     options.onStep?.(state, seat, action, result.state, result.events);
     state = result.state;

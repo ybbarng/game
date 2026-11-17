@@ -1,3 +1,4 @@
+import { obj } from "@game/mighty-engine/josa";
 import {
   earlySealPath,
   GENESIS_ANCHOR_BRANCH,
@@ -385,7 +386,7 @@ export async function findGitHubLedger(
     const hash = text === null ? null : parseGenesisAnchorFile(text);
     if (!hash)
       throw new Error(
-        `앵커 저장소(${repo})의 ${GENESIS_ANCHOR_PATH}를 받지 못했습니다`,
+        `앵커 저장소(${repo})의 ${obj(GENESIS_ANCHOR_PATH)} 받지 못했습니다`,
       );
     ledger = hash.slice(0, 16);
   }

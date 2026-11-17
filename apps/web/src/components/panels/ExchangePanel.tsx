@@ -4,6 +4,7 @@ import type { Action, Card, Decision, Goal, Kiruda } from "@game/mighty-engine";
 import { useState } from "react";
 
 import { goalLabel } from "@/game/terms";
+import { ro } from "@/lib/josa";
 
 import { SuitText } from "../SuitText";
 
@@ -72,7 +73,7 @@ export function ExchangePanel({
             onSubmit({ type: "exchange", goal, discard: discards })
           }
         >
-          <SuitText text={goalLabel(goal)} />로 확정
+          <SuitText text={ro(goalLabel(goal))} /> 확정
         </ActionButton>
       </div>
     </Panel>

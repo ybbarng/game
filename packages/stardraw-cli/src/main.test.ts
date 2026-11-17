@@ -138,7 +138,7 @@ describe("장부 검사(받아 둔 실제 장부)", () => {
       ["https://example.invalid/stardraw-api", "--source", "server"],
       fakeFetch(),
     );
-    expect(err).toContain("/ledger/genesis.json를 받지 못했습니다(404)");
+    expect(err).toContain("/ledger/genesis.json을 받지 못했습니다(404)");
     expect(code).toBe(2);
   });
 });

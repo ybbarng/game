@@ -19,6 +19,7 @@ import { createPortal } from "react-dom";
 
 import { paced } from "@/game/settings";
 import { cn } from "@/lib/cn";
+import { copula } from "@/lib/josa";
 
 import { piecesInDanger } from "../danger";
 import {
@@ -419,7 +420,7 @@ export function PlayScene({ scenario }: { scenario: JanggiScene }) {
           data-guess-result={right ? "right" : "wrong"}
         >
           <p className="font-semibold">
-            {right ? "맞아요!" : `정답은 ${guess.answer}예요.`}
+            {right ? "맞아요!" : `정답은 ${copula(guess.answer)}.`}
           </p>
           <p className="opacity-85">{guess.why}</p>
         </div>

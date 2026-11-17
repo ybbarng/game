@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { copula } from "@/lib/josa";
 import { nextPuzzle, type StudyProgressStore } from "@/study/progress";
 import {
   dayLabel,
@@ -247,7 +248,7 @@ function ReviewSection({
         </>
       ) : (
         <p className="text-sm opacity-70">
-          {`${reviewDone ? "오늘 복습을 다 했어요." : "오늘은 복습할 문제가 없어요."} 다음 복습은 ${dayLabel(next as number)}이에요.`}
+          {`${reviewDone ? "오늘 복습을 다 했어요." : "오늘은 복습할 문제가 없어요."} 다음 복습은 ${copula(dayLabel(next as number))}.`}
         </p>
       )}
     </section>

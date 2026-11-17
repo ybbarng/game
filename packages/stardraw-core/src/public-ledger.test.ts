@@ -656,7 +656,7 @@ describe("장부 받기 — 묶음 파일과 낱개", () => {
         headers: { "retry-after": "0" },
       })) as unknown as typeof fetch;
     await expect(loadPublicLedger("", f)).rejects.toThrow(
-      "/ledger/genesis.json를 받지 못했습니다. 서버가 요청이 많다며 잠시 막았습니다(429)",
+      "/ledger/genesis.json을 받지 못했습니다. 서버가 요청이 많다며 잠시 막았습니다(429)",
     );
   });
 });

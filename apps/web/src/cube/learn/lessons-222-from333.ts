@@ -4,6 +4,8 @@
 // 엣지가 없으니 「코너 자리」에서 윗면(U)을 돌려도 된다. 그래서 제자리 코너가 꼭 하나인 U 자리를 찾는다.
 // 판단은 모두 경우별로 닫고(beginner-path-222.ts), 해 보기 모범 답은 그 규칙이 낸 수와 같다(beginner-path-222.test.ts).
 // 공식 상수는 3×3 레슨에서 가져오고, 판정은 2×2 목표(2x2-first-layer·2x2-corners-placed·solved)를 쓴다.
+import { obj, topic } from "@/lib/josa";
+
 import { firstLayerUpSteps, T_PERM, Y_PERM } from "./lessons-222";
 import {
   CORNER_CYCLE,
@@ -52,7 +54,7 @@ const corners: Lesson = {
     },
     {
       kind: "quiz",
-      body: `둘 다 ${CORNER_TWIST}를 한 큐브예요. 3×3에서는 엣지 블럭도 흐트러지지만, 코너 블럭만 보면 2×2와 똑같아요.`,
+      body: `둘 다 ${obj(CORNER_TWIST)} 한 큐브예요. 3×3에서는 엣지 블럭도 흐트러지지만, 코너 블럭만 보면 2×2와 똑같아요.`,
       beside: {
         size: 3,
         caption: `3×3에 ${CORNER_TWIST}(코너 블럭만 보임)`,
@@ -62,7 +64,7 @@ const corners: Lesson = {
       setup: { alg: CORNER_TWIST },
       mask: "all",
       quiz: {
-        question: `${CORNER_TWIST}는 3×3에서 엣지 블럭도 움직여요. 2×2에서 써도 될까요?`,
+        question: `${topic(CORNER_TWIST)} 3×3에서 엣지 블럭도 움직여요. 2×2에서 써도 될까요?`,
         choices: [
           "네, 2×2에는 엣지 블럭이 없으니 코너 블럭의 움직임만 보면 돼요",
           "아니요, 엣지 블럭이 흐트러지니 못 써요",
