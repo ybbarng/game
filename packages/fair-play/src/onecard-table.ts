@@ -1,4 +1,5 @@
 import type { Card } from "@game/mighty-engine";
+import { obj } from "@game/mighty-engine/josa";
 
 import { tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
@@ -335,7 +336,10 @@ export class OnecardDeck {
     options: { trusted?: boolean } = {},
   ): number {
     const ctx = this.rounds.get(round);
-    if (!ctx) throw new Error(`시작하지 않은 판 ${round}을 다시 섞으려 했다`);
+    if (!ctx)
+      throw new Error(
+        `시작하지 않은 판 ${obj(String(round))} 다시 섞으려 했다`,
+      );
     const ordered = reshuffleOrder(cards);
     const existing = ctx.segments[segment];
     if (existing && segment > 0) {

@@ -16,6 +16,7 @@ import {
 } from "@game/galaxy-engine";
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/cn";
+import { subj } from "@/lib/josa";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 
 import { money, squareName, starInfo, starLine, subject } from "../format";
@@ -328,7 +329,7 @@ export function DebtSheet({
         ? `${squareName(view.board, a.square)} 맡기기`
         : "";
   return (
-    <Sheet title={`별빛 ${money(short)}이 모자라요`} testId="debt">
+    <Sheet title={`별빛 ${subj(money(short))} 모자라요`} testId="debt">
       <ol className="mb-3 flex flex-col gap-1">
         {plan.map((a, i) => (
           <li

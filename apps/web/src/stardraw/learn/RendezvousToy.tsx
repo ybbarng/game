@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { ro } from "@/lib/josa";
 
 import { astronautOf } from "../astronaut/identity";
 import { GAME_NS } from "../services";
@@ -472,7 +473,7 @@ function EditToy({ people, me }: { people: Uint8Array[]; me: boolean }) {
     const came = moved.length - oldResidents.length;
     result = {
       ok: false,
-      text: `id를 ${TARGET.id} → ${NEW_ID}로 바꾸자 이 주소의 점수가 모두 새로 나와 ${TARGET.name} 주민 ${oldCount}명 가운데 ${left}명이 다른 곳으로 흩어지고, 다른 주소에서 ${came}명이 들어왔습니다. 그래서 id는 한 번 정하면 고치지 않습니다.`,
+      text: `id를 ${TARGET.id} → ${ro(NEW_ID)} 바꾸자 이 주소의 점수가 모두 새로 나와 ${TARGET.name} 주민 ${oldCount}명 가운데 ${left}명이 다른 곳으로 흩어지고, 다른 주소에서 ${came}명이 들어왔습니다. 그래서 id는 한 번 정하면 고치지 않습니다.`,
     };
   } else if (edit === "weight") {
     const newCount = residents(after, list).get(TARGET.id) ?? 0;

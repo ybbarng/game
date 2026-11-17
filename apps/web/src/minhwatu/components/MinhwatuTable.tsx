@@ -57,6 +57,7 @@ import {
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { subj, wa } from "@/lib/josa";
 
 import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
 import { MINHWATU_LEVELS } from "../settings";
@@ -472,8 +473,8 @@ export function MinhwatuTable({
     status = "보내는 중…";
   else if (view.phase === "pick")
     status = myPick
-      ? `뒤집은 ${cardOf(view.pending?.flipped ?? "01g").name}와 짝: 먹을 바닥 패를 고르세요.`
-      : `${name(view.turn)}가 먹을 패를 고르는 중`;
+      ? `뒤집은 ${wa(cardOf(view.pending?.flipped ?? "01g").name)} 짝: 먹을 바닥 패를 고르세요.`
+      : `${subj(name(view.turn))} 먹을 패를 고르는 중`;
   else if (view.phase === "play")
     status = myPlay
       ? needTarget

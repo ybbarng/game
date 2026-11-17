@@ -6,6 +6,7 @@ import {
   type TrickCards,
   unplayableReason,
 } from "@game/mighty-engine";
+import { subj } from "@game/mighty-engine/josa";
 import { cardText } from "./blind";
 
 /*
@@ -68,7 +69,7 @@ export class RenegeWatch {
     if (this.revealed.has(card))
       return {
         seat,
-        reason: `${cardText(card)}가 두 번 나왔어요.`,
+        reason: `${subj(cardText(card))} 두 번 나왔어요.`,
         duplicate: true,
       };
     this.revealed.add(card);

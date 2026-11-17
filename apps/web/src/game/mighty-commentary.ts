@@ -6,7 +6,7 @@ import {
   viewOf,
 } from "@game/mighty-engine";
 
-import { copula, subj } from "@/lib/josa";
+import { copula, ro, subj } from "@/lib/josa";
 import { mean, signed, verdictOf } from "@/review/commentary";
 
 import type { Commentary, Verdict } from "./kit";
@@ -64,7 +64,7 @@ export function explainMighty(
       return { situation, verdict, reasons };
     const a = analyzeElection(view, decision, PLAN_WORLDS, { seed });
     situation.push(
-      `패 어림: ${kirudaName(a.estimate.kiruda)}로 약 ${a.estimate.estimate.toFixed(1)}장 · 지금 부를 수 있는 가장 낮은 공약 ${a.floor}장`,
+      `패 어림: ${ro(kirudaName(a.estimate.kiruda))} 약 ${a.estimate.estimate.toFixed(1)}장 · 지금 부를 수 있는 가장 낮은 공약 ${a.floor}장`,
     );
     const bid = action.type === "bid";
     if (a.hopeless) {

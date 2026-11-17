@@ -20,6 +20,8 @@ import {
   tryPlace,
 } from "@game/baduk-engine";
 
+import { topic, wa } from "@/lib/josa";
+
 import {
   type BadukPuzzle,
   LADDER_THEMES,
@@ -55,7 +57,7 @@ export function puzzleState(puzzle: BadukPuzzle): BadukState {
   for (const name of puzzle.setup) {
     const seat = state.toPlay === 1 ? 0 : 1;
     const result = playStep(state, seat, { type: "place", at: at(name) });
-    if (!result.ok) throw new Error(`${puzzle.id}: ${name}를 둘 수 없다`);
+    if (!result.ok) throw new Error(`${puzzle.id}: 둘 수 없는 자리 ${name}`);
     state = result.state;
   }
   return state;
@@ -394,10 +396,6 @@ export function explainSolved(
   return [...lines[puzzle.theme], `${count} 만에 ${stones} 따냈어요.`];
 }
 
-/** 자리 이름 뒤 조사 「은/는」: 끝 숫자를 읽는 소리로 고른다(일·삼·육·칠·팔은 받침이 있다) */
-export const eunNeun = (name: string) =>
-  /[13678]$/.test(name) ? `${name}은` : `${name}는`;
-
 /** 패로 버티기의 해설. 노림받은 무리의 돌 수는 처음 판에서 센다 */
 function explainKoFight(puzzle: KoFight): string[] {
   const start = puzzleState(puzzle).board;
@@ -405,7 +403,7 @@ function explainKoFight(puzzle: KoFight): string[] {
   const ko = puzzle.ko;
   if (puzzle.mode === "threat")
     return [
-      `${eunNeun(puzzle.solution)} 팻감이에요. 백 ${COUNT[size]} 점이 단수가 되어, 백이 받지 않으면 따내요.`,
+      `${topic(puzzle.solution)} 팻감이에요. 백 ${COUNT[size]} 점이 단수가 되어, 백이 받지 않으면 따내요.`,
       `백이 ${puzzle.reply ?? ""}에 받아 판 모양이 달라졌어요. 그래서 ${ko}에 되따낼 수 있어요.`,
       "이제 백이 다시 따내려면 백도 먼저 팻감을 써야 해요.",
     ];
@@ -413,12 +411,12 @@ function explainKoFight(puzzle: KoFight): string[] {
   const loss = koLossOf(puzzle);
   if (puzzle.mode === "connect")
     return [
-      `백 ${eunNeun(threat)} 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
+      `백 ${topic(threat)} 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
       `패를 지면 흑 ${COUNT[loss]} 점을 잃어요. 패에 걸린 한 점에, 백이 되따내면 함께 단수가 되어 살릴 수 없는 ${COUNT[loss - 1]} 점을 더한 수예요.`,
       `노리는 돌(${COUNT[size]} 점)이 패를 지면 잃는 돌(${COUNT[loss]} 점)보다 적어요. 그래서 ${ko}에 이어 패를 끝내고, 노린 돌은 내줘요.`,
     ];
   return [
-    `백 ${eunNeun(threat)} 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
+    `백 ${topic(threat)} 팻감이에요. 흑 ${COUNT[size]} 점이 단수가 됐어요.`,
     `${puzzle.solution}에 두어 받았어요. 노리는 돌(${COUNT[size]} 점)이 패를 지면 잃는 돌(${COUNT[loss]} 점)보다 많아 받는 쪽이 나아요.`,
     `받았으니 백은 ${ko}에 되따낼 수 있어요. 그러면 이번엔 흑이 팻감을 쓸 차례예요.`,
   ];
@@ -457,7 +455,7 @@ function explainEndgame(puzzle: Endgame): string[] {
   const compare =
     sizes[mine] < sizes[other]
       ? `${label[other]}(${sizes[other]}점짜리)보다 작은 ${sizes[mine]}점짜리지만`
-      : `${label[other]}와 같은 ${sizes[mine]}점짜리지만`;
+      : `${wa(label[other])} 같은 ${sizes[mine]}점짜리지만`;
   return [
     `${sol}에 두면 백 ${COUNT[threatened]} 점이 단수가 돼요. 백이 받지 않으면 흑이 따내니 백이 받아야 해요. 그래서 선수예요.`,
     `${compare}, 선수라 먼저 뒀어요. 백이 받은 사이 ${label[other]}도 흑이 먼저 뒀어요.`,

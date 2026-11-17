@@ -1,4 +1,5 @@
 import type { Card } from "@game/mighty-engine";
+import { obj, subj } from "@game/mighty-engine/josa";
 import { type Clock, realClock } from "./clock";
 import {
   type KeyProof,
@@ -54,7 +55,8 @@ export async function prepareGroup(name: GroupName): Promise<SraGroup> {
 /** 준비한 군. 준비하지 않았으면 던진다 */
 export function groupOf(name: GroupName): SraGroup {
   const g = GROUPS[name];
-  if (!g) throw new Error(`잠그기 군 ${name}을 준비하지 않았다(prepareGroup)`);
+  if (!g)
+    throw new Error(`잠그기 군 ${obj(name)} 준비하지 않았다(prepareGroup)`);
   return g;
 }
 
@@ -469,7 +471,7 @@ export class FairDevice {
         this.emit(
           "problem",
           deal,
-          `자리 ${slot}을 두 사람에게 주려 했어요.`,
+          `자리 ${obj(String(slot))} 두 사람에게 주려 했어요.`,
           null,
         );
         continue;
@@ -1028,7 +1030,11 @@ export class FairDevice {
         // 넘겨받은 열쇠의 증명은 뒤따라 온다. 오면 다시 열어 보고 그때 탓한다.
         const handed = ctx.handed.get(slot);
         if (handed && !handed.proof) continue;
-        this.report(ctx, slot, `내 자리 ${slot}이 카드로 열리지 않아요.`);
+        this.report(
+          ctx,
+          slot,
+          `내 자리 ${subj(String(slot))} 카드로 열리지 않아요.`,
+        );
         continue;
       }
       ctx.mine.set(slot, card);
@@ -1161,7 +1167,11 @@ export class FairDevice {
       const known = ctx.ledger.keys.get(slot);
       if (!known || ctx.devices.some((d) => !known.has(d))) continue;
       if (ctx.ledger.open(slot, ctx.devices) === null)
-        this.report(ctx, slot, `자리 ${slot}이 카드로 열리지 않아요.`);
+        this.report(
+          ctx,
+          slot,
+          `자리 ${subj(String(slot))} 카드로 열리지 않아요.`,
+        );
     }
   }
 

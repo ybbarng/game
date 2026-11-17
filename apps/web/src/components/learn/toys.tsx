@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SuitText } from "@/components/SuitText";
 import { Box, Btn, Result } from "@/components/security/demos";
 import { cn } from "@/lib/cn";
+import { ro, wa } from "@/lib/josa";
 
 /*
  * 작은 수로 원리를 보여 주는 장난감들. 실제 게임은 타원곡선(ristretto255)을 쓰지만, 원리는 23 같은 작은 소수로도 같다.
@@ -357,7 +358,7 @@ export function ZkToy() {
               a = <Num>{a}</Num>, b = <Num>{b}</Num>
               {cheat
                 ? `. z를 먼저 정하고, 짐작한 c = ${guessC}에서 두 식이 맞도록 거꾸로 만들었습니다.`
-                : `. 무작위 r = ${r}로 g^r, A^r를 만들었습니다.`}
+                : `. 무작위 r = ${ro(String(r))} g^r, A^r를 만들었습니다.`}
             </>
           ) : (
             <Btn
@@ -413,7 +414,7 @@ export function ZkToy() {
           {cheat
             ? ok
               ? `통과해 버렸습니다. 짐작한 c가 맞았기 때문입니다. c는 0~10 중 하나라 11번에 한 번꼴로 맞습니다. 실제 게임의 c는 2²⁵²가지쯤이라 미리 맞힐 수 없습니다.`
-              : `통과하지 못했습니다. 실제로 나온 c가 짐작한 ${guessC}와 달라서 두 식이 맞지 않습니다.`
+              : `통과하지 못했습니다. 실제로 나온 c가 짐작한 ${wa(String(guessC))} 달라서 두 식이 맞지 않습니다.`
             : "통과. z에는 무작위 r이 섞여 있어 u가 새지 않습니다. 게다가 속이는 증명에서 보듯 c를 미리 알면 비밀 없이도 이런 기록을 만들 수 있습니다. 그래서 기록만으로는 u에 대해 아무것도 알 수 없고, 이것을 영지식이라고 합니다."}
         </Result>
       )}

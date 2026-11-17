@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { copula } from "@/lib/josa";
 import type { Command } from "../input/actions";
 import { chordsFor, codeLabel, type KeyChord } from "../input/keymaps";
 import {
@@ -464,7 +465,7 @@ function partialText(t: TutorialTarget | undefined, run: StepRunT): string {
   if (t?.kind === "orient") {
     const f = run.facing;
     return f
-      ? `지금 위는 ${colorWord(f.up)}, 앞은 ${colorWord(f.front)}이에요.`
+      ? `지금 위는 ${colorWord(f.up)}, 앞은 ${copula(colorWord(f.front))}.`
       : "";
   }
   if (t?.kind === "solve") return "아직이에요. 나중에 친 것부터 거꾸로.";

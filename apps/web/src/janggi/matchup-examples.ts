@@ -1,5 +1,7 @@
 import type { Setup } from "@game/janggi-engine";
 
+import { ro } from "@/lib/josa";
+
 import type { Guess } from "./example-play";
 import { bestAgainst, FORMATION, isMatsang } from "./matchups";
 
@@ -57,8 +59,8 @@ const BUILDS: Record<Exclude<PairKind, "yangCenter">, Build> = {
     title: "맞상: 상끼리 바꾸고 시작해요",
     moves: [`08-76`, `12-44`, `76-44`, `43-44`].map(moveOf(m)),
     notes: [
-      `상(${m("08")})을 ${m("76")}로 올려요.`,
-      `한도 마주 보던 상(${m("12")})을 ${m("44")}로 올려요. 이제 두 상이 서로 잡을 수 있어요.`,
+      `상(${m("08")})을 ${ro(m("76"))} 올려요.`,
+      `한도 마주 보던 상(${m("12")})을 ${ro(m("44"))} 올려요. 이제 두 상이 서로 잡을 수 있어요.`,
       "초가 먼저 한 상을 잡아요.",
       "한 병이 옆으로 와서 되잡아요. 상끼리 하나씩 바꿨어요.",
     ],
@@ -73,8 +75,8 @@ const BUILDS: Record<Exclude<PairKind, "yangCenter">, Build> = {
     title: "다른 이름: 상이 서로 닿지 않아요",
     moves: [`02-74`, `12-44`].map(moveOf(m)),
     notes: [
-      `상(${m("02")})이 ${m("74")}로 올라가요.`,
-      `한 상(${m("12")})이 ${m("44")}로 올라가요. 두 상은 서로 잡을 수 없어요. 맞상이 아니에요.`,
+      `상(${m("02")})이 ${ro(m("74"))} 올라가요.`,
+      `한 상(${m("12")})이 ${ro(m("44"))} 올라가요. 두 상은 서로 잡을 수 없어요. 맞상이 아니에요.`,
     ],
   }),
   wonangGuard: (m) => ({

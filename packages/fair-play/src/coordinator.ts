@@ -7,6 +7,7 @@ import {
   type RuleSet,
   type Suit,
 } from "@game/mighty-engine";
+import { obj, subj } from "@game/mighty-engine/josa";
 
 import type { RoundDeal } from "./audit";
 import { cardText, redealOwners, slotOfToken, tokenDeal } from "./blind";
@@ -393,7 +394,7 @@ export class FairCoordinator {
     if (violation) {
       const detail =
         "heldCard" in violation
-          ? `${violation.trickIndex + 1}번째 턴에 ${cardText(violation.played)}를 냈는데, 그때 ${cardText(violation.heldCard)}가 손에 있었어요. ${violation.reason}`
+          ? `${violation.trickIndex + 1}번째 턴에 ${obj(cardText(violation.played))} 냈는데, 그때 ${subj(cardText(violation.heldCard))} 손에 있었어요. ${violation.reason}`
           : violation.reason;
       this.incident({ seat: violation.seat, reason: detail });
       return;

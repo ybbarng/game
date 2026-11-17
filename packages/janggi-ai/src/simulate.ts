@@ -7,6 +7,7 @@ import {
   viewOf,
 } from "@game/janggi-engine";
 import { createRng } from "@game/mighty-engine";
+import { subj } from "@game/mighty-engine/josa";
 
 import type { JanggiBot } from "./bots";
 
@@ -25,7 +26,7 @@ export function playGame(
     const action = bot.decide(viewOf(state, seat), rng);
     const result = step(state, seat, action);
     if (!result.ok)
-      throw new Error(`${bot.name}이 둘 수 없는 수: ${result.error}`);
+      throw new Error(`${subj(bot.name)} 둘 수 없는 수: ${result.error}`);
     state = result.state;
   }
   throw new Error("판이 끝나지 않는다");

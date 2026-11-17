@@ -32,6 +32,7 @@ import {
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { subj } from "@/lib/josa";
 
 import { piecesInDanger } from "../danger";
 import { planText } from "../plan-text";
@@ -226,7 +227,7 @@ export function JanggiGame({
     status = mySetup
       ? "상차림을 고르세요(마·상 자리)."
       : online
-        ? `${opponent}가 상차림을 고르는 중`
+        ? `${subj(opponent)} 상차림을 고르는 중`
         : "컴퓨터가 상차림을 고르는 중…";
   else if (view.phase === "play")
     status = myMove

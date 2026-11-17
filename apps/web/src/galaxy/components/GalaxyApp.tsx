@@ -18,6 +18,7 @@ import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
+import { obj } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { BureauLogo } from "@/stardraw/components/BureauMarks";
@@ -222,7 +223,7 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">
           판 처음에 몰래 받은 의뢰서의 목표를 이루면 판이 끝날 때{" "}
-          {NUMBERS.requestBonus}을 더 받아요.
+          {obj(String(NUMBERS.requestBonus))} 더 받아요.
         </p>
       </Section>
       <Section title="개인 시간">
@@ -305,7 +306,7 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "모퉁이",
-      `판의 네 모서리 칸은 가는 차례대로 카노푸스 우주국, 소행성대, 관측지, 혜성이에요. 카노푸스 우주국 칸을 지나가거나 멈추면 지원금 ${NUMBERS.salary}을 받아요. 다만 별빛이 ${NUMBERS.salaryFree}보다 많으면 넘는 몫의 5분의 1만큼 덜 받아요. 관측지에 멈추면 관측 지원금을 받는데, 자산 순위가 낮을수록 많이 받아요. 혜성에서는 한 번 더 굴려 더 가요. 소행성대는 그냥 멈추면 아무 일도 없고, 공문 「궤도 이탈」을 받거나 한 차례에 더블이 세 번 나오면 소행성대에 갇혀요. 갇히면 다음 차례에 ${NUMBERS.asteroidFine}을 내거나 더블이 나오면 바로 나가고, 아니면 그 차례를 쉬고 다음 차례에는 그냥 나가요.`,
+      `판의 네 모서리 칸은 가는 차례대로 카노푸스 우주국, 소행성대, 관측지, 혜성이에요. 카노푸스 우주국 칸을 지나가거나 멈추면 지원금 ${obj(String(NUMBERS.salary))} 받아요. 다만 별빛이 ${NUMBERS.salaryFree}보다 많으면 넘는 몫의 5분의 1만큼 덜 받아요. 관측지에 멈추면 관측 지원금을 받는데, 자산 순위가 낮을수록 많이 받아요. 혜성에서는 한 번 더 굴려 더 가요. 소행성대는 그냥 멈추면 아무 일도 없고, 공문 「궤도 이탈」을 받거나 한 차례에 더블이 세 번 나오면 소행성대에 갇혀요. 갇히면 다음 차례에 ${obj(String(NUMBERS.asteroidFine))} 내거나 더블이 나오면 바로 나가고, 아니면 그 차례를 쉬고 다음 차례에는 그냥 나가요.`,
     ],
     [
       "달의 길",
@@ -313,7 +314,7 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "관측 의뢰",
-      `옵션에서 관측 의뢰를 켜면, 판 처음에 우주국 의뢰서 한 장을 몰래 받아요. 의뢰서에는 「1등성 둘 갖기」, 「겨울 별자리 하나 완성」 같은 목표가 적혀 있어요. 별 밝기는 등급 숫자가 작을수록 밝고, 1.5등급까지를 1등성이라 해요. 판이 끝날 때 모두의 의뢰서를 펼쳐, 이룬 사람은 ${NUMBERS.requestBonus}을 더 받아요.`,
+      `옵션에서 관측 의뢰를 켜면, 판 처음에 우주국 의뢰서 한 장을 몰래 받아요. 의뢰서에는 「1등성 둘 갖기」, 「겨울 별자리 하나 완성」 같은 목표가 적혀 있어요. 별 밝기는 등급 숫자가 작을수록 밝고, 1.5등급까지를 1등성이라 해요. 판이 끝날 때 모두의 의뢰서를 펼쳐, 이룬 사람은 ${obj(String(NUMBERS.requestBonus))} 더 받아요.`,
     ],
     [
       "끝",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { copula, obj, ro, subj, topic } from "./josa";
+import { copula, obj, ro, subj, topic, wa } from "./josa";
 
 describe("조사 고르기", () => {
   it("한글은 끝 글자 받침으로 고른다", () => {
@@ -10,6 +10,8 @@ describe("조사 고르기", () => {
     expect(obj("포")).toBe("포를");
     expect(copula("쉬기")).toBe("쉬기예요");
     expect(copula("윷")).toBe("윷이에요");
+    expect(wa("퀸")).toBe("퀸과");
+    expect(wa("D4")).toBe("D4와");
   });
 
   it("「나」는 「내가」로 쓴다", () => {
