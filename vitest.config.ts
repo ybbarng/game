@@ -27,7 +27,9 @@ export default defineConfig({
     // 2026-11-10 줄임: 패키지마다의 package.json은 뺐다. 의존을 바꾸면 lockfile(pnpm-lock.yaml은 패키지마다의 의존을
     // 적는다)이 함께 바뀌어 전부 돌고, 그 밖의 변경(scripts·exports)은 CI의 typecheck 전체와 매일 전부 실행이 본다.
     // 시험이 파일로 읽던 appcast·sw.js·큐브 page 목록은 import.meta.glob으로 읽게 바꿔 모듈 그래프로 따라간다.
-    // 시험이 파일로 읽는 입력을 새로 두면, 되도록 import.meta.glob(?raw)으로 읽고 안 되면 여기에 더한다
+    // 시험이 파일로 읽는 입력을 새로 두면, 되도록 import.meta.glob(?raw)으로 읽고 안 되면 여기에 더한다.
+    // 저장소 전체를 읽는 시험(화면 시험 고르기 등)은 여기 말고 늘 도는 묶음(package.json `test:always`)에 둔다.
+    // 어느 쪽에 들었는지는 scripts/repo-reading-tests.test.mjs가 본다(2026-11-17)
     forceRerunTriggers: [
       ROOT_PACKAGE_JSON,
       "**/{vitest,vite}.config.*",
@@ -40,6 +42,10 @@ export default defineConfig({
       "**/apps/web/public/stats/**",
       // 3D 엠블럼 대기 그림(emblem3d/poster.test.ts가 파일로 읽는다)
       "**/apps/web/public/cube/tiers/emblem3d/**",
+      // Cubie 앱 엠블럼 PNG(같은 poster.test.ts가 크기를 본다)
+      "**/apps/cubie/Resources/Emblems/**",
+      // 큐브 첫 화면 대기 그림(cube/components/CubePoster.test.tsx가 있는지 본다)
+      "**/apps/web/public/cube/hero/**",
       "**/apps/web/scripts/build-hashes.mjs",
     ],
     coverage: {
