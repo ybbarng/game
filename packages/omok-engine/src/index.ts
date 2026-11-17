@@ -4,3 +4,4 @@ export * from "./rules";
 export * from "./scenario";
 export * from "./state";
 export * from "./threats";
+export * from "./vct";

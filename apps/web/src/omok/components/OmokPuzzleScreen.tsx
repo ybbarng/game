@@ -17,11 +17,11 @@ import {
   type OmokPuzzleSet,
 } from "../puzzles";
 import {
-  defenseFor,
   explainMarks,
   explainSolved,
   judgeMove,
   puzzleState,
+  replyFor,
   solutionOf,
 } from "../study";
 import { OmokBoard } from "./OmokBoard";
@@ -89,7 +89,7 @@ function OmokPuzzleRun({
     ...(puzzle.kind === "attack"
       ? {
           reply: (state: OmokState) => {
-            const block = defenseFor(state.board, state.rules.variant);
+            const block = replyFor(puzzle, state.board);
             if (block === null) return null;
             const result = step(state, 1, { type: "place", at: block });
             if (!result.ok) return null;
@@ -112,13 +112,16 @@ function OmokPuzzleRun({
   const answer = solutionOf(puzzle);
   const result = state.result;
 
+  /** 몰아붙이는 수단: 넷만, 또는 넷과 열린 셋 */
+  const means =
+    puzzle.kind === "attack" && puzzle.threes ? "넷과 열린 셋으로" : "넷으로";
   const goal =
     puzzle.kind === "attack" && run.step > 0
-      ? "계속 넷으로 몰아 다섯을 만드세요."
+      ? `계속 ${means} 몰아 다섯을 만드세요.`
       : puzzle.goal
         ? puzzle.goal
         : puzzle.kind === "attack" && puzzle.moves >= 3
-          ? `넷으로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요.`
+          ? `${means} 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요.`
           : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   /** 금지 자리면 까닭을 알리고 true(틀린 것으로 치지 않는다) */

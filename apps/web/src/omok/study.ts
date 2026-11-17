@@ -13,8 +13,12 @@ import {
   pointName,
   STANDARD_RULES,
   type Stone,
+  threatReplies,
+  threatWinFirstMoves,
+  threatWinLength,
   type Variant,
   winningFirstMoves,
+  winPointsOf,
   xyOf,
 } from "@game/omok-engine";
 
@@ -47,9 +51,27 @@ const placed = (board: readonly Cell[], at: number, stone: Stone): Cell[] => {
   return next;
 };
 
+type Attack = Extract<OmokPuzzle, { kind: "attack" }>;
+
+/**
+ * 공격 문제에서 흑이 `left`수 안에 이기는 첫 수들. 보통은 사로만 몰아붙이고,
+ * `threes` 문제는 열린 셋 같은 셋 위협도 쓴다(엔진 `vct.ts`)
+ */
+function firstWins(
+  puzzle: Attack,
+  board: readonly Cell[],
+  left: number,
+): number[] {
+  const variant = variantOf(puzzle);
+  return puzzle.threes
+    ? threatWinFirstMoves(board, 1, variant, left)
+    : winningFirstMoves(board, 1, variant, left);
+}
+
 /**
  * 내 수를 판정한다. `step`은 지금까지 둔 내 수.
- * - 공격: 다섯이면 푼 것. 첫 수는 정답 자리만, 그다음은 남은 수 안에 사로 몰아 이기는 수면 맞다
+ * - 공격: 다섯이면 푼 것. 첫 수는 정답 자리만, 그다음은 남은 수 안에 몰아 이기는 수면 맞다
+ *   (사로만, `threes` 문제는 셋 위협도)
  * - 막기: 정답 자리면 푼 것
  */
 export function judgeMove(
@@ -61,11 +83,12 @@ export function judgeMove(
   if (puzzle.kind !== "attack")
     return puzzle.answers.map(pointAt).includes(move) ? "solved" : "wrong";
   const variant = variantOf(puzzle);
+  // 첫 수는 정답 자리만 맞다(정답이 하나뿐인 것은 시험이 본다). 읽기 전에 거른다.
+  if (step === 0 && move !== pointAt(puzzle.solution)) return "wrong";
   const left = puzzle.moves - step;
-  const wins = winningFirstMoves(board, 1, variant, left);
+  const wins = firstWins(puzzle, board, left);
   if (!wins.includes(move)) return "wrong";
   if (fivePoints(board, 1, variant).includes(move)) return "solved";
-  if (step === 0 && move !== pointAt(puzzle.solution)) return "wrong";
   return "next";
 }
 
@@ -92,6 +115,41 @@ export function defenseFor(
   return legal.sort((a, b) => near(a) - near(b))[0] ?? null;
 }
 
+/**
+ * 공격 문제에서 백이 받는 수. 흑이 넷이면 다섯 자리를 막는다(`defenseFor`).
+ * `threes` 문제에서 흑이 셋 위협을 두었으면, 막는 수 가운데 흑이 이기기까지 가장 오래 걸리는 수를 둔다
+ * (같으면 백 넷으로 버티는 수보다 막는 수, 그다음 자리 번호 순). 그래서 바른 수순이 늘 정해진 수만큼 길다
+ */
+export function replyFor(
+  puzzle: OmokPuzzle,
+  board: readonly Cell[],
+): number | null {
+  const variant = variantOf(puzzle);
+  if (
+    puzzle.kind !== "attack" ||
+    !puzzle.threes ||
+    fivePoints(board, 1, variant).length > 0
+  )
+    return defenseFor(board, variant);
+  // 막을 수 없는 자리가 둘 이상 갈라져 있어 막는 수가 없으면, 그 가운데 하나를 차지한다(어차피 진다).
+  const replies = threatReplies(board, 1, variant);
+  const tries = replies.length > 0 ? replies : winPointsOf(board, 1, variant);
+  let best: { at: number; length: number; four: boolean } | null = null;
+  for (const at of tries) {
+    const after = placed(board, at, 2);
+    const length =
+      threatWinLength(after, 1, variant, puzzle.moves) ?? puzzle.moves + 1;
+    const four = fivePoints(after, 2, variant).length > 0;
+    if (
+      best === null ||
+      length > best.length ||
+      (length === best.length && best.four && !four)
+    )
+      best = { at, length, four };
+  }
+  return best?.at ?? null;
+}
+
 /** 공격 문제의 바른 수순(흑·백 번갈아). 해설과 시험에 쓴다 */
 export function mainLine(puzzle: OmokPuzzle): number[] {
   if (puzzle.kind !== "attack") return [];
@@ -102,12 +160,12 @@ export function mainLine(puzzle: OmokPuzzle): number[] {
     const move =
       line.length === 0
         ? pointAt(puzzle.solution)
-        : winningFirstMoves(board, 1, variant, left)[0];
+        : firstWins(puzzle, board, left)[0];
     if (move === undefined) break;
     line.push(move);
     if (fivePoints(board, 1, variant).includes(move)) break;
     board = placed(board, move, 1);
-    const block = defenseFor(board, variant);
+    const block = replyFor(puzzle, board);
     if (block === null) break;
     line.push(block);
     board = placed(board, block, 2);
@@ -190,10 +248,13 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
   if (puzzle.kind === "pick") return explainPick(puzzle, start, variant);
   const line = mainLine(puzzle);
   // 렌주: 금지가 없다면 이겼을 흑 자리(함정)를 먼저 짚는다.
-  const lines: string[] = trapsOf(puzzle).map(
-    (t) =>
-      `${pointName(t.at)}에 두면 이길 것 같지만 흑에게 ${t.reason} 금지라 둘 수 없어요.`,
+  const traps = trapsOf(puzzle);
+  const lines: string[] = traps.map((t) =>
+    puzzle.threes && t.reason === "3·3"
+      ? `${pointName(t.at)}에 두면 열린 셋이 둘 생겨 이길 것 같지만 흑에게 3·3 금지라 둘 수 없어요.`
+      : `${pointName(t.at)}에 두면 이길 것 같지만 흑에게 ${t.reason} 금지라 둘 수 없어요.`,
   );
+  const trapAts = traps.map((t) => t.at);
   if (puzzle.race) {
     const theirs = winningFirstMoves(start, 2, variant, 2).map(pointName);
     lines.unshift(
@@ -202,10 +263,84 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
   }
   let board = start;
   line.forEach((move, i) => {
-    if (i % 2 === 0) lines.push(describe(board, move, variant));
+    if (i % 2 === 0)
+      lines.push(
+        puzzle.threes
+          ? describeThreat(
+              board,
+              move,
+              line[i + 1],
+              variant,
+              i > 0 && trapAts.includes(move),
+            )
+          : describe(board, move, variant),
+      );
     board = placed(board, move, i % 2 === 0 ? 1 : 2);
   });
   return lines;
+}
+
+/**
+ * 셋 위협 문제에서 흑 한 수가 무엇을 만들었는지 한 줄로. `reply`는 그 뒤 백이 둔 자리.
+ * `wasTrap`이면 처음에 3·3 금지였던 자리가 왜 이제 둘 수 있는지 앞에 짚는다
+ */
+function describeThreat(
+  board: readonly Cell[],
+  move: number,
+  reply: number | undefined,
+  variant: Variant,
+  wasTrap: boolean,
+): string {
+  const lead = describeThreatMove(board, move, reply, variant);
+  if (!wasTrap) return lead;
+  const name = pointName(move);
+  return `${name}: 처음에는 3·3 금지였지만, 백이 셋 하나를 막아 이제는 둘 수 있어요. ${lead.slice(name.length + 2)}`;
+}
+
+function describeThreatMove(
+  board: readonly Cell[],
+  move: number,
+  reply: number | undefined,
+  variant: Variant,
+): string {
+  const name = pointName(move);
+  if (fivePoints(board, 1, variant).includes(move)) return `${name}: 다섯!`;
+  const after = placed(board, move, 1);
+  const theirs = fivePoints(board, 2, variant);
+  const threats = fivePoints(after, 1, variant);
+  const answer = reply === undefined ? "" : pointName(reply);
+  const replyFour =
+    reply !== undefined &&
+    fivePoints(placed(after, reply, 2), 2, variant).length > 0;
+  const whiteText = replyFour
+    ? ` 백은 ${withJosa(answer, "으로", "로")} 넷을 만들어 버텨요.`
+    : "";
+  if (theirs.includes(move))
+    return `${name}: 백의 넷을 막아요. 앞서 만든 셋은 그대로 살아 있어요.${whiteText}`;
+  if (threats.length >= 2)
+    return `${name}: 다섯 자리가 ${threats.map(pointName).join("·")} 두 곳이 되어 한 번에 다 막을 수 없어요.`;
+  if (threats.length === 1) {
+    const three = winPointsOf(
+      placed(after, threats[0] as number, 2),
+      1,
+      variant,
+    );
+    return three.length > 0
+      ? `${name}: 넷과 열린 셋을 한 번에 만들어요(4·3). 백은 넷을 ${pointName(threats[0] as number)}에서 막을 수밖에 없고, 흑은 남은 셋을 열린 넷으로 이어요.`
+      : `${name}: 넷을 만들어요. 백은 ${withJosa(pointName(threats[0] as number), "을", "를")} 막을 수밖에 없어요.`;
+  }
+  const open = winPointsOf(after, 1, variant);
+  if (replyFour)
+    return `${name}: 셋을 만들어요. 그냥 두면 ${open.map(pointName).join("·")}에 두어 이겨요.${whiteText}`;
+  // 다음 수가 한 줄에 다섯 자리 둘을 만드는 자리면 열린 넷, 아니면(넷과 셋이 갈라 생기는 자리) 4·3이다.
+  const fours = open.filter(
+    (w) => fivePoints(placed(after, w, 1), 1, variant).length >= 2,
+  );
+  const next =
+    fours.length === open.length
+      ? "열린 넷이 돼요"
+      : "넷과 열린 셋이 한 번에 생겨요(4·3)";
+  return `${name}: 열린 셋을 만들어요. 그냥 두면 다음에 ${open.map(pointName).join("·")}에 두어 ${next}. 그래서 백은 ${answer}에 두어 이 셋을 막아요.`;
 }
 
 type Pick = Extract<OmokPuzzle, { kind: "pick" }>;
@@ -344,7 +479,10 @@ export function trapsOf(
 ): { at: number; reason: Forbidden }[] {
   if (puzzle.kind !== "attack" || variantOf(puzzle) !== "renju") return [];
   const { board } = puzzleState(puzzle);
-  return winningFirstMoves(board, 1, "free", puzzle.moves).flatMap((at) => {
+  const free = puzzle.threes
+    ? threatWinFirstMoves(board, 1, "free", puzzle.moves)
+    : winningFirstMoves(board, 1, "free", puzzle.moves);
+  return free.flatMap((at) => {
     const reason = forbiddenReason(board, at, 1, "renju");
     return reason ? [{ at, reason }] : [];
   });

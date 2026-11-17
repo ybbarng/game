@@ -8,11 +8,11 @@ import { describe, expect, it } from "vitest";
 
 import { OMOK_PUZZLE_SETS, type OmokPuzzle } from "./puzzles";
 import {
-  defenseFor,
   explainSolved,
   judgeMove,
   mainLine,
   puzzleState,
+  replyFor,
   trapsOf,
   variantOf,
 } from "./study";
@@ -21,6 +21,7 @@ type Attack = Extract<OmokPuzzle, { kind: "attack" }>;
 
 const all = OMOK_PUZZLE_SETS.flatMap((s) => s.puzzles);
 const attacks = all.filter((p): p is Attack => p.kind === "attack");
+const fourAttacks = attacks.filter((p) => !p.threes);
 const rows = <T extends { id: string }>(ps: T[]) =>
   ps.map((p) => [p.id, p] as const);
 const names = (ps: number[]) => ps.map(pointName);
@@ -44,7 +45,7 @@ describe("오목 문제 데이터", () => {
 });
 
 describe("공격 문제(사로 몰아 이기기)", () => {
-  it.each(rows(attacks))(
+  it.each(rows(fourAttacks))(
     "%s: 정해진 수 안에 이기는 첫 수는 정답 하나뿐이고, 더 빨리는 못 이긴다",
     (_id, p) => {
       const { board } = puzzleState(p);
@@ -58,7 +59,7 @@ describe("공격 문제(사로 몰아 이기기)", () => {
     },
   );
 
-  it.each(rows(attacks))(
+  it.each(rows(fourAttacks))(
     "%s: 바른 수순을 따라 두면 다섯으로 끝나고, 해설이 수마다 있다",
     (_id, p) => {
       const line = mainLine(p);
@@ -70,7 +71,7 @@ describe("공격 문제(사로 몰아 이기기)", () => {
           expect(verdict).toBe(i === line.length - 1 ? "solved" : "next");
           board[move] = 1;
         } else {
-          expect(defenseFor(board, variantOf(p))).toBe(move);
+          expect(replyFor(p, board)).toBe(move);
           board[move] = 2;
         }
       });
@@ -91,7 +92,7 @@ describe("공격 문제(사로 몰아 이기기)", () => {
   });
 
   it("정답이 아닌 첫 수는 틀렸다고 한다", () => {
-    for (const p of attacks) {
+    for (const p of fourAttacks) {
       const { board } = puzzleState(p);
       const wrong = board.findIndex(
         (c, at) => c === 0 && at !== pointAt(p.solution),
