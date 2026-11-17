@@ -8,6 +8,11 @@ import { ConnectingNotice } from "@/components/ConnectingNotice";
 import { InviteLink } from "@/components/InviteLink";
 import { useSettings } from "@/game/settings";
 import { useChat } from "@/net/chat";
+import {
+  createHostIdentity,
+  type HostIdentity,
+  restoreHostIdentity,
+} from "@/net/identity";
 import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
@@ -106,6 +111,43 @@ function rememberHosting(room: string): void {
   }
 }
 
+/**
+ * 방장 방 열쇠(ECDSA P-256, `net/identity.ts`). 방을 열 때 만들어 개인 열쇠를 이 탭(sessionStorage)에 남기고, 새로 고치면
+ * 같은 열쇠로 되살린다. 지문은 초대 링크(`f`)에 실려, 방장이 새로 고친 뒤 옛 링크로 처음 들어온 사람이 새 연결을 방장으로
+ * 확인한다(docs/47 9-11 「옛 링크로 처음 들어오는 사람」). 열쇠를 만들지 못하면 없이 연다(링크의 방장 연결로만 들어온다)
+ */
+const HOST_KEY_PREFIX = "cube.online.key.";
+
+async function roomKey(room: string): Promise<HostIdentity | undefined> {
+  try {
+    const saved = sessionStorage.getItem(HOST_KEY_PREFIX + room);
+    if (saved) return await restoreHostIdentity(JSON.parse(saved));
+  } catch {
+    // 남긴 열쇠를 못 읽으면 새로 만든다
+  }
+  try {
+    const key = await createHostIdentity();
+    try {
+      sessionStorage.setItem(
+        HOST_KEY_PREFIX + room,
+        JSON.stringify(await key.exportPrivate()),
+      );
+    } catch {
+      // 남기지 못하면 새로 고친 뒤 옛 링크로 처음 들어오는 사람은 새 링크가 있어야 한다
+    }
+    return key;
+  } catch {
+    return undefined;
+  }
+}
+
+/** 초대 링크: 방 코드 + 방장 연결 아이디(`k`) + 방 열쇠 지문(`f`) */
+function cubeInviteUrl(room: string, device: string, fingerprint?: string) {
+  const url = new URL(inviteUrl(room, device));
+  if (fingerprint) url.searchParams.set("f", fingerprint);
+  return url.toString();
+}
+
 async function connect(room: string, isHost: boolean): Promise<Transport> {
   if (isLocalNet()) return joinBroadcast(room);
   const { joinP2P } = await import("@/net/p2p-transport");
@@ -122,6 +164,8 @@ export function CubeOnlineApp() {
   );
   /** 초대 링크에 실린 방장 연결 아이디(`k`). 옛 링크면 없다 */
   const [hostFromUrl, setHostFromUrl] = useState<string | undefined>();
+  /** 초대 링크에 실린 방 열쇠 지문(`f`). 옛 링크면 없다 */
+  const [keyFromUrl, setKeyFromUrl] = useState<string | undefined>();
   const [roomCode, setRoomCode] = useState("");
   /** 방장이 새로 고쳐 다시 열 방(이 탭이 연 방) */
   const [hostResume, setHostResume] = useState<string | null>(null);
@@ -136,6 +180,7 @@ export function CubeOnlineApp() {
     const code = params.get("room");
     setRoomFromUrl(code);
     setHostFromUrl(params.get("k") ?? undefined);
+    setKeyFromUrl(params.get("f") ?? undefined);
     const hosted = code ? null : hostedRoom();
     if (hosted) setHostResume(hosted);
     setRoomCode(code ?? hosted ?? randomId(16));
@@ -162,6 +207,7 @@ export function CubeOnlineApp() {
     if (!isHost) rememberJoined(roomCode);
     else rememberHosting(roomCode);
     try {
+      const hostKey = isHost ? await roomKey(roomCode) : undefined;
       const transport = await connect(roomCode, isHost);
       transportRef.current = transport;
       useChat.getState().reset();
@@ -170,6 +216,8 @@ export function CubeOnlineApp() {
         clock: raceClock,
         isHost,
         ...(!isHost && hostFromUrl ? { hostId: hostFromUrl } : {}),
+        ...(!isHost && keyFromUrl ? { hostFingerprint: keyFromUrl } : {}),
+        ...(hostKey ? { hostKey } : {}),
         // 방장·손님 모두 자리를 남기고 되찾는다(방장은 손님마다 방장 자리 증명을 확인받는다, docs/47 9-11)
         seat: sessionSeatStore(roomCode),
         name: trimmed,
@@ -325,10 +373,12 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
   const [botLevel, setBotLevel] = useState(levelText("casual"));
   const [link, setLink] = useState("");
   // 방장 연결 아이디를 실어 손님이 처음부터 방장을 알게 한다(먼저 방 상태를 보낸 다른 손님을 믿지 않게).
-  // 방장이 새로 고쳤으면 새 연결 아이디(이미 들어온 손님은 방장 자리 증명으로 새 연결을 받는다, docs/47 9-11)
+  // 방장이 새로 고쳤으면 새 연결 아이디(이미 들어온 손님은 방장 자리 증명으로 새 연결을 받는다, docs/47 9-11).
+  // 방 열쇠 지문도 실어, 새로 고친 뒤 옛 링크로 처음 들어온 사람이 새 연결을 방장으로 확인하게 한다
   useEffect(
-    () => setLink(inviteUrl(roomCode, room.device)),
-    [roomCode, room.device],
+    () =>
+      setLink(cubeInviteUrl(roomCode, room.device, room.hostKeyFingerprint)),
+    [roomCode, room.device, room.hostKeyFingerprint],
   );
   if (!state) return null;
   const s = state.settings;
