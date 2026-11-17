@@ -25,7 +25,9 @@ export function RoundOutcome({
     <div
       data-outcome={outcome ?? undefined}
       className={cn(
-        "flex flex-col items-center text-center",
+        // 한국어는 기본이 글자 단위 줄바꿈이라 「골랐어 / 요!」처럼 낱말 중간에서 끊긴다.
+        // 낱말(띄어쓰기) 단위로 바꾸고, 상자보다 긴 낱말만 아무 데서나 끊어 넘치지 않게 한다
+        "flex flex-col items-center break-keep text-center wrap-anywhere",
         outcome &&
           "pop-in w-full max-w-xl rounded-2xl border px-6 py-3 shadow-xl",
         outcome === "win" && "border-amber-300 bg-amber-400/20",

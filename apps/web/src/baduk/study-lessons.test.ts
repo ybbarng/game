@@ -29,6 +29,9 @@ import {
   BREAKER_RIGHT_PATH,
   BREAKER_WRONG_PATH,
   CORNER_POINTS,
+  DOUBLE_STORY,
+  ENDGAME_DOUBLE_PUZZLE,
+  ENDGAME_REVERSE_PUZZLE,
   ENDGAME_SENTE_PUZZLE,
   ENDGAME_SIZE_PUZZLE,
   gainText,
@@ -40,6 +43,7 @@ import {
   LADDER_LESSON_PUZZLE,
   ORDER_GAIN,
   otherSide,
+  REVERSE_STORY,
   SENTE_REPLY,
   SENTE_SIZES,
   SENTE_THREATENED,
@@ -322,6 +326,85 @@ describe("끝내기 단원", () => {
           groupOf(atari.board, q).liberties[0] === reply,
       ),
     ).toBe(true);
+  });
+
+  /** 끝내기 곳 안에서 이 편이 가장 좋게 두는 첫 자리(문제 화면과 같은 읽기: 차례대로 첫 것) */
+  const bestIn = (
+    board: readonly Cell[],
+    p: typeof ENDGAME_REVERSE_PUZZLE,
+    turn: 1 | 2,
+  ) => {
+    const all = solveEndgame(board, spotsOf(p).flat(), turn).best;
+    return all.filter((m): m is number => m !== null);
+  };
+  const place = (board: readonly Cell[], at: number, stone: 1 | 2) => {
+    const r = tryPlace(board, at, stone);
+    if (!r.ok) throw new Error(`${pointName(at, PUZZLE_SIZE)}에 둘 수 없다`);
+    return r.board;
+  };
+  const spotOf = (p: typeof ENDGAME_REVERSE_PUZZLE, at: number) =>
+    spotsOf(p).findIndex((s) => s.includes(at));
+
+  it("역끝내기 그림: 백이 정답 곳에 두면 흑 돌이 단수가 되고, 흑이 두면 아니다. 다른 곳부터 두면 백이 선수로 두고 남은 곳까지 가져가 흑은 한 곳뿐, 먼저 막으면 흑이 두 곳", () => {
+    const p = ENDGAME_REVERSE_PUZZLE;
+    const s = REVERSE_STORY;
+    const start = puzzleState(p).board;
+    const key = pointAt(s.move, PUZZLE_SIZE);
+    expect(s.white.stones).toBeGreaterThan(0);
+    expect(s.black.stones).toBe(0);
+    expect(s.others).toHaveLength(2);
+    // 글의 셈 「흑 돌만큼 1점, 백 돌만큼 1점, 흑이 받는 자리는 흑 집이라 그대로, 1 + 1 = 2」
+    expect(s.sizes).toEqual([2, 2, 2]);
+    expect(spotsOf(p).find((x) => x.includes(key))).toEqual([key]);
+    expect(areaOwners(start)[key]).toBe(0);
+    const blackAtKey = tryPlace(start, key, 1);
+    expect(blackAtKey.ok ? blackAtKey.captured : null).toEqual([]);
+    expect(areaOwners(start)[pointAt(s.white.reply, PUZZLE_SIZE)]).toBe(1);
+    for (const [i, spot] of spotsOf(p).entries()) {
+      if (spot.includes(key)) continue;
+      // 흑이 다른 곳 → 백은 정답 곳(선수) → 흑은 글의 받는 자리 → 백은 남은 곳
+      const one = place(start, spotMoveOf(start, spot), 1);
+      expect(bestIn(one, p, 2)).toContain(key);
+      const two = place(one, key, 2);
+      expect(bestIn(two, p, 1)).toContain(pointAt(s.white.reply, PUZZLE_SIZE));
+      const three = place(two, pointAt(s.white.reply, PUZZLE_SIZE), 1);
+      const third = spotsOf(p).findIndex(
+        (_x, j) => j !== i && !_x.includes(key),
+      );
+      const whiteNext = bestIn(three, p, 2);
+      expect(whiteNext.some((m) => spotOf(p, m) === third)).toBe(true);
+    }
+    // 흑이 먼저 막으면 백은 다른 곳 하나, 흑은 남은 곳
+    const w = pointAt(s.line.white, PUZZLE_SIZE);
+    const b = pointAt(s.line.black, PUZZLE_SIZE);
+    expect(new Set([spotOf(p, key), spotOf(p, w), spotOf(p, b)]).size).toBe(3);
+  });
+
+  it("양선수 그림: 흑이 두면 백 돌이, 백이 두면 흑 돌이 단수가 되고, 글의 받는 자리가 그 무리의 활로다. 흑이 놓치면 백이 선수로 두고 남은 곳까지 둔다", () => {
+    const p = ENDGAME_DOUBLE_PUZZLE;
+    const s = DOUBLE_STORY;
+    const start = puzzleState(p).board;
+    const key = pointAt(s.move, PUZZLE_SIZE);
+    expect(s.black.stones).toBeGreaterThan(0);
+    expect(s.white.stones).toBeGreaterThan(0);
+    // 흑이 먼저 두면 백은 글의 자리에 이어 받는다
+    const mine = place(start, key, 1);
+    expect(bestIn(mine, p, 2)).toEqual([pointAt(s.black.reply, PUZZLE_SIZE)]);
+    // 흑이 다른 곳부터 두면 백이 양선수에 두고, 흑은 글의 자리에 받고, 백이 남은 곳에 둔다
+    const other = spotsOf(p).findIndex((x) => !x.includes(key));
+    const one = place(
+      start,
+      spotMoveOf(start, spotsOf(p)[other] as number[]),
+      1,
+    );
+    expect(bestIn(one, p, 2)).toContain(key);
+    const two = place(one, key, 2);
+    expect(bestIn(two, p, 1)).toContain(pointAt(s.white.reply, PUZZLE_SIZE));
+    const three = place(two, pointAt(s.white.reply, PUZZLE_SIZE), 1);
+    const third = spotsOf(p).findIndex(
+      (x, j) => j !== other && !x.includes(key),
+    );
+    expect(bestIn(three, p, 2).some((m) => spotOf(p, m) === third)).toBe(true);
   });
 
   it("퀴즈 보기는 서로 다르다", () => {

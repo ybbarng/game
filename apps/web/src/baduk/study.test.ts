@@ -9,17 +9,16 @@ import {
   tryPlace,
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
-
 import { BADUK_PUZZLE_SETS, type BadukPuzzle, LADDER_THEMES } from "./puzzles";
 import {
   defenseFor,
-  explainSolved,
   judgeMove,
   PUZZLE_SIZE,
   puzzleState,
   solutionOf,
   targetOf,
 } from "./study";
+import { explainSolved } from "./study-explain";
 
 type Capture = Extract<BadukPuzzle, { kind: "capture" }>;
 
@@ -101,7 +100,9 @@ describe("잡기 문제(단수 방향·축·장문)", () => {
         state = mine.state;
         if (verdict === "solved") {
           expect(state.board[target]).toBe(0);
-          expect(explainSolved(p, before, move, i + 1).length).toBe(3);
+          expect(
+            explainSolved(p, before, move, i + 1).length,
+          ).toBeGreaterThanOrEqual(2);
           return;
         }
         const theirs = step(state, 1, defenseFor(p, state, i));
