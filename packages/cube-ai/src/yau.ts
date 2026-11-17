@@ -19,6 +19,7 @@ import {
   stepMovesYauLast,
   yauSideTargets,
 } from "./taught-yau";
+import { yauEdgesShort } from "./yau-edges";
 
 /**
  * 4×4 야우의 앞 다섯 단계(docs/47 8-6 단계 지도, 16-16~16-21): 흰·노랑 센터(축소법 센터 규칙을 두 색만) → 흰 십자 셋 →
@@ -72,10 +73,20 @@ function sideHold(s: PuzzleState): string {
   return h;
 }
 
-/** 섞인 4×4를 야우 앞 다섯 단계로(엣지 짝까지). 끝난 상태와 단계들. `pick`은 같은 경우가 여럿일 때 고르는 차례 */
+/**
+ * 엣지 여덟을 짝짓는 길. `taught`는 배우기 단원 규칙(축소법 처음 엣지, 한 줄씩 묶어 평균 약 86수), `short`는 십자를 지키는
+ * 짧은 짝짓기(`yau-edges.ts`, 평균 약 27수, 고수·초고수 컴퓨터)
+ */
+export type YauEdges = "taught" | "short";
+
+/**
+ * 섞인 4×4를 야우 앞 다섯 단계로(엣지 짝까지). 끝난 상태와 단계들. `pick`은 같은 경우가 여럿일 때 고르는 차례.
+ * 앞 네 단계는 늘 단원 규칙이고, 엣지 짝만 `edges`로 고른다
+ */
 export function yauReduce(
   start: PuzzleState,
   pick: Pick = FIRST,
+  edges: YauEdges = "taught",
 ): { state: PuzzleState; stages: YauReduceStage[] } {
   const stages: YauReduceStage[] = [];
   let s = start;
@@ -97,7 +108,12 @@ export function yauReduce(
   );
   push("centers-rest", [join(side, sideSteps[0] ?? ""), ...sideSteps.slice(1)]);
   push("last-cross", runYauLastCross(s, pick).steps.map(stepMovesYauLast));
-  push("edges", runEdges444(s).steps.map(stepMovesBig));
+  push(
+    "edges",
+    edges === "short"
+      ? yauEdgesShort(s)
+      : runEdges444(s).steps.map(stepMovesBig),
+  );
   return { state: s, stages };
 }
 
@@ -113,7 +129,7 @@ const STAGE_OF: Readonly<Record<YauReduceStageId, StageName>> = {
 const tokens = (text: string) => text.split(/\s+/).filter(Boolean);
 
 /**
- * 4×4 컴퓨터 야우(docs/47 10-4): 앞 다섯 단계는 `yauReduce`(배우기 단원 규칙), 그 뒤 「3×3처럼」은 그 단계의 3×3 사람
+ * 4×4 컴퓨터 야우(docs/47 10-4): 앞 다섯 단계는 `yauReduce`(배우기 단원 규칙, 고수·초고수는 엣지 짝만 짧은 길 `edges`), 그 뒤 「3×3처럼」은 그 단계의 3×3 사람
  * 해법 차례(`steps`, 패리티는 축소법 컴퓨터처럼 OLL·PLL 앞에서)를 돌린다. 걸음(경우 하나)마다 살피는 자리를 둔다
  * (단계 첫 걸음은 단계 앞 멈춤이 맡는다). 흰 십자는 야우가 이미 맞춰 두어 3×3 십자 단계는 쥐기뿐이다
  */
@@ -121,8 +137,9 @@ export function solveYauHuman(
   steps: readonly Step[],
   state: PuzzleState,
   until?: StageName,
+  edges: YauEdges = "taught",
 ): HumanSolve {
-  const { stages: parts } = yauReduce(state);
+  const { stages: parts } = yauReduce(state, FIRST, edges);
   const moves: string[] = [];
   const stages: HumanSolve["stages"] = [];
   const looks: number[] = [];
