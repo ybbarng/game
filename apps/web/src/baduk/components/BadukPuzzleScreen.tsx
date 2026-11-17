@@ -15,7 +15,6 @@ import {
   usePuzzleRun,
 } from "@/components/study/PuzzleScreen";
 import type { ReviewRun } from "@/components/study/review-run";
-
 import { useBadukStudyProgress } from "../progress";
 import {
   BADUK_PUZZLE_SETS,
@@ -26,7 +25,6 @@ import {
 } from "../puzzles";
 import {
   defenseFor,
-  explainSolved,
   judgeMove,
   koPointOf,
   PUZZLE_SIZE,
@@ -36,6 +34,7 @@ import {
   spotsOf,
   targetOf,
 } from "../study";
+import { explainSolved } from "../study-explain";
 import { BadukBoard } from "./BadukBoard";
 
 /** 잡기 문제 모양마다 보이는 글. `follow`는 둘째 수부터의 안내(없으면 "계속 몰아 따내세요.") */
