@@ -6,6 +6,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { join, normalize } from "node:path";
+import { subj } from "@game/mighty-engine/josa";
 import {
   decodeSignatureData,
   encodeReceipt,
@@ -111,7 +112,7 @@ async function readJson(
 }
 
 const str = (v: unknown, name: string): string => {
-  if (typeof v !== "string") throw new EntryError(`${name}이(가) 없습니다`);
+  if (typeof v !== "string") throw new EntryError(`${subj(name)} 없습니다`);
   return v;
 };
 

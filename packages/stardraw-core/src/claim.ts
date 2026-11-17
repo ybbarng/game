@@ -1,3 +1,4 @@
+import { topic } from "@game/mighty-engine/josa";
 import {
   ByteReader,
   ByteWriter,
@@ -78,7 +79,7 @@ function checkText(label: string, text: string): void {
   const trimmed = text.trim();
   if (trimmed.length === 0 || trimmed !== text || text.length > MAX_TEXT) {
     throw new Error(
-      `${label}은(는) 앞뒤 공백 없이 1~${MAX_TEXT}자여야 합니다.`,
+      `${topic(label)} 앞뒤 공백 없이 1~${MAX_TEXT}자여야 합니다.`,
     );
   }
 }

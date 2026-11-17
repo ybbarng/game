@@ -1,3 +1,4 @@
+import { subj } from "@game/mighty-engine/josa";
 import { concat } from "./bytes";
 
 /**
@@ -65,7 +66,7 @@ export function derChildren(node: Der): Der[] {
 /** 태그를 확인하며 읽는다 */
 export function expectTag(node: Der | undefined, tag: number): Der {
   if (!node || node.tag !== tag)
-    throw new Error(`DER 태그 0x${tag.toString(16)}가 와야 합니다`);
+    throw new Error(`DER 태그 ${subj(`0x${tag.toString(16)}`)} 와야 합니다`);
   return node;
 }
 

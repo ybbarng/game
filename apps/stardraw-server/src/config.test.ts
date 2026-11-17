@@ -42,7 +42,7 @@ describe("운영 시작 검사: 출처", () => {
       "STARDRAW_ORIGINS에 https가 아닌 출처가 있다: http://localhost:3456",
       "STARDRAW_ORIGINS에 localhost 출처가 있다: http://localhost:3456",
       "STARDRAW_ORIGINS의 출처가 rpId(game.byb.kr) 아래가 아니다: http://localhost:3456",
-      "STARDRAW_ORIGINS의 http://localhost:3456는 공개 장부 검사가 받지 않는 출처다(받는 출처: https://game.byb.kr)",
+      "STARDRAW_ORIGINS의 http://localhost:3456은 공개 장부 검사가 받지 않는 출처다(받는 출처: https://game.byb.kr)",
     ]);
     expect(
       problemsOf({
@@ -62,11 +62,11 @@ describe("운영 시작 검사: 출처", () => {
         STARDRAW_ORIGINS: "https://game.byb.kr,https://x.game.byb.kr",
       }),
     ).toEqual([
-      "STARDRAW_ORIGINS의 https://x.game.byb.kr는 공개 장부 검사가 받지 않는 출처다(받는 출처: https://game.byb.kr)",
+      "STARDRAW_ORIGINS의 https://x.game.byb.kr은 공개 장부 검사가 받지 않는 출처다(받는 출처: https://game.byb.kr)",
     ]);
     expect(problemsOf({ STARDRAW_ORIGINS: "https://game.byb.kr/" })).toEqual([
       "STARDRAW_ORIGINS의 값이 출처 모양이 아니다: https://game.byb.kr/",
-      "STARDRAW_ORIGINS의 https://game.byb.kr/는 공개 장부 검사가 받지 않는 출처다(받는 출처: https://game.byb.kr)",
+      "STARDRAW_ORIGINS의 https://game.byb.kr/은(는) 공개 장부 검사가 받지 않는 출처다(받는 출처: https://game.byb.kr)",
     ]);
   });
 
