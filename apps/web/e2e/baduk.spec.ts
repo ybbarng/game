@@ -17,6 +17,7 @@ import {
 } from "../src/baduk/study";
 import { useTestSpeed } from "./fast";
 import { expect, type Page, ready, test } from "./test";
+import { linesBreakAtSpaces } from "./word-wrap";
 
 /** 9줄 판과 가장자리 여백(BadukBoard의 BADUK_PAD) */
 const SIZE = 9;
@@ -751,6 +752,49 @@ test(
     await page.screenshot({ path: info.outputPath("baduk-endgame-sente.png") });
   },
 );
+
+test("바둑 수 배우기: 맞힌 뒤 큰 결과 제목과 해설은 낱말 중간에서 줄이 바뀌지 않고 상자를 넘치지 않는다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name.startsWith("phone");
+  await page.goto("/baduk");
+  await page.getByRole("button", { name: /바둑 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  await page
+    .getByRole("region", { name: "큰 끝내기부터" })
+    .getByRole("button", { name: "풀기 시작" })
+    .click();
+  const [big] = endgameMoves("endgame-bigger-1");
+  await placeAt(page, big, touch);
+  const title = page.getByRole("status");
+  await expect(title).toHaveText("끝내기를 잘 골랐어요!");
+  // 결과 상자는 pop-in으로 커진다. 연출이 끝난 뒤에 줄을 잰다
+  const box = page.locator("[data-outcome]");
+  await box.evaluate((el) =>
+    Promise.all(el.getAnimations().map((a) => a.finished)),
+  );
+  const { lines, words, lineWords } = await linesBreakAtSpaces(title);
+  expect(
+    lineWords,
+    `화면 줄 ${JSON.stringify(lines)}이 낱말 ${JSON.stringify(words)} 중간에서 끊겼다`,
+  ).toEqual(words);
+  // 아래 해설 줄도 같은 화면 틀이라 낱말 단위로 바뀐다(「끝내기예 / 요.」가 아니게)
+  const notes = page.getByRole("listitem");
+  await expect(notes).not.toHaveCount(0);
+  for (const note of await notes.all()) {
+    const wrap = await linesBreakAtSpaces(note);
+    expect(
+      wrap.lineWords,
+      `해설 줄 ${JSON.stringify(wrap.lines)}이 낱말 중간에서 끊겼다`,
+    ).toEqual(wrap.words);
+  }
+  // 긴 낱말이 상자 밖으로 삐져나가지 않는다
+  const overflow = await box.evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(overflow).toBe(0);
+  await page.screenshot({
+    path: info.outputPath(`baduk-outcome-wrap-${info.project.name}.png`),
+  });
+});
 
 test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘모 붙임을 끝까지 둔다", async ({
   page,
