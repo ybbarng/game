@@ -20,7 +20,11 @@ describe("오목 문제 화면", () => {
     const first = OMOK_PUZZLE_SETS[0]?.puzzles[0];
     if (!first) throw new Error("문제가 없다");
     render(
-      <OmokPuzzleScreen puzzleId={first.id} onExit={() => {}} onOpen={() => {}} />,
+      <OmokPuzzleScreen
+        puzzleId={first.id}
+        onExit={() => {}}
+        onOpen={() => {}}
+      />,
     );
     // 힌트가 정답 자리를 겨누고, 판에서 Enter를 누르면 그 자리에 둔다.
     fireEvent.click(screen.getByRole("button", { name: "힌트" }));

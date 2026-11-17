@@ -245,7 +245,9 @@ test(
     await placeOne(page, false);
     await expect(stones(page)).toHaveCount(2);
     // 키보드로 자리를 겨눠 둔다(「여기 두기」가 뜬다).
-    await page.getByRole("img", { name: "오목 판, 내 차례" }).press("ArrowRight");
+    await page
+      .getByRole("img", { name: "오목 판, 내 차례" })
+      .press("ArrowRight");
     const placeHere = page.getByRole("button", { name: "여기 두기" });
     await expect(placeHere).toBeVisible();
     // 기권은 한 번 더 묻는다. 물을 때 겨눈 자리를 푼다. 「계속 두기」면 판이 그대로다.
