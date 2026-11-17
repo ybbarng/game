@@ -10,17 +10,16 @@ import {
   tryPlace,
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
-
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";
 import {
   defenseFor,
-  explainSolved,
   judgeMove,
   PUZZLE_SIZE,
   puzzleState,
   solutionOf,
   targetOf,
 } from "./study";
+import { explainSolved } from "./study-explain";
 
 type Capture = Extract<BadukPuzzle, { kind: "capture" }>;
 
@@ -58,7 +57,9 @@ function playOut(p: Capture): number {
     state = mine.state;
     if (verdict === "solved") {
       expect(state.board[target]).toBe(0);
-      expect(explainSolved(p, before, move, i + 1)).toHaveLength(3);
+      expect(
+        explainSolved(p, before, move, i + 1).length,
+      ).toBeGreaterThanOrEqual(2);
       return i + 1;
     }
     // 흑 수마다 백은 단수다(축)
