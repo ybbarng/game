@@ -94,6 +94,11 @@ export const WATCHED = [
     path: `${WEB}cube/tiers/TierTable.tsx`,
     why: "티어 기준표(앱 NativeTiersWindow)",
   },
+  // 기록 창 구간 안 자리 막대(docs/47 14-9): 앱 기록 창도 같은 막대를 직접 그린다(앱 TierBandView)
+  {
+    path: `${WEB}cube/tiers/TierBandBar.tsx`,
+    why: "구간 안 자리 막대(앱 NativeRecordsWindow TierBandView)",
+  },
   // 티어 화면 진열(docs/47 14-7 「진열」): 앱 티어표 창도 같은 진열을 직접 그린다(docs/52 5-11, 앱 TierShowcase·NativeTierShowcase).
   // 2026-11-16 「진열은 사이트에만」으로 넘겼다가 앱 티어표가 옛 모습으로 남은 실수를 되풀이하지 않게 넣는다
   {

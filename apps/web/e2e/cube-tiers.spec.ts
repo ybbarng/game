@@ -323,6 +323,14 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
     "diamond",
   );
   await stillsLoaded(tier, 1);
+  // 구간 안 자리 막대(docs/47 14-9): 다이아몬드 IV 14.00 → 다이아몬드 III 13.00, 13.40은 왼쪽에서 60%
+  const band = page.locator("[data-cube-records] [data-cube-tier-band]");
+  await expect(band).toHaveAttribute("data-cube-tier-band", "diamond");
+  await expect(band).toHaveAttribute(
+    "aria-label",
+    "다이아몬드 IV 14.00 → 다이아몬드 III 13.00 · 최고 5판 평균 13.40",
+  );
+  await expect(band.locator("[data-band-value]")).toHaveText("13.40");
   await page.locator("[data-cube-records]").scrollIntoViewIfNeeded();
   await shot(page, "solo-tier", info.project.name);
   await tier.click();
@@ -461,6 +469,112 @@ test(
       page.locator("[data-mini-tiers] a", { hasText: "티어표" }),
     ).toHaveAttribute("href", "/cube/tiers?n=3&records=cubie");
     await shot(page, "mini-records-best5", info.project.name);
+  },
+);
+
+/** 막대 안에서 표시(흰 세로 선)의 가운데가 막대 왼쪽에서 몇 %인지(0~1) */
+async function markerRatio(band: Locator): Promise<number> {
+  return band.evaluate((e) => {
+    const track = e.querySelector("[data-band-track]") as HTMLElement;
+    const mark = e.querySelector("[data-band-mark]") as HTMLElement;
+    const t = track.getBoundingClientRect();
+    const m = mark.getBoundingClientRect();
+    return (m.left + m.width / 2 - t.left) / t.width;
+  });
+}
+
+test(
+  "Cubie 기록 화면의 구간 안 자리 막대: 가운데 자리, 꼭대기는 0초, 5판 전이면 없다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    // 3×3은 사용자 기록(브론즈 II, 2:35.09), 2×2는 챌린저(5판 평균 1.25초), 4×4는 기록 없음
+    await page.addInitScript((times) => {
+      if (localStorage.getItem("cube.mini.v1")) return;
+      const make = (n: number, list: number[]) =>
+        list
+          .map((ms, i) => ({
+            at: Date.UTC(2026, 10, 10 + Math.floor(i / 2), 12),
+            no: i + 1,
+            n,
+            mode: "solo",
+            ms,
+            penalty: 0,
+            moves: 40,
+            scramble: "R U R' U'",
+          }))
+          .reverse();
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 3,
+          mirror: true,
+          records: {
+            3: make(3, times),
+            2: make(2, [1_200, 1_300, 1_250, 1_400, 1_100]),
+          },
+          best5: {},
+        }),
+      );
+    }, USER_3X3);
+    await page.setViewportSize({ width: 380, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    const band = page.locator("[data-mini-tiers] [data-cube-tier-band]");
+    // 왼쪽 브론즈 II 3:10.00, 오른쪽 브론즈 I 2:30.00, 표시 2:35.09(시간에 비례: 87.3%)
+    await expect(band).toHaveAttribute("data-cube-tier-band", "bronze");
+    await expect(band).toHaveAttribute(
+      "aria-label",
+      "브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09",
+    );
+    await expect(band.locator("[data-band-left]")).toHaveText(
+      "브론즈 II3:10.00",
+    );
+    await expect(band.locator("[data-band-right]")).toHaveText(
+      "브론즈 I2:30.00",
+    );
+    await expect(band.locator("[data-band-value]")).toHaveText("2:35.09");
+    expect(await markerRatio(band)).toBeCloseTo(0.87275, 2);
+    // 막대는 다음 판 목표 바로 위
+    const below = await page
+      .locator("[data-mini-next-solve]")
+      .evaluate((e) => e.getBoundingClientRect().top);
+    const bandBottom = await band.evaluate(
+      (e) => e.getBoundingClientRect().bottom,
+    );
+    expect(bandBottom).toBeLessThanOrEqual(below);
+    await shot(page, "mini-records-band", info.project.name);
+
+    // 꼭대기(2×2 챌린저): 오른쪽 끝은 이름 없이 0초, 1.50에서 0까지 1.25는 16.7%
+    await page.locator("[data-mini-tier-size='2']").click();
+    await expect(band).toHaveAttribute("data-cube-tier-band", "challenger");
+    await expect(band.locator("[data-band-right]")).toHaveText("0.00");
+    await expect(band.locator("[data-band-left]")).toHaveText("챌린저1.50");
+    expect(await markerRatio(band)).toBeCloseTo(0.25 / 1.5, 2);
+    await shot(page, "mini-records-band-top", info.project.name);
+
+    // 5판 전(4×4): 막대를 두지 않는다(칸의 「5판 뒤에」가 알린다)
+    await page.locator("[data-mini-tier-size='4']").click();
+    await expect(
+      page.locator("[data-mini-tier-size='4'][aria-pressed='true']"),
+    ).toHaveCount(1);
+    await expect(band).toHaveCount(0);
+
+    // 휴대폰 너비: 숫자가 막대 밖으로 나가지 않고 옆으로 넘치지 않는다
+    await page.locator("[data-mini-tier-size='3']").click();
+    await page.setViewportSize({ width: 320, height: 640 });
+    const inside = await band.evaluate((e) => {
+      const t = (
+        e.querySelector("[data-band-track]") as HTMLElement
+      ).getBoundingClientRect();
+      const v = (
+        e.querySelector("[data-band-value]") as HTMLElement
+      ).getBoundingClientRect();
+      return v.left >= t.left - 0.5 && v.right <= t.right + 0.5;
+    });
+    expect(inside).toBe(true);
+    await noSideScroll(page);
   },
 );
 
