@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.8.0</title>
+      <pubDate>Wed, 18 Nov 2026 07:03:19 +0000</pubDate>
+      <sparkle:version>0.8.0</sparkle:version>
+      <sparkle:shortVersionString>0.8.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;기록 창에 큐브 크기마다 가로 막대가 생겼습니다. 왼쪽 끝은 지금 티어에 든 경계, 오른쪽 끝은 다음 티어 경계이고, 티어를 정한 최고 5판 평균이 그 사이 어디쯤인지 보입니다. 최고 티어는 오른쪽 끝이 0초입니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.8.0/Cubie.zip" length="10065576" type="application/octet-stream" sparkle:edSignature="zIFzLvoFaRgJBV2GGdp5Jn3Cj88d/rxj6tVQ9SEvt5zQeRfAi7MlVA5oiAblmGFfmeSOB5k5cF59SRXxVdYKAg=="/>
+    </item>
+    <item>
       <title>Cubie 0.7.0</title>
       <pubDate>Wed, 18 Nov 2026 05:53:21 +0000</pubDate>
       <sparkle:version>0.7.0</sparkle:version>
