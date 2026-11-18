@@ -95,6 +95,19 @@ struct RustTierMath: TierMath {
   }
 }
 
+/// 구간 안 자리(코어 `tier.rs` `tier_band`, docs/47 14-9)
+extension RustTierMath: TierBandMath {
+  func band(n: Int, ms: Double) -> TierProgress.Band? {
+    var out = CubieTierBand()
+    guard cubie_tier_band(UInt32(n), ms, &out) else { return nil }
+    return TierProgress.Band(
+      tier: Int(out.tier), division: out.division >= 0 ? Int(out.division) : nil,
+      lowMs: out.low_ms >= 0 ? out.low_ms : nil,
+      up: out.up_tier >= 0 ? (Int(out.up_tier), out.up_division >= 0 ? Int(out.up_division) : nil) : nil,
+      highMs: out.high_ms, ratio: out.ratio)
+  }
+}
+
 /// 최고 5판·다음 판·이력(코어 `tier.rs` `best_five_detail`·`next_solve`·`tier_history`, docs/47 14-8)
 extension RustTierMath: TierProgressMath {
   func bestFive(records: [Timeable], bestFive: [Timeable]) -> TierProgress.BestFive? {

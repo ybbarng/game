@@ -91,11 +91,16 @@ function sampleStore() {
     record(i + 1, 2, ms),
   );
   two.reverse();
+  // 5×5는 꼭대기(챌린저, 5판 평균 48초): 구간 안 자리 막대의 오른쪽 끝 0초 장면(docs/47 14-9)
+  const five = [48_000, 47_500, 49_000, 46_000, 50_000].map((ms, i) =>
+    record(i + 1, 5, ms),
+  );
+  five.reverse();
   const mini = {
     version: 1,
     n: 3,
     mirror: true,
-    records: { 3: three, 2: two },
+    records: { 3: three, 2: two, 5: five },
     best5: {},
   };
   // 사이트 혼자 맞추기 기록도 넣어 둔다(앱 티어표·`records=cubie` 사이트 창은 이것을 보지 않아야 한다)
@@ -141,7 +146,8 @@ const WINDOWS = [
     name: "records",
     path: "/cube/mini?view=records",
     size: { width: 380, height: 600 },
-    shots: ["records", "records-replay"],
+    // 구간 안 자리 막대: 가운데(3×3, 첫 장면), 꼭대기(5×5), 5판 전(4×4)
+    shots: ["records", "records-replay", "records-top", "records-none"],
   },
   {
     name: "tiers",
@@ -214,6 +220,17 @@ try {
       if (shot === "records-replay") {
         await page.locator("[data-mini-replay-open]").first().click();
         await page.waitForSelector("[data-cube-ready]");
+        await page.waitForTimeout(300);
+      }
+      if (shot === "records-top" || shot === "records-none") {
+        // 네이티브는 새 기록 창에서 크기만 고른다(다시 보기 닫힘)
+        await ctx.close();
+        [ctx, page] = await open(store);
+        await page
+          .locator(
+            `[data-mini-tier-size='${shot === "records-top" ? 5 : 4}']`,
+          )
+          .click();
         await page.waitForTimeout(300);
       }
       await page.screenshot({

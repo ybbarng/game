@@ -99,6 +99,8 @@ final class RecordsRootView: FlippedView {
   private let tiersLink = Chip(RecordsSheet.tiersLink, look: Chip.Look(text: NUI.white(0.7), padX: 0))
   private var tierButtons: [TierCell] = []
   private let tiersNote = NUI.paragraph(RecordsSheet.tiersNote, color: NUI.white(0.5), lineHeight: 16)
+  /// 고른 크기의 구간 안 자리 막대(사이트 `TierBandBar`, 5판 평균이 없으면 숨김)
+  let band = TierBandView()
   /// 고른 크기의 다음 판 목표(사이트 `data-mini-next-solve`)
   private let goalLine = NUI.paragraph("", color: .white, lineHeight: 16)
   private let tiersLine = FlippedView()
@@ -119,7 +121,7 @@ final class RecordsRootView: FlippedView {
     super.init(frame: NSRect(origin: .zero, size: NativeRecordsWindow.size))
     fill = NUI.color(NUI.Hex.neutral950)
     addSubview(tiers)
-    for v in [tiersTitle, tiersBasis, tiersLink, goalLine, tiersNote, tiersLine] as [NSView] { tiers.addSubview(v) }
+    for v in [tiersTitle, tiersBasis, tiersLink, band, goalLine, tiersNote, tiersLine] as [NSView] { tiers.addSubview(v) }
     tiersLink.action = { [weak self] in self?.owner?.openTiers() }
     tiersLine.fill = NUI.white(0.1)
     for s in RecordsSheet.sizes {
@@ -174,6 +176,12 @@ final class RecordsRootView: FlippedView {
     // 티어를 정한 5판(최고 5판 평균): 요약에 값과 번호, 기록 줄에 그 5판과 빠진 두 판
     let best5 = book.bestFiveView(n)
     NUI.set(summaryValues[4], RecordsSheet.best5Text(best5), color: .white)
+    if let b = book.band(n) {
+      band.show(b.band, ms: b.ms)
+      band.isHidden = false
+    } else {
+      band.isHidden = true
+    }
     let goal = book.nextSolve(n)
     goalLine.isHidden = goal == nil
     goalLine.attributedStringValue = NUI.attributed(
@@ -229,6 +237,13 @@ final class RecordsRootView: FlippedView {
       c.frame = NSRect(x: 8 + CGFloat(i % 3) * (cellW + 4), y: y + CGFloat(i / 3) * (TierCell.height + 4), width: cellW, height: TierCell.height)
     }
     y += TierCell.height * 2 + 4 + 4
+    if !band.isHidden {
+      // 사이트 `mt-1`(칸 아래 4 + 4)
+      y += 4
+      band.frame = NSRect(x: 8, y: y, width: inner, height: TierBandView.height)
+      band.needsLayout = true
+      y += TierBandView.height + 4
+    }
     if !goalLine.isHidden {
       let gh = NUI.height(goalLine, width: inner)
       goalLine.frame = NSRect(x: 8, y: y, width: inner, height: gh)
@@ -277,6 +292,91 @@ final class RecordsRootView: FlippedView {
       r.frame = NSRect(x: 0, y: CGFloat(i) * rowH, width: inner, height: rowH)
     }
     list.frame = NSRect(x: 0, y: 0, width: inner, height: max(scroll.frame.height, CGFloat(rows.count) * rowH))
+  }
+}
+
+/// 구간 안 자리 막대(사이트 `TierBandBar.tsx`, docs/47 14-9): 위 숫자(최고 5판 평균, 막대 안쪽으로 밀어 넣음), 막대(지금 티어 색으로
+/// 왼쪽 끝부터 표시까지 채움, 흰 세로 표시), 아래 양 끝(엠블럼 16pt·구간 이름·경계 시간, 꼭대기는 오른쪽 「0.00」만)
+@MainActor
+final class TierBandView: FlippedView {
+  static let height: CGFloat = 16 + 2 + 8 + 2 + 18
+  private let value = NUI.label("", weight: .semibold)
+  private let track = FlippedView()
+  private let fillBar = FlippedView()
+  private let mark = FlippedView()
+  private let leftIcon = NSImageView()
+  private let leftName = NUI.label("", color: NUI.white(0.8))
+  private let leftTime = NUI.label("", color: NUI.white(0.6))
+  private let rightIcon = NSImageView()
+  private let rightName = NUI.label("", color: NUI.white(0.8))
+  private let rightTime = NUI.label("", color: NUI.white(0.6))
+  private(set) var view: TierProgress.BandView?
+
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    track.fill = NUI.white(0.15)
+    track.radius = 4
+    fillBar.radius = 4
+    mark.fill = .white
+    mark.radius = 2
+    for i in [leftIcon, rightIcon] { i.imageScaling = .scaleProportionallyUpOrDown }
+    for v in [value, track, leftIcon, leftName, leftTime, rightIcon, rightName, rightTime] as [NSView] { addSubview(v) }
+    track.addSubview(fillBar)
+    addSubview(mark)
+    setAccessibilityElement(true)
+    setAccessibilityRole(.image)
+  }
+
+  required init?(coder: NSCoder) { fatalError("코드로만 만든다") }
+
+  func show(_ band: TierProgress.Band, ms: Double) {
+    let v = TierProgress.bandView(band, ms: ms)
+    view = v
+    let color = NUI.color(TierLadderView.ring[min(max(band.tier, 0), 9)])
+    NUI.set(value, v.value, weight: .semibold, color: color)
+    fillBar.fill = color
+    leftIcon.image = NUI.emblem(TierInfo.ids[min(max(band.tier, 0), 9)])
+    NUI.set(leftName, v.leftName, color: NUI.white(0.8))
+    NUI.set(leftTime, v.leftTime, color: NUI.white(0.6))
+    rightIcon.image = band.up.map { NUI.emblem(TierInfo.ids[min(max($0.tier, 0), 9)]) } ?? nil
+    rightIcon.isHidden = band.up == nil
+    rightName.isHidden = v.rightName == nil
+    NUI.set(rightName, v.rightName ?? "", color: NUI.white(0.8))
+    NUI.set(rightTime, v.rightTime, color: NUI.white(0.6))
+    setAccessibilityLabel(v.label)
+    needsLayout = true
+  }
+
+  override func layout() {
+    super.layout()
+    let w = bounds.width
+    let ratio = CGFloat(view?.ratio ?? 0)
+    let vw = NUI.width(value)
+    value.frame = NSRect(
+      x: TierProgress.bandValueX(ratio: ratio, width: w, labelWidth: vw), y: 0, width: vw, height: 16)
+    track.frame = NSRect(x: 0, y: 18, width: w, height: 8)
+    fillBar.frame = NSRect(x: 0, y: 0, width: w * ratio, height: 8)
+    mark.frame = NSRect(x: w * ratio - 2, y: 14, width: 4, height: 16)
+    let y: CGFloat = 28
+    // 왼쪽: 엠블럼 · 이름 · 시간
+    leftIcon.frame = NSRect(x: 0, y: y + 1, width: 16, height: 16)
+    var x: CGFloat = 20
+    for l in [leftName, leftTime] {
+      let lw = NUI.width(l)
+      l.frame = NSRect(x: x, y: y, width: lw, height: 16)
+      x += lw + 2
+    }
+    // 오른쪽: 오른쪽 맞춤으로 시간부터 거꾸로
+    var r = w
+    let tw = NUI.width(rightTime)
+    rightTime.frame = NSRect(x: r - tw, y: y, width: tw, height: 16)
+    r -= tw + 2
+    if !rightName.isHidden {
+      let nw = NUI.width(rightName)
+      rightName.frame = NSRect(x: r - nw, y: y, width: nw, height: 16)
+      r -= nw + 4
+      rightIcon.frame = NSRect(x: r - 16, y: y + 1, width: 16, height: 16)
+    }
   }
 }
 
