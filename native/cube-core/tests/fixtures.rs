@@ -15,7 +15,7 @@ use cube_core::spot::{last_layer_hint, spot_case, spot_hold, LastLayerHint};
 use cube_core::state::{apply_moves, face_colors, is_solved_with};
 use cube_core::summary::{mini_summary, RecentAverage};
 use cube_core::tier::{
-    ao5, best_ao5, best_five_detail, my_tier, next_solve, tier_history, tier_of, Dated,
+    ao5, best_ao5, best_five_detail, my_tier, next_solve, tier_band, tier_history, tier_of, Dated,
     NextSolveKind, TierPlace, Timeable, DIVISIONS,
 };
 use cube_core::{data, parse_moves, solved_cube};
@@ -306,6 +306,37 @@ fn place_triple_core(p: Option<TierPlace>) -> Option<(String, Option<String>, us
             p.step,
         )
     })
+}
+
+#[test]
+fn tier_band_matches_site() {
+    let mut r = Report::new("구간 안 자리(기록 창 가로 막대)");
+    for c in cases(include_str!("../fixtures/tier-band.json")) {
+        r.total += 1;
+        let n = c.get("n").num() as usize;
+        let ms = c.get("ms").num();
+        let b = c.get("band");
+        let want = (!b.is_null()).then(|| {
+            (
+                place_triple(b.get("here")),
+                b.get("lowMs").opt_num(),
+                place_triple(b.get("up")),
+                b.get("highMs").num(),
+                b.get("ratio").num(),
+            )
+        });
+        let have = tier_band(n, ms).map(|b| {
+            (
+                place_triple_core(Some(b.here)),
+                b.low_ms,
+                place_triple_core(b.up),
+                b.high_ms,
+                b.ratio,
+            )
+        });
+        r.check(&format!("{n}×{n} {ms}ms"), have, want);
+    }
+    r.finish();
 }
 
 #[test]

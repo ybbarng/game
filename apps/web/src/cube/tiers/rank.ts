@@ -246,6 +246,48 @@ export function placeAt(
 }
 
 /**
+ * 지금 구간 안의 자리(기록 창 가로 막대, docs/47 14-9). 왼쪽 끝은 지금 구간에 든 경계(그 구간 상한), 오른쪽 끝은 바로 위
+ * 구간에 드는 경계. 꼭대기(챌린저)는 더 빠를 수 없으니 오른쪽 끝이 0초(2026-11-18 사용자 「그것보다 나갈 수는 없잖아」).
+ * 맨 아래 구간(아이언 IV, 6×6·7×7 아이언)은 상한이 없어(「다 맞춤」) 왼쪽 끝을 오른쪽 경계의 두 배로 둔다
+ */
+export interface TierBand {
+  /** 지금 구간 */
+  here: TierPlace;
+  /** 왼쪽 끝: 지금 구간 상한(ms). 상한이 없는 맨 아래 구간이면 null(자리는 `highMs`의 두 배로 셈) */
+  lowMs: number | null;
+  /** 바로 위 구간. 꼭대기면 null */
+  up: TierPlace | null;
+  /** 오른쪽 끝: 바로 위 구간 상한(ms). 꼭대기면 0 */
+  highMs: number;
+  /** 막대 위 자리(0 = 왼쪽 끝, 1 = 오른쪽 끝). 시간에 비례, 0~1로 자른다 */
+  ratio: number;
+}
+
+/** 크기 `n`에서 최고 5판 평균 `ms`의 구간 안 자리. 티어가 없으면 null */
+export function tierBand(n: number, ms: number): TierBand | null {
+  const here = tierOf(n, ms);
+  if (!here) return null;
+  const low = placeAt(n, here.step)?.cutMs ?? Number.POSITIVE_INFINITY;
+  const next = placeAt(n, here.step + 1);
+  const highMs = next ? next.cutMs : 0;
+  const lowMs = Number.isFinite(low) ? low : null;
+  const left = lowMs ?? highMs * 2;
+  const raw = left > highMs ? (left - ms) / (left - highMs) : 0;
+  let up: TierPlace | null = null;
+  if (next) {
+    const { cutMs: _, ...p } = next;
+    up = p;
+  }
+  return {
+    here,
+    lowMs,
+    up,
+    highMs,
+    ratio: Math.min(1, Math.max(0, raw)),
+  };
+}
+
+/**
  * 다음 판 하나로 바로 위 구간에 닿으려면(티어 화면·기록 창). 다음 판 X를 더한 마지막 5판의 5판 평균이 그 구간 상한
  * 이하가 되는 X의 최댓값.
  * - `within`: 다음 판을 `ms` 안에 맞추면 된다(벌점 없이). WCA 반올림까지 그대로 셈해 경계는 1/100초 단위로 맞다

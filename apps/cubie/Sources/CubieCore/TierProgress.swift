@@ -143,6 +143,83 @@ public enum TierProgress {
     case .out(let gap): return "다음 판 하나로는 \(to)에 못 닿아요. 최고 5판 평균을 \(MiniBook.formatMs(gap))초 줄여야 해요."
     }
   }
+
+  // MARK: 구간 안 자리 막대(docs/47 14-9, 사이트 `TierBandBar.tsx`·`progress-view.ts` `bandView`)
+
+  /// 지금 구간 안의 자리(코어 `tier_band`, 사이트 `TierBand`)
+  public struct Band: Equatable, Sendable {
+    /// 지금 구간: 0 아이언 … 9 챌린저, 0 IV … 3 I(없으면 nil)
+    public var tier: Int
+    public var division: Int?
+    /// 왼쪽 끝(지금 구간 상한, ms). 상한 없는 맨 아래 구간이면 nil
+    public var lowMs: Double?
+    /// 바로 위 구간. 꼭대기면 nil
+    public var up: (tier: Int, division: Int?)?
+    /// 오른쪽 끝(바로 위 구간 상한, ms). 꼭대기면 0
+    public var highMs: Double
+    /// 0 왼쪽 ~ 1 오른쪽
+    public var ratio: Double
+
+    public init(tier: Int, division: Int?, lowMs: Double?, up: (tier: Int, division: Int?)?, highMs: Double, ratio: Double) {
+      self.tier = tier
+      self.division = division
+      self.lowMs = lowMs
+      self.up = up
+      self.highMs = highMs
+      self.ratio = ratio
+    }
+
+    public static func == (a: Band, b: Band) -> Bool {
+      a.tier == b.tier && a.division == b.division && a.lowMs == b.lowMs && a.up?.tier == b.up?.tier
+        && a.up?.division == b.up?.division && a.highMs == b.highMs && a.ratio == b.ratio
+    }
+  }
+
+  /// 막대의 글(사이트 `BandView`)
+  public struct BandView: Equatable, Sendable {
+    public var leftName: String
+    public var leftTime: String
+    /// 꼭대기면 nil
+    public var rightName: String?
+    public var rightTime: String
+    public var value: String
+    public var ratio: Double
+    /// 접근성 이름: 「브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09」
+    public var label: String
+  }
+
+  /// 상한 없는 맨 아래 구간의 왼쪽 끝 글(사이트 `BAND_OPEN_LOW`)
+  public static let bandOpenLow = "다 맞춤"
+
+  public static func bandView(_ b: Band, ms: Double) -> BandView {
+    let leftName = placeName(tier: b.tier, division: b.division)
+    let leftTime = b.lowMs.map { MiniBook.formatMs($0) } ?? bandOpenLow
+    let rightName = b.up.map { placeName(tier: $0.tier, division: $0.division) }
+    let rightTime = MiniBook.formatMs(b.highMs)
+    let value = MiniBook.formatMs(ms)
+    let right = rightName.map { "\($0) \(rightTime)" } ?? rightTime
+    return BandView(
+      leftName: leftName, leftTime: leftTime, rightName: rightName, rightTime: rightTime, value: value,
+      ratio: b.ratio, label: "\(leftName) \(leftTime) → \(right) · \(best5) \(value)")
+  }
+
+  /// 표시 위 숫자 글의 왼쪽 x: 막대 안쪽으로 밀어 넣는다(사이트 `left: r%` + `translateX(-r%)`)
+  public static func bandValueX(ratio: Double, width: Double, labelWidth: Double) -> Double {
+    max(0, ratio * (width - labelWidth))
+  }
+}
+
+/// 구간 안 자리 셈(앱은 Rust 코어 `cubie_tier_band`). 따르지 않으면 막대를 그리지 않는다
+public protocol TierBandMath {
+  func band(n: Int, ms: Double) -> TierProgress.Band?
+}
+
+extension MiniBook {
+  /// 그 크기의 구간 안 자리(최고 5판 평균이 없으면 nil)
+  public func band(_ n: Int) -> (band: TierProgress.Band, ms: Double)? {
+    guard let t = tier(n), let b = (math as? TierBandMath)?.band(n: n, ms: t.ao5) else { return nil }
+    return (b, t.ao5)
+  }
 }
 
 /// 최고 5판·다음 판·이력 계산(앱은 Rust 코어). 기본은 없음(시험의 가짜 계산은 기록 책 규칙만 본다)

@@ -7,6 +7,7 @@ import { formatMs } from "../records";
 import {
   bestFiveDetail,
   type NextSolve,
+  type TierBand,
   type Timeable,
   tierName,
 } from "./rank";
@@ -69,4 +70,41 @@ export function nextSolveText(s: NextSolve): string {
   if (s.kind === "within") return `다음 판 ${formatMs(s.ms)} 안이면 ${to}`;
   if (s.kind === "any") return `다음 판을 맞추면 ${to}`;
   return `다음 판 하나로는 ${to}에 못 닿아요. 최고 5판 평균을 ${formatMs(s.gapMs)}초 줄여야 해요.`;
+}
+
+/** 상한 없는 맨 아래 구간의 왼쪽 끝 글(티어표 `cutText`와 같다) */
+export const BAND_OPEN_LOW = "다 맞춤";
+
+/** 구간 안 자리 막대의 글(docs/47 14-9). 앱 `TierBand.swift`가 같은 글을 낸다 */
+export interface BandView {
+  /** 왼쪽 끝: 지금 구간 이름과 그 경계 시간(상한 없으면 「다 맞춤」) */
+  leftName: string;
+  leftTime: string;
+  /** 오른쪽 끝: 바로 위 구간 이름(꼭대기면 null)과 경계 시간(꼭대기면 「0.00」) */
+  rightName: string | null;
+  rightTime: string;
+  /** 표시 위 숫자(최고 5판 평균) */
+  value: string;
+  /** 0 왼쪽 ~ 1 오른쪽 */
+  ratio: number;
+  /** 접근성 이름: 「브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09」 */
+  label: string;
+}
+
+export function bandView(b: TierBand, ms: number): BandView {
+  const leftName = tierName(b.here);
+  const leftTime = b.lowMs === null ? BAND_OPEN_LOW : formatMs(b.lowMs);
+  const rightName = b.up ? tierName(b.up) : null;
+  const rightTime = formatMs(b.highMs);
+  const value = formatMs(ms);
+  const right = rightName ? `${rightName} ${rightTime}` : rightTime;
+  return {
+    leftName,
+    leftTime,
+    rightName,
+    rightTime,
+    value,
+    ratio: b.ratio,
+    label: `${leftName} ${leftTime} → ${right} · ${BEST5_LABEL} ${value}`,
+  };
 }

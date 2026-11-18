@@ -97,6 +97,7 @@ import {
   rangeText,
 } from "../tiers/progress-view";
 import { type MyTier, myTier, nextSolve } from "../tiers/rank";
+import { TierBandBar } from "../tiers/TierBandBar";
 import { TierLink } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
@@ -1191,6 +1192,7 @@ export function SolveApp({
                   </span>
                 </p>
               )}
+              {tierNow && <TierBandBar n={n} ms={tierNow.ao5} />}
               {goal && (
                 <p className="text-xs" data-cube-next-solve={goal.kind}>
                   {nextSolveText(goal)}

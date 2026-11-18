@@ -217,6 +217,19 @@ typedef struct CubieNextSolve {
 
 bool cubie_next_solve(uint32_t n, const CubieTimeable *recs, uint32_t count, const CubieTimeable *best5,
                       uint32_t best5_count, CubieNextSolve *out);
+
+/// 지금 구간 안의 자리(사이트 tierBand, 기록 창 가로 막대)
+typedef struct CubieTierBand {
+  uint32_t tier;        // 지금 구간: 0 아이언 … 9 챌린저
+  int32_t division;     // 0 IV … 3 I, 없으면 -1
+  double low_ms;        // 왼쪽 끝(지금 구간 상한, ms). 상한 없는 맨 아래 구간이면 -1
+  int32_t up_tier;      // 바로 위 구간 티어, 꼭대기면 -1
+  int32_t up_division;  // 바로 위 구간 구간, 없으면 -1
+  double high_ms;       // 오른쪽 끝(바로 위 구간 상한, ms). 꼭대기면 0
+  double ratio;         // 0 왼쪽 ~ 1 오른쪽
+} CubieTierBand;
+
+bool cubie_tier_band(uint32_t n, double ms, CubieTierBand *out);
 /// 티어 이력 글: 판마다 「p\t번호\t시각\t최고 5판 평균(없으면 -)」, 바뀐 순간마다 「c\t번호\t시각\t전 티어\t전 구간\t새 티어\t새 구간\t평균」
 /// (구간 없으면 -1, 첫 티어면 전 티어 -1). nos·ats는 recs와 같은 칸 수. 글 바이트 수
 uint32_t cubie_tier_history(uint32_t n, const CubieTimeable *recs, const uint32_t *nos, const double *ats, uint32_t count,

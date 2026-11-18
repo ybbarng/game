@@ -58,6 +58,8 @@ describe("감시 목록", () => {
       "EmblemStill.tsx",
       "emblem3d/spin.ts",
       "emblem3d/poster.ts",
+      // 기록 창 구간 안 자리 막대(docs/47 14-9)도 앱 기록 창이 그린다
+      "TierBandBar.tsx",
     ])
       expect(watchedEntry(`apps/web/src/cube/tiers/${f}`), f).not.toBeNull();
     // 홈 시연은 해법 표 전부가 앱 코어(hero_show.rs)에 있다: 조각 강조도 함께(2026-11-16)

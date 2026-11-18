@@ -1,6 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { bestFiveView, nextSolveText, rangeText } from "./progress-view";
-import { nextSolve } from "./rank";
+import {
+  bandView,
+  bestFiveView,
+  nextSolveText,
+  rangeText,
+} from "./progress-view";
+import { nextSolve, type TierBand, tierBand } from "./rank";
+
+const band = (n: number, ms: number) =>
+  bandView(tierBand(n, ms) as TierBand, ms);
+
+describe("구간 안 자리 막대 글", () => {
+  it("사용자 예: 왼쪽 브론즈 II 3:10.00, 오른쪽 브론즈 I 2:30.00, 표시 2:35.09", () => {
+    expect(band(3, 155_090)).toEqual({
+      leftName: "브론즈 II",
+      leftTime: "3:10.00",
+      rightName: "브론즈 I",
+      rightTime: "2:30.00",
+      value: "2:35.09",
+      ratio: 0.87275,
+      label: "브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09",
+    });
+  });
+
+  it("꼭대기는 오른쪽 이름 없이 0.00", () => {
+    const v = band(3, 5_200);
+    expect([v.leftName, v.leftTime, v.rightName, v.rightTime]).toEqual([
+      "챌린저",
+      "6.50",
+      null,
+      "0.00",
+    ]);
+    expect(v.label).toBe("챌린저 6.50 → 0.00 · 최고 5판 평균 5.20");
+  });
+
+  it("맨 아래 아이언 IV의 왼쪽 끝은 「다 맞춤」", () => {
+    const v = band(3, 1_350_000);
+    expect([v.leftName, v.leftTime, v.rightName, v.rightTime]).toEqual([
+      "아이언 IV",
+      "다 맞춤",
+      "아이언 III",
+      "15:00.00",
+    ]);
+  });
+});
 
 /** 사용자 Cubie 3×3 11판(새것이 앞, `rank.test.ts`와 같다) */
 const USER = [

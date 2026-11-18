@@ -306,6 +306,42 @@ pub fn place_at(n: usize, step: usize) -> Option<(TierPlace, f64)> {
     None
 }
 
+/// 지금 구간 안의 자리(기록 창 가로 막대, 사이트 `TierBand`, docs/47 14-9)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TierBand {
+    pub here: TierPlace,
+    /// 왼쪽 끝: 지금 구간 상한(ms). 상한이 없는 맨 아래 구간이면 None(자리는 `high_ms`의 두 배로 셈)
+    pub low_ms: Option<f64>,
+    /// 바로 위 구간. 꼭대기면 None
+    pub up: Option<TierPlace>,
+    /// 오른쪽 끝: 바로 위 구간 상한(ms). 꼭대기면 0(더 빠를 수 없다)
+    pub high_ms: f64,
+    /// 0 왼쪽 끝 ~ 1 오른쪽 끝, 시간에 비례
+    pub ratio: f64,
+}
+
+/// 크기 `n`에서 최고 5판 평균 `ms`의 구간 안 자리(사이트 `tierBand`). 티어가 없으면 None
+pub fn tier_band(n: usize, ms: f64) -> Option<TierBand> {
+    let here = tier_of(n, ms)?;
+    let low = place_at(n, here.step).map_or(f64::INFINITY, |(_, c)| c);
+    let next = place_at(n, here.step + 1);
+    let high_ms = next.map_or(0.0, |(_, c)| c);
+    let low_ms = low.is_finite().then_some(low);
+    let left = low_ms.unwrap_or(high_ms * 2.0);
+    let raw = if left > high_ms {
+        (left - ms) / (left - high_ms)
+    } else {
+        0.0
+    };
+    Some(TierBand {
+        here,
+        low_ms,
+        up: next.map(|(p, _)| p),
+        high_ms,
+        ratio: raw.clamp(0.0, 1.0),
+    })
+}
+
 /// 다음 판 목표(사이트 `NextSolve`)
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum NextSolveKind {

@@ -51,3 +51,62 @@ struct TierProgressTests {
     #expect(h.changes[1].from! == (1, 1) && h.changes[1].to == (1, 2) && h.changes[1].ms == 155_090)
   }
 }
+
+/// 구간 안 자리 막대 글(사이트 `progress-view.test.ts` 「구간 안 자리 막대 글」과 같은 예. 값은 코어가 공통 자료 `tier-band.json`으로 맞춘다)
+struct TierBandTests {
+  @Test func userExampleTextLikeTheSite() {
+    // 코어 값: 브론즈 II(1, 2) 3:10 → 브론즈 I(1, 3) 2:30, 2:35.09
+    let b = TierProgress.Band(tier: 1, division: 2, lowMs: 190_000, up: (1, 3), highMs: 150_000, ratio: 0.87275)
+    let v = TierProgress.bandView(b, ms: 155_090)
+    #expect([v.leftName, v.leftTime, v.rightName, v.rightTime, v.value] == ["브론즈 II", "3:10.00", "브론즈 I", "2:30.00", "2:35.09"])
+    #expect(v.label == "브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09")
+    #expect(v.ratio == 0.87275)
+  }
+
+  @Test func topIsZeroSecondsWithoutName() {
+    let b = TierProgress.Band(tier: 9, division: nil, lowMs: 6_500, up: nil, highMs: 0, ratio: 0.2)
+    let v = TierProgress.bandView(b, ms: 5_200)
+    #expect(v.rightName == nil && v.rightTime == "0.00" && v.leftName == "챌린저" && v.leftTime == "6.50")
+    #expect(v.label == "챌린저 6.50 → 0.00 · 최고 5판 평균 5.20")
+  }
+
+  @Test func lowestHasOpenLeft() {
+    let b = TierProgress.Band(tier: 0, division: 0, lowMs: nil, up: (0, 1), highMs: 900_000, ratio: 0.5)
+    let v = TierProgress.bandView(b, ms: 1_350_000)
+    #expect([v.leftName, v.leftTime, v.rightName, v.rightTime] == ["아이언 IV", "다 맞춤", "아이언 III", "15:00.00"])
+  }
+
+  @Test func valueStaysInsideTheBar() {
+    // 왼쪽 끝은 0, 오른쪽 끝은 글 오른쪽이 막대 오른쪽에 붙고, 가운데는 비례
+    #expect(TierProgress.bandValueX(ratio: 0, width: 300, labelWidth: 50) == 0)
+    #expect(TierProgress.bandValueX(ratio: 1, width: 300, labelWidth: 50) == 250)
+    #expect(TierProgress.bandValueX(ratio: 0.5, width: 300, labelWidth: 50) == 125)
+    #expect(TierProgress.bandValueX(ratio: 0.5, width: 30, labelWidth: 50) == 0)
+  }
+
+  /// 시험용 막대 셈: 받은 5판 평균을 그대로 담는다
+  struct BandFake: TierMath, TierBandMath {
+    let inner = FakeMath()
+    func ao5(_ five: [Timeable]) -> Double? { inner.ao5(five) }
+    func bestAo5(_ records: [Timeable]) -> (ms: Double, at: Int)? { inner.bestAo5(records) }
+    func myTier(n: Int, records: [Timeable], bestFive: [Timeable]) -> TierInfo? {
+      inner.myTier(n: n, records: records, bestFive: bestFive)
+    }
+    func band(n: Int, ms: Double) -> TierProgress.Band? {
+      TierProgress.Band(tier: 3, division: 1, lowMs: 52_000, up: (3, 2), highMs: 46_000, ratio: (52_000 - ms) / 6_000)
+    }
+  }
+
+  @Test func bookGivesBandOfTheTierAverageOnlyAfterFiveSolves() throws {
+    let book = MiniBook(store: MemoryStore(), math: BandFake())
+    for (i, ms) in [50_000.0, 49_000, 48_000, 47_000].enumerated() { _ = book.add(record(ms, at: i + 1)) }
+    #expect(book.band(3) == nil)
+    _ = book.add(record(51_000, at: 5))
+    let got = try #require(book.band(3))
+    // 가운데 셋 평균 49.00초
+    #expect(got.ms == 49_000)
+    #expect(got.band.ratio == 0.5)
+    // 막대 셈을 따르지 않는 계산이면 없다
+    #expect(MiniBook(store: MemoryStore(), math: FakeMath()).band(3) == nil)
+  }
+}

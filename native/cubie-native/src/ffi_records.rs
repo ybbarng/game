@@ -7,8 +7,8 @@
 use cube_core::data;
 use cube_core::summary::{mini_summary, RecentAverage};
 use cube_core::tier::{
-    ao5, average_of, best_ao5, best_five_detail, my_tier, next_solve, tier_history, Dated,
-    NextSolveKind, Timeable,
+    ao5, average_of, best_ao5, best_five_detail, my_tier, next_solve, tier_band, tier_history,
+    Dated, NextSolveKind, Timeable,
 };
 
 /// 기록 한 판(C 구조체 `CubieTimeable`과 같은 배치). `ms`가 음수면 DNF
@@ -205,6 +205,50 @@ pub unsafe extern "C" fn cubie_next_solve(
             division: s.to.division.map_or(-1, |d| d as i32),
             cut_ms: s.cut_ms,
             value,
+        }
+    };
+    true
+}
+
+/// 지금 구간 안의 자리(C 구조체 `CubieTierBand`, 코어 `tier_band`)
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct CubieTierBand {
+    /// 지금 구간: 0 아이언 … 9 챌린저
+    pub tier: u32,
+    /// 0 IV … 3 I, 없으면 -1
+    pub division: i32,
+    /// 왼쪽 끝(지금 구간 상한, ms). 상한 없는 맨 아래 구간이면 -1
+    pub low_ms: f64,
+    /// 바로 위 구간 티어, 꼭대기면 -1
+    pub up_tier: i32,
+    /// 바로 위 구간의 구간, 없으면 -1
+    pub up_division: i32,
+    /// 오른쪽 끝(바로 위 구간 상한, ms). 꼭대기면 0
+    pub high_ms: f64,
+    /// 0 왼쪽 ~ 1 오른쪽
+    pub ratio: f64,
+}
+
+/// 최고 5판 평균 `ms`의 구간 안 자리(사이트 `tierBand`). 있으면 `out`에 쓰고 true(티어가 없으면 false)
+///
+/// # Safety
+/// `out`은 쓸 수 있는 자리.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_tier_band(n: u32, ms: f64, out: *mut CubieTierBand) -> bool {
+    let Some(b) = tier_band(n as usize, ms) else {
+        return false;
+    };
+    let div = |d: Option<usize>| d.map_or(-1, |d| d as i32);
+    unsafe {
+        *out = CubieTierBand {
+            tier: b.here.tier as u32,
+            division: div(b.here.division),
+            low_ms: b.low_ms.unwrap_or(-1.0),
+            up_tier: b.up.map_or(-1, |p| p.tier as i32),
+            up_division: b.up.map_or(-1, |p| div(p.division)),
+            high_ms: b.high_ms,
+            ratio: b.ratio,
         }
     };
     true
@@ -465,6 +509,37 @@ mod tests {
         ]
         .map(t)
         .to_vec()
+    }
+
+    #[test]
+    fn tier_band_through_c() {
+        unsafe {
+            let mut b = CubieTierBand::default();
+            // 사용자 예: 브론즈 II(티어 1, 구간 2) 3:10 → 브론즈 I 2:30, 2:35.09
+            assert!(cubie_tier_band(3, 155_090.0, &mut b));
+            assert_eq!(
+                (
+                    b.tier,
+                    b.division,
+                    b.low_ms,
+                    b.up_tier,
+                    b.up_division,
+                    b.high_ms
+                ),
+                (1, 2, 190_000.0, 1, 3, 150_000.0)
+            );
+            assert_eq!(b.ratio, (190_000.0 - 155_090.0) / 40_000.0);
+            // 꼭대기는 오른쪽 끝 0초, 위 구간 없음
+            assert!(cubie_tier_band(3, 5_200.0, &mut b));
+            assert_eq!(
+                (b.tier, b.division, b.up_tier, b.high_ms, b.ratio),
+                (9, -1, -1, 0.0, 0.2)
+            );
+            // 맨 아래 아이언 IV는 왼쪽 상한 없음(-1)
+            assert!(cubie_tier_band(3, 1_350_000.0, &mut b));
+            assert_eq!((b.low_ms, b.high_ms, b.ratio), (-1.0, 900_000.0, 0.5));
+            assert!(!cubie_tier_band(8, 10_000.0, &mut b));
+        }
     }
 
     #[test]

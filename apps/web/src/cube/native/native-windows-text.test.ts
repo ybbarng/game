@@ -99,6 +99,13 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "초 줄여야 해요.",
     ]));
 
+  it("구간 안 자리 막대(progress-view bandView, 앱 TierProgress.swift bandView)", () =>
+    sameText("progress-view.ts", "TierProgress.swift", [
+      '"다 맞춤"',
+      " → ",
+      " · ",
+    ]));
+
   it("티어 이력(TierHistoryChart·history-chart, 앱 TierHistoryLayout.swift)", () =>
     sameText(
       ["TierHistoryChart.tsx", "history-chart.ts"],

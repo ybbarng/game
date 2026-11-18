@@ -34,6 +34,12 @@ enum NativeWindowShot {
       records.watch(first)
       ok = shoot(records.window, name: "native-records-replay", dir: dir) && ok
     }
+    // 구간 안 자리 막대(docs/47 14-9): 꼭대기(5×5 챌린저, 오른쪽 끝 0초), 5판 전(4×4, 막대 없음)
+    let bands = NativeRecordsWindow(book: book) { settings }
+    bands.pick(5)
+    ok = shoot(bands.window, name: "native-records-top", dir: dir) && ok
+    bands.pick(4)
+    ok = shoot(bands.window, name: "native-records-none", dir: dir) && ok
     // 티어표 진열(docs/52 5-11): 내 티어를 보는 때, 사다리에서 챌린저를 고른 때, Cubie 기록이 없을 때
     let tiers = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok

@@ -48,7 +48,9 @@ import {
   bestFiveDetail,
   myTier,
   nextSolve,
+  placeAt,
   type TierPlace,
+  tierBand,
   tierHistory,
   tierName,
   tierOf,
@@ -857,8 +859,60 @@ export function buildTierProgress(): string {
   );
 }
 
+/**
+ * 구간 안 자리(기록 창 가로 막대, docs/47 14-9, `rank.ts` `tierBand`). 크기마다 모든 구간에서 왼쪽 경계 딱, 가운데,
+ * 위 구간 바로 앞(10ms), 상한 없는 맨 아래 구간은 오른쪽 경계의 1.5배·3배, 꼭대기는 0초 쪽까지
+ */
+export function buildTierBand(): string {
+  const place = (p: TierPlace | null) =>
+    p ? { tier: p.tier, division: p.division, step: p.step } : null;
+  const cases: unknown[] = [];
+  const push = (n: number, ms: number) => {
+    const b = tierBand(n, ms);
+    cases.push({
+      n,
+      ms,
+      band: b
+        ? {
+            here: place(b.here),
+            lowMs: b.lowMs,
+            up: place(b.up),
+            highMs: b.highMs,
+            ratio: b.ratio,
+          }
+        : null,
+    });
+  };
+  // 사용자 3×3 최고 5판 평균(2026-11-18)
+  push(3, 155_090);
+  for (const n of TIER_SIZES) {
+    for (let step = 0; ; step++) {
+      const here = placeAt(n, step);
+      if (!here) break;
+      const high = placeAt(n, step + 1)?.cutMs ?? 0;
+      if (Number.isFinite(here.cutMs)) {
+        push(n, here.cutMs);
+        push(n, Math.round((here.cutMs + high) / 2));
+      } else {
+        push(n, Math.round(high * 1.5));
+        push(n, high * 3);
+      }
+      push(n, high + 10);
+    }
+  }
+  // 표 없는 크기
+  push(8, 10_000);
+  return fixtureJson(
+    {
+      what: "크기·최고 5판 평균(ms) → 지금 구간, 왼쪽 끝(구간 상한, 없으면 null), 바로 위 구간(꼭대기면 null), 오른쪽 끝(꼭대기면 0), 자리(0 왼쪽 ~ 1 오른쪽)",
+    },
+    cases,
+  );
+}
+
 /** 자료 파일 전부(파일 이름 → 내용) */
 export const BUILDERS = {
+  "fixtures/tier-band.json": buildTierBand,
   "fixtures/tier-progress.json": buildTierProgress,
   "fixtures/scramble.json": buildScramble,
   "fixtures/moves.json": buildMoves,
