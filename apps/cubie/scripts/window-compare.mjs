@@ -227,9 +227,7 @@ try {
         await ctx.close();
         [ctx, page] = await open(store);
         await page
-          .locator(
-            `[data-mini-tier-size='${shot === "records-top" ? 5 : 4}']`,
-          )
+          .locator(`[data-mini-tier-size='${shot === "records-top" ? 5 : 4}']`)
           .click();
         await page.waitForTimeout(300);
       }
