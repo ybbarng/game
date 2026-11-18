@@ -977,6 +977,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 시험: 앱 `TierSheetTests` 「tiersWindowUsesCubieRecordsLikeRecordsWindow」(고치기 전 실패 확인), 화면 `cube-tiers.spec.ts` 「Cubie 창(records=cubie)은 Cubie 기록으로…」(사용자 3×3 11판 → 브론즈 II 2:35.09), 글 `native-windows-text.test.ts`.
 - **Cubie 새 판이 필요하다**(티어표 창은 앱이 그린다).
 - **같은 날 더한 것**(docs/47 14-8, 사이트와 같은 글·차례): 기록 창 요약 「최근 5판 평균」·「최근 12판 평균」·「최고 5판 평균 2:35.09 · 7~11번」, 그 5판 줄은 호박색 바탕과 빠진 두 판의 괄호 시간, 티어 칸 아래 고른 크기의 다음 판 목표. 티어표 창 큰 칸에 다음 판 목표, 사다리 아래 티어 이력(그래프는 층으로 짓는 `TierHistoryView`, 자리는 `TierHistoryLayout`). 계산은 코어 C 함수 `cubie_best_five`·`cubie_next_solve`·`cubie_tier_history`. 비교판 `docs/cubie-native/compare-windows-records.webp`·`compare-windows-tiers.webp`(네이티브 스크린샷은 문서 보기만 찍어 바탕이 투명이라 비교판의 회색이 비친다. 앱에서는 창 바탕 위).
+- **구간 안 자리 막대**(같은 날, docs/47 14-9): 기록 창 티어 칸과 다음 판 목표 사이에 고른 크기의 막대(`TierBandView`). 왼쪽 끝 지금 구간 경계, 오른쪽 끝 바로 위 구간 경계(꼭대기는 0.00), 표시는 최고 5판 평균. 셈은 코어 C 함수 `cubie_tier_band`(앱 `RustTierMath: TierBandMath`), 글은 `TierProgress.bandView`(사이트 `progress-view.ts` `bandView`와 같은 글). 색은 진열 사다리 테두리와 같은 `TierLadderView.ring`. 화면 밖 스크린샷 장면 `native-records-top`(5×5 챌린저)·`native-records-none`(4×4, 막대 없음). 비교판 `docs/cubie-native/compare-windows-records-band.webp`. **Cubie 새 판이 필요하다**.
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 
