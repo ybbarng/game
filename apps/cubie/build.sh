@@ -23,11 +23,17 @@ if [ "$UNIVERSAL" = 1 ]; then ARCHS="arm64 x86_64"; else ARCHS="$(uname -m)"; fi
 # 네이티브 화면 정적 라이브러리(docs/52 5-2, CUBIE_NATIVE=1 실험). 앱과 같은 칩으로 만든다
 if [ "$UNIVERSAL" = 1 ]; then scripts/build-native.sh --universal; else scripts/build-native.sh; fi
 
-# 칩마다 따로 빌드해 lipo로 합친다(`--arch` 두 개를 한 번에 주면 xcbuild로 빌드해 결과 자리가 달라진다)
+# 칩마다 따로 빌드해 lipo로 합친다(`--arch` 두 개를 한 번에 주면 xcbuild로 빌드해 결과 자리가 달라진다).
+# 도구 모음에 따라 칩마다 빌드해도 결과 자리(--show-bin-path)가 같아 다음 칩이 덮어쓰므로(2026-11-18),
+# 칩마다 빌드한 직후 실행 파일을 따로 복사해 둔다.
+SLICE_DIR=.build/slices
+rm -rf "$SLICE_DIR"
+mkdir -p "$SLICE_DIR"
 SLICES=""
 for arch in $ARCHS; do
   nice -n 15 swift build -c release --arch "$arch"
-  SLICES="$SLICES $(swift build -c release --arch "$arch" --show-bin-path)/Cubie"
+  cp "$(swift build -c release --arch "$arch" --show-bin-path)/Cubie" "$SLICE_DIR/Cubie-$arch"
+  SLICES="$SLICES $SLICE_DIR/Cubie-$arch"
 done
 BIN_DIR="$(swift build -c release --arch "$(echo "$ARCHS" | cut -d' ' -f1)" --show-bin-path)"
 
@@ -36,8 +42,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 # shellcheck disable=SC2086
 lipo -create $SLICES -output "$APP/Contents/MacOS/Cubie"
-# shellcheck disable=SC2086
-lipo "$APP/Contents/MacOS/Cubie" -verify_arch $ARCHS
+# 칩마다 하나씩 확인한다(새 lipo는 -verify_arch 뒤 여러 칩을 받지 않는다, 2026-11-18)
+for arch in $ARCHS; do lipo "$APP/Contents/MacOS/Cubie" -verify_arch "$arch"; done
 strip -rSTx "$APP/Contents/MacOS/Cubie"
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
