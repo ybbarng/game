@@ -7,6 +7,8 @@ describe("Rust 코어 공통 자료", () => {
   it("기록 → Ao5·티어", () => checkFixture("fixtures/tier.json"));
   it("기록 → 최고 5판·다음 판 목표·티어 이력", () =>
     checkFixture("fixtures/tier-progress.json"));
+  it("최고 5판 평균 → 구간 안 자리(기록 창 가로 막대)", () =>
+    checkFixture("fixtures/tier-band.json"));
   it("Cubie 기록 창 요약(최고·평균·5번·12번 평균)", () =>
     checkFixture("fixtures/summary.json"));
   it("다시 보기·구간 기록 글", () => checkFixture("fixtures/replay.json"));
