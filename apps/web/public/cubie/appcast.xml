@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.7.0</title>
+      <pubDate>Wed, 18 Nov 2026 05:53:21 +0000</pubDate>
+      <sparkle:version>0.7.0</sparkle:version>
+      <sparkle:shortVersionString>0.7.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;티어표 창이 기록 창과 같은 Cubie 기록으로 티어를 보입니다. 기록 창과 티어표 창에 티어를 정한 최고 5판 평균과 그 다섯 판, 다음 티어로 올라가려면 다음 판을 몇 초 안에 맞춰야 하는지가 보이고, 티어 화면에는 날짜별 티어 이력 그래프와 티어가 바뀐 순간 목록이 생겼습니다. 홈 시연과 4×4 해법 고르기에 야우가 들어가고, 내 공식 일람표의 빈 F2L 상황에도 후보 공식이 채워졌습니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.7.0/Cubie.zip" length="10022728" type="application/octet-stream" sparkle:edSignature="090aKhfqtsHB1qUGTq8RE8EZkoXakH8Qkjsu3/u2sekU6u4+27q08PiWPiekrnAodjAzPj2x9GufJATWV/h1Bg=="/>
+    </item>
+    <item>
       <title>Cubie 0.6.0</title>
       <pubDate>Mon, 16 Nov 2026 11:08:08 +0000</pubDate>
       <sparkle:version>0.6.0</sparkle:version>
