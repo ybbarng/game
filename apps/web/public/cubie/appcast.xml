@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.10.0</title>
+      <pubDate>Thu, 19 Nov 2026 02:32:29 +0000</pubDate>
+      <sparkle:version>0.10.0</sparkle:version>
+      <sparkle:shortVersionString>0.10.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;기록 창 가로 막대를 바로 아래 티어, 지금 티어, 바로 위 티어 세 칸으로 나눴습니다. 칸마다 그 티어 색이고, 지금 칸은 지나온 만큼 진하게, 남은 만큼 연하게 칠해집니다. 경계 시간은 칸이 바뀌는 자리 바로 아래에 있습니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.10.0/Cubie.zip" length="10078174" type="application/octet-stream" sparkle:edSignature="r2uxirOftav/hV5a+ZwkaJLr/u+fmMMcAYl0IeLemJd2cfnEPMkSiBkO7qzkW7aucYaNhK3Af1Q2LdHtFxXtCA=="/>
+    </item>
+    <item>
       <title>Cubie 0.9.0</title>
       <pubDate>Thu, 19 Nov 2026 01:44:16 +0000</pubDate>
       <sparkle:version>0.9.0</sparkle:version>
