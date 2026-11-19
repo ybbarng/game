@@ -15,6 +15,8 @@ import { cn } from "@/lib/cn";
 import { seatAngle } from "@/yut/toss/sim";
 import "@/yut/components/yut.css";
 
+import { FLAT_ROLL_MS, STICK_STAGGER_MS } from "./toss-timing";
+
 /** 편 색(말 색): 홍·청·녹·황 */
 export const SIDE_COLORS = [
   { fill: "#dc2626", dark: "#7f1d1d", light: "#fca5a5", name: "홍" },
@@ -207,7 +209,7 @@ export function YutSticks({
   const landed = throwKey === 0 || reduce || landedKey === throwKey;
   useEffect(() => {
     if (throwKey === 0) return;
-    const id = setTimeout(() => setLandedKey(throwKey), 650);
+    const id = setTimeout(() => setLandedKey(throwKey), FLAT_ROLL_MS);
     return () => clearTimeout(id);
   }, [throwKey]);
   const spins = ["-540deg", "420deg", "-380deg", "620deg"];
@@ -218,6 +220,7 @@ export function YutSticks({
       <div
         className="flex h-32 items-end gap-2.5 sm:h-36 short-landscape:h-20"
         aria-hidden="true"
+        style={{ "--yut-roll": `${FLAT_ROLL_MS}ms` } as React.CSSProperties}
       >
         {[0, 1, 2, 3].map((i) => (
           <span
@@ -226,7 +229,7 @@ export function YutSticks({
             style={
               {
                 "--spin": spins[i],
-                animationDelay: `${i * 40}ms`,
+                "--yut-delay": `${i * STICK_STAGGER_MS}ms`,
               } as React.CSSProperties
             }
           >
