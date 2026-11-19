@@ -7,7 +7,7 @@ import AppKit
 /// `show` · `hide` · `keys load|drop`(단축키 표) · `records|tiers|settings open|close`(기록 창·티어표·설정 창: 네이티브 창, `CUBIE_WEB_WINDOWS=1`이면 사이트 창, 화면 밖) ·
 /// `replay open`(기록 창에서 한 판 다시 보기, 판이 없으면 메모리 저장소에 하나 더함) · `practice start|stop`(공식 연습 첫 단계) ·
 /// `hero start|stop`(홈 시연) · `editor open|close`(「사용자」 배치로 두고 설정 창의 키 배치 편집기) ·
-/// `pick <0~9>`(티어표 사다리 칸 누르기) · `showcase hidden|shown`(진열을 가려진 창처럼) · `profile open|close`(메뉴 프로필 칸 흔들기) ·
+/// `pick <0~9>`(티어표 사다리 칸 누르기) · `place tiers <화면 번호|off>`(티어표 창을 그 화면에 거의 투명하게, HDR 판정 확인) · `showcase hidden|shown`(진열을 가려진 창처럼) · `profile open|close`(메뉴 프로필 칸 흔들기) ·
 /// `state` · `quit`
 @MainActor
 final class NativeMeasure {
@@ -20,6 +20,8 @@ final class NativeMeasure {
   var window: ((String, Bool) -> Void)?
   /// 티어표 사다리 칸 누르기
   var pickTier: ((Int) -> Void)?
+  /// 티어표 창을 화면 번호로 옮기고 창 화면·HDR 여부를 돌려준다
+  var placeTiers: ((String) -> String)?
   private var profileWindow: NSWindow?
 
   /// `Measure.turns`와 같은 손가락 자리 키(두 손 배치) J F I E K D H G L S의 맥 키 코드
@@ -115,6 +117,13 @@ final class NativeMeasure {
       window?(cmd, arg == "open")
     case "pick":
       if let t = Int(arg) { pickTier?(t) }
+    case "place":
+      // `place tiers <화면 번호|off>`: 바로 한 번, 화면 바뀜 알림이 돈 뒤 한 번 더 찍는다
+      let where_ = parts.count > 2 ? parts[2] : "off"
+      log("place now \(placeTiers?(where_) ?? "")")
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        self?.log("place later \(self?.placeTiers?("stay") ?? "")")
+      }
     case "showcase":
       // 티어표 진열·메뉴 칸을 창이 가려진 것처럼(멈추는지 CPU로 본다): `showcase hidden` · `showcase shown`
       ShowcaseMotion.hidden = arg == "hidden"
