@@ -7,7 +7,7 @@ import { PRACTICE_N } from "../practice/problem";
 import type { PracticeMode } from "../practice/round";
 import type { PracticeSession } from "../practice/session";
 import { METHOD_TITLE, PRACTICE_STAGES } from "../practice/stages";
-import { formatMs } from "../records";
+import { formatSeconds } from "../records";
 import type { BubbleLine, BubbleSpan } from "./app-bridge";
 import { moveKeySpans, spansText } from "./key-spans";
 
@@ -129,7 +129,7 @@ function summaryLines(s: PracticeSession, keys: RoundKeys): BubbleLine[] {
   const lines: BubbleLine[] = [
     { text: `${s.stage.title} 한 판 끝`, style: "title" },
     {
-      text: `정확도 ${Math.round(sum.accuracy * 100)}% · 평균 ${formatMs(sum.avgMs)}초`,
+      text: `정확도 ${Math.round(sum.accuracy * 100)}% · 평균 ${formatSeconds(sum.avgMs)}`,
       style: "plain",
     },
     {
@@ -141,7 +141,7 @@ function summaryLines(s: PracticeSession, keys: RoundKeys): BubbleLine[] {
     lines.push({ text: "느렸던 공식", style: "note" });
     for (const x of sum.slow)
       lines.push({
-        text: `${s.caseOf(x.caseId)?.name ?? x.caseId}  ${formatMs(x.ms)}초`,
+        text: `${s.caseOf(x.caseId)?.name ?? x.caseId}  ${formatSeconds(x.ms)}`,
         style: "plain",
       });
   }
