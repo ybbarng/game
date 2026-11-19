@@ -19,12 +19,10 @@ import { planFor, type ReplayCue, resultLabel } from "../toss/plan";
 import type { TossPlan } from "../toss/sim";
 import type { FrameStats, TossScene } from "../toss/toss-scene";
 import { YutSticks } from "./parts";
+import { FLAT_ROLL_MS } from "./toss-timing";
 
 /** 윷이 다 멈춘 뒤 결과 글을 보이고 기다리는 시간(ms). 그 뒤 다음 화면으로 */
 export const RESULT_HOLD_MS = 900;
-
-/** 2D 윷가락이 공중에서 돌다 떨어지는 시간(ms, `YutSticks`의 연출과 같다). 움직임 줄이기면 굴리지 않는다 */
-export const FLAT_ROLL_MS = 650;
 
 /**
  * 2D 윷가락으로 결과를 보이고 기다리는 시간(ms). 3D처럼 구르다 멈추는 모습이 없거나(움직임 줄이기) 짧아,

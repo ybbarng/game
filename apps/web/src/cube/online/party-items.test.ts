@@ -326,8 +326,7 @@ function at(
   let race = "";
   r.onChange(() => {
     const s = r.session();
-    if (!s || s.snapshot().phase !== "race" || race === r.state?.race?.id)
-      return;
+    if (s?.snapshot().phase !== "race" || race === r.state?.race?.id) return;
     race = r.state?.race?.id ?? "";
     for (const step of steps) clock.after(step.at, () => step.run(r));
   });
