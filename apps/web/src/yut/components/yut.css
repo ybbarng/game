@@ -24,8 +24,14 @@
     transform: translateY(0) rotate(var(--spin, 360deg));
   }
 }
+/*
+ * 길이는 결과 면을 보이는 시간(`FLAT_ROLL_MS`, toss-timing.ts)을 `--yut-roll`로 받는다. 가락마다 늦게 출발한 만큼
+ * (`--yut-delay`) 짧게 돌아 넷 모두 그 시간에 멈춘다(결과 면을 보인 채 가락이 아직 돌지 않게)
+ */
 .yut-toss {
-  animation: yut-toss 0.8s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  animation: yut-toss calc(var(--yut-roll) - var(--yut-delay, 0ms))
+    cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  animation-delay: var(--yut-delay, 0ms);
 }
 @keyframes yut-pop {
   0% {

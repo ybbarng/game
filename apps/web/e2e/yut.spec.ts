@@ -4,6 +4,7 @@ import { decodeYutRules } from "@game/yut-engine";
 import legacy from "../../../packages/yut-engine/src/legacy-y1.fixture.json" with {
   type: "json",
 };
+import { FLAT_ROLL_MS } from "../src/yut/components/toss-timing";
 import { useTestSpeed } from "./fast";
 import {
   animationsDone,
@@ -869,6 +870,37 @@ for (const [label, prepare] of [
       expect(shown.filter((r) => !r.visible)).toEqual([]);
     },
   );
+
+/** 지금 그려진 2D 윷가락 연출(`yut-toss`)마다 멈추는 때(ms, 던진 때부터 출발 지연 + 도는 시간) */
+const stickRollEnds = (page: Page) =>
+  page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter(
+        (a): a is CSSAnimation =>
+          a instanceof CSSAnimation && a.animationName === "yut-toss",
+      )
+      .map((a) => {
+        const t = a.effect?.getComputedTiming();
+        return Math.round(Number(t?.delay ?? 0) + Number(t?.activeDuration));
+      }),
+  );
+
+test("윷놀이 2D 윷가락: 네 가락 모두 결과 면을 보이는 때(FLAT_ROLL_MS)에 멈춘다", {
+  // 연출 길이는 화면 크기와 상관없다
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await blockWebGL(page);
+  await page.goto("/yut");
+  await startSolo(page);
+  await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+  await untilMyThrow(page);
+  await throwSticks(page);
+  // 채움(both)이 있어 끝난 연출도 남는다. 결과 면은 FLAT_ROLL_MS에 보이므로 그보다 늦게 도는 가락이 없어야 한다
+  await expect.poll(() => stickRollEnds(page)).toHaveLength(4);
+  expect(await stickRollEnds(page)).toEqual(Array(4).fill(FLAT_ROLL_MS));
+});
 
 test(
   "윷놀이 휴대폰: 구르는 도중 3D 문맥을 잃으면 2D 윷가락으로 결과를 보이고 다음 화면으로 간다",
