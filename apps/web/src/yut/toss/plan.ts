@@ -44,6 +44,11 @@ export interface ReplayCue {
   plan: TossPlan | null;
   /** 그 계획을 처음부터 굴린다(한 걸음 앞으로 와서 새 던지기 결과가 나왔을 때만) */
   animate: boolean;
+  /**
+   * 한 걸음 앞으로 와서 새 던지기 결과가 나왔다(계획이 없어도). 3D로 굴리지 못할 때(2D)도 그 결과를 멍석에 보이고
+   * 읽을 틈을 둔 뒤 그 걸음의 장면으로 간다(docs/37 14-8)
+   */
+  fresh: boolean;
 }
 
 /**
@@ -60,14 +65,11 @@ export function replayCue(
   seat: number,
 ): ReplayCue {
   const state = states[to];
-  if (!state) return { index: to, plan: null, animate: false };
+  if (!state) return { index: to, plan: null, animate: false, fresh: false };
   const thrown = state.lastThrow;
   const plan = planFor({ rules: state.rules, mySeat: seat }, thrown);
   const before = states[from]?.lastThrow ?? null;
-  const animate =
-    plan !== null &&
-    thrown !== null &&
-    to === from + 1 &&
-    before?.index !== thrown.index;
-  return { index: to, plan, animate };
+  const fresh =
+    thrown !== null && to === from + 1 && before?.index !== thrown.index;
+  return { index: to, plan, animate: plan !== null && fresh, fresh };
 }

@@ -198,15 +198,16 @@ export function YutSticks({
   /** 던졌는데 아직 결과가 나오지 않았다(모두의 고리를 기다린다) */
   tossing: boolean;
 }) {
-  const [landed, setLanded] = useState(true);
+  // 떨어진 던지기 번호. 새 던지기(`throwKey`)를 받은 첫 그림부터 굴리는 중으로 본다(효과에서 늦게 내리면
+  // 굴리기 전에 결과 면이 한 번 깜빡여 결과를 미리 알린다)
+  const [landedKey, setLandedKey] = useState(0);
+  const reduce =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const landed = throwKey === 0 || reduce || landedKey === throwKey;
   useEffect(() => {
     if (throwKey === 0) return;
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    setLanded(false);
-    const id = setTimeout(() => setLanded(true), 650);
+    const id = setTimeout(() => setLandedKey(throwKey), 650);
     return () => clearTimeout(id);
   }, [throwKey]);
   const spins = ["-540deg", "420deg", "-380deg", "620deg"];
