@@ -718,6 +718,95 @@ test(
   },
 );
 
+/** Cubie 기록 창 티어 칸마다 글이 칸 안에 다 보이는지, 같은 줄 칸끼리 높이가 같은지(어긋난 것만 글로) */
+async function tierCellProblems(page: Page): Promise<string[]> {
+  return page.locator("[data-mini-tiers]").evaluate((root) => {
+    const out: string[] = [];
+    const cells = [
+      ...root.querySelectorAll<HTMLElement>("[data-mini-tier-size]"),
+    ];
+    const rows = new Map<number, number[]>();
+    for (const c of cells) {
+      const box = c.getBoundingClientRect();
+      const key = Math.round(box.top);
+      rows.set(key, [...(rows.get(key) ?? []), Math.round(box.height)]);
+      for (const s of c.querySelectorAll<HTMLElement>("span span")) {
+        const r = s.getBoundingClientRect();
+        if (
+          s.scrollWidth > s.clientWidth + 1 ||
+          r.left < box.left - 0.5 ||
+          r.right > box.right + 0.5 ||
+          r.top < box.top - 0.5 ||
+          r.bottom > box.bottom + 0.5
+        ) {
+          out.push(
+            `${c.dataset.miniTierSize}: 「${s.textContent}」 칸 밖(글 ${Math.round(r.left)}~${Math.round(r.right)}·넘친 폭 ${s.scrollWidth - s.clientWidth}, 칸 ${Math.round(box.left)}~${Math.round(box.right)})`,
+          );
+        }
+      }
+    }
+    for (const [top, hs] of rows) {
+      if (new Set(hs).size > 1) out.push(`${top}줄 칸 높이 ${hs.join("·")}`);
+    }
+    return out;
+  });
+}
+
+test(
+  "Cubie 기록 화면 티어 칸: 시간이 길면(6×6·7×7 100분대) 크기와 시간 사이에서 줄을 바꿔 다 보이고, 같은 줄 칸은 높이가 같다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem("cube.mini.v1")) return;
+      const make = (n: number, list: number[]) =>
+        list
+          .map((ms, i) => ({
+            at: Date.UTC(2026, 10, 10, 12, i),
+            no: i + 1,
+            n,
+            mode: "solo",
+            ms,
+            penalty: 0,
+            moves: 40,
+            scramble: "R U R' U'",
+          }))
+          .reverse();
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 3,
+          mirror: true,
+          records: {
+            3: make(3, [23_000, 24_000, 22_500, 25_000, 23_900]),
+            6: make(6, [5_900_000, 6_000_000, 6_100_000, 5_800_000, 6_200_000]),
+            7: make(7, [7_900_000, 8_000_000, 8_100_000, 7_800_000, 8_200_000]),
+          },
+          best5: {},
+        }),
+      );
+    });
+    for (const width of [380, 320]) {
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto("/cube/mini?view=records");
+      const six = page.locator(
+        "[data-mini-tier-size='6'] [data-mini-tier-top]",
+      );
+      await expect(six).toHaveText("6×6 100:00.00");
+      await expect(
+        page.locator("[data-mini-tier-size='7'] [data-mini-tier-top]"),
+      ).toHaveText("7×7 133:20.00");
+      // 380px: 한 줄에 안 들어가 크기와 시간 사이에서 두 줄(줄 높이 16px). 320px: 시간도 칸보다 길어 「:」 뒤에서 한 번 더
+      expect(
+        await six.evaluate((e) => Math.round(e.getBoundingClientRect().height)),
+      ).toBe(width === 380 ? 32 : 48);
+      await shot(page, `mini-records-tier-cells-${width}`, info.project.name);
+      await expect.poll(() => tierCellProblems(page)).toEqual([]);
+      await noSideScroll(page);
+    }
+  },
+);
+
 test("없앤 엠블럼 미리보기 주소로 들어오면 티어 화면으로 간다", {
   tag: "@only-desktop",
 }, async ({ page }) => {

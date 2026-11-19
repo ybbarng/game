@@ -11,7 +11,14 @@ import {
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play/clock";
 import type { PuzzleState } from "@game/puzzle-core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { closeAudioWhenIdle } from "@/game/sound";
 import { cn } from "@/lib/cn";
@@ -252,6 +259,29 @@ function RecordsPage() {
 }
 
 /**
+ * 시간 글(「100:00.00」): 칸에 안 들어가면 먼저 통째로 다음 줄로 가고(`inline-block`), 그래도 칸보다 길 때만 「:」 뒤에서
+ * 줄을 바꾼다(`<wbr>`). 앱 `RecordsSheet.wrapLines`도 같은 차례·같은 자리
+ */
+function TimeWithBreaks({ text }: { text: string }) {
+  const pieces = text.split(":");
+  return (
+    <span className="inline-block">
+      {pieces.map((p, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: 조각 차례가 곧 자리다
+        <Fragment key={i}>
+          {p}
+          {i < pieces.length - 1 ? (
+            <>
+              :<wbr />
+            </>
+          ) : null}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/**
  * 크기별 최고 Ao5와 티어(Cubie 기록 기준, docs/47 15-6). 티어는 사이트와 같은 규칙(최고 Ao5, `tiers/rank.ts`)이지만
  * 기록은 미니 모드 것이라(살펴보기 없이·포커스 있는 동안만 잼) 그렇게 밝힌다
  */
@@ -299,7 +329,8 @@ function MiniTiers({
                 aria-pressed={s === n}
                 onClick={() => onSize(s)}
                 className={cn(
-                  "flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left",
+                  // 시간이 길면 글이 크기와 시간 사이에서 줄을 바꾼다. 같은 줄의 칸은 같은 높이(h-full, 앱 `TierCell`도 같다)
+                  "flex h-full w-full items-center gap-1.5 rounded px-1.5 py-1 text-left",
                   s === n ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
                 )}
               >
@@ -313,8 +344,8 @@ function MiniTiers({
                   />
                 )}
                 <span className="flex min-w-0 flex-col items-start">
-                  <span className="text-white/60">
-                    {s}×{s} {t ? formatMs(t.ao5) : ""}
+                  <span data-mini-tier-top className="text-white/60">
+                    {s}×{s} {t ? <TimeWithBreaks text={formatMs(t.ao5)} /> : ""}
                   </span>
                   {t ? (
                     <span
