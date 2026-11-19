@@ -36,7 +36,8 @@ final class ProfileMenuView: NSView {
     self.profile = profile
     self.onPick = onPick
     swayView = MainActor.assumeIsolated {
-      profile.emblemTier.flatMap(EmblemArt.menuStrip).flatMap(EmblemArt.decode).map(MenuEmblemView.init(strip:))
+      guard let id = profile.emblemTier, let strip = EmblemArt.menuStrip(id).flatMap(EmblemArt.decode) else { return nil }
+      return MenuEmblemView(strip: strip, gain: EmblemArt.hdrMenuGain(id).flatMap(EmblemArt.decode))
     }
     let textW = max(
       Self.text(profile.name, size: 13, weight: .semibold).size().width,
@@ -82,6 +83,10 @@ final class ProfileMenuView: NSView {
     super.viewDidMoveToWindow()
     // 메뉴를 다시 열면 강조 없이 시작한다
     if window == nil { hovering = false }
+    // 메뉴가 뜬 화면이 HDR이면 반짝임을 흰색보다 밝게(docs/52 5-16)
+    if let swayView, let id = profile.emblemTier, window != nil {
+      MainActor.assumeIsolated { swayView.useHdr(EmblemArt.hdrOn(tier: id, screen: window?.screen)) }
+    }
     updateSway()
   }
 
@@ -204,15 +209,32 @@ final class ProfileMenuView: NSView {
 /// 메뉴 프로필 칸의 흔드는 엠블럼(32pt): 13각 띠에서 이웃한 두 장을 두 층에 두고 위 층 투명도로 사이 각을 메운다
 @MainActor
 final class MenuEmblemView: NSView, ShotPicture {
-  private let frames: [CGImage]
+  private let sdrFrames: [CGImage]
+  /// HDR 배율 지도 띠(보석 티어만). HDR 화면이면 처음 쓸 때 색 띠에 곱해 둔다(docs/52 5-16)
+  private let gain: CGImage?
+  private lazy var hdrFrames: [CGImage]? = {
+    guard let gain, let strip, let h = EmblemArt.hdr(strip, gain: gain) else { return nil }
+    return Self.split(h)
+  }()
+  private var strip: CGImage?
+  private var frames: [CGImage]
   private let lo = CALayer()
   private let hi = CALayer()
   private var shown: (Int, Int, Double) = (-1, -1, -1)
+  /// 지금 HDR 그림을 쓰는지
+  private(set) var hdr = false
 
-  init(strip: CGImage) {
+  private static func split(_ strip: CGImage) -> [CGImage] {
     let n = TierShowcase.menuFrames
     let w = strip.width / n
-    frames = (0..<n).compactMap { strip.cropping(to: CGRect(x: w * $0, y: 0, width: w, height: strip.height)) }
+    return (0..<n).compactMap { strip.cropping(to: CGRect(x: w * $0, y: 0, width: w, height: strip.height)) }
+  }
+
+  init(strip: CGImage, gain: CGImage? = nil) {
+    sdrFrames = Self.split(strip)
+    frames = sdrFrames
+    self.gain = gain
+    self.strip = gain == nil ? nil : strip
     super.init(frame: .zero)
     wantsLayer = true
     for l in [lo, hi] {
@@ -230,6 +252,19 @@ final class MenuEmblemView: NSView, ShotPicture {
     super.layout()
     lo.frame = bounds
     hi.frame = bounds
+  }
+
+  /// HDR 그림으로 바꾸거나 되돌린다(배율 지도가 없는 티어는 늘 SDR)
+  func useHdr(_ on: Bool) {
+    let next = on ? hdrFrames : nil
+    guard (next != nil) != hdr else { return }
+    hdr = next != nil
+    frames = next ?? sdrFrames
+    EmblemArt.setHdr(lo, hdr)
+    EmblemArt.setHdr(hi, hdr)
+    shown = (-1, -1, -1)
+    let y = yaw
+    yaw = y
   }
 
   /// 흔들기 각(라디안)
