@@ -979,6 +979,25 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - **같은 날 더한 것**(docs/47 14-8, 사이트와 같은 글·차례): 기록 창 요약 「최근 5판 평균」·「최근 12판 평균」·「최고 5판 평균 2:35.09 · 7~11번」, 그 5판 줄은 호박색 바탕과 빠진 두 판의 괄호 시간, 티어 칸 아래 고른 크기의 다음 판 목표. 티어표 창 큰 칸에 다음 판 목표, 사다리 아래 티어 이력(그래프는 층으로 짓는 `TierHistoryView`, 자리는 `TierHistoryLayout`). 계산은 코어 C 함수 `cubie_best_five`·`cubie_next_solve`·`cubie_tier_history`. 비교판 `docs/cubie-native/compare-windows-records.webp`·`compare-windows-tiers.webp`(네이티브 스크린샷은 문서 보기만 찍어 바탕이 투명이라 비교판의 회색이 비친다. 앱에서는 창 바탕 위).
 - **구간 안 자리 막대**(같은 날, docs/47 14-9): 기록 창 티어 칸과 다음 판 목표 사이에 고른 크기의 막대(`TierBandView`). 왼쪽 끝 지금 구간 경계, 오른쪽 끝 바로 위 구간 경계(꼭대기는 0.00), 표시는 최고 5판 평균. 셈은 코어 C 함수 `cubie_tier_band`(앱 `RustTierMath: TierBandMath`), 글은 `TierProgress.bandView`(사이트 `progress-view.ts` `bandView`와 같은 글). 색은 진열 사다리 테두리와 같은 `TierLadderView.ring`. 화면 밖 스크린샷 장면 `native-records-top`(5×5 챌린저)·`native-records-none`(4×4, 막대 없음). 비교판 `docs/cubie-native/compare-windows-records-band.webp`. **Cubie 새 판이 필요하다**.
 
+### 5-15. 보통 창 최소 크기, 숫자와 단위 줄바꿈, 1분 넘는 시간의 단위(2026-11-19)
+
+앱 기록 창 칸 잘림을 고치던 서브에이전트가 찾은 것과 HQ가 비교 그림에서 찾은 것.
+
+- **창 최소 크기**: 기록·티어표·설정 창은 크기를 바꿀 수 있는데 가장 작은 크기가 없어 아주 좁게 줄이면 칸 글이 잘리고 겹쳤다. 창 크기를 처음 크기와 가장 작은 크기로 함께 두는 `CubieCore/SheetSize.swift`를 두고, `NativeSheetWindow`는 이것만 받아 `contentMinSize`를 건다(가장 작은 크기 없이 창을 만들 수 없다).
+
+  | 창 | 처음 | 가장 작게 | 근거(화면 밖 스크린샷 `native-*-min`) |
+  |---|---|---|---|
+  | 기록 창 | 380×600 | 320×600 | 320에서 티어 칸(시간이 길면 세 줄, #367)·구간 막대·요약·줄 칸이 들어간다. 높이는 처음 높이 그대로: 320에서는 티어 칸이 높아져 560이면 다시 보기 큐브가 10pt 남짓으로 작아졌다 |
+  | 티어표 | 760×820 | 760×400 | 560에서 진열 사다리 칸이 겹치고 기준표 「WCA 경기자 중」 칸이 잘렸다. 높이는 굴려 본다 |
+  | 설정 창 | 760×720 | 760×400 | 560에서 키 배치 편집기 두 줄 칸의 키 칩과 「키 지정」이 겹치고 색 목록이 잘렸다. 높이는 굴려 본다 |
+
+  시험 `SheetSizeTests`, 비교판 `docs/cubie-native/compare-windows-records-min.webp`(320×600, 왼쪽 네이티브·오른쪽 사이트 WebKit).
+- **숫자와 단위**: 320 기록 창 안내 문단이 「힌트를 쓴 판이 든 5 / 판은」으로 끊겼다. AppKit 낱말 단위 줄바꿈(`.hangulWordPriority`)은 숫자와 바로 붙은 한글 사이도 끊을 수 있는 자리로 본다. `CubieCore/TextWrap.swift` `keepNumberUnits`가 숫자와 그 뒤 한글 단위, 숫자 사이 기호(`. : ~ × % ,`) 둘레에 폭 없는 줄바꿈 막는 글자(U+2060)를 넣고, 앱 글을 그리는 공통 자리(`NUI.attributed`, 말풍선 `HintBubble` 안내 글, 단축키 표 아래 글)가 부른다. 띄어 쓴 자리는 그대로 끊긴다. 말풍선(공식 연습·홈 시연)도 낱말 단위 줄바꿈을 켰다. 사이트는 `break-keep`이 「5판」을 붙여 두어 320에서도 끊기지 않았다(WebKit이 「:」 뒤를 끊는 시간 글은 `NoBreakTimes`, docs/47 14-8). 시험 `TextWrapTests`(도우미를 일부러 빼면 실패 확인).
+- **1분 넘는 시간의 단위**: 「최고 5판 평균을 20:00.00초 줄여야 해요」처럼 분:초 꼴 뒤에도 「초」를 붙여 20초처럼 읽혔다. 1분 아래만 「12.34초」, 1분부터는 「20:00.00」으로 내는 사이트 `formatSeconds`(`cube/records.ts`)·앱 `MiniBook.formatSeconds`를 두고, 시간 뒤에 「초」를 붙이던 곳(다음 판 목표 글, 티어 진열 「…까지」 두 줄, 공식 연습 한 판 끝 요약, 오늘의 섞기 공유 글)에 쓴다. 시험 `records.test.ts`·`progress-view.test.ts`·`NativeDataTests`·`TierProgressTests`, 화면 `cube-tiers.spec.ts` 티어 칸 시험.
+- **사이트 기록 창 320×600**(앱이 여는 사이트 창, 같은 비교판에서 찾음): 기록 줄이 「59 / 수」, 「다시 보 / 기」, 「11/12 / 10:11」로 갈렸고, 다시 보기 큐브 칸의 최소 높이(112px) 때문에 큐브가 상자 밖 기록 목록 위로 넘쳤다. 줄은 줄바꿈 없이 두고 입력 표시 칩만 낱말 사이에서 줄을 바꾸며(`whitespace-nowrap`·칩 `break-keep`), 큐브 칸은 앱처럼 남은 높이만 쓴다(`MiniCubeApp.tsx` `RecordsPanel`·`ReplayBox`). 시험 `cube-tiers.spec.ts` 「Cubie 기록 창 가장 작은 크기(320×600)…」(고치기 전 빌드에서 실패 확인).
+- 티어표 네이티브 스크린샷(`native-tiers*.png`)을 따로 열면 단추·상자가 흰색으로 보이는데, 문서 보기 바탕이 투명해 그림 보기 프로그램의 흰 바탕이 비친 것이다(비교판 회색 바탕에서는 제 모습). 고칠 것이 아니다.
+- **Cubie 새 판이 필요하다**(세 창과 말풍선은 앱이 그린다).
+
 ## 6. 윈도우판을 언제 어떻게 낼지
 
 - **Tauri로 먼저**: 몇 주 안에 낼 수 있고 지금 웹 화면을 그대로 쓴다. 메모리는 Edge 웹 화면이라 맥과 비슷하게 무겁다. 네이티브로 옮길 때 껍데기는 Rust라 일부(창·단축키·트레이)를 다시 쓸 수 있다.
