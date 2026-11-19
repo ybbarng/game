@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  type BandWidths,
   bandLayout,
   bandView,
   bestFiveView,
@@ -12,80 +13,141 @@ const band = (n: number, ms: number) =>
   bandView(tierBand(n, ms) as TierBand, ms);
 
 describe("구간 안 자리 막대 글", () => {
-  it("사용자 예: 왼쪽 브론즈 II 3:10.00, 오른쪽 브론즈 I 2:30.00, 표시 2:35.09", () => {
+  it("사용자 예: 세 칸 브론즈 III·브론즈 II·브론즈 I, 경계 3:10.00·2:30.00, 표시 2:35.09", () => {
     expect(band(3, 155_090)).toEqual({
-      leftName: "브론즈 II",
-      leftTime: "3:10.00",
-      rightName: "브론즈 I",
-      rightTime: "2:30.00",
+      downName: "브론즈 III",
+      hereName: "브론즈 II",
+      upName: "브론즈 I",
+      lowTime: "3:10.00",
+      highTime: "2:30.00",
       value: "2:35.09",
       ratio: 0.87275,
       label: "브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09",
     });
   });
 
-  it("꼭대기는 오른쪽 이름 없이 0.00", () => {
+  it("꼭대기는 위 칸 없이 오른쪽 경계 0.00", () => {
     const v = band(3, 5_200);
-    expect([v.leftName, v.leftTime, v.rightName, v.rightTime]).toEqual([
+    expect([v.downName, v.hereName, v.upName, v.lowTime, v.highTime]).toEqual([
+      "그랜드마스터",
       "챌린저",
-      "6.50",
       null,
+      "6.50",
       "0.00",
     ]);
     expect(v.label).toBe("챌린저 6.50 → 0.00 · 최고 5판 평균 5.20");
   });
 
-  it("맨 아래 아이언 IV의 왼쪽 끝은 「다 맞춤」", () => {
+  it("맨 아래 아이언 IV는 아래 칸 없이 왼쪽 경계 「다 맞춤」", () => {
     const v = band(3, 1_350_000);
-    expect([v.leftName, v.leftTime, v.rightName, v.rightTime]).toEqual([
+    expect([v.downName, v.hereName, v.upName, v.lowTime, v.highTime]).toEqual([
+      null,
       "아이언 IV",
-      "다 맞춤",
       "아이언 III",
+      "다 맞춤",
       "15:00.00",
     ]);
   });
 });
 
+/** 글 폭 묶음(막대 320px). 앱 `TierBandTests`의 `widths`와 같다 */
+const widths = (o: Partial<BandWidths> = {}): BandWidths => ({
+  width: 320,
+  down: 60,
+  here: 80,
+  up: 70,
+  low: 40,
+  high: 36,
+  value: 50,
+  ...o,
+});
+
 /** 앱 `TierBandTests`의 「layout…」 시험과 같은 예·같은 값 */
-describe("구간 안 자리 막대 좌표", () => {
-  it("경계 눈금은 양 끝에서 긴 경계 글의 절반만큼 안쪽, 자리는 두 눈금 사이에서 센다", () => {
-    expect(bandLayout(0.5, 300, 120, 100, 50)).toEqual({
-      tail: 60,
-      lowX: 60,
-      highX: 240,
-      markX: 150,
-      leftX: 0,
-      rightX: 190,
-      valueX: 125,
+describe("구간 안 자리 막대 좌표(세 칸 사다리)", () => {
+  it("옆 칸 폭은 긴 옆 칸 이름만큼(양쪽 같은 폭), 이름은 칸 아래 가운데, 시간은 경계 아래 가운데", () => {
+    expect(bandLayout(0.5, widths())).toEqual({
+      side: 70,
+      lowX: 70,
+      highX: 250,
+      markX: 160,
+      downX: 5,
+      hereX: 120,
+      upX: 250,
+      downShort: false,
+      upShort: false,
+      lowTimeX: 50,
+      highTimeX: 232,
+      valueX: 135,
     });
   });
 
-  it("꼭대기(오른쪽 글 「0.00」뿐)도 꼬리는 양쪽 같은 폭, 짧은 오른쪽 글은 눈금 아래 가운데", () => {
-    expect(bandLayout(0, 300, 80, 28, 40)).toEqual({
-      tail: 40,
-      lowX: 40,
-      highX: 260,
-      markX: 40,
-      leftX: 0,
-      rightX: 246,
-      valueX: 20,
+  it("꼭대기: 위 칸 자리를 비우지 않고 지금 칸이 막대 오른쪽 끝(0.00)까지, 0.00은 끝 안쪽으로", () => {
+    expect(
+      bandLayout(
+        0.2,
+        widths({ up: null, here: 60, low: 30, high: 28, value: 40 }),
+      ),
+    ).toEqual({
+      side: 60,
+      lowX: 60,
+      highX: 320,
+      markX: 112,
+      downX: 0,
+      hereX: 160,
+      upX: null,
+      downShort: false,
+      upShort: false,
+      lowTimeX: 45,
+      highTimeX: 292,
+      valueX: 92,
     });
+  });
+
+  it("맨 아래: 아래 칸 없이 지금 칸이 막대 왼쪽 끝에서 시작, 「다 맞춤」은 끝 안쪽으로", () => {
+    expect(
+      bandLayout(
+        0.75,
+        widths({ down: null, here: 70, low: 44, high: 52, value: 50 }),
+      ),
+    ).toEqual({
+      side: 70,
+      lowX: 0,
+      highX: 250,
+      markX: 187.5,
+      downX: null,
+      hereX: 90,
+      upX: 250,
+      downShort: false,
+      upShort: false,
+      lowTimeX: 0,
+      highTimeX: 224,
+      valueX: 162.5,
+    });
+  });
+
+  it("좁은 막대: 옆 칸은 1/4까지, 안 들어가는 옆 칸 이름은 엠블럼만 칸 가운데", () => {
+    const l = bandLayout(0.5, widths({ width: 200, down: 70, up: 60 }));
+    expect([l.side, l.downShort, l.upShort, l.downX, l.upX]).toEqual([
+      50,
+      true,
+      true,
+      18,
+      168,
+    ]);
+  });
+
+  it("이름이 짧아도 옆 칸은 24px", () => {
+    expect(bandLayout(0.5, widths({ down: 10, up: 10 })).side).toBe(24);
   });
 
   it("오른쪽 끝의 숫자는 막대 안으로 밀어 넣는다", () => {
-    const l = bandLayout(1, 300, 60, 60, 80);
-    expect([l.markX, l.valueX]).toEqual([270, 220]);
+    const l = bandLayout(1, widths({ up: null, value: 80 }));
+    expect([l.markX, l.valueX]).toEqual([320, 240]);
   });
 
-  it("글이 짧아도 꼬리는 12px, 좁은 막대에서는 1/4까지이고 글은 막대 안에 남는다", () => {
-    expect(bandLayout(0.5, 300, 10, 10, 30).tail).toBe(12);
-    const l = bandLayout(0.5, 200, 140, 140, 30);
-    expect([l.tail, l.leftX, l.rightX]).toEqual([50, 0, 60]);
-  });
-
-  it("자리가 0~1 밖이면 눈금에 붙인다", () => {
-    expect(bandLayout(1.5, 300, 60, 60, 40).markX).toBe(270);
-    expect(bandLayout(-1, 300, 60, 60, 40).markX).toBe(30);
+  it("자리가 0~1 밖이면 경계에 붙인다", () => {
+    expect(bandLayout(1.5, widths()).markX).toBe(250);
+    expect(bandLayout(-1, widths()).markX).toBe(70);
   });
 });
 
