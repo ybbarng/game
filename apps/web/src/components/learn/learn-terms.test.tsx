@@ -15,7 +15,7 @@ import {
 import { ADVANCED, LESSONS, type Lesson } from "./LearnPage";
 
 const text = (node: Lesson["body"]) =>
-  renderToStaticMarkup(<>{node}</>)
+  renderToStaticMarkup(node)
     .replace(/<sup>(.*?)<\/sup>/g, "^$1")
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ");
