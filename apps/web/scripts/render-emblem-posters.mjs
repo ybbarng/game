@@ -17,11 +17,13 @@
  * 4) Cubie 앱에 묶는 PNG `apps/cubie/Resources/Emblems/<티어>.png`(32pt·64px)와 `Emblems/big/<티어>.png`(64pt·128px).
  * 4-1) Cubie 티어표 진열과 메뉴 프로필 칸의 흔들기 그림 `apps/cubie/Resources/Emblems/sway/`(`ONLY=cubie-sway`). 사다리
  *    칸은 2) 진열 칸 그림을 앱이 그대로 묶는다(`apps/cubie/build.sh`).
+ * 4-2) Cubie HDR 배율 지도 `apps/cubie/Resources/Emblems/hdr/`(`ONLY=cubie-hdr`, 보석 티어만): 4-1 그림과 같은 각마다
+ *    회색 한 장. HDR 화면에서 앱이 색 그림에 곱해 반짝임을 흰색보다 밝게 그린다(docs/52 5-16). 4-1을 다시 찍으면 함께.
  * 5) README 그림 `apps/cubie/docs/tiers.webp`: 열 티어를 아래에서 위로 오르는 사다리로(투명 바탕, GitHub 밝은·어두운 화면 모두).
  *
  * 쓰는 법(apps/web에서):
  *   pnpm build                                        # out/ 이 있어야 한다
- *   E2E_PORT=5892 node scripts/render-emblem-posters.mjs   # ONLY=ladder|posters|hdr|sprites|stills|cubie|cubie-sway|readme, TIER=gold
+ *   E2E_PORT=5892 node scripts/render-emblem-posters.mjs   # ONLY=ladder|posters|hdr|sprites|stills|cubie|cubie-sway|cubie-hdr|readme, TIER=gold
  *   BASE=http://localhost:3456 …                      # 띄워 둔 서버를 쓴다(빌드 없이 잴 때)
  *
  * - 목록은 `poster.ts`·`still.ts`와 같아야 한다(.ts를 그대로 불러올 수 없어 여기 다시 적는다). 어긋나면 단위 시험
@@ -147,6 +149,17 @@ const CUBIE_MENU_YAWS = evenYaws(CUBIE_MENU_FRAMES);
 const CUBIE_SWAY_QUALITY = Number(process.env.CUBIE_SWAY_QUALITY ?? 0.72);
 const CUBIE_MENU_QUALITY = 0.8;
 const cubieSwayDir = join(cubieDir, "sway");
+/**
+ * Cubie HDR 배율 지도(`ONLY=cubie-hdr`, docs/52 5-16): 보석 티어의 흔들기 그림마다 같은 각의 회색 그림 한 장. 값 v는
+ * 배율 1 + (HDR_HEADROOM-1)·v/255. HDR 화면이면 앱이 색 그림(4-1)을 선형으로 펴서 이 배율을 곱해 흰색보다 밝게 그린다.
+ * 큰 칸은 사이트 HDR 길이 그 각에서 그리는 장 그대로에서 잰 배율(SDR 화면 값으로 찍은 장과 1/3로 줄여 찍은 장의 비),
+ * 메뉴 칸은 정지 그림 작은 단계와 같은 맞춤에서 HDR 길과 같은 규칙으로 잰 배율(`ShotJob.boost`)
+ */
+const cubieHdrDir = join(cubieDir, "hdr");
+/** 배율 지도 WebP 품질(회색, 거의 검정이라 작다) */
+const CUBIE_HDR_QUALITY = Number(process.env.CUBIE_HDR_QUALITY ?? 0.8);
+/** 큰 칸 배율을 잴 때 이 아래 SDR 값(선형, 가장 큰 채널)은 키우지 않는다(키우는 곳은 톤 매핑 전 1.5 넘는 밝은 곳뿐) */
+const BOOST_FLOOR = 0.2;
 
 const want = (k) => !ONLY || ONLY === k;
 
@@ -581,6 +594,135 @@ async function cubieSway(page) {
   console.log(`Cubie 흔들기 그림 합계 ${(total / 1024 / 1024).toFixed(2)}MB`);
 }
 
+/** 그림 여럿(data URL)을 가로로 이어 붙인 WebP 바이트 */
+async function stripWebp(page, urls, quality) {
+  const b64 = await page.evaluate(
+    async ([list, q]) => {
+      const imgs = await Promise.all(
+        list.map(async (u) => createImageBitmap(await (await fetch(u)).blob())),
+      );
+      const w = imgs[0].width;
+      const c = new OffscreenCanvas(w * imgs.length, w);
+      const ctx = c.getContext("2d");
+      for (const [i, im] of imgs.entries()) ctx.drawImage(im, i * w, 0);
+      const blob = await c.convertToBlob({ type: "image/webp", quality: q });
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      let s = "";
+      for (const x of buf) s += String.fromCharCode(x);
+      return btoa(s);
+    },
+    [urls, quality],
+  );
+  return Buffer.from(b64, "base64");
+}
+
+/**
+ * 큰 칸 배율 지도: HDR 길을 키우기 1배(SDR 화면 값)로 찍은 장과 1/HDR_HEADROOM로 줄여 찍은 장에서 화소마다 배율을
+ * 되돌린다(가장 큰 채널끼리 선형 값의 비 × HDR_HEADROOM, 1~HDR_HEADROOM). 회색 PNG data URL들
+ */
+async function gainUrls(page, flat, third, room) {
+  return page.evaluate(
+    async ([fs, ts, r, floor]) => {
+      const lin = (v) => {
+        const c = v / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      const read = async (u) => {
+        const bmp = await createImageBitmap(await (await fetch(u)).blob());
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        const x = c.getContext("2d");
+        x.drawImage(bmp, 0, 0);
+        return x.getImageData(0, 0, bmp.width, bmp.height);
+      };
+      const out = [];
+      for (let k = 0; k < fs.length; k++) {
+        const a = await read(fs[k]);
+        const b = await read(ts[k]);
+        const d = a.data;
+        const e = b.data;
+        const g = new ImageData(a.width, a.height);
+        for (let i = 0; i < d.length; i += 4) {
+          let ch = i;
+          if (d[i + 1] > d[ch]) ch = i + 1;
+          if (d[i + 2] > d[ch]) ch = i + 2;
+          const s = lin(d[ch]);
+          const boost =
+            s < floor ? 1 : Math.min(r, Math.max(1, (lin(e[ch]) * r) / s));
+          // 8비트 반올림 잡음(배율 1 근처)은 0으로
+          let v = Math.round(((boost - 1) / (r - 1)) * 255);
+          if (v < 3) v = 0;
+          g.data[i] = v;
+          g.data[i + 1] = v;
+          g.data[i + 2] = v;
+          g.data[i + 3] = 255;
+        }
+        const c = new OffscreenCanvas(a.width, a.height);
+        c.getContext("2d").putImageData(g, 0, 0);
+        const blob = await c.convertToBlob({ type: "image/png" });
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let s = "";
+        for (const x of buf) s += String.fromCharCode(x);
+        out.push(`data:image/png;base64,${btoa(s)}`);
+      }
+      return out;
+    },
+    [flat, third, room, BOOST_FLOOR],
+  );
+}
+
+/** Cubie HDR 배율 지도: 보석 티어마다 큰 칸 21장(한 장씩)과 메뉴 프로필 칸 13각 띠 */
+async function cubieHdr(page) {
+  const room = await page.evaluate(() => window.__emblemCapture.hdrHeadroom);
+  let total = 0;
+  for (const tier of HDR_TIERS.filter((t) => TIERS.includes(t))) {
+    const dir = join(cubieHdrDir, tier);
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    const job = {
+      tier,
+      size: HERO_SIZE,
+      yaws: CUBIE_SWAY_YAWS,
+      pageColor: PAGE.dark,
+      path: "hdr",
+    };
+    const flat = await page.evaluate((j) => window.__emblemCapture.frames(j), {
+      ...job,
+      headroom: 1,
+    });
+    const third = await page.evaluate((j) => window.__emblemCapture.frames(j), {
+      ...job,
+      view: 1 / room,
+    });
+    const files = await webpsOf(
+      page,
+      await gainUrls(page, flat, third, room),
+      CUBIE_HDR_QUALITY,
+    );
+    let sum = 0;
+    files.forEach((b, i) => {
+      writeFileSync(join(dir, `${String(i).padStart(2, "0")}.webp`), b);
+      sum += b.length;
+    });
+    total += sum;
+    console.log(`${shown(dir)} ${files.length}장 ${(sum / 1024).toFixed(1)}KB`);
+    const frames = [];
+    for (const yaw of CUBIE_MENU_YAWS)
+      frames.push(
+        await stillPng(page, {
+          ...CUBIE[0],
+          tier,
+          yaws: [yaw],
+          yaw,
+          boost: true,
+        }),
+      );
+    const bytes = await stripWebp(page, frames, CUBIE_HDR_QUALITY);
+    total += bytes.length;
+    save(join(cubieHdrDir, `${tier}-menu.webp`), bytes);
+  }
+  console.log(`Cubie HDR 배율 지도 합계 ${(total / 1024).toFixed(1)}KB`);
+}
+
 /** 정지 그림 한 장(투명 PNG data URL). 작은 단계는 티어 색을 살린다 */
 async function stillPng(page, job) {
   return page.evaluate(
@@ -594,9 +736,10 @@ async function stillPng(page, job) {
           ...(j.halo !== undefined ? { halo: j.halo } : {}),
           ...(j.exposure ? { exposure: j.exposure } : {}),
           ...(j.outline ? { outline: j.outline } : {}),
+          ...(j.boost ? { boost: true } : {}),
         },
       ]);
-      if (!j.small || !tint) return url;
+      if (!j.small || !tint || j.boost) return url;
       // 몸 색을 티어 색 쪽으로 물들인다: 「color」 섞기(밝기는 그대로, 색상·채도만 티어 색)를 몸 모양 안에서만
       const bmp = await createImageBitmap(await (await fetch(url)).blob());
       const w = bmp.width;
@@ -697,6 +840,7 @@ try {
   }
   if (want("sprites")) await sprites(page);
   if (want("cubie-sway")) await cubieSway(page);
+  if (want("cubie-hdr")) await cubieHdr(page);
   const jobs = [];
   if (want("stills")) {
     mkdirSync(stillDir, { recursive: true });
