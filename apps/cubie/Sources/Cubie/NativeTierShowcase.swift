@@ -34,6 +34,44 @@ enum EmblemArt {
     Bundle.main.url(forResource: id, withExtension: "webp", subdirectory: "Emblems/ladder")
   }
 
+  // MARK: HDR(docs/52 5-16)
+
+  /// 큰 칸 그림 `i`번과 같은 각의 HDR 배율 지도(보석 티어만)
+  static func hdrGain(_ id: String, _ i: Int) -> URL? {
+    Bundle.main.url(forResource: String(format: "%02d", i), withExtension: "webp", subdirectory: "Emblems/hdr/\(id)")
+  }
+
+  /// 메뉴 띠와 같은 각들의 HDR 배율 지도 띠(보석 티어만)
+  static func hdrMenuGain(_ id: String) -> URL? {
+    Bundle.main.url(forResource: "\(id)-menu", withExtension: "webp", subdirectory: "Emblems/hdr")
+  }
+
+  /// 숨은 강제 설정: 환경 변수 `CUBIE_EMBLEM_HDR`, 없으면 `defaults write kr.byb.cubie emblemHdr off|on`
+  static var hdrForce: Bool? {
+    EmblemHdr.force(
+      ProcessInfo.processInfo.environment["CUBIE_EMBLEM_HDR"] ?? UserDefaults.standard.string(forKey: "emblemHdr"))
+  }
+
+  /// 이 티어를 이 화면에서 HDR로 그리는지(화면이 흰색보다 밝게 낼 수 있을 때, `EmblemHdr.use`)
+  static func hdrOn(tier: String, screen: NSScreen?) -> Bool {
+    let room = (screen ?? NSScreen.main)?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1
+    return EmblemHdr.use(tier: tier, screenHeadroom: Double(room), force: hdrForce)
+  }
+
+  /// 색 그림(SDR)에 같은 크기 배율 지도를 곱한 HDR 그림: 선형 sRGB 확장 범위, 반 정밀도 실수, 흰색의 `EmblemHdr.headroom`배까지
+  /// (`CGImageCreateWithContentHeadroom`). 크기가 다르거나 만들지 못하면 nil(그때는 SDR 그대로 쓴다)
+  static func hdr(_ color: CGImage, gain: CGImage) -> CGImage? { EmblemHdr.image(color: color, gain: gain) }
+
+  /// 층이 흰색보다 밝은 그림을 그대로 내보내게(꺼면 SDR로 자른다). macOS 26부터 `preferredDynamicRange`, 그 앞은
+  /// `wantsExtendedDynamicRangeContent`
+  static func setHdr(_ layer: CALayer, _ on: Bool) {
+    if #available(macOS 26.0, *) {
+      layer.preferredDynamicRange = on ? .high : .standard
+    } else {
+      layer.wantsExtendedDynamicRangeContent = on
+    }
+  }
+
   private static let space = CGColorSpace(name: CGColorSpace.sRGB)!
   private static let bitmap = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
 
@@ -123,6 +161,28 @@ final class MotionWatch {
   }
 }
 
+/// 창이 다른 화면으로 옮겨지거나 화면 설정(HDR 켜고 끔 등)이 바뀌면 부르는 감시(HDR로 그릴지 다시 정한다)
+@MainActor
+final class ScreenWatch {
+  private var tokens: [NSObjectProtocol] = []
+
+  func watch(_ window: NSWindow?, _ fire: @escaping @MainActor () -> Void) {
+    stop()
+    let run: @Sendable (Notification) -> Void = { _ in MainActor.assumeIsolated { fire() } }
+    let c = NotificationCenter.default
+    if let window {
+      tokens.append(c.addObserver(forName: NSWindow.didChangeScreenNotification, object: window, queue: .main, using: run))
+    }
+    tokens.append(
+      c.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main, using: run))
+  }
+
+  func stop() {
+    tokens.forEach { NotificationCenter.default.removeObserver($0) }
+    tokens = []
+  }
+}
+
 /// 화면 밖 스크린샷(`NativeWindowShot`)이 층 그림을 얹을 때 쓴다(층 그림은 보기 그리기에 들지 않는다)
 @MainActor
 protocol ShotPicture: NSView {
@@ -151,6 +211,9 @@ final class EmblemSwayView: NSView, ShotPicture {
   private var resumeAt: CFTimeInterval?
   private var homing: (from: Double, start: CFTimeInterval)?
   private let watch = MotionWatch()
+  private let screens = ScreenWatch()
+  /// HDR 화면의 보석 티어면 그림마다 배율 지도를 곱해 반짝임을 흰색보다 밝게 그린다(docs/52 5-16)
+  private(set) var hdr = false
   private let home = Chip(
     "처음 각도로",
     look: Chip.Look(fill: NSColor(white: 0, alpha: 0.6), text: NUI.white(0.85), radius: 8, size: 12, padX: 10, padY: 4))
@@ -202,6 +265,7 @@ final class EmblemSwayView: NSView, ShotPicture {
     resumeAt = nil
     homing = nil
     shown = (-1, -1, -1)
+    setHdr(wantsHdr)
     let before = lo.contents
     render()
     if !first, let before { crossfade(lo, from: before) }
@@ -229,6 +293,7 @@ final class EmblemSwayView: NSView, ShotPicture {
     let id = TierInfo.ids[min(max(tier, 0), 9)]
     guard let url = EmblemArt.swayFrame(id, i), var img = EmblemArt.decode(url) else { return nil }
     if locked, let d = EmblemArt.copy(img, dim: TierShowcase.locked) { img = d }
+    if hdr, let g = EmblemArt.hdrGain(id, i).flatMap(EmblemArt.decode), let h = EmblemArt.hdr(img, gain: g) { img = h }
     cache[i] = img
     order.append(i)
     // 이웃한 두 장과 다음에 올 장만 둔다(560px 한 장이 1.2MB)
@@ -269,7 +334,31 @@ final class EmblemSwayView: NSView, ShotPicture {
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
     watch.watch(window) { [weak self] in self?.update() }
+    screens.watch(window) { [weak self] in self?.refreshHdr() }
+    refreshHdr()
     update()
+  }
+
+  /// 잠긴(어둡게 한) 칸은 SDR 그대로. 사이트도 HDR은 보석 티어만이고 잠김은 기록 없는 아이언뿐이다
+  private var wantsHdr: Bool {
+    tier >= 0 && !locked && EmblemArt.hdrOn(tier: TierInfo.ids[min(tier, 9)], screen: window?.screen)
+  }
+
+  private func setHdr(_ on: Bool) {
+    hdr = on
+    EmblemArt.setHdr(lo, on)
+    EmblemArt.setHdr(hi, on)
+  }
+
+  /// 화면이 바뀌어 HDR 여부가 달라지면 그림을 다시 푼다
+  private func refreshHdr() {
+    let on = wantsHdr
+    guard on != hdr else { return }
+    setHdr(on)
+    cache = [:]
+    order = []
+    shown = (-1, -1, -1)
+    render()
   }
 
   /// 흔들기 시계를 켤지 끌지 정한다

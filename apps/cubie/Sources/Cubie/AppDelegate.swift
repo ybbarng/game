@@ -447,7 +447,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     case .profile:
       // 맨 위 프로필 칸(뷰가 직접 그리고 누르기를 받는다). 누르면 기록 보기
       let i = NSMenuItem(title: cube.profile.name, action: nil, keyEquivalent: "")
-      i.view = ProfileMenuView(profile: cube.profile) { [weak self] in self?.menuRecords() }
+      // 숨은 미리보기 `defaults write kr.byb.cubie previewTier <티어>`: 이 칸의 엠블럼만 그 티어로(기록·다른 창은 그대로, docs/52 5-16)
+      let preview = EmblemPreview.tier(UserDefaults.standard.string(forKey: EmblemPreview.defaultsKey))
+      let profile = EmblemPreview.apply(cube.profile, tier: preview, emblem: NativeCubeWindow.emblem)
+      i.view = ProfileMenuView(profile: profile) { [weak self] in self?.menuRecords() }
       return [i]
     case .separator:
       return [.separator()]

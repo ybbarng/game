@@ -948,6 +948,73 @@ export interface ShotJob {
   exposure?: number;
   /** 몸 둘레 어두운 테두리 굵기(화소, 기본 0). 작은 그림이 밝은 바탕에서도 가장자리가 서게 */
   outline?: number;
+  /**
+   * 색 대신 HDR 키우기 배율 지도를 찍는다(Cubie 앱 HDR, docs/47 14-7 「HDR 길」). HDR 길과 같은 규칙으로 톤 매핑 전
+   * 밝기(노출 곱한 뒤 가장 큰 채널)가 `HDR_KNEE` 사이면 1~`HDR_HEADROOM`배로 키운다. 회색 (배율-1)/(HDR_HEADROOM-1),
+   * 몸 밖은 0(검정, 불투명). 앱은 같은 각의 색 그림에 이 배율을 곱해 흰색보다 밝게 그린다
+   */
+  boost?: boolean;
+}
+
+/** 배율 지도를 찍을 때 톤 매핑 전 밝기를 이만큼 줄여 0~1 안에 담는다(`HDR_KNEE` 끝 8까지) */
+const BOOST_RANGE = HDR_KNEE[1];
+
+/** 몸 본(흰 몸, 투명 바탕)과 같은 크기의 배율 지도를 만든다(`ShotJob.boost`) */
+function boostShot(
+  renderer: THREE.WebGLRenderer,
+  built: { scene: THREE.Scene; camera: THREE.Camera },
+  canvas: HTMLCanvasElement,
+  body: HTMLCanvasElement,
+  exposure: number,
+  px: number,
+): string {
+  // 선형 톤 매핑(노출만 곱하고 0~1로 자름)에 노출을 BOOST_RANGE로 나눠, 톤 매핑 전 밝기를 그대로 읽는다
+  renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.toneMappingExposure = exposure / BOOST_RANGE;
+  renderer.setClearColor(PAGE_COLOR, 1);
+  renderer.render(built.scene, built.camera);
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = exposure;
+  const big = canvas.width;
+  const read = document.createElement("canvas");
+  read.width = big;
+  read.height = big;
+  const rctx = read.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("2D 캔버스 없음");
+  rctx.drawImage(canvas, 0, 0);
+  const img = rctx.getImageData(0, 0, big, big);
+  const d = img.data;
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const [k0, k1] = HDR_KNEE;
+  for (let i = 0; i < d.length; i += 4) {
+    const peak =
+      Math.max(lin(d[i] ?? 0), lin(d[i + 1] ?? 0), lin(d[i + 2] ?? 0)) *
+      BOOST_RANGE;
+    const t = Math.min(1, Math.max(0, (peak - k0) / (k1 - k0)));
+    // smoothstep: HDR 길 셰이더와 같은 곡선. 배율 = 1 + (HDR_HEADROOM-1)·s 이므로 회색은 s 그대로
+    const g = Math.round(t * t * (3 - 2 * t) * 255);
+    d[i] = g;
+    d[i + 1] = g;
+    d[i + 2] = g;
+    d[i + 3] = 255;
+  }
+  rctx.putImageData(img, 0, 0);
+  const out = document.createElement("canvas");
+  out.width = px;
+  out.height = px;
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("2D 캔버스 없음");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(body, 0, 0, px, px);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.drawImage(read, 0, 0, px, px);
+  ctx.globalCompositeOperation = "destination-over";
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, px, px);
+  return out.toDataURL("image/png");
 }
 
 /**
@@ -1011,6 +1078,23 @@ export async function captureShots(
         if (!ctx || !cctx) break;
         built.spin.rotation.set(pitch, yaw, 0, "XYZ");
         built.update();
+        if (job.boost) {
+          // 몸 본을 먼저 떠 두고(배율은 몸 안에만) 배율 지도를 찍는다
+          for (const o of built.behind) o.visible = false;
+          built.scene.overrideMaterial = silhouette;
+          renderer.setClearColor(0x000000, 0);
+          renderer.render(built.scene, built.camera);
+          built.scene.overrideMaterial = null;
+          for (const o of built.behind) o.visible = true;
+          const body = document.createElement("canvas");
+          body.width = canvas.width;
+          body.height = canvas.height;
+          body.getContext("2d")?.drawImage(canvas, 0, 0);
+          urls.push(
+            boostShot(renderer, built, canvas, body, job.exposure ?? 1.15, px),
+          );
+          continue;
+        }
         // 1) 배경판을 넣고 그대로
         renderer.setClearColor(PAGE_COLOR, 1);
         renderer.render(built.scene, built.camera);
