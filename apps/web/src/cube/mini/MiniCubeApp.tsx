@@ -60,6 +60,7 @@ import {
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { EmblemStill } from "../tiers/EmblemStill";
+import { NoBreakTimes } from "../tiers/NoBreakTimes";
 import {
   BEST5_LABEL,
   bestFiveView,
@@ -370,7 +371,7 @@ function MiniTiers({
       })()}
       {goal && (
         <p data-mini-next-solve={goal.kind} className="break-keep">
-          {nextSolveText(goal)}
+          <NoBreakTimes text={nextSolveText(goal)} />
         </p>
       )}
       <p className="break-keep text-white/50">

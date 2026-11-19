@@ -6,6 +6,7 @@ import {
   bestFiveView,
   nextSolveText,
   rangeText,
+  timePieces,
 } from "./progress-view";
 import { nextSolve, type TierBand, tierBand } from "./rank";
 
@@ -196,5 +197,29 @@ describe("다음 판 목표 글", () => {
     expect(out && nextSolveText(out)).toBe(
       "다음 판 하나로는 브론즈 I에 못 닿아요. 최고 5판 평균을 5.09초 줄여야 해요.",
     );
+  });
+
+  it("시간 조각을 따로 나눠 화면이 시간 가운데서 줄을 바꾸지 않게 한다", () => {
+    expect(
+      timePieces(
+        "다음 판 하나로는 브론즈 IV에 못 닿아요. 최고 5판 평균을 20:00.00초 줄여야 해요.",
+      ),
+    ).toEqual([
+      {
+        text: "다음 판 하나로는 브론즈 IV에 못 닿아요. 최고 5판 평균을 ",
+        time: false,
+      },
+      { text: "20:00.00초", time: true },
+      { text: " 줄여야 해요.", time: false },
+    ]);
+    expect(timePieces("다음 판 1:10:00.00 안이면 브론즈 I")).toEqual([
+      { text: "다음 판 ", time: false },
+      { text: "1:10:00.00", time: true },
+      { text: " 안이면 브론즈 I", time: false },
+    ]);
+    // 티어 이름의 숫자(「5판」)는 시간이 아니다
+    expect(timePieces("다음 판을 맞추면 브론즈 I")).toEqual([
+      { text: "다음 판을 맞추면 브론즈 I", time: false },
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import { no3d, shot } from "./cube";
 import { expect, type Locator, type Page, test } from "./test";
+import { renderedLines } from "./word-wrap";
 
 /**
  * 큐브 티어표(`/cube/tiers`, docs/47 14절). 티어·Ao5 계산은 단위 시험(`tiers/rank.test.ts`, `records.test.ts`)이 맡고,
@@ -803,6 +804,18 @@ test(
       await shot(page, `mini-records-tier-cells-${width}`, info.project.name);
       await expect.poll(() => tierCellProblems(page)).toEqual([]);
       await noSideScroll(page);
+      // 6×6을 고르면 목표 글 「… 최고 5판 평균을 20:00.00초 줄여야 해요.」의 시간이 한 줄 안에 있다(「20: / 00.00초」 아님).
+      // WebKit(Cubie 앱 엔진)은 320px에서 「:」 뒤를 끊었는데 이 시험 브라우저(Chromium)는 끊지 않아, 시간이 끊기지 않는
+      // 한 덩이(white-space: nowrap)인지도 본다
+      await page.locator("[data-mini-tier-size='6']").click();
+      const goal = page.locator("[data-mini-next-solve]");
+      await expect(goal).toContainText("20:00.00초");
+      expect(
+        (await renderedLines(goal)).some((l) => l.includes("20:00.00초")),
+      ).toBe(true);
+      await expect(
+        goal.locator("span", { hasText: /^20:00\.00초$/ }),
+      ).toHaveCSS("white-space", "nowrap");
     }
   },
 );
