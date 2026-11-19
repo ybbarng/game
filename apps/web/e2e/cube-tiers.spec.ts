@@ -814,9 +814,10 @@ test(
       expect(
         (await renderedLines(goal)).some((l) => l.includes("20:00.00")),
       ).toBe(true);
-      await expect(
-        goal.locator("span", { hasText: /^20:00\.00$/ }),
-      ).toHaveCSS("white-space", "nowrap");
+      await expect(goal.locator("span", { hasText: /^20:00\.00$/ })).toHaveCSS(
+        "white-space",
+        "nowrap",
+      );
     }
   },
 );
