@@ -101,11 +101,16 @@ function sampleStore() {
     (ms, i) => record(i + 1, 6, ms),
   );
   six.reverse();
+  // 7×7도 아이언(5판 평균 133분 20초): 위쪽 티어 칸 「7×7 133:20.00」처럼 긴 시간이 칸 안에서 줄을 바꿔 다 보이는지
+  const seven = [7_900_000, 8_000_000, 8_100_000, 7_800_000, 8_200_000].map(
+    (ms, i) => record(i + 1, 7, ms),
+  );
+  seven.reverse();
   const mini = {
     version: 1,
     n: 3,
     mirror: true,
-    records: { 3: three, 2: two, 5: five, 6: six },
+    records: { 3: three, 2: two, 5: five, 6: six, 7: seven },
     best5: {},
   };
   // 사이트 혼자 맞추기 기록도 넣어 둔다(앱 티어표·`records=cubie` 사이트 창은 이것을 보지 않아야 한다)
@@ -151,13 +156,15 @@ const WINDOWS = [
     name: "records",
     path: "/cube/mini?view=records",
     size: { width: 380, height: 600 },
-    // 구간 안 자리 막대: 가운데(3×3, 첫 장면), 꼭대기(5×5), 맨 아래(6×6), 5판 전(4×4)
+    // 구간 안 자리 막대: 가운데(3×3, 첫 장면), 꼭대기(5×5), 맨 아래(6×6), 5판 전(4×4). 티어 칸 긴 시간: 맨 아래 장면의
+    // 6×6·7×7 칸, 휴대폰 너비 320으로 줄인 창(records-narrow)
     shots: [
       "records",
       "records-replay",
       "records-top",
       "records-bottom",
       "records-none",
+      "records-narrow",
     ],
   },
   {
@@ -183,9 +190,9 @@ const WINDOWS = [
 const browser = await webkit.launch();
 try {
   for (const w of WINDOWS) {
-    const open = async (data) => {
+    const open = async (data, viewport = w.size) => {
       const c = await browser.newContext({
-        viewport: w.size,
+        viewport,
         deviceScaleFactor: 2,
         colorScheme: "dark",
         ...(w.reducedMotion ? { reducedMotion: w.reducedMotion } : {}),
@@ -237,11 +244,15 @@ try {
         "records-top": 5,
         "records-bottom": 6,
         "records-none": 4,
+        "records-narrow": 6,
       }[shot];
       if (bandSize) {
-        // 네이티브는 새 기록 창에서 크기만 고른다(다시 보기 닫힘)
+        // 네이티브는 새 기록 창에서 크기만 고른다(다시 보기 닫힘). records-narrow는 창 너비 320
         await ctx.close();
-        [ctx, page] = await open(store);
+        [ctx, page] = await open(
+          store,
+          shot === "records-narrow" ? { ...w.size, width: 320 } : w.size,
+        );
         await page.locator(`[data-mini-tier-size='${bandSize}']`).click();
         await page.waitForTimeout(300);
       }
@@ -265,12 +276,11 @@ try {
     // 같은 폴더의 파일로 건다(장면이 여럿이면 글 안에 그림을 다 넣은 HTML은 WebKit이 몇 장을 그리지 않았다)
     const img = (f) => f;
     const cols = pairs
-      .map(
-        (
-          s,
-        ) => `<figure><figcaption>네이티브 · ${s}</figcaption><img src="${img(`native-${s}.png`)}" style="width:${w.size.width}px"></figure>
-<figure><figcaption>사이트(WebKit) · ${s}</figcaption><img src="${img(`web-${s}.png`)}" style="width:${w.size.width}px"></figure>`,
-      )
+      .map((s) => {
+        const width = s === "records-narrow" ? 320 : w.size.width;
+        return `<figure><figcaption>네이티브 · ${s}</figcaption><img src="${img(`native-${s}.png`)}" style="width:${width}px"></figure>
+<figure><figcaption>사이트(WebKit) · ${s}</figcaption><img src="${img(`web-${s}.png`)}" style="width:${width}px"></figure>`;
+      })
       .join("");
     const html = path.join(dir, `compare-${w.name}.html`);
     writeFileSync(
