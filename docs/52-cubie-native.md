@@ -917,7 +917,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 
 **웹과 다르게 한 것**
 
-- 큰 칸은 3D가 아니라 미리 찍은 그림이라 끌어도 ±0.5 라디안 밖(뒷면)은 보이지 않고, 놓을 때 미끄러지지 않는다. 반짝임은 그림에 찍힌 대로다(HDR 길 없음).
+- 큰 칸은 3D가 아니라 미리 찍은 그림이라 끌어도 ±0.5 라디안 밖(뒷면)은 보이지 않고, 놓을 때 미끄러지지 않는다. 반짝임은 그림에 찍힌 대로다(HDR 길 없음, 2026-11-19 5-16에서 배율 지도로 더했다).
 - ~~「이 크기는 아직 Ao5가 없습니다.」 문장은 두 줄로 나눠 둔다~~(2026-11-18 5-14: 「이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.」 한 문단, 사이트 `?records=cubie`와 같은 글).
 - 휴대폰 너비 꼴(사다리 60px)은 없다(창 너비 760pt 고정 꼴).
 - 5-8 「웹과 다르게 한 것」의 「큰 엠블럼 아래 구간 점이 없다」는 이제 그린다(마름모 넷, 그림 없이 그린다).
@@ -997,6 +997,23 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - **사이트 기록 창 320×600**(앱이 여는 사이트 창, 같은 비교판에서 찾음): 기록 줄이 「59 / 수」, 「다시 보 / 기」, 「11/12 / 10:11」로 갈렸고, 다시 보기 큐브 칸의 최소 높이(112px) 때문에 큐브가 상자 밖 기록 목록 위로 넘쳤다. 줄 안 글은 줄바꿈 없이 두고, 줄 폭이 340보다 좁으면(가장 작은 창 320) 입력 표시 칩 묶음을 시간 칸 아래 둘째 줄(왼쪽 120)로 내려 칩도 한 줄로 둔다. 앱도 같은 폭·같은 자리로 내린다(`RecordsSheet.badgesOnOwnLine`, `RecordRowView`). 앱은 그전에 한 줄에 다 넣다 「다시 보기」가 줄 오른쪽 밖으로 밀려 보이지 않았다. 큐브 칸은 앱처럼 남은 높이만 쓴다(`MiniCubeApp.tsx` `RecordsPanel`·`ReplayBox`). 시험 `cube-tiers.spec.ts` 「Cubie 기록 창 가장 작은 크기(320×600)…」(고치기 전 빌드에서 실패 확인).
 - 티어표 네이티브 스크린샷(`native-tiers*.png`)을 따로 열면 단추·상자가 흰색으로 보이는데, 문서 보기 바탕이 투명해 그림 보기 프로그램의 흰 바탕이 비친 것이다(비교판 회색 바탕에서는 제 모습). 고칠 것이 아니다.
 - **Cubie 새 판이 필요하다**(세 창과 말풍선은 앱이 그린다).
+
+### 5-16. 엠블럼 HDR과 메뉴 엠블럼 미리보기(2026-11-19)
+
+> 사이트 티어 화면은 HDR 맥에서 보석 티어 반짝임이 흰색보다 밝게 빛난다(docs/47 14-7 「HDR 길」). 사용자가 앱 메뉴 프로필 칸 엠블럼도 빛나는지 보고 싶어 했는데, 앱은 미리 찍은 SDR 각도 그림만 넘겨(5-11 「반짝임은 그림에 찍힌 대로다(HDR 길 없음)」) 빛나지 않았고, 사용자 티어가 브론즈라 보석 티어를 메뉴에서 볼 길도 없었다.
+
+**결론**
+
+- **사이트와 같은 규칙**: 보석 다섯 티어만, 화면이 흰색보다 밝게 낼 수 있을 때(`NSScreen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1`, 창·메뉴가 뜬 화면) HDR로 그린다. 생김새는 SDR 그림 그대로이고 반짝임만 흰색의 최대 3배(`HDR_HEADROOM`)까지 밝다. 금속 티어·SDR 화면·잠긴(어둡게 한) 큰 칸은 지금 그대로다. 티어표 창 위쪽 큰 칸과 메뉴 프로필 칸 둘 다(사다리 칸은 사이트도 SDR 그림이라 그대로).
+- **방법(배율 지도)**: 사이트 HDR 길은 화소마다 「SDR 화면 값 × 키우기 배율(1~3)」이다. 그래서 흔들기 그림(SDR 색)은 그대로 두고, 같은 각마다 배율만 담은 회색 그림을 묶는다. 앱은 HDR 화면에서만 색 그림을 선형으로 펴 배율을 곱하고(`CubieCore/EmblemHdr.swift`), 반 정밀도 확장 선형 sRGB `CGImage`에 「흰색의 3배까지」 표시(`CGImageCreateWithContentHeadroom`)를 붙여 층에 건다. 층은 macOS 26부터 `preferredDynamicRange = .high`(사이트 `dynamic-range-limit: no-limit`와 같은 뜻), macOS 15~25는 `wantsExtendedDynamicRangeContent`. 다른 화면으로 옮기거나 화면 설정이 바뀌면(`didChangeScreen`·`didChangeScreenParameters`) 다시 정한다.
+- **고르지 않은 것**: HDR 그림을 통째로(PQ AVIF) 묶으면 큰 칸 105장이 약 2.4MB라 1MB 상한을 넘는다. 배율 지도는 거의 검정이라 작다. 3D(Metal) 그리기는 5-11처럼 드라이버 메모리가 붙어 쓰지 않는다. 색 그림에 더하기 섞기 층을 얹는 방법은 합성기가 흰색 위를 자를 수 있어 그림을 미리 합친다.
+- **배율 지도 찍기**: `apps/web/scripts/render-emblem-posters.mjs` `ONLY=cubie-hdr` → `apps/cubie/Resources/Emblems/hdr/<보석 티어>/00~20.webp`(560px, 큰 칸 흔들기 그림과 같은 각)·`<보석 티어>-menu.webp`(64px × 13각 띠). 큰 칸은 사이트 HDR 길 장을 SDR 화면 값으로 한 번, 1/3로 줄여 한 번 찍은 비에서, 메뉴 칸은 정지 그림 작은 단계와 같은 맞춤에서 HDR 길과 같은 규칙(톤 매핑 전 밝기 1.5~8 사이를 smoothstep으로 1~3배, `ShotJob.boost`)으로 잰다. 흔들기 그림(`ONLY=cubie-sway`)을 다시 찍으면 함께 찍는다.
+- **크기**: 배율 지도 합계 641KB(큰 칸 105장 624KB, 메뉴 띠 다섯 17KB), 이 맥 칩용 앱 zip 약 +632KB(9.2MB). 메모리는 HDR일 때 큰 칸 한 장이 1.2MB → 2.5MB(최근 네 장)라 티어표를 연 동안 약 +5MB.
+- **숨은 설정**: 강제로 끄기·켜기 `defaults write kr.byb.cubie emblemHdr off|on`(지우기 `defaults delete kr.byb.cubie emblemHdr`, 환경 변수 `CUBIE_EMBLEM_HDR=0|1`이 먼저). 같은 HDR 화면에서 둘을 견줄 때 쓴다.
+- **메뉴 엠블럼 미리보기**: `defaults write kr.byb.cubie previewTier <티어 id>`(iron·bronze·silver·gold·platinum·emerald·diamond·master·grandmaster·challenger), 끄기 `defaults delete kr.byb.cubie previewTier`. 메뉴를 열 때마다 읽어 앱을 다시 켜지 않아도 된다. 메뉴 프로필 칸의 엠블럼만 바꾸고 이름·티어 글·기록 창·티어표 창과 저장된 기록은 그대로다. 화면에 알리는 글은 두지 않는다.
+- 시험 `EmblemHdrTests`(언제 HDR인지, 화소 셈, 묶은 다이아몬드 그림으로 만든 HDR 그림이 흰색보다 밝은 화소 0.1~5%이고 바탕은 SDR 그대로, 배율 지도 장 수·크기, 미리보기). 배율 셈을 일부러 1배로 두면 실패하는 것을 확인했다.
+- **사람이 HDR 맥에서 볼 것**: 헤드리스·스크린샷은 흰색 위 밝기를 담지 못한다. ① 미리보기를 다이아몬드나 그랜드마스터로 켜고 메뉴를 열어 엠블럼 반짝 점이 메뉴 글자(흰색)보다 밝은지 ② 티어표 창 사다리에서 보석 칸을 눌러 큰 칸 반짝임이 흰 글자보다 밝은지 ③ `emblemHdr off`로 견주어 생김새는 같고 반짝임만 다른지 ④ 큰 칸이 흔들릴 때 반짝임이 깜빡이거나 화면 밝기가 출렁이지 않는지.
+- **Cubie 새 판이 필요하다**(티어표 창·메뉴는 앱이 그린다).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 
