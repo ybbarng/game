@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bandLayout,
   bandView,
   bestFiveView,
   nextSolveText,
@@ -42,6 +43,49 @@ describe("구간 안 자리 막대 글", () => {
       "아이언 III",
       "15:00.00",
     ]);
+  });
+});
+
+/** 앱 `TierBandTests`의 「layout…」 시험과 같은 예·같은 값 */
+describe("구간 안 자리 막대 좌표", () => {
+  it("경계 눈금은 양 끝에서 긴 경계 글의 절반만큼 안쪽, 자리는 두 눈금 사이에서 센다", () => {
+    expect(bandLayout(0.5, 300, 120, 100, 50)).toEqual({
+      tail: 60,
+      lowX: 60,
+      highX: 240,
+      markX: 150,
+      leftX: 0,
+      rightX: 190,
+      valueX: 125,
+    });
+  });
+
+  it("꼭대기(오른쪽 글 「0.00」뿐)도 꼬리는 양쪽 같은 폭, 짧은 오른쪽 글은 눈금 아래 가운데", () => {
+    expect(bandLayout(0, 300, 80, 28, 40)).toEqual({
+      tail: 40,
+      lowX: 40,
+      highX: 260,
+      markX: 40,
+      leftX: 0,
+      rightX: 246,
+      valueX: 20,
+    });
+  });
+
+  it("오른쪽 끝의 숫자는 막대 안으로 밀어 넣는다", () => {
+    const l = bandLayout(1, 300, 60, 60, 80);
+    expect([l.markX, l.valueX]).toEqual([270, 220]);
+  });
+
+  it("글이 짧아도 꼬리는 12px, 좁은 막대에서는 1/4까지이고 글은 막대 안에 남는다", () => {
+    expect(bandLayout(0.5, 300, 10, 10, 30).tail).toBe(12);
+    const l = bandLayout(0.5, 200, 140, 140, 30);
+    expect([l.tail, l.leftX, l.rightX]).toEqual([50, 0, 60]);
+  });
+
+  it("자리가 0~1 밖이면 눈금에 붙인다", () => {
+    expect(bandLayout(1.5, 300, 60, 60, 40).markX).toBe(270);
+    expect(bandLayout(-1, 300, 60, 60, 40).markX).toBe(30);
   });
 });
 
