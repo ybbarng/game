@@ -736,6 +736,209 @@ test("윷놀이: 움직임 줄이기면 3D 없이 결과만 보이고 장면이 
   await expect(page.locator("[data-toss-3d]")).toHaveCount(0);
 });
 
+/**
+ * 결과 글(`data-throw-result`)이 새로 뜰 때마다 그 순간 사람 눈에 보였는지를 페이지 안에 적어 둔다.
+ * 보였다 = 그 순간 던지는 장면(멍석이 큰 장면)이고 결과 글에 크기가 있다. 휴대폰 세로에서 말 옮기는 장면이면
+ * 멍석 층이 투명해져(yut.css) 결과 글이 보이지 않는다. 투명도 값은 장면이 바뀌는 연출(0.7초) 중간값이라 쓰지 않고
+ * 장면으로 판정한다. `toBeVisible`은 불투명도를 보지 않아, 결과가 나오자마자 멍석이 투명해지는 것을 잡지 못했다(2026-11-19)
+ */
+interface ShownResult {
+  value: string;
+  /** 그때 장면과 상태 줄(실패하면 어느 던지기였는지 알 수 있게) */
+  scene: string;
+  status: string;
+  visible: boolean;
+}
+
+async function watchShownResults(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const seen: ShownResult[] = [];
+    (window as unknown as { __shownResults: typeof seen }).__shownResults =
+      seen;
+    /** 상태 줄에 뜬 글들(차례대로, 같은 글이 이어지면 한 번) */
+    const statuses: string[] = [];
+    (window as unknown as { __statuses: string[] }).__statuses = statuses;
+    let last = "";
+    const check = () => {
+      const now = document.querySelector('[role="status"]')?.textContent ?? "";
+      if (statuses.at(-1) !== now) statuses.push(now);
+      const el = document.querySelector<HTMLElement>("[data-throw-result]");
+      const value = el?.getAttribute("data-throw-result") ?? "";
+      if (value === last) return;
+      last = value;
+      if (!el || value === "") return;
+      const box = el.getBoundingClientRect();
+      const scene = document
+        .querySelector(".yut-stage")
+        ?.getAttribute("data-scene");
+      seen.push({
+        value,
+        scene: scene ?? "",
+        status: document.querySelector('[role="status"]')?.textContent ?? "",
+        visible: scene === "throw" && box.width > 0 && box.height > 0,
+      });
+    };
+    new MutationObserver(check).observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["data-throw-result", "data-scene", "data-toss"],
+    });
+    check();
+  });
+}
+
+const seenStatuses = (page: Page) =>
+  page.evaluate(
+    () => (window as unknown as { __statuses: string[] }).__statuses,
+  );
+
+const shownResults = (page: Page) =>
+  page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __shownResults: ShownResult[];
+        }
+      ).__shownResults,
+  );
+
+/** WebGL 맥락을 만들지 못하는 기기(3D를 못 그림) */
+async function blockWebGL(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      kind: string,
+      ...rest: unknown[]
+    ) {
+      if (kind.startsWith("webgl")) return null;
+      return (original as (...a: unknown[]) => unknown).call(
+        this,
+        kind,
+        ...rest,
+      );
+    } as typeof original;
+  });
+}
+
+for (const [label, prepare] of [
+  ["움직임 줄이기", async () => {}],
+  [
+    "WebGL 없음",
+    async (page: Page) => {
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await blockWebGL(page);
+    },
+  ],
+] as const)
+  test(
+    `윷놀이 휴대폰(${label}): 3D 멍석이 없어도 내 윷과 컴퓨터 윷의 결과를 멍석 위에 보인 뒤 윷판 장면으로 바뀐다`,
+    {
+      // 장면이 같은 자리에서 바뀌는 것은 휴대폰 세로뿐이다(PC·가로는 멍석과 윷판을 나란히 둔다)
+      tag: "@only-phone-portrait",
+    },
+    async ({ page }, info) => {
+      await prepare(page);
+      await page.goto("/yut");
+      await startSolo(page);
+      await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+      await watchShownResults(page);
+      await untilMyThrow(page);
+      await throwSticks(page);
+      // 결과 글이 떠야 하고, 그동안은 던지는 장면이다
+      await expect
+        .poll(async () => (await shownResults(page)).length)
+        .toBeGreaterThan(0);
+      await page.screenshot({ path: info.outputPath("yut-2d-result.png") });
+      // 컴퓨터가 던질 때까지 이어 둔다(내가 윷·모를 던지면 컴퓨터보다 내가 먼저 한 번 더 던진다).
+      // 상태 줄도 결과를 알려야 한다(「윷이 구르는 중…」에 머물지 않는다)
+      const computerSaw = async () =>
+        (await seenStatuses(page)).some((s) => s.startsWith("컴퓨터의 윷: "));
+      for (let i = 0; i < 10; i++) {
+        await untilMyThrow(page);
+        if (await computerSaw()) break;
+        await throwSticks(page);
+      }
+      expect(await computerSaw()).toBe(true);
+      const statuses = await seenStatuses(page);
+      expect(statuses.some((s) => s.startsWith("내 윷: "))).toBe(true);
+      const shown = await shownResults(page);
+      expect(shown.length).toBeGreaterThan(1);
+      expect(shown.filter((r) => !r.visible)).toEqual([]);
+    },
+  );
+
+test(
+  "윷놀이 휴대폰: 구르는 도중 3D 문맥을 잃으면 2D 윷가락으로 결과를 보이고 다음 화면으로 간다",
+  {
+    tag: "@only-phone-portrait",
+  },
+  async ({ page }, info) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.install();
+    await page.goto("/yut");
+    await speedUpAnimations(page);
+    await startSolo(page);
+    await expect(page.locator('[data-toss-3d="ready"]')).toBeVisible();
+    await fastForwardUntil(page, () => throwButton(page).isVisible(), {
+      step: 200,
+    });
+    await watchShownResults(page);
+    await throwSticks(page);
+    await fastForwardUntil(
+      page,
+      async () => (await tossNow(page)) === "playing",
+      {
+        step: 50,
+      },
+    );
+    // 휴대폰이 화면 뒤로 갔다 오거나 GPU가 바빠 그리기 맥락을 잃는다
+    await page.evaluate(() => {
+      const canvas =
+        document.querySelector<HTMLCanvasElement>("[data-toss-3d]");
+      canvas
+        ?.getContext("webgl2")
+        ?.getExtension("WEBGL_lose_context")
+        ?.loseContext();
+    });
+    await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+    // 연출이 끝나지 않는 9초 안전장치를 기다리지 않는다: 2D로 굴린 뒤 결과를 알린다
+    await fastForwardUntil(
+      page,
+      async () => /^내 윷: /.test((await status(page).textContent()) ?? ""),
+      { step: 100, timeout: 10_000 },
+    );
+    expect(await sceneNow(page)).toBe("throw");
+    await page.screenshot({ path: info.outputPath("yut-lost-result.png") });
+    // 지켜보기 전에 떠 있던 앞 결과(컴퓨터가 먼저 던짐)와 2D로 바뀌며 다시 그린 결과도 함께 적힌다
+    const shown = await shownResults(page);
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.filter((r) => !r.visible)).toEqual([]);
+  },
+);
+
+test("윷놀이 다시 보기(휴대폰, 3D 없음): 한 걸음 앞으로 가 새 던지기가 나오면 멍석 위에 결과를 보인다", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  await leaveOneGame(page);
+  await page.goto("/review");
+  await page.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
+  await expect(page.locator("[data-yut-board]")).toBeVisible();
+  await expect(mat(page)).toHaveAttribute("data-toss", "2d");
+  await page.getByRole("button", { name: "처음" }).click();
+  await watchShownResults(page);
+  for (let i = 0; i < 12; i++) {
+    await stepForward(page);
+    // 결과를 보인 뒤(던지는 장면이 끝나면) 다음 걸음으로
+    await expect(stage(page)).not.toHaveAttribute("data-replay-toss");
+  }
+  const shown = await shownResults(page);
+  expect(shown.length).toBeGreaterThan(1);
+  expect(shown.filter((r) => !r.visible)).toEqual([]);
+});
+
 /** 입문 컴퓨터와 몇 수 두다 기권해 복기 기록 하나를 남긴다(연출 없이 빠르게) */
 async function leaveOneGame(page: Page): Promise<void> {
   await page.goto("/yut");

@@ -1,8 +1,15 @@
 "use client";
 
 import type { LastThrow, YutView } from "@game/yut-engine";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
+import { paced } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
 import { cn } from "@/lib/cn";
 
@@ -15,6 +22,23 @@ import { YutSticks } from "./parts";
 
 /** 윷이 다 멈춘 뒤 결과 글을 보이고 기다리는 시간(ms). 그 뒤 다음 화면으로 */
 export const RESULT_HOLD_MS = 900;
+
+/** 2D 윷가락이 공중에서 돌다 떨어지는 시간(ms, `YutSticks`의 연출과 같다). 움직임 줄이기면 굴리지 않는다 */
+export const FLAT_ROLL_MS = 650;
+
+/**
+ * 2D 윷가락으로 결과를 보이고 기다리는 시간(ms). 3D처럼 구르다 멈추는 모습이 없거나(움직임 줄이기) 짧아,
+ * 결과가 뜬 줄 알아보고 읽을 틈을 3D보다 조금 길게 둔다(docs/37 14-8)
+ */
+export const FLAT_HOLD_MS = 1300;
+
+/** 움직임 줄이기를 켰는가(지금 값) */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 let webgl: boolean | null = null;
 
@@ -178,27 +202,43 @@ function FlatMat({
   );
 }
 
-/** 3D 멍석 캔버스와 그 위 결과 글 */
+/**
+ * 3D 멍석 캔버스와 그 위 결과 글. 3D 장면을 불러오는 동안(`ready` 거짓)은 빈 캔버스 대신 2D 윷가락(`flat`)으로
+ * 결과를 보인다(휴대폰에서 three.js를 받는 동안 던져도 결과가 보이게). 캔버스는 그대로 두어 장면이 붙을 자리를 지킨다
+ */
 function MatCanvas({
   canvasRef,
   ready,
   state,
   thrown,
   waiting,
+  flat,
 }: {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   ready: boolean;
   state: "playing" | "done" | "idle";
   thrown: LastThrow | null;
   waiting: boolean;
+  flat: ReactNode;
 }) {
+  if (!ready)
+    return (
+      <div className="absolute inset-0">
+        <canvas
+          ref={canvasRef}
+          data-toss-3d="loading"
+          className="absolute inset-0 h-full w-full"
+        />
+        {flat}
+      </div>
+    );
   const done = state === "done" && thrown !== null;
   const label = done && thrown ? resultLabel(thrown) : "";
   return (
     <div className="absolute inset-0" data-toss={state}>
       <canvas
         ref={canvasRef}
-        data-toss-3d={ready ? "ready" : "loading"}
+        data-toss-3d="ready"
         className="absolute inset-0 h-full w-full"
       />
       <p
@@ -254,26 +294,53 @@ export function TossMat({
     view.lastThrow ? view.lastThrow.index : -1,
   );
   const [playing, setPlaying] = useState(false);
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 3D가 굴리던 던지기 번호(굴리는 동안만). 도중에 문맥을 잃으면 2D로 이어 보인다 */
+  const rolling3d = useRef<number | null>(null);
+  /** 결과를 알리고 다음 화면으로 가는 타이머 */
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const tossing = useYut((s) => s.tossing);
   const finishToss = useYut((s) => s.finishToss);
 
-  // 결과가 나온 화면을 store가 보이기 직전에 묻는다: 3D로 굴릴 수 있으면 맡는다
+  // 결과가 나온 화면을 store가 보이기 직전에 묻는다. 결과를 못 보고 지나가는 길이 없게 늘 맡는다:
+  // 3D로 굴릴 수 있으면 3D로, 아니면(3D 없음·불러오는 중·문맥 잃음·움직임 줄이기·궤적 없는 던지기) 2D 윷가락으로
+  // 결과를 보이고 읽을 틈을 둔 뒤 다음 화면(휴대폰 세로는 말 옮기는 장면)으로 간다(docs/37 14-8)
   useEffect(() => {
-    if (!ready) return;
+    const later = (fn: () => void, ms: number) => {
+      timers.current.push(setTimeout(fn, ms));
+    };
+    /** 2D 윷가락으로 보인다: 굴린 뒤 결과를 알리고, 읽을 틈 뒤 다음 화면으로 */
+    const flat = (thrown: LastThrow) => {
+      const roll = prefersReducedMotion() ? 0 : FLAT_ROLL_MS;
+      const land = () => {
+        // 3D의 가락마다 닿는 소리 대신 예전 2D처럼 한 번(store는 연출이 맡은 던지기에 떨어지는 소리를 내지 않는다)
+        playUiCue(isBonus(thrown) ? "yutBonus" : "yutLand");
+        setShown(thrown.index);
+        useYut.getState().landToss();
+        later(() => useYut.getState().finishToss(), paced(FLAT_HOLD_MS));
+      };
+      // 굴리지 않아도 한 박자 뒤에: 멍석에 묻는 것은 store가 결과 화면(`tossing`)을 켜기 직전이라 바로 알리면 놓친다
+      later(land, roll);
+    };
     setTossDirector((next) => {
-      const scene = sceneRef.current;
-      const plan = planFor(next, next.lastThrow);
-      if (!scene || !plan || document.hidden || !next.lastThrow) return false;
-      const index = next.lastThrow.index;
-      const bonus = isBonus(next.lastThrow);
+      const thrown = next.lastThrow;
+      if (!thrown || document.hidden) return false;
+      const scene = ready ? sceneRef.current : null;
+      const plan = scene ? planFor(next, thrown) : null;
+      if (!scene || !plan) {
+        flat(thrown);
+        return true;
+      }
+      const index = thrown.index;
+      const bonus = isBonus(thrown);
       // 던지는 장면이 보이게 한 뒤(같은 순간) 굴리기 시작한다
       scene.setActive(true);
       setPlaying(true);
+      rolling3d.current = index;
       scene.play(plan, {
         onImpact: impactSound,
         onStop: () => buzz("stick"),
         onDone: () => {
+          rolling3d.current = null;
           if (bonus) {
             playUiCue("yutBonus");
             buzz("bonus");
@@ -283,20 +350,33 @@ export function TossMat({
           useYut.getState().landToss();
           setPlaying(false);
           // 멈춘 윷과 결과 글을 읽을 틈을 두고 다음 화면(말 옮기는 장면 등)으로 간다
-          if (holdTimer.current) clearTimeout(holdTimer.current);
-          holdTimer.current = setTimeout(
-            () => useYut.getState().finishToss(),
-            RESULT_HOLD_MS,
-          );
+          later(() => useYut.getState().finishToss(), RESULT_HOLD_MS);
         },
       });
       return true;
     });
-    return () => {
-      setTossDirector(null);
-      if (holdTimer.current) clearTimeout(holdTimer.current);
-    };
+    // 3D가 굴리던 중에 문맥을 잃어 2D로 내려왔으면(3D의 끝 소식은 오지 않는다) 그 던지기를 2D로 이어 보인다
+    const { view: now, tossing: waitingToss } = useYut.getState();
+    if (
+      !ready &&
+      rolling3d.current !== null &&
+      waitingToss &&
+      now?.lastThrow?.index === rolling3d.current
+    ) {
+      rolling3d.current = null;
+      setPlaying(false);
+      flat(now.lastThrow);
+    }
+    return () => setTossDirector(null);
   }, [ready, sceneRef]);
+  // 보이던 결과의 타이머는 3D 장면이 붙거나 떨어져 위 효과가 다시 돌아도 이어 가고, 화면을 떠날 때만 지운다
+  useEffect(
+    () => () => {
+      for (const t of timers.current) clearTimeout(t);
+      timers.current = [];
+    },
+    [],
+  );
 
   // 연출을 맡지 않은 던지기(2D, 무효, 옛 판)는 바로 결과를 보인다
   const thrown = view.lastThrow;
@@ -313,14 +393,14 @@ export function TossMat({
   }, [playing, visible, finishToss]);
 
   const waiting = view.phase === "reveal" || view.phase === "open";
-  if (threeD === false || threeD === null)
-    return (
-      <FlatMat
-        thrown={thrown}
-        tossing={waiting}
-        animateKey={thrown ? thrown.index + 1 : 0}
-      />
-    );
+  const flat = (
+    <FlatMat
+      thrown={thrown}
+      tossing={waiting}
+      animateKey={thrown ? thrown.index + 1 : 0}
+    />
+  );
+  if (threeD === false || threeD === null) return flat;
   const done = thrown !== null && shown === thrown.index && !playing;
   return (
     <MatCanvas
@@ -329,6 +409,7 @@ export function TossMat({
       state={playing ? "playing" : done ? "done" : "idle"}
       thrown={thrown}
       waiting={waiting}
+      flat={flat}
     />
   );
 }
@@ -374,8 +455,14 @@ export function ReplayMat({
     const scene = sceneRef.current;
     const settle = () => settledRef.current(cue);
     if (!threeD) {
-      settle();
-      return;
+      // 2D: 새 결과가 나온 걸음이면 윷가락이 떨어져 결과를 보인 뒤 읽을 틈을 두고 그 걸음의 장면으로(docs/37 14-8)
+      if (!cue.fresh || document.hidden) {
+        settle();
+        return;
+      }
+      const roll = prefersReducedMotion() ? 0 : FLAT_ROLL_MS;
+      const hold = setTimeout(settle, roll + paced(FLAT_HOLD_MS));
+      return () => clearTimeout(hold);
     }
     if (!ready || !scene) return;
     if (!cue.animate || !cue.plan || document.hidden) {
@@ -407,8 +494,15 @@ export function ReplayMat({
 
   const thrown = view.lastThrow;
   const waiting = view.phase === "reveal" || view.phase === "open";
-  if (threeD === false || threeD === null)
-    return <FlatMat thrown={thrown} tossing={waiting} animateKey={0} />;
+  // 새 결과가 나온 걸음에서만 2D 윷가락을 굴린다(그 밖의 걸음은 0이라 멈춘 모습)
+  const flat = (
+    <FlatMat
+      thrown={thrown}
+      tossing={waiting}
+      animateKey={cue.fresh && thrown ? thrown.index + 1 : 0}
+    />
+  );
+  if (threeD === false || threeD === null) return flat;
   return (
     <MatCanvas
       canvasRef={canvasRef}
@@ -416,6 +510,7 @@ export function ReplayMat({
       state={playing ? "playing" : thrown ? "done" : "idle"}
       thrown={thrown}
       waiting={waiting}
+      flat={flat}
     />
   );
 }

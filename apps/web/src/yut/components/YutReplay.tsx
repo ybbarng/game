@@ -77,7 +77,9 @@ export function YutReplay({
   );
   /** 연출을 마친 걸음(그때까지는 던지는 장면에 머물고 자동 재생도 기다린다) */
   const [settled, setSettled] = useState<ReplayCue | null>(null);
-  const tossing = threeD === true && cue.animate && settled !== cue;
+  // 3D면 굴리는 걸음, 2D(옛 판·WebGL 없음·움직임 줄이기)면 새 결과가 나온 걸음에서 결과를 보일 동안
+  const tossing =
+    (threeD === true ? cue.animate : cue.fresh) && settled !== cue;
 
   useEffect(() => {
     if (!playing || tossing) return;
