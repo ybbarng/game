@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.11.1</title>
+      <pubDate>Thu, 19 Nov 2026 10:17:54 +0000</pubDate>
+      <sparkle:version>0.11.1</sparkle:version>
+      <sparkle:shortVersionString>0.11.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;HDR 맥에서 티어표 엠블럼이 끊기지 않고 부드럽게 흔들려요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.11.1/Cubie.zip" length="10825083" type="application/octet-stream" sparkle:edSignature="CdwrBX30A4JWV3LS6khlPQRGAOaMIUm11XCRJO3Q03yeR/mW6RKlSP5yoWSkIpOKKcLYCcErhGG3v/oaJ8/EAg=="/>
+    </item>
+    <item>
       <title>Cubie 0.11.0</title>
       <pubDate>Thu, 19 Nov 2026 09:27:31 +0000</pubDate>
       <sparkle:version>0.11.0</sparkle:version>
