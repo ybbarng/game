@@ -55,54 +55,85 @@ struct TierProgressTests {
 /// 구간 안 자리 막대 글(사이트 `progress-view.test.ts` 「구간 안 자리 막대 글」과 같은 예. 값은 코어가 공통 자료 `tier-band.json`으로 맞춘다)
 struct TierBandTests {
   @Test func userExampleTextLikeTheSite() {
-    // 코어 값: 브론즈 II(1, 2) 3:10 → 브론즈 I(1, 3) 2:30, 2:35.09
-    let b = TierProgress.Band(tier: 1, division: 2, lowMs: 190_000, up: (1, 3), highMs: 150_000, ratio: 0.87275)
+    // 코어 값: 브론즈 III(1, 1) 아래, 브론즈 II(1, 2) 3:10 → 브론즈 I(1, 3) 2:30, 2:35.09
+    let b = TierProgress.Band(
+      down: (1, 1), tier: 1, division: 2, lowMs: 190_000, up: (1, 3), highMs: 150_000, ratio: 0.87275)
     let v = TierProgress.bandView(b, ms: 155_090)
-    #expect([v.leftName, v.leftTime, v.rightName, v.rightTime, v.value] == ["브론즈 II", "3:10.00", "브론즈 I", "2:30.00", "2:35.09"])
+    #expect(
+      [v.downName, v.hereName, v.upName, v.lowTime, v.highTime, v.value]
+        == ["브론즈 III", "브론즈 II", "브론즈 I", "3:10.00", "2:30.00", "2:35.09"])
     #expect(v.label == "브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09")
     #expect(v.ratio == 0.87275)
   }
 
-  @Test func topIsZeroSecondsWithoutName() {
-    let b = TierProgress.Band(tier: 9, division: nil, lowMs: 6_500, up: nil, highMs: 0, ratio: 0.2)
+  @Test func topHasNoUpCellAndZeroSeconds() {
+    let b = TierProgress.Band(down: (8, nil), tier: 9, division: nil, lowMs: 6_500, up: nil, highMs: 0, ratio: 0.2)
     let v = TierProgress.bandView(b, ms: 5_200)
-    #expect(v.rightName == nil && v.rightTime == "0.00" && v.leftName == "챌린저" && v.leftTime == "6.50")
+    #expect([v.downName, v.hereName, v.upName, v.lowTime, v.highTime] == ["그랜드마스터", "챌린저", nil, "6.50", "0.00"])
     #expect(v.label == "챌린저 6.50 → 0.00 · 최고 5판 평균 5.20")
   }
 
-  @Test func lowestHasOpenLeft() {
-    let b = TierProgress.Band(tier: 0, division: 0, lowMs: nil, up: (0, 1), highMs: 900_000, ratio: 0.5)
+  @Test func lowestHasNoDownCellAndOpenLeft() {
+    let b = TierProgress.Band(down: nil, tier: 0, division: 0, lowMs: nil, up: (0, 1), highMs: 900_000, ratio: 0.5)
     let v = TierProgress.bandView(b, ms: 1_350_000)
-    #expect([v.leftName, v.leftTime, v.rightName, v.rightTime] == ["아이언 IV", "다 맞춤", "아이언 III", "15:00.00"])
+    #expect([v.downName, v.hereName, v.upName, v.lowTime, v.highTime] == [nil, "아이언 IV", "아이언 III", "다 맞춤", "15:00.00"])
   }
 
-  // 좌표 셈: 사이트 `progress-view.test.ts` 「구간 안 자리 막대 좌표」와 같은 예·같은 값
-  private func layout(_ r: Double, _ w: Double, _ l: Double, _ rt: Double, _ v: Double) -> TierProgress.BandLayout {
-    TierProgress.bandLayout(ratio: r, width: w, leftWidth: l, rightWidth: rt, valueWidth: v)
+  // 좌표 셈: 사이트 `progress-view.test.ts` 「구간 안 자리 막대 좌표(세 칸 사다리)」와 같은 예·같은 값
+  private func widths(
+    width: Double = 320, down: Double? = 60, here: Double = 80, up: Double? = 70, low: Double = 40, high: Double = 36,
+    value: Double = 50
+  ) -> TierProgress.BandWidths {
+    .init(width: width, down: down, here: here, up: up, low: low, high: high, value: value)
   }
 
-  @Test func layoutTicksSitInsideByHalfTheLongerBoundaryText() {
-    #expect(layout(0.5, 300, 120, 100, 50) == .init(tail: 60, lowX: 60, highX: 240, markX: 150, leftX: 0, rightX: 190, valueX: 125))
+  @Test func layoutSideCellsFitTheLongerSideNameAndTextsCenterUnderCellsAndEdges() {
+    #expect(
+      TierProgress.bandLayout(ratio: 0.5, widths())
+        == .init(
+          side: 70, lowX: 70, highX: 250, markX: 160, downX: 5, hereX: 120, upX: 250, downShort: false, upShort: false,
+          lowTimeX: 50, highTimeX: 232, valueX: 135))
   }
 
-  @Test func layoutTopKeepsEqualTailsAndCentersShortRightText() {
-    #expect(layout(0, 300, 80, 28, 40) == .init(tail: 40, lowX: 40, highX: 260, markX: 40, leftX: 0, rightX: 246, valueX: 20))
+  @Test func layoutTopWidensTheCurrentCellToTheRightEnd() {
+    #expect(
+      TierProgress.bandLayout(ratio: 0.2, widths(here: 60, up: nil, low: 30, high: 28, value: 40))
+        == .init(
+          side: 60, lowX: 60, highX: 320, markX: 112, downX: 0, hereX: 160, upX: nil, downShort: false, upShort: false,
+          lowTimeX: 45, highTimeX: 292, valueX: 92))
+  }
+
+  @Test func layoutLowestStartsTheCurrentCellAtTheLeftEnd() {
+    #expect(
+      TierProgress.bandLayout(ratio: 0.75, widths(down: nil, here: 70, low: 44, high: 52, value: 50))
+        == .init(
+          side: 70, lowX: 0, highX: 250, markX: 187.5, downX: nil, hereX: 90, upX: 250, downShort: false,
+          upShort: false, lowTimeX: 0, highTimeX: 224, valueX: 162.5))
+  }
+
+  @Test func layoutNarrowBarCapsSideCellsAndShowsOnlyEmblems() {
+    let l = TierProgress.bandLayout(ratio: 0.5, widths(width: 200, down: 70, up: 60))
+    #expect(l.side == 50 && l.downShort && l.upShort && l.downX == 18 && l.upX == 168)
+  }
+
+  @Test func layoutSideCellIsAtLeast24() {
+    #expect(TierProgress.bandLayout(ratio: 0.5, widths(down: 10, up: 10)).side == 24)
   }
 
   @Test func layoutPushesValueInsideAtTheRightEnd() {
-    let l = layout(1, 300, 60, 60, 80)
-    #expect(l.markX == 270 && l.valueX == 220)
+    let l = TierProgress.bandLayout(ratio: 1, widths(up: nil, value: 80))
+    #expect(l.markX == 320 && l.valueX == 240)
   }
 
-  @Test func layoutTailIsAtLeast12AndAtMostAQuarter() {
-    #expect(layout(0.5, 300, 10, 10, 30).tail == 12)
-    let l = layout(0.5, 200, 140, 140, 30)
-    #expect(l.tail == 50 && l.leftX == 0 && l.rightX == 60)
+  @Test func layoutClampsRatioToTheEdges() {
+    #expect(TierProgress.bandLayout(ratio: 1.5, widths()).markX == 250)
+    #expect(TierProgress.bandLayout(ratio: -1, widths()).markX == 70)
   }
 
-  @Test func layoutClampsRatioToTheTicks() {
-    #expect(layout(1.5, 300, 60, 60, 40).markX == 270)
-    #expect(layout(-1, 300, 60, 60, 40).markX == 30)
+  @Test func alphaStepsMatchTheSite() {
+    // 사이트 `BAND_ALPHA`: 지나온 부분 > 남은 부분 > 옆 칸
+    let a = TierProgress.bandAlpha
+    #expect(a.done == 1 && a.rest == 0.4 && a.side == 0.16)
   }
 
   /// 시험용 막대 셈: 받은 5판 평균을 그대로 담는다
@@ -114,7 +145,7 @@ struct TierBandTests {
       inner.myTier(n: n, records: records, bestFive: bestFive)
     }
     func band(n: Int, ms: Double) -> TierProgress.Band? {
-      TierProgress.Band(tier: 3, division: 1, lowMs: 52_000, up: (3, 2), highMs: 46_000, ratio: (52_000 - ms) / 6_000)
+      TierProgress.Band(down: (3, 0), tier: 3, division: 1, lowMs: 52_000, up: (3, 2), highMs: 46_000, ratio: (52_000 - ms) / 6_000)
     }
   }
 

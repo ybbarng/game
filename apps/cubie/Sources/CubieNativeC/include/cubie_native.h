@@ -227,6 +227,8 @@ typedef struct CubieTierBand {
   int32_t up_division;  // 바로 위 구간 구간, 없으면 -1
   double high_ms;       // 오른쪽 끝(바로 위 구간 상한, ms). 꼭대기면 0
   double ratio;         // 0 왼쪽 ~ 1 오른쪽
+  int32_t down_tier;    // 바로 아래 구간 티어(막대 왼쪽 칸), 맨 아래면 -1
+  int32_t down_division; // 바로 아래 구간의 구간, 없으면 -1
 } CubieTierBand;
 
 bool cubie_tier_band(uint32_t n, double ms, CubieTierBand *out);

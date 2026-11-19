@@ -295,102 +295,137 @@ final class RecordsRootView: FlippedView {
   }
 }
 
-/// 구간 안 자리 막대(사이트 `TierBandBar.tsx`, docs/47 14-9): 막대는 두 경계 바깥까지 꼬리로 이어지고 두 경계는 안쪽 눈금이다
-/// (사용자 2026-11-19). 위 숫자(최고 5판 평균, 지금 눈금 위 가운데, 막대 안쪽으로 밀어 넣음), 막대(지금 티어 색으로 왼쪽 눈금부터
-/// 지금 눈금까지 채움), 경계 눈금 아래 가운데에 경계 글(엠블럼 16pt·구간 이름·경계 시간, 꼭대기는 오른쪽 「0.00」만).
-/// 좌표는 `TierProgress.bandLayout`(사이트 `bandLayout`과 같은 셈)
+/// 구간 안 자리 막대(사이트 `TierBandBar.tsx`, docs/47 14-9): 세 칸 사다리(사용자 2026-11-19). 왼쪽 칸 = 바로 아래 구간,
+/// 가운데 = 지금 구간, 오른쪽 = 바로 위 구간, 칸마다 그 티어 색. 지금 칸 지나온 부분은 진하게, 남은 부분은 연하게, 옆 칸은 더
+/// 흐리게(`TierProgress.bandAlpha`), 칸 사이 1pt 틈. 위 숫자(최고 5판 평균, 지금 자리 위 가운데), 경계 바로 아래 시간,
+/// 그 아래 줄 칸 가운데에 칸 이름(엠블럼 14pt·구간 이름, 옆 칸이 좁으면 엠블럼만). 꼭대기·맨 아래는 옆 칸 없이 지금 칸이
+/// 막대 끝까지. 좌표는 `TierProgress.bandLayout`(사이트 `bandLayout`과 같은 셈)
 @MainActor
 final class TierBandView: FlippedView {
-  static let height: CGFloat = 46
+  static let height: CGFloat = 62
+  /// 칸 이름 하나(엠블럼 + 이름)
+  @MainActor
+  private final class NameLabel {
+    let icon = NSImageView()
+    let name = NUI.label("")
+    var full: CGFloat = 0
+    init() { icon.imageScaling = .scaleProportionallyUpOrDown }
+    func show(tier: Int, text: String, strong: Bool) {
+      icon.image = NUI.emblem(TierInfo.ids[min(max(tier, 0), 9)])
+      if strong {
+        NUI.set(name, text, weight: .semibold, color: .white)
+      } else {
+        NUI.set(name, text, size: 11, color: NUI.white(0.55))
+      }
+      // 사이트 `gap-1`: 엠블럼 · 4 · 이름(글 칸 폭에 제 여백 2pt씩)
+      full = CGFloat(TierProgress.bandEmblem) + 2 + NUI.width(name)
+    }
+    func place(x: CGFloat, y: CGFloat, short: Bool) {
+      let e = CGFloat(TierProgress.bandEmblem)
+      icon.frame = NSRect(x: x, y: y + 1, width: e, height: e)
+      name.isHidden = short
+      name.frame = NSRect(x: x + e + 2, y: y, width: NUI.width(name), height: 16)
+    }
+    func hide(_ h: Bool) {
+      icon.isHidden = h
+      name.isHidden = h
+    }
+  }
+
+  /// 막대 칸 그리기(둥근 막대 안을 잘라 칸 셋을 칠한다. 화면 밖 스크린샷 `cacheDisplay`에서도 같게 `draw`로 그린다)
+  private final class Track: NSView {
+    override var isFlipped: Bool { true }
+    var cells: [(x0: CGFloat, x1: CGFloat, color: NSColor)] = [] { didSet { needsDisplay = true } }
+    override func draw(_ dirtyRect: NSRect) {
+      NSBezierPath(roundedRect: bounds, xRadius: bounds.height / 2, yRadius: bounds.height / 2).addClip()
+      for c in cells where c.x1 > c.x0 {
+        c.color.setFill()
+        NSRect(x: c.x0, y: 0, width: c.x1 - c.x0, height: bounds.height).fill()
+      }
+    }
+  }
+
   private let value = NUI.label("", weight: .semibold)
-  private let track = FlippedView()
-  private let fillBar = FlippedView()
-  private let lowTick = FlippedView()
-  private let highTick = FlippedView()
+  private let track = Track()
   private let mark = FlippedView()
-  private let leftIcon = NSImageView()
-  private let leftName = NUI.label("", color: NUI.white(0.8))
-  private let leftTime = NUI.label("", color: NUI.white(0.6))
-  private let rightIcon = NSImageView()
-  private let rightName = NUI.label("", color: NUI.white(0.8))
-  private let rightTime = NUI.label("", color: NUI.white(0.6))
+  private let lowTime = NUI.label("", color: NUI.white(0.6))
+  private let highTime = NUI.label("", color: NUI.white(0.6))
+  private let downLabel = NameLabel()
+  private let hereLabel = NameLabel()
+  private let upLabel = NameLabel()
+  private var band: TierProgress.Band?
   private(set) var view: TierProgress.BandView?
+  /// 마지막으로 센 좌표(시험·스크린샷이 본다)
+  private(set) var lastLayout: TierProgress.BandLayout?
 
   override init(frame: NSRect) {
     super.init(frame: frame)
-    track.fill = NUI.white(0.15)
-    track.radius = 4
     mark.fill = .white
     mark.radius = 2
-    for t in [lowTick, highTick] {
-      t.fill = NUI.white(0.7)
-      t.radius = 1
+    for v in [value, track, lowTime, highTime] as [NSView] { addSubview(v) }
+    for l in [downLabel, hereLabel, upLabel] {
+      addSubview(l.icon)
+      addSubview(l.name)
     }
-    for i in [leftIcon, rightIcon] { i.imageScaling = .scaleProportionallyUpOrDown }
-    for v in [value, track, leftIcon, leftName, leftTime, rightIcon, rightName, rightTime] as [NSView] { addSubview(v) }
-    track.addSubview(fillBar)
-    for t in [lowTick, highTick, mark] { addSubview(t) }
+    addSubview(mark)
     setAccessibilityElement(true)
     setAccessibilityRole(.image)
   }
 
   required init?(coder: NSCoder) { fatalError("코드로만 만든다") }
 
+  private static func ring(_ tier: Int, _ alpha: Double) -> NSColor {
+    NUI.color(TierLadderView.ring[min(max(tier, 0), 9)], CGFloat(alpha))
+  }
+
   func show(_ band: TierProgress.Band, ms: Double) {
     let v = TierProgress.bandView(band, ms: ms)
+    self.band = band
     view = v
-    let color = NUI.color(TierLadderView.ring[min(max(band.tier, 0), 9)])
-    NUI.set(value, v.value, weight: .semibold, color: color)
-    fillBar.fill = color
-    leftIcon.image = NUI.emblem(TierInfo.ids[min(max(band.tier, 0), 9)])
-    NUI.set(leftName, v.leftName, color: NUI.white(0.8))
-    NUI.set(leftTime, v.leftTime, color: NUI.white(0.6))
-    rightIcon.image = band.up.map { NUI.emblem(TierInfo.ids[min(max($0.tier, 0), 9)]) } ?? nil
-    rightIcon.isHidden = band.up == nil
-    rightName.isHidden = v.rightName == nil
-    NUI.set(rightName, v.rightName ?? "", color: NUI.white(0.8))
-    NUI.set(rightTime, v.rightTime, color: NUI.white(0.6))
+    NUI.set(value, v.value, weight: .semibold, color: Self.ring(band.tier, 1))
+    NUI.set(lowTime, v.lowTime, color: NUI.white(0.6))
+    NUI.set(highTime, v.highTime, color: NUI.white(0.6))
+    hereLabel.show(tier: band.tier, text: v.hereName, strong: true)
+    if let d = band.down, let name = v.downName { downLabel.show(tier: d.tier, text: name, strong: false) }
+    if let u = band.up, let name = v.upName { upLabel.show(tier: u.tier, text: name, strong: false) }
+    downLabel.hide(band.down == nil)
+    upLabel.hide(band.up == nil)
     setAccessibilityLabel(v.label)
     needsLayout = true
   }
 
   override func layout() {
     super.layout()
+    guard let band, let view else { return }
     let w = bounds.width
-    // 경계 글 묶음 폭(사이트 `gap-1`: 엠블럼 16 · 4 · 이름 · 시간. 글 칸 폭에 제 여백이 있어 이름·시간 사이는 2)
-    let lnw = NUI.width(leftName)
-    let ltw = NUI.width(leftTime)
-    let leftW = 16 + 4 + lnw + 2 + ltw
-    let rnw = rightName.isHidden ? 0 : NUI.width(rightName)
-    let rtw = NUI.width(rightTime)
-    let rightW = rightName.isHidden ? rtw : 16 + 4 + rnw + 2 + rtw
     let vw = NUI.width(value)
+    let lw = NUI.width(lowTime)
+    let hw = NUI.width(highTime)
     let l = TierProgress.bandLayout(
-      ratio: view?.ratio ?? 0, width: Double(w), leftWidth: Double(leftW), rightWidth: Double(rightW),
-      valueWidth: Double(vw))
+      ratio: view.ratio,
+      .init(
+        width: Double(w), down: band.down == nil ? nil : Double(downLabel.full), here: Double(hereLabel.full),
+        up: band.up == nil ? nil : Double(upLabel.full), low: Double(lw), high: Double(hw), value: Double(vw)))
+    lastLayout = l
     value.frame = NSRect(x: l.valueX, y: 0, width: vw, height: 16)
     track.frame = NSRect(x: 0, y: 18, width: w, height: 8)
-    fillBar.frame = NSRect(x: l.lowX, y: 0, width: l.markX - l.lowX, height: 8)
-    lowTick.frame = NSRect(x: l.lowX - 1, y: 15, width: 2, height: 14)
-    highTick.frame = NSRect(x: l.highX - 1, y: 15, width: 2, height: 14)
+    let a = TierProgress.bandAlpha
+    let gap = TierProgress.bandGap
+    var cells: [(x0: CGFloat, x1: CGFloat, color: NSColor)] = []
+    if let d = band.down { cells.append((0, CGFloat(l.lowX - gap), Self.ring(d.tier, a.side))) }
+    cells.append((CGFloat(l.lowX), CGFloat(l.markX), Self.ring(band.tier, a.done)))
+    cells.append((CGFloat(l.markX), CGFloat(l.highX), Self.ring(band.tier, a.rest)))
+    if let u = band.up { cells.append((CGFloat(l.highX + gap), w, Self.ring(u.tier, a.side))) }
+    track.cells = cells
     mark.frame = NSRect(x: l.markX - 2, y: 14, width: 4, height: 16)
-    let y: CGFloat = 30
-    // 왼쪽 경계 글: 왼쪽 눈금 아래 가운데
-    var x = CGFloat(l.leftX)
-    leftIcon.frame = NSRect(x: x, y: y, width: 16, height: 16)
-    x += 20
-    leftName.frame = NSRect(x: x, y: y, width: lnw, height: 16)
-    x += lnw + 2
-    leftTime.frame = NSRect(x: x, y: y, width: ltw, height: 16)
-    // 오른쪽 경계 글: 오른쪽 눈금 아래 가운데
-    x = CGFloat(l.rightX)
-    if !rightName.isHidden {
-      rightIcon.frame = NSRect(x: x, y: y, width: 16, height: 16)
-      x += 20
-      rightName.frame = NSRect(x: x, y: y, width: rnw, height: 16)
-      x += rnw + 2
-    }
-    rightTime.frame = NSRect(x: x, y: y, width: rtw, height: 16)
+    // 경계 시간: 경계 바로 아래 가운데
+    lowTime.frame = NSRect(x: l.lowTimeX, y: 29, width: lw, height: 16)
+    highTime.frame = NSRect(x: l.highTimeX, y: 29, width: hw, height: 16)
+    // 칸 이름: 그 아래 줄 칸 가운데
+    let y: CGFloat = 46
+    if let x = l.downX { downLabel.place(x: x, y: y, short: l.downShort) }
+    hereLabel.place(x: l.hereX, y: y, short: false)
+    if let x = l.upX { upLabel.place(x: x, y: y, short: l.upShort) }
   }
 }
 
