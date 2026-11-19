@@ -1417,7 +1417,7 @@ const wrongKey = (first: string) => (first.startsWith("D") ? "KeyB" : "KeyD");
 test(
   "공식 연습: 작은 앱 창은 말풍선에 공식만(키는 틀린 한 수만), 10문제 뒤 판 끝 결과, Esc로 끝내기",
   { tag: "@only-desktop" },
-  async ({ page }, info) => {
+  async ({ page }, _info) => {
     await fakeApp(page);
     await fixSeed(page, 20261110);
     await page.setViewportSize({ width: 96, height: 96 });

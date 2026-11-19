@@ -366,7 +366,7 @@ function MiniTiers({
       </ul>
       {(() => {
         // 고른 크기의 구간 안 자리(docs/47 14-9). 5판 평균이 없으면 없다(칸의 「5판 뒤에」)
-        const t = tiers[MINI_SIZES.findIndex((s) => s === n)] ?? null;
+        const t = tiers[(MINI_SIZES as readonly number[]).indexOf(n)] ?? null;
         return t ? <TierBandBar n={n} ms={t.ao5} className="mt-1" /> : null;
       })()}
       {goal && (
