@@ -1966,8 +1966,10 @@ function RecordsPanel({
                 key={`${r.no}-${r.at}`}
                 data-mini-record
                 {...(mark ? { "data-mini-best-five": mark } : {})}
+                // 가장 좁은 창(320)에서도 번호·때·시간·수·「다시 보기」는 한 덩이로(「59 / 수」, 「다시 보 / 기」로
+                // 끊지 않는다). 입력 표시 칩만 낱말 사이에서 줄을 바꾼다(docs/52 5-15)
                 className={cn(
-                  "flex gap-2 border-white/10 border-b py-0.5",
+                  "flex items-start gap-2 whitespace-nowrap border-white/10 border-b py-0.5",
                   mark && "bg-amber-300/10",
                 )}
               >
@@ -1986,7 +1988,7 @@ function RecordsPanel({
                 {r.keyOrigin === "synthetic" && (
                   <span
                     data-mini-source="synthetic"
-                    className="rounded bg-amber-500/25 px-1 text-amber-200"
+                    className="whitespace-normal break-keep rounded bg-amber-500/25 px-1 text-amber-200"
                   >
                     다른 프로그램 입력
                   </span>
@@ -1994,7 +1996,7 @@ function RecordsPanel({
                 {r.inputs?.includes("swipe") && (
                   <span
                     data-mini-source="swipe"
-                    className="rounded bg-white/10 px-1 text-white/70"
+                    className="whitespace-normal break-keep rounded bg-white/10 px-1 text-white/70"
                   >
                     마우스·화면
                   </span>
@@ -2228,7 +2230,9 @@ function ReplayBox({
           </button>
         </div>
       </div>
-      <div className="relative min-h-28 flex-1">
+      {/* 큐브 칸은 남은 높이만 쓴다(앱 `ReplayBoxView`와 같다). 최소 높이를 두면 낮은 창(320×600)에서 상자 밖 기록 목록
+          위로 큐브가 넘쳤다 */}
+      <div className="relative min-h-0 flex-1">
         {failed ? (
           <div
             data-cube-no3d

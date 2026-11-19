@@ -821,6 +821,81 @@ test(
   },
 );
 
+/** 기록 줄마다 입력 표시 칩 밖의 글(번호·때·시간·수·「다시 보기」)이 두 줄로 갈린 것 */
+function recordRowSplits(page: Page) {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    for (const li of document.querySelectorAll<HTMLElement>(
+      "[data-mini-record]",
+    )) {
+      for (const c of li.children) {
+        if (c.matches("[data-mini-source]")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(c);
+        const tops = new Set(
+          [...range.getClientRects()].map((r) => Math.round(r.top)),
+        );
+        if (tops.size > 1) out.push(`「${c.textContent}」 ${tops.size}줄`);
+      }
+    }
+    return out;
+  });
+}
+
+test(
+  "Cubie 기록 창 가장 작은 크기(320×600): 기록 줄의 시간·수·「다시 보기」는 갈리지 않고, 다시 보기 큐브는 상자 안에 든다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem("cube.mini.v1")) return;
+      // 앱 기록 창과 같은 저장소 꼴: 다른 프로그램 입력·마우스 칩이 붙은 판과 다시 볼 수 있는 판
+      const list = [21_340, 19_870, 25_010, 18_220, 23_400, 20_990, 22_150]
+        .map((ms, i) => ({
+          at: Date.UTC(2026, 10, 12, 1, 0) + (i + 1) * 97_000,
+          no: i + 1,
+          n: 3,
+          mode: "solo",
+          ms,
+          penalty: 0,
+          moves: 59,
+          scramble: "R U R' U'",
+          replay: "U@0 R@300 U'@600 R'@900",
+          ...(i === 5 ? { keyOrigin: "synthetic" } : {}),
+          ...(i === 4 ? { inputs: ["key", "swipe"] } : {}),
+        }))
+        .reverse();
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 3,
+          mirror: true,
+          records: { 3: list },
+          best5: {},
+        }),
+      );
+    });
+    await page.setViewportSize({ width: 320, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    await expect(page.locator("[data-mini-source='synthetic']")).toBeVisible();
+    await expect.poll(() => recordRowSplits(page)).toEqual([]);
+    await noSideScroll(page);
+    await page.locator("[data-mini-replay-open]").first().click();
+    const box = page.locator("[data-mini-replay]");
+    // 3D(캔버스)를 못 그리는 브라우저는 같은 자리에 큐브 그림
+    const cube = box.locator("[data-cube-canvas], [data-cube-no3d]");
+    await expect(cube).toBeVisible();
+    await shot(page, "mini-records-min-replay", info.project.name);
+    const [boxR, canvasR] = await Promise.all([
+      box.boundingBox(),
+      cube.boundingBox(),
+    ]);
+    expect(canvasR && boxR && canvasR.y + canvasR.height).toBeLessThanOrEqual(
+      (boxR?.y ?? 0) + (boxR?.height ?? 0) + 0.5,
+    );
+  },
+);
+
 test("없앤 엠블럼 미리보기 주소로 들어오면 티어 화면으로 간다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
