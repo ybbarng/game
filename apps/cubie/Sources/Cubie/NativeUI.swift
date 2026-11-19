@@ -55,7 +55,7 @@ enum NUI {
     return l
   }
 
-  /// 여러 줄 글(낱말 단위로 끊는다, 사이트 `break-keep`)
+  /// 여러 줄 글(낱말 단위로 끊는다, 사이트 `break-keep`. 숫자와 단위는 갈라 끊지 않는다)
   static func paragraph(_ text: String, size: CGFloat = 12, color: NSColor, lineHeight: CGFloat? = nil) -> NSTextField {
     let l = NSTextField(wrappingLabelWithString: text)
     l.isSelectable = false
@@ -74,8 +74,10 @@ enum NUI {
       p.minimumLineHeight = lineHeight
       p.maximumLineHeight = lineHeight
     }
+    // 낱말 단위 줄바꿈도 숫자와 바로 붙은 한글(「5판」)은 끊을 수 있는 자리로 봐서 막는다(`TextWrap`)
     return NSAttributedString(
-      string: text, attributes: [.font: font(size, weight, mono: true), .foregroundColor: color, .paragraphStyle: p])
+      string: TextWrap.keepNumberUnits(text),
+      attributes: [.font: font(size, weight, mono: true), .foregroundColor: color, .paragraphStyle: p])
   }
 
   /// 줄 바꿈 글의 높이(너비 `w`)
@@ -237,17 +239,25 @@ final class Chip: NSView {
   }
 }
 
+extension SheetSize {
+  var initial: NSSize { NSSize(width: width, height: height) }
+  var minimum: NSSize { NSSize(width: minWidth, height: minHeight) }
+}
+
 /// 네이티브 보통 창 하나(제목 막대 있는 창). 닫으면 놓아준다
 @MainActor
 class NativeSheetWindow: NSObject, NSWindowDelegate {
   let window: NSWindow
   var onClose: (() -> Void)?
 
-  init(title: String, size: NSSize, content: NSView) {
+  /// 크기는 처음 크기와 가장 작은 크기를 함께 받는다(`SheetSize`). 가장 작은 크기보다 줄이면 칸 글이 잘리거나 겹친다
+  /// (docs/52 5-8 「창 최소 크기」)
+  init(title: String, size: SheetSize, content: NSView) {
     window = NSWindow(
-      contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .resizable, .miniaturizable],
+      contentRect: NSRect(origin: .zero, size: size.initial), styleMask: [.titled, .closable, .resizable, .miniaturizable],
       backing: .buffered, defer: false)
     super.init()
+    window.contentMinSize = size.minimum
     window.title = title
     window.contentView = content
     window.isReleasedWhenClosed = false

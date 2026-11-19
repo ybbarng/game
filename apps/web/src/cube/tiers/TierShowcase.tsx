@@ -3,7 +3,7 @@
 import { type CSSProperties, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { formatMs } from "../records";
+import { formatMs, formatSeconds } from "../records";
 import { Emblem3D } from "./Emblem3D";
 import { DivisionPips, EmblemStill } from "./EmblemStill";
 import {
@@ -239,7 +239,7 @@ function TierHero({
                   data-cube-next-gap
                   className="font-mono font-semibold tabular-nums"
                 >
-                  {formatMs(next.gapMs)}초
+                  {formatSeconds(next.gapMs)}
                 </span>
               </span>
               <span className="block text-white/50 text-xs">
@@ -270,7 +270,7 @@ function TierHero({
                 <span className="block text-white/50 text-xs">
                   {TIER_LABEL[tier]}까지{" "}
                   <span data-cube-picked-gap className="font-mono tabular-nums">
-                    {formatMs(gap)}초
+                    {formatSeconds(gap)}
                   </span>
                 </span>
               )}

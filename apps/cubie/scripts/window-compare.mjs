@@ -5,7 +5,8 @@
 //   apps/cubie/build.sh
 //   node apps/cubie/scripts/window-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr] [앱 실행 파일]
 //
-// 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-tiers.png·compare-settings.png(비교판,
+// 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-records-min.png(가장 작은 320×600)·
+// compare-tiers.png·compare-settings.png(비교판,
 // 티어표는 진열의 내 티어·챌린저 고름·기록 없음 셋, 설정은 기본·「사용자」 겹친 키 묻기·바꾼 뒤 셋). 네이티브만 찍는 메뉴 프로필
 // 칸 흔들기는 native-profile-sway-dark·light.png(티어 넷 × 각 여섯).
 // 문서 그림은 `cwebp -q 82`로 docs/cubie-native/compare-windows-*.webp에 둔다.
@@ -168,6 +169,14 @@ const WINDOWS = [
     ],
   },
   {
+    // 가장 작은 기록 창(docs/52 5-8 「창 최소 크기」, `SheetSize.records`): 글이 잘리지 않는지, 안내 문단이 「5판」처럼
+    // 숫자와 단위 사이에서 줄을 바꾸지 않는지. 티어표·설정 창은 가장 작은 너비가 처음 너비라 네이티브만 찍는다(native-*-min)
+    name: "records-min",
+    path: "/cube/mini?view=records",
+    size: { width: 320, height: 600 },
+    shots: ["records-min", "records-min-replay"],
+  },
+  {
     name: "tiers",
     // 앱이 여는 사이트 티어표와 같이 Cubie 기록으로 센다(docs/52 5-14)
     path: "/cube/tiers?n=3&records=cubie",
@@ -235,7 +244,7 @@ try {
           .click();
         await page.waitForSelector("[data-keymap-message]");
       }
-      if (shot === "records-replay") {
+      if (shot === "records-replay" || shot === "records-min-replay") {
         await page.locator("[data-mini-replay-open]").first().click();
         await page.waitForSelector("[data-cube-ready]");
         await page.waitForTimeout(300);

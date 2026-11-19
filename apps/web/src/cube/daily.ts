@@ -13,7 +13,7 @@ import type { ScrambleEvent } from "@game/cube-scramble";
 import { segmentsOf } from "./progress/gold";
 import { groupSplits } from "./progress/splits";
 import {
-  formatMs,
+  formatSeconds,
   parseSplits,
   resultMs,
   type SolveRecord,
@@ -313,7 +313,9 @@ export function markString(
 export function shareText(entry: DailyEntry): string {
   const ms = entryMs(entry);
   const time =
-    ms === null ? "DNF" : `${formatMs(ms)}초${entry.penalty > 0 ? "(+2)" : ""}`;
+    ms === null
+      ? "DNF"
+      : `${formatSeconds(ms)}${entry.penalty > 0 ? "(+2)" : ""}`;
   const labels =
     ms === null
       ? []

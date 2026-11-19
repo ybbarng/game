@@ -200,6 +200,10 @@ struct ClockAndSessionTests {
     #expect(MiniBook.formatMs(12_349.9) == "12.34")
     #expect(MiniBook.formatMs(62_050) == "1:02.05")
     #expect(MiniBook.formatMs(nil) == "DNF")
+    // 단위를 붙인 꼴(사이트 `formatSeconds`): 1분 아래만 「초」
+    #expect(MiniBook.formatSeconds(59_999) == "59.99초")
+    #expect(MiniBook.formatSeconds(60_000) == "1:00.00")
+    #expect(MiniBook.formatSeconds(1_200_000) == "20:00.00")
   }
 
 }

@@ -804,19 +804,115 @@ test(
       await shot(page, `mini-records-tier-cells-${width}`, info.project.name);
       await expect.poll(() => tierCellProblems(page)).toEqual([]);
       await noSideScroll(page);
-      // 6×6을 고르면 목표 글 「… 최고 5판 평균을 20:00.00초 줄여야 해요.」의 시간이 한 줄 안에 있다(「20: / 00.00초」 아님).
+      // 6×6을 고르면 목표 글 「… 최고 5판 평균을 20:00.00 줄여야 해요.」의 시간이 한 줄 안에 있다(「20: / 00.00」 아님).
+      // 1분 넘는 분:초 꼴 뒤에는 「초」를 붙이지 않는다(「20:00.00초」는 20초처럼 읽힌다).
       // WebKit(Cubie 앱 엔진)은 320px에서 「:」 뒤를 끊었는데 이 시험 브라우저(Chromium)는 끊지 않아, 시간이 끊기지 않는
       // 한 덩이(white-space: nowrap)인지도 본다
       await page.locator("[data-mini-tier-size='6']").click();
       const goal = page.locator("[data-mini-next-solve]");
-      await expect(goal).toContainText("20:00.00초");
+      await expect(goal).toContainText("20:00.00 줄여야 해요.");
       expect(
-        (await renderedLines(goal)).some((l) => l.includes("20:00.00초")),
+        (await renderedLines(goal)).some((l) => l.includes("20:00.00")),
       ).toBe(true);
-      await expect(
-        goal.locator("span", { hasText: /^20:00\.00초$/ }),
-      ).toHaveCSS("white-space", "nowrap");
+      await expect(goal.locator("span", { hasText: /^20:00\.00$/ })).toHaveCSS(
+        "white-space",
+        "nowrap",
+      );
     }
+  },
+);
+
+/** 기록 줄마다 글 칸(번호·때·시간·입력 표시 칩 하나하나·수·「다시 보기」)이 두 줄로 갈렸거나 줄 밖으로 나간 것 */
+function recordRowSplits(page: Page) {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    for (const li of document.querySelectorAll<HTMLElement>(
+      "[data-mini-record]",
+    )) {
+      const row = li.getBoundingClientRect();
+      const cells = [...li.children].flatMap((c) =>
+        c.matches("[data-mini-badges]") ? [...c.children] : [c],
+      );
+      for (const c of cells) {
+        const range = document.createRange();
+        range.selectNodeContents(c);
+        const tops = new Set(
+          [...range.getClientRects()].map((r) => Math.round(r.top)),
+        );
+        if (tops.size > 1) out.push(`「${c.textContent}」 ${tops.size}줄`);
+        const r = c.getBoundingClientRect();
+        if (r.right > row.right + 0.5 || r.left < row.left - 0.5)
+          out.push(`「${c.textContent}」 줄 밖`);
+      }
+    }
+    return out;
+  });
+}
+
+test(
+  "Cubie 기록 창 가장 작은 크기(320×600): 기록 줄의 글 칸과 표시 칩은 한 줄씩 줄 안에(칩은 시간 칸 아래 둘째 줄), 다시 보기 큐브는 상자 안에 든다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem("cube.mini.v1")) return;
+      // 앱 기록 창과 같은 저장소 꼴: 다른 프로그램 입력·마우스 칩이 붙은 판과 다시 볼 수 있는 판
+      const list = [21_340, 19_870, 25_010, 18_220, 23_400, 20_990, 22_150]
+        .map((ms, i) => ({
+          at: Date.UTC(2026, 10, 12, 1, 0) + (i + 1) * 97_000,
+          no: i + 1,
+          n: 3,
+          mode: "solo",
+          ms,
+          penalty: 0,
+          moves: 59,
+          scramble: "R U R' U'",
+          replay: "U@0 R@300 U'@600 R'@900",
+          ...(i === 5 ? { keyOrigin: "synthetic" } : {}),
+          ...(i === 4 ? { inputs: ["key", "swipe"] } : {}),
+        }))
+        .reverse();
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 3,
+          mirror: true,
+          records: { 3: list },
+          best5: {},
+        }),
+      );
+    });
+    await page.setViewportSize({ width: 320, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    await expect(page.locator("[data-mini-source='synthetic']")).toBeVisible();
+    await expect.poll(() => recordRowSplits(page)).toEqual([]);
+    // 칩 묶음은 시간 칸 아래 둘째 줄, 왼쪽 120px(앱 `RecordsSheet.badgesIndent`와 같은 자리)
+    const chip = await page
+      .locator("[data-mini-source='synthetic']")
+      .evaluate((e) => {
+        const li = e.closest("[data-mini-record]") as HTMLElement;
+        const time = (li.children[2] as HTMLElement).getBoundingClientRect();
+        const r = e.getBoundingClientRect();
+        return {
+          left: Math.round(r.left - li.getBoundingClientRect().left),
+          below: r.top >= time.bottom - 0.5,
+        };
+      });
+    expect(chip).toEqual({ left: 120, below: true });
+    await noSideScroll(page);
+    await page.locator("[data-mini-replay-open]").first().click();
+    const box = page.locator("[data-mini-replay]");
+    // 3D(캔버스)를 못 그리는 브라우저는 같은 자리에 큐브 그림
+    const cube = box.locator("[data-cube-canvas], [data-cube-no3d]");
+    await expect(cube).toBeVisible();
+    await shot(page, "mini-records-min-replay", info.project.name);
+    const [boxR, canvasR] = await Promise.all([
+      box.boundingBox(),
+      cube.boundingBox(),
+    ]);
+    expect(canvasR && boxR && canvasR.y + canvasR.height).toBeLessThanOrEqual(
+      (boxR?.y ?? 0) + (boxR?.height ?? 0) + 0.5,
+    );
   },
 );
 

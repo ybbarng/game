@@ -140,7 +140,7 @@ public enum TierProgress {
     switch s.goal {
     case .within(let ms): return "다음 판 \(MiniBook.formatMs(ms)) 안이면 \(to)"
     case .any: return "다음 판을 맞추면 \(to)"
-    case .out(let gap): return "다음 판 하나로는 \(to)에 못 닿아요. 최고 5판 평균을 \(MiniBook.formatMs(gap))초 줄여야 해요."
+    case .out(let gap): return "다음 판 하나로는 \(to)에 못 닿아요. 최고 5판 평균을 \(MiniBook.formatSeconds(gap)) 줄여야 해요."
     }
   }
 

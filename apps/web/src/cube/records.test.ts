@@ -5,6 +5,7 @@ import {
   averageOf,
   BEST_FIVE_KEY,
   formatMs,
+  formatSeconds,
   formatSplits,
   KEEP_REPLAYS,
   loadBestFive,
@@ -103,6 +104,10 @@ describe("기록", () => {
     expect(formatMs(12_345)).toBe("12.34");
     expect(formatMs(75_010)).toBe("1:15.01");
     expect(formatMs(null)).toBe("DNF");
+    // 단위를 붙인 꼴: 1분 아래만 「초」(분:초 꼴 뒤 「초」는 20초처럼 읽힌다)
+    expect(formatSeconds(59_999)).toBe("59.99초");
+    expect(formatSeconds(60_000)).toBe("1:00.00");
+    expect(formatSeconds(1_200_000)).toBe("20:00.00");
     expect(parseReplay("R@0 U'@120 y@-30")).toEqual([
       ["R", 0],
       ["U'", 120],

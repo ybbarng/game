@@ -9,7 +9,7 @@ import CubieNativeC
 /// 묶은 그림이다. 사이트로 가는 글(「← 큐브」·WCA 주소)은 기본 브라우저로 연다
 @MainActor
 final class NativeTiersWindow: NativeSheetWindow {
-  static let size = NSSize(width: 760, height: 820)
+  static let size = SheetSize.tiers
   private let store: KeyValueStore
   private let math: TierMath
   let page = TiersPageView()
@@ -88,7 +88,7 @@ final class TiersPageView: NSView {
   private let foot2 = NSTextField(wrappingLabelWithString: "")
 
   init() {
-    super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size))
+    super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size.initial))
     back.action = { NUI.openSite("/cube") }
     for v in [
       back, title, heroBox, ladder, historyTitle, historyView, historyList, intro1, intro2, sizeTitle, note, grid,
@@ -236,7 +236,7 @@ final class TiersPageView: NSView {
         line1: join([
           text(TierSheet.labels[next.tier], 14, .semibold, tone(next.tier)),
           text(TierShowcase.until + " ", 14),
-          text(MiniBook.formatMs(next.gapMs) + "초", 14, .semibold, .white, mono: true),
+          text(MiniBook.formatSeconds(next.gapMs), 14, .semibold, .white, mono: true),
         ]),
         line2: text(TierShowcase.cutLine(next.cutMs / 1000), 12, .regular, NUI.white(0.5)))
     }
@@ -251,7 +251,7 @@ final class TiersPageView: NSView {
         line2: st.pickedGapMs.map { gap in
           join([
             text(label + TierShowcase.until + " ", 12, .regular, NUI.white(0.5)),
-            text(MiniBook.formatMs(gap) + "초", 12, .regular, NUI.white(0.5), mono: true),
+            text(MiniBook.formatSeconds(gap), 12, .regular, NUI.white(0.5), mono: true),
           ])
         })
     }

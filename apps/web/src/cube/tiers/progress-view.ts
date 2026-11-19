@@ -3,7 +3,7 @@
  * Cubie 기록 창 사이트 화면(`MiniCubeApp` `RecordsPanel`), 티어 화면(`TierShowcase`)이 함께 쓰고, 앱 네이티브 창은 같은 글을
  * `apps/cubie/Sources/CubieCore/RecordsSheet.swift`·`TierSheet.swift`에 둔다(`native-windows-text.test.ts`가 본다).
  */
-import { formatMs } from "../records";
+import { formatMs, formatSeconds } from "../records";
 import {
   bestFiveDetail,
   type NextSolve,
@@ -63,17 +63,17 @@ export const BEST5_LABEL = "최고 5판 평균";
 
 /**
  * 다음 판 목표 글: 「다음 판 2:51.56 안이면 브론즈 I」, 「다음 판을 맞추면 브론즈 I」,
- * 「다음 판 하나로는 브론즈 I에 못 닿아요. 최고 5판 평균을 5.09초 줄여야 해요.」
+ * 「다음 판 하나로는 브론즈 I에 못 닿아요. 최고 5판 평균을 5.09초 줄여야 해요.」(1분부터는 「20:00.00 줄여야 해요.」)
  */
 export function nextSolveText(s: NextSolve): string {
   const to = tierName(s.to);
   if (s.kind === "within") return `다음 판 ${formatMs(s.ms)} 안이면 ${to}`;
   if (s.kind === "any") return `다음 판을 맞추면 ${to}`;
-  return `다음 판 하나로는 ${to}에 못 닿아요. 최고 5판 평균을 ${formatMs(s.gapMs)}초 줄여야 해요.`;
+  return `다음 판 하나로는 ${to}에 못 닿아요. 최고 5판 평균을 ${formatSeconds(s.gapMs)} 줄여야 해요.`;
 }
 
 /**
- * 글을 시간(「20:00.00초」·「2:51.56」·「5.09초」)과 나머지 조각으로 나눈다. 화면은 시간 조각을 한 덩이로 둬
+ * 글을 시간(「20:00.00」·「2:51.56」·「5.09초」)과 나머지 조각으로 나눈다. 화면은 시간 조각을 한 덩이로 둬
  * 줄 끝에서 「20: / 00.00초」처럼 시간 가운데서 끊기지 않게 한다(WebKit은 `break-keep`에서도 「:」 뒤를 끊었다)
  */
 export function timePieces(text: string): { text: string; time: boolean }[] {

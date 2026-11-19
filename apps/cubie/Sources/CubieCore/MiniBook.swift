@@ -195,6 +195,13 @@ public final class MiniBook {
     return "\(s / 60):\(String(format: "%02d", s % 60)).\(frac)"
   }
 
+  /// 시간 글에 단위를 붙인 꼴(사이트 `formatSeconds`): 1분 아래는 「12.34초」, 1분부터는 「20:00.00」(분:초 꼴 뒤에 「초」를
+  /// 붙이면 「20:00.00초」가 20초처럼 읽힌다)
+  public static func formatSeconds(_ ms: Double) -> String {
+    let t = formatMs(ms)
+    return t.contains(":") ? t : "\(t)초"
+  }
+
   /// 그 크기의 가장 빠른 시간(사이트 `summarize().best`). 기록이 없으면 nil
   public func best(_ n: Int) -> Double? {
     records(n).compactMap { Timeable(record: $0).result }.min()

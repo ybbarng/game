@@ -40,6 +40,10 @@ struct TierProgressTests {
     #expect(
       TierProgress.nextSolveText(.init(tier: 1, division: 3, cutMs: 150_000, goal: .out(5_090)))
         == "다음 판 하나로는 브론즈 I에 못 닿아요. 최고 5판 평균을 5.09초 줄여야 해요.")
+    // 1분 넘게 줄여야 하면 분:초 꼴 뒤에 「초」를 붙이지 않는다(「20:00.00초」는 20초처럼 읽힌다, 사이트 같은 예)
+    #expect(
+      TierProgress.nextSolveText(.init(tier: 1, division: 0, cutMs: 4_800_000, goal: .out(1_200_000)))
+        == "다음 판 하나로는 브론즈 IV에 못 닿아요. 최고 5판 평균을 20:00.00 줄여야 해요.")
   }
 
   @Test func parsesCoreHistoryText() {

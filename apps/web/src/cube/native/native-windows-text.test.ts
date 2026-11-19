@@ -96,7 +96,9 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "다음 판을 맞추면 ",
       "다음 판 하나로는 ",
       "에 못 닿아요. 최고 5판 평균을 ",
-      "초 줄여야 해요.",
+      " 줄여야 해요.",
+      // 시간 뒤 단위는 1분 아래만 「초」(사이트 `formatSeconds`, 앱 `MiniBook.formatSeconds`)
+      "formatSeconds(",
     ]));
 
   it("구간 안 자리 막대(progress-view bandView, 앱 TierProgress.swift bandView)", () =>

@@ -8,7 +8,7 @@ import CubieNativeC
 /// 설정만 「모든 설정…」이 사이트 창을 연다(`openWeb`)
 @MainActor
 final class NativeSettingsWindow: NativeSheetWindow {
-  static let size = NSSize(width: 760, height: 720)
+  static let size = SheetSize.settings
   let page: SettingsPageView
   private let scroll = NSScrollView()
 
@@ -77,7 +77,7 @@ final class SettingsPageView: FlippedView {
     self.store = store
     preview = CACubeView(frame: NSRect(x: 0, y: 0, width: 192, height: 144), n: 3)
     editor = KeymapEditorView(store: store)
-    super.init(frame: NSRect(origin: .zero, size: NativeSettingsWindow.size))
+    super.init(frame: NSRect(origin: .zero, size: NativeSettingsWindow.size.initial))
     fill = NUI.color(NUI.Hex.neutral900)
     back.action = { NUI.openSite("/cube") }
     keysMap.action = { NUI.openSite("/cube/keys") }
