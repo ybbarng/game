@@ -80,6 +80,7 @@ describe("다시 보기 멍석: 걸음 → 궤적", () => {
           index: i,
           plan: planFor(view, view.lastThrow),
           animate: true,
+          fresh: true,
         });
       }
     }
@@ -100,11 +101,12 @@ describe("다시 보기 멍석: 걸음 → 궤적", () => {
         index: i,
         plan: rest,
         animate: false,
+        fresh: false,
       });
       // 두 걸음 앞에서 한 걸음 뒤로
-      expect(replayCue(states, i + 1, i, 0).animate).toBe(false);
+      expect(replayCue(states, i + 1, i, 0).fresh).toBe(false);
       // 여러 걸음을 건너뛰어 앞으로
-      expect(replayCue(states, Math.max(0, i - 3), i, 0).animate).toBe(false);
+      expect(replayCue(states, Math.max(0, i - 3), i, 0).fresh).toBe(false);
     }
   });
 
@@ -114,7 +116,7 @@ describe("다시 보기 멍석: 걸음 → 궤적", () => {
     for (let i = first + 1; i < states.length; i++) {
       if (thrown.includes(i)) continue;
       const cue = replayCue(states, i - 1, i, 0);
-      expect(cue.animate).toBe(false);
+      expect(cue.fresh).toBe(false);
       expect(cue.plan).toEqual(replayCue(states, i - 1, i - 1, 0).plan);
       checked++;
     }
@@ -129,12 +131,17 @@ describe("다시 보기 멍석: 옛 기록(규칙 판 1)", () => {
     expect(throwSteps(old).length).toBeGreaterThan(0);
   });
 
-  it("몸짓이 없어 어느 걸음에서도 궤적이 없고 굴리지 않는다(2D 윷가락)", () => {
+  it("몸짓이 없어 어느 걸음에서도 궤적이 없고 3D로 굴리지 않는다(2D 윷가락)", () => {
+    for (let i = 1; i < old.length; i++) {
+      const cue = replayCue(old, i - 1, i, 0);
+      expect(cue.plan).toBeNull();
+      expect(cue.animate).toBe(false);
+    }
+  });
+
+  it("그래도 한 걸음 앞으로 와 새 결과가 나온 걸음은 알린다(2D로 결과를 보일 틈을 둔다)", () => {
+    const steps = throwSteps(old);
     for (let i = 1; i < old.length; i++)
-      expect(replayCue(old, i - 1, i, 0)).toEqual({
-        index: i,
-        plan: null,
-        animate: false,
-      });
+      expect(replayCue(old, i - 1, i, 0).fresh).toBe(steps.includes(i));
   });
 });
