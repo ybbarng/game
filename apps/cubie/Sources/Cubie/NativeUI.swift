@@ -55,7 +55,7 @@ enum NUI {
     return l
   }
 
-  /// 여러 줄 글(낱말 단위로 끊는다, 사이트 `break-keep`)
+  /// 여러 줄 글(낱말 단위로 끊는다, 사이트 `break-keep`. 숫자와 단위는 갈라 끊지 않는다)
   static func paragraph(_ text: String, size: CGFloat = 12, color: NSColor, lineHeight: CGFloat? = nil) -> NSTextField {
     let l = NSTextField(wrappingLabelWithString: text)
     l.isSelectable = false
@@ -74,8 +74,10 @@ enum NUI {
       p.minimumLineHeight = lineHeight
       p.maximumLineHeight = lineHeight
     }
+    // 낱말 단위 줄바꿈도 숫자와 바로 붙은 한글(「5판」)은 끊을 수 있는 자리로 봐서 막는다(`TextWrap`)
     return NSAttributedString(
-      string: text, attributes: [.font: font(size, weight, mono: true), .foregroundColor: color, .paragraphStyle: p])
+      string: TextWrap.keepNumberUnits(text),
+      attributes: [.font: font(size, weight, mono: true), .foregroundColor: color, .paragraphStyle: p])
   }
 
   /// 줄 바꿈 글의 높이(너비 `w`)

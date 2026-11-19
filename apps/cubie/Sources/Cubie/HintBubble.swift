@@ -93,6 +93,8 @@ final class HintBubble {
     let para = NSMutableParagraphStyle()
     para.lineSpacing = 2
     para.paragraphSpacing = 3
+    // 사이트 `break-keep`처럼 낱말 가운데서 줄을 바꾸지 않는다(공식 연습·홈 시연 말풍선)
+    para.lineBreakStrategy = .hangulWordPriority
     for (i, line) in lines.enumerated() {
       let text = line["text"] as? String ?? ""
       let style = line["style"] as? String ?? "plain"
@@ -127,10 +129,13 @@ final class HintBubble {
             a[.foregroundColor] = NSColor(white: 1, alpha: 0.6)
           default: a[.foregroundColor] = NSColor(white: 1, alpha: 0.6)
           }
-          out.append(NSAttributedString(string: text, attributes: a))
+          let shown = span["style"] as? String == "move" ? text : TextWrap.keepNumberUnits(text)
+          out.append(NSAttributedString(string: shown, attributes: a))
         }
       } else {
-        out.append(NSAttributedString(string: text, attributes: attrs))
+        // 수 표기·키 줄은 그대로, 안내 글은 숫자와 단위를 갈라 끊지 않는다(`TextWrap`)
+        let shown = style == "alg" || style == "keys" ? text : TextWrap.keepNumberUnits(text)
+        out.append(NSAttributedString(string: shown, attributes: attrs))
       }
     }
     return out

@@ -239,7 +239,7 @@ final class NativeKeysView: NSView {
     let para = NSMutableParagraphStyle()
     para.lineBreakStrategy = .hangulWordPriority
     NSAttributedString(
-      string: note,
+      string: TextWrap.keepNumberUnits(note),
       attributes: [.font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor(white: 1, alpha: 0.5), .paragraphStyle: para])
       .draw(with: NSRect(x: pad, y: y + 2, width: bounds.width - pad * 2, height: bounds.height - y - 4), options: [.usesLineFragmentOrigin])
   }
