@@ -9,7 +9,7 @@ import CubieNativeC
 /// 묶은 그림이다. 사이트로 가는 글(「← 큐브」·WCA 주소)은 기본 브라우저로 연다
 @MainActor
 final class NativeTiersWindow: NativeSheetWindow {
-  static let size = NSSize(width: 760, height: 820)
+  static let size = SheetSize.tiers
   private let store: KeyValueStore
   private let math: TierMath
   let page = TiersPageView()
@@ -88,7 +88,7 @@ final class TiersPageView: NSView {
   private let foot2 = NSTextField(wrappingLabelWithString: "")
 
   init() {
-    super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size))
+    super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size.initial))
     back.action = { NUI.openSite("/cube") }
     for v in [
       back, title, heroBox, ladder, historyTitle, historyView, historyList, intro1, intro2, sizeTitle, note, grid,

@@ -69,6 +69,20 @@ enum NativeWindowShot {
     customWindow.page.editor.shotAnswerYes()
     customWindow.page.port.setOpen(true)
     ok = shoot(customWindow.window, name: "native-settings-custom", dir: dir, fullHeight: true) && ok
+    // 가장 작은 크기(docs/52 5-8 「창 최소 크기」): 창을 `contentMinSize`까지 줄여 글이 잘리지 않는지 본다
+    let recordsMin = NativeRecordsWindow(book: book) { settings }
+    shrink(recordsMin)
+    ok = shoot(recordsMin.window, name: "native-records-min", dir: dir) && ok
+    if let first = book.records(book.n).first(where: RecordsSheet.canReplay) {
+      recordsMin.watch(first)
+      ok = shoot(recordsMin.window, name: "native-records-min-replay", dir: dir) && ok
+    }
+    let tiersMin = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
+    shrink(tiersMin)
+    ok = shoot(tiersMin.window, name: "native-tiers-min", dir: dir, fullHeight: true) && ok
+    let settingsMin = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
+    shrink(settingsMin)
+    ok = shoot(settingsMin.window, name: "native-settings-min", dir: dir, fullHeight: true) && ok
     for (name, look) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
       ok = shootProfiles(dir: dir, name: "native-profile-\(name)", appearance: NSAppearance(named: look)) && ok
       ok = shootProfileSway(dir: dir, name: "native-profile-sway-\(name)", appearance: NSAppearance(named: look)) && ok
@@ -129,6 +143,13 @@ enum NativeWindowShot {
     // 창에 붙으면 정면에서 흔들기를 시작하므로 붙인 뒤에 각을 정한다
     for v in box.subviews.compactMap({ $0 as? ProfileMenuView }) { v.showYaw(Double(v.toolTip ?? "") ?? 0) }
     return shoot(window, name: name, dir: dir)
+  }
+
+  /// 창을 가장 작은 내용 크기로 줄인다(사람이 창 모서리를 끝까지 끌어 줄인 것과 같다)
+  static func shrink(_ sheet: NativeSheetWindow) {
+    sheet.window.setContentSize(sheet.window.contentMinSize)
+    sheet.window.contentView?.needsLayout = true
+    sheet.window.contentView?.layoutSubtreeIfNeeded()
   }
 
   /// 창 내용을 PNG로(배율 2). `fullHeight`면 굴리는 내용 전체 높이로

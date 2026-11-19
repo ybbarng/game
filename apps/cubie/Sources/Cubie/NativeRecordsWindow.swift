@@ -9,7 +9,7 @@ import CubieNativeC
 /// 웹 창과 달리 WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 예전처럼 사이트 창을 연다(`AppDelegate`)
 @MainActor
 final class NativeRecordsWindow: NativeSheetWindow {
-  static let size = NSSize(width: RecordsSheet.windowWidth, height: 600)
+  static let size = SheetSize.records
 
   private let book: MiniBook
   private let settings: () -> CubeSettings
@@ -118,7 +118,7 @@ final class RecordsRootView: FlippedView {
   private var n = 3
 
   init() {
-    super.init(frame: NSRect(origin: .zero, size: NativeRecordsWindow.size))
+    super.init(frame: NSRect(origin: .zero, size: NativeRecordsWindow.size.initial))
     fill = NUI.color(NUI.Hex.neutral950)
     addSubview(tiers)
     for v in [tiersTitle, tiersBasis, tiersLink, band, goalLine, tiersNote, tiersLine] as [NSView] { tiers.addSubview(v) }
