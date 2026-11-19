@@ -228,6 +228,10 @@ pub struct CubieTierBand {
     pub high_ms: f64,
     /// 0 왼쪽 ~ 1 오른쪽
     pub ratio: f64,
+    /// 바로 아래 구간 티어(막대 왼쪽 칸), 맨 아래면 -1
+    pub down_tier: i32,
+    /// 바로 아래 구간의 구간, 없으면 -1
+    pub down_division: i32,
 }
 
 /// 최고 5판 평균 `ms`의 구간 안 자리(사이트 `tierBand`). 있으면 `out`에 쓰고 true(티어가 없으면 false)
@@ -249,6 +253,8 @@ pub unsafe extern "C" fn cubie_tier_band(n: u32, ms: f64, out: *mut CubieTierBan
             up_division: b.up.map_or(-1, |p| div(p.division)),
             high_ms: b.high_ms,
             ratio: b.ratio,
+            down_tier: b.down.map_or(-1, |p| p.tier as i32),
+            down_division: b.down.map_or(-1, |p| div(p.division)),
         }
     };
     true
@@ -529,15 +535,19 @@ mod tests {
                 (1, 2, 190_000.0, 1, 3, 150_000.0)
             );
             assert_eq!(b.ratio, (190_000.0 - 155_090.0) / 40_000.0);
-            // 꼭대기는 오른쪽 끝 0초, 위 구간 없음
+            // 왼쪽 칸은 바로 아래 브론즈 III
+            assert_eq!((b.down_tier, b.down_division), (1, 1));
+            // 꼭대기는 오른쪽 끝 0초, 위 구간 없음, 왼쪽 칸 그랜드마스터
             assert!(cubie_tier_band(3, 5_200.0, &mut b));
             assert_eq!(
                 (b.tier, b.division, b.up_tier, b.high_ms, b.ratio),
                 (9, -1, -1, 0.0, 0.2)
             );
-            // 맨 아래 아이언 IV는 왼쪽 상한 없음(-1)
+            assert_eq!((b.down_tier, b.down_division), (8, -1));
+            // 맨 아래 아이언 IV는 왼쪽 상한 없음(-1), 아래 구간 없음
             assert!(cubie_tier_band(3, 1_350_000.0, &mut b));
             assert_eq!((b.low_ms, b.high_ms, b.ratio), (-1.0, 900_000.0, 0.5));
+            assert_eq!((b.down_tier, b.down_division), (-1, -1));
             assert!(!cubie_tier_band(8, 10_000.0, &mut b));
         }
     }

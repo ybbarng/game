@@ -329,6 +329,7 @@ describe("구간 안 자리(기록 창 가로 막대)", () => {
   it("사용자 예: 브론즈 II(3:10.00)와 브론즈 I(2:30.00) 사이 2:35.09는 시간에 비례한 자리", () => {
     const b = tierBand(3, 155_090);
     expect(b).toEqual({
+      down: { tier: "bronze", division: "III", step: 5 },
       here: { tier: "bronze", division: "II", step: 6 },
       lowMs: 190_000,
       up: { tier: "bronze", division: "I", step: 7 },
@@ -350,6 +351,7 @@ describe("구간 안 자리(기록 창 가로 막대)", () => {
 
   it("꼭대기(챌린저)는 오른쪽 끝이 0초, 위 구간이 없다", () => {
     expect(tierBand(3, 5_200)).toEqual({
+      down: { tier: "grandmaster", division: null, step: 32 },
       here: { tier: "challenger", division: null, step: 33 },
       lowMs: 6_500,
       up: null,
@@ -360,6 +362,8 @@ describe("구간 안 자리(기록 창 가로 막대)", () => {
 
   it("맨 아래 아이언 IV는 왼쪽 상한이 없어 오른쪽 경계의 두 배를 왼쪽 끝으로 셈한다", () => {
     const b = tierBand(3, 1_350_000);
+    // 맨 아래라 아래 구간(막대 왼쪽 칸)도 없다
+    expect(b?.down).toBeNull();
     expect(b?.lowMs).toBeNull();
     expect(b?.highMs).toBe(900_000);
     expect(b?.ratio).toBe(0.5);

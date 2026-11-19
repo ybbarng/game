@@ -251,6 +251,8 @@ export function placeAt(
  * 맨 아래 구간(아이언 IV, 6×6·7×7 아이언)은 상한이 없어(「다 맞춤」) 왼쪽 끝을 오른쪽 경계의 두 배로 둔다
  */
 export interface TierBand {
+  /** 바로 아래 구간(막대 왼쪽 칸). 맨 아래 구간이면 null */
+  down: TierPlace | null;
   /** 지금 구간 */
   here: TierPlace;
   /** 왼쪽 끝: 지금 구간 상한(ms). 상한이 없는 맨 아래 구간이면 null(자리는 `highMs`의 두 배로 셈) */
@@ -273,15 +275,18 @@ export function tierBand(n: number, ms: number): TierBand | null {
   const lowMs = Number.isFinite(low) ? low : null;
   const left = lowMs ?? highMs * 2;
   const raw = left > highMs ? (left - ms) / (left - highMs) : 0;
-  let up: TierPlace | null = null;
-  if (next) {
-    const { cutMs: _, ...p } = next;
-    up = p;
-  }
+  const place = (
+    p: (TierPlace & { cutMs: number }) | null,
+  ): TierPlace | null => {
+    if (!p) return null;
+    const { cutMs: _, ...rest } = p;
+    return rest;
+  };
   return {
+    down: here.step > 0 ? place(placeAt(n, here.step - 1)) : null,
     here,
     lowMs,
-    up,
+    up: place(next),
     highMs,
     ratio: Math.min(1, Math.max(0, raw)),
   };

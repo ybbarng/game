@@ -318,6 +318,7 @@ fn tier_band_matches_site() {
         let b = c.get("band");
         let want = (!b.is_null()).then(|| {
             (
+                place_triple(b.get("down")),
                 place_triple(b.get("here")),
                 b.get("lowMs").opt_num(),
                 place_triple(b.get("up")),
@@ -327,6 +328,7 @@ fn tier_band_matches_site() {
         });
         let have = tier_band(n, ms).map(|b| {
             (
+                place_triple_core(b.down),
                 place_triple_core(Some(b.here)),
                 b.low_ms,
                 place_triple_core(b.up),

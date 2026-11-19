@@ -309,6 +309,8 @@ pub fn place_at(n: usize, step: usize) -> Option<(TierPlace, f64)> {
 /// 지금 구간 안의 자리(기록 창 가로 막대, 사이트 `TierBand`, docs/47 14-9)
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TierBand {
+    /// 바로 아래 구간(막대 왼쪽 칸). 맨 아래 구간이면 None
+    pub down: Option<TierPlace>,
     pub here: TierPlace,
     /// 왼쪽 끝: 지금 구간 상한(ms). 상한이 없는 맨 아래 구간이면 None(자리는 `high_ms`의 두 배로 셈)
     pub low_ms: Option<f64>,
@@ -333,7 +335,13 @@ pub fn tier_band(n: usize, ms: f64) -> Option<TierBand> {
     } else {
         0.0
     };
+    let down = here
+        .step
+        .checked_sub(1)
+        .and_then(|s| place_at(n, s))
+        .map(|(p, _)| p);
     Some(TierBand {
+        down,
         here,
         low_ms,
         up: next.map(|(p, _)| p),

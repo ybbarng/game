@@ -874,6 +874,7 @@ export function buildTierBand(): string {
       ms,
       band: b
         ? {
+            down: place(b.down),
             here: place(b.here),
             lowMs: b.lowMs,
             up: place(b.up),
@@ -904,7 +905,7 @@ export function buildTierBand(): string {
   push(8, 10_000);
   return fixtureJson(
     {
-      what: "크기·최고 5판 평균(ms) → 지금 구간, 왼쪽 끝(구간 상한, 없으면 null), 바로 위 구간(꼭대기면 null), 오른쪽 끝(꼭대기면 0), 자리(0 왼쪽 ~ 1 오른쪽)",
+      what: "크기·최고 5판 평균(ms) → 바로 아래 구간(맨 아래면 null), 지금 구간, 왼쪽 끝(구간 상한, 없으면 null), 바로 위 구간(꼭대기면 null), 오른쪽 끝(꼭대기면 0), 자리(0 왼쪽 ~ 1 오른쪽)",
     },
     cases,
   );
