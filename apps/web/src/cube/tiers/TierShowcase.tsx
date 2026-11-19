@@ -15,6 +15,7 @@ import {
   spriteSrc,
 } from "./emblem3d/poster";
 import { ladderRing } from "./ladderRing";
+import { NoBreakTimes } from "./NoBreakTimes";
 import { nextSolveText } from "./progress-view";
 import { type MyTier, type NextSolve, nextTier, tierName } from "./rank";
 import { cutText, TIER_TONE, type TierBasis } from "./TierTable";
@@ -199,7 +200,7 @@ function TierHero({
                 data-cube-next-solve={goal.kind}
                 className="mt-1 block text-white/80 text-xs"
               >
-                {nextSolveText(goal)}
+                <NoBreakTimes text={nextSolveText(goal)} />
               </span>
             )}
           </p>

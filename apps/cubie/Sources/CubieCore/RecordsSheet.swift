@@ -50,6 +50,68 @@ public enum RecordsSheet {
     return MiniBook.formatMs(v)
   }
 
+  // MARK: 티어 칸
+
+  /// 티어 칸 위 글(「6×6 1:40.00」, 티어가 없으면 「6×6 」, 사이트 `MiniTiers`)
+  public static func tierCellTop(size: Int, ms: Double?) -> String {
+    "\(size)×\(size) \(ms.map { MiniBook.formatMs($0) } ?? "")"
+  }
+
+  /// 기록 창 처음 너비(사이트 Cubie 기록 창과 같은 380, `NativeRecordsWindow.size`)
+  public static let windowWidth: Double = 380
+  /// 티어 칸 너비(창 안쪽 여백 8씩, 칸 사이 4, 세 칸)
+  public static func tierCellWidth(window w: Double) -> Double { (w - 16 - 8) / 3 }
+  /// 칸 안 글 자리 너비(왼쪽 6 + 엠블럼 28 + 6, 오른쪽 4)
+  public static func tierCellTextWidth(cell w: Double) -> Double { w - 44 }
+  /// 글 한 줄 높이(사이트 `text-xs` 16px)
+  public static let tierCellLine: Double = 16
+  /// 칸 높이: 위아래 4씩(사이트 `py-1`)과 글 줄 수. 두 줄(위 글·티어 이름)이면 40
+  public static func tierCellHeight(lines: Int) -> Double { max(40, 8 + tierCellLine * Double(lines)) }
+
+  /// 칸 너비에 맞춰 낱말 사이(빈칸)에서 줄을 바꾼다(사이트 칸은 글이 길면 브라우저가 낱말 사이에서 줄을 바꾼다).
+  /// `measure`는 한 줄 글의 폭. 낱말 하나(「100:00.00」)가 폭보다 길면 「:」 뒤에서 더 나눈다(사이트는 「:」 뒤 `<wbr>`).
+  /// 그래도 긴 조각은 그 조각만 한 줄에 둔다
+  public static func wrapLines(_ text: String, width: Double, measure: (String) -> Double) -> [String] {
+    var lines: [String] = []
+    for word in text.split(separator: " ").map(String.init) {
+      if let last = lines.last, measure(last + " " + word) <= width {
+        lines[lines.count - 1] = last + " " + word
+        continue
+      }
+      if measure(word) <= width {
+        lines.append(word)
+        continue
+      }
+      // 「:」 뒤에서 나눈 조각을 한 줄에 들어가는 만큼 붙인다(빈칸 없이)
+      var line = ""
+      for piece in colonPieces(word) {
+        if line.isEmpty || measure(line + piece) <= width {
+          line += piece
+        } else {
+          lines.append(line)
+          line = piece
+        }
+      }
+      lines.append(line)
+    }
+    return lines
+  }
+
+  /// 「100:00.00」 → 「100:」·「00.00」(「:」을 앞 조각 끝에 둔다)
+  public static func colonPieces(_ word: String) -> [String] {
+    var out: [String] = []
+    var cur = ""
+    for ch in word {
+      cur.append(ch)
+      if ch == ":" {
+        out.append(cur)
+        cur = ""
+      }
+    }
+    if !cur.isEmpty { out.append(cur) }
+    return out
+  }
+
   // MARK: 줄
 
   /// 기록 한 줄

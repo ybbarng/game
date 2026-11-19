@@ -43,6 +43,10 @@ enum NativeWindowShot {
     ok = shoot(bands.window, name: "native-records-bottom", dir: dir) && ok
     bands.pick(4)
     ok = shoot(bands.window, name: "native-records-none", dir: dir) && ok
+    // 티어 칸 긴 시간(6×6·7×7 아이언 100분대): 창을 휴대폰 너비(320)로 줄여 시간도 「:」 뒤에서 나뉘는 장면
+    bands.pick(6)
+    bands.window.setContentSize(NSSize(width: 320, height: NativeRecordsWindow.size.height))
+    ok = shoot(bands.window, name: "native-records-narrow", dir: dir) && ok
     // 티어표 진열(docs/52 5-11): 내 티어를 보는 때, 사다리에서 챌린저를 고른 때, Cubie 기록이 없을 때
     let tiers = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok

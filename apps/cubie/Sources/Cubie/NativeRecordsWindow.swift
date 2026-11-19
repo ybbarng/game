@@ -9,7 +9,7 @@ import CubieNativeC
 /// 웹 창과 달리 WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 예전처럼 사이트 창을 연다(`AppDelegate`)
 @MainActor
 final class NativeRecordsWindow: NativeSheetWindow {
-  static let size = NSSize(width: 380, height: 600)
+  static let size = NSSize(width: RecordsSheet.windowWidth, height: 600)
 
   private let book: MiniBook
   private let settings: () -> CubeSettings
@@ -232,11 +232,17 @@ final class RecordsRootView: FlippedView {
     let lf = tiersLink.fit
     tiersLink.frame = NSRect(x: w - 8 - lf.width, y: y + 3, width: lf.width, height: 16)
     y += 20 + 4
-    let cellW = (inner - 8) / 3
-    for (i, c) in tierButtons.enumerated() {
-      c.frame = NSRect(x: 8 + CGFloat(i % 3) * (cellW + 4), y: y + CGFloat(i / 3) * (TierCell.height + 4), width: cellW, height: TierCell.height)
+    let cellW = CGFloat(RecordsSheet.tierCellWidth(window: Double(w)))
+    // 줄 높이는 그 줄에서 가장 높은 칸(사이트 grid 줄, 칸은 `h-full`로 같은 높이)
+    for row in stride(from: 0, to: tierButtons.count, by: 3) {
+      let cells = tierButtons[row..<min(row + 3, tierButtons.count)]
+      let h = cells.map { $0.height(width: cellW) }.max() ?? TierCell.height
+      for (j, c) in cells.enumerated() {
+        c.frame = NSRect(x: 8 + CGFloat(j) * (cellW + 4), y: y, width: cellW, height: h)
+      }
+      // 줄 사이 4, 마지막 줄 아래 4(사이트 gap-1)
+      y += h + 4
     }
-    y += TierCell.height * 2 + 4 + 4
     if !band.isHidden {
       // 사이트 `mt-1`(칸 아래 4 + 4)
       y += 4
@@ -429,18 +435,38 @@ final class TierBandView: FlippedView {
   }
 }
 
-/// 티어 칸 하나(크기 단추: 엠블럼, 「3×3 23.45」, 티어 이름 또는 「5판 뒤에」)
+/// 티어 칸 하나(크기 단추: 엠블럼, 「3×3 23.45」, 티어 이름 또는 「5판 뒤에」).
+/// 위 글이 칸보다 길면(6×6 「100:00.00」 같은 긴 시간) 사이트 칸처럼 크기와 시간 사이에서 줄을 바꾸고 칸이 그만큼 높아진다
+/// (`RecordsSheet.wrapLines`, 2026-11-19 한 줄 자리에 넣어 시간이 잘렸다)
 @MainActor
 final class TierCell: FlippedView {
-  static let height: CGFloat = 40
+  /// 글 두 줄(위 글 한 줄 + 티어 이름) 칸 높이
+  static let height = CGFloat(RecordsSheet.tierCellHeight(lines: 2))
   let size: Int
   var action: (() -> Void)?
   private let emblem = NSImageView()
   /// 티어가 아직 없으면 점선 동그라미(사이트 `border-dashed`)
   private var ring = false
-  private let top = NUI.label("", color: NUI.white(0.6))
+  private let top = NUI.paragraph("", color: NUI.white(0.6), lineHeight: CGFloat(RecordsSheet.tierCellLine))
   private let name = NUI.label("", weight: .semibold)
+  private var topText = ""
   private(set) var on = false
+  /// 지금 너비에서 나눈 위 글 줄(시험·스크린샷이 본다)
+  private(set) var topLines: [String] = []
+
+  /// 너비 `w` 칸에 놓을 위 글 줄
+  func lines(width w: CGFloat) -> [String] {
+    let measure = NUI.label("")
+    return RecordsSheet.wrapLines(topText, width: Double(RecordsSheet.tierCellTextWidth(cell: Double(w)))) { s in
+      NUI.set(measure, s, color: .white)
+      return Double(NUI.width(measure))
+    }
+  }
+
+  /// 너비 `w` 칸의 높이(위 글 줄 + 티어 이름 한 줄)
+  func height(width w: CGFloat) -> CGFloat {
+    CGFloat(RecordsSheet.tierCellHeight(lines: max(1, lines(width: w).count) + 1))
+  }
 
   init(size: Int) {
     self.size = size
@@ -471,12 +497,12 @@ final class TierCell: FlippedView {
       emblem.image = NUI.emblem(tier.id)
       emblem.isHidden = false
       ring = false
-      NUI.set(top, "\(size)×\(size) \(MiniBook.formatMs(tier.ao5))", color: NUI.white(0.6))
+      topText = RecordsSheet.tierCellTop(size: size, ms: tier.ao5)
       NUI.set(name, tier.name, weight: .semibold, color: NUI.color(NUI.tierTone[min(max(tier.tier, 0), 9)]))
     } else {
       emblem.isHidden = true
       ring = true
-      NUI.set(top, "\(size)×\(size) ", color: NUI.white(0.6))
+      topText = RecordsSheet.tierCellTop(size: size, ms: nil)
       NUI.set(name, RecordsSheet.tierPending, color: NUI.white(0.4))
     }
     needsLayout = true
@@ -488,8 +514,16 @@ final class TierCell: FlippedView {
     let e = emblemRect
     emblem.frame = e
     let tx = e.maxX + 6
-    top.frame = NSRect(x: tx, y: 4, width: bounds.width - tx - 4, height: 16)
-    name.frame = NSRect(x: tx, y: 20, width: bounds.width - tx - 4, height: 16)
+    let tw = bounds.width - tx - 4
+    // 사이트 `items-center`: 엠블럼과 글 덩이를 칸 가운데에. 같은 줄의 다른 칸이 높아져도 글은 가운데
+    topLines = lines(width: bounds.width)
+    let line = CGFloat(RecordsSheet.tierCellLine)
+    let topH = line * CGFloat(max(1, topLines.count))
+    top.attributedStringValue = NUI.attributed(
+      topLines.joined(separator: "\n"), size: 12, color: NUI.white(0.6), lineHeight: line)
+    let ty = ((bounds.height - topH - line) / 2).rounded(.down)
+    top.frame = NSRect(x: tx, y: ty, width: tw, height: topH)
+    name.frame = NSRect(x: tx, y: ty + topH, width: tw, height: line)
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

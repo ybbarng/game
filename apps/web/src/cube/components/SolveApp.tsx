@@ -89,6 +89,7 @@ import {
 } from "../scramble-show";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
+import { NoBreakTimes } from "../tiers/NoBreakTimes";
 import {
   bestFiveView,
   nextSolveText,
@@ -1195,7 +1196,7 @@ export function SolveApp({
               {tierNow && <TierBandBar n={n} ms={tierNow.ao5} />}
               {goal && (
                 <p className="text-xs" data-cube-next-solve={goal.kind}>
-                  {nextSolveText(goal)}
+                  <NoBreakTimes text={nextSolveText(goal)} />
                 </p>
               )}
               {records.length === 0 ? (

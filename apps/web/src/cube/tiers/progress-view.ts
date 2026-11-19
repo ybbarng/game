@@ -72,6 +72,23 @@ export function nextSolveText(s: NextSolve): string {
   return `다음 판 하나로는 ${to}에 못 닿아요. 최고 5판 평균을 ${formatMs(s.gapMs)}초 줄여야 해요.`;
 }
 
+/**
+ * 글을 시간(「20:00.00초」·「2:51.56」·「5.09초」)과 나머지 조각으로 나눈다. 화면은 시간 조각을 한 덩이로 둬
+ * 줄 끝에서 「20: / 00.00초」처럼 시간 가운데서 끊기지 않게 한다(WebKit은 `break-keep`에서도 「:」 뒤를 끊었다)
+ */
+export function timePieces(text: string): { text: string; time: boolean }[] {
+  const out: { text: string; time: boolean }[] = [];
+  let at = 0;
+  for (const m of text.matchAll(/\d+(?::\d+)*\.\d+초?/g)) {
+    const i = m.index ?? 0;
+    if (i > at) out.push({ text: text.slice(at, i), time: false });
+    out.push({ text: m[0], time: true });
+    at = i + m[0].length;
+  }
+  if (at < text.length) out.push({ text: text.slice(at), time: false });
+  return out;
+}
+
 /** 상한 없는 맨 아래 구간의 왼쪽 끝 글(티어표 `cutText`와 같다) */
 export const BAND_OPEN_LOW = "다 맞춤";
 
