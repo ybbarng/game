@@ -7,8 +7,8 @@ import Testing
 struct SheetSizeTests {
   @Test func recordsWindowShrinksTo320Wide() {
     #expect(SheetSize.records.minWidth == 320)
-    // 다시 보기 상자를 연 채로 큐브와 기록 몇 줄이 보이는 높이
-    #expect(SheetSize.records.minHeight == 560)
+    // 320 너비에서는 티어 칸이 세 줄로 높아져, 다시 보기를 연 채로 큐브가 보이려면 처음 높이 600이 필요했다
+    #expect(SheetSize.records.minHeight == 600)
   }
 
   @Test func tiersAndSettingsWindowsKeepTheirFirstWidth() {

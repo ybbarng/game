@@ -11,8 +11,9 @@ public struct SheetSize: Equatable, Sendable {
   public let minHeight: Double
 
   /// 기록 창: 사이트 기록 창(`/cube/mini?view=records`)과 같은 380×600. 가장 좁게는 320(줄 칸·요약·구간 막대가 들어가는 폭),
-  /// 높이는 다시 보기 상자를 연 채로 큐브와 기록 목록 몇 줄이 보이는 560
-  public static let records = SheetSize(width: RecordsSheet.windowWidth, height: 600, minWidth: 320, minHeight: 560)
+  /// 높이는 처음 높이 600(320 너비에서는 티어 칸이 세 줄로 높아져, 그보다 낮으면 다시 보기를 연 채로 큐브가 알아보기 어렵게
+  /// 작아졌다)
+  public static let records = SheetSize(width: RecordsSheet.windowWidth, height: 600, minWidth: 320, minHeight: 600)
   /// 티어표: 진열 큰 칸(엠블럼 280 + 글)과 열 칸 사다리, 기준표 열 칸이 한 줄로 드는 처음 너비 760을 가장 좁은 너비로.
   /// 높이는 굴려 보므로 머리·크기 단추·진열 큰 칸 위쪽이 보이는 400
   public static let tiers = SheetSize(width: 760, height: 820, minWidth: 760, minHeight: 400)

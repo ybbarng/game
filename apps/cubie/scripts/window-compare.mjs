@@ -5,7 +5,7 @@
 //   apps/cubie/build.sh
 //   node apps/cubie/scripts/window-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr] [앱 실행 파일]
 //
-// 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-records-min.png(가장 작은 320×560)·
+// 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-records-min.png(가장 작은 320×600)·
 // compare-tiers.png·compare-settings.png(비교판,
 // 티어표는 진열의 내 티어·챌린저 고름·기록 없음 셋, 설정은 기본·「사용자」 겹친 키 묻기·바꾼 뒤 셋). 네이티브만 찍는 메뉴 프로필
 // 칸 흔들기는 native-profile-sway-dark·light.png(티어 넷 × 각 여섯).
@@ -173,7 +173,7 @@ const WINDOWS = [
     // 숫자와 단위 사이에서 줄을 바꾸지 않는지. 티어표·설정 창은 가장 작은 너비가 처음 너비라 네이티브만 찍는다(native-*-min)
     name: "records-min",
     path: "/cube/mini?view=records",
-    size: { width: 320, height: 560 },
+    size: { width: 320, height: 600 },
     shots: ["records-min", "records-min-replay"],
   },
   {
