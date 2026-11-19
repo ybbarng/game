@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.9.0</title>
+      <pubDate>Thu, 19 Nov 2026 01:44:16 +0000</pubDate>
+      <sparkle:version>0.9.0</sparkle:version>
+      <sparkle:shortVersionString>0.9.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;기록 창 가로 막대의 두 경계를 막대 안쪽 눈금으로 옮겼습니다. 경계 이름과 시간이 눈금 아래 가운데에 놓여 긴 글도 넉넉하게 보입니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.9.0/Cubie.zip" length="10067855" type="application/octet-stream" sparkle:edSignature="aIpG1tV54uO/k+HSnk73gaSBUijXyMyZXsW9KeQ5Em38KEav0oanZTWNAUBAwCCRbIIFbw3+1fKOQBgzZ9G7AQ=="/>
+    </item>
+    <item>
       <title>Cubie 0.8.0</title>
       <pubDate>Wed, 18 Nov 2026 07:03:19 +0000</pubDate>
       <sparkle:version>0.8.0</sparkle:version>
