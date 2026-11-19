@@ -357,13 +357,13 @@ final class TierBandView: FlippedView {
   override func layout() {
     super.layout()
     let w = bounds.width
-    // 경계 글 묶음 폭(사이트 `gap-1`: 엠블럼 16 · 4 · 이름 · 4 · 시간)
+    // 경계 글 묶음 폭(사이트 `gap-1`: 엠블럼 16 · 4 · 이름 · 시간. 글 칸 폭에 제 여백이 있어 이름·시간 사이는 2)
     let lnw = NUI.width(leftName)
     let ltw = NUI.width(leftTime)
-    let leftW = 16 + 4 + lnw + 4 + ltw
+    let leftW = 16 + 4 + lnw + 2 + ltw
     let rnw = rightName.isHidden ? 0 : NUI.width(rightName)
     let rtw = NUI.width(rightTime)
-    let rightW = rightName.isHidden ? rtw : 16 + 4 + rnw + 4 + rtw
+    let rightW = rightName.isHidden ? rtw : 16 + 4 + rnw + 2 + rtw
     let vw = NUI.width(value)
     let l = TierProgress.bandLayout(
       ratio: view?.ratio ?? 0, width: Double(w), leftWidth: Double(leftW), rightWidth: Double(rightW),
@@ -380,7 +380,7 @@ final class TierBandView: FlippedView {
     leftIcon.frame = NSRect(x: x, y: y, width: 16, height: 16)
     x += 20
     leftName.frame = NSRect(x: x, y: y, width: lnw, height: 16)
-    x += lnw + 4
+    x += lnw + 2
     leftTime.frame = NSRect(x: x, y: y, width: ltw, height: 16)
     // 오른쪽 경계 글: 오른쪽 눈금 아래 가운데
     x = CGFloat(l.rightX)
@@ -388,7 +388,7 @@ final class TierBandView: FlippedView {
       rightIcon.frame = NSRect(x: x, y: y, width: 16, height: 16)
       x += 20
       rightName.frame = NSRect(x: x, y: y, width: rnw, height: 16)
-      x += rnw + 4
+      x += rnw + 2
     }
     rightTime.frame = NSRect(x: x, y: y, width: rtw, height: 16)
   }
