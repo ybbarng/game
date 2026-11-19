@@ -295,14 +295,18 @@ final class RecordsRootView: FlippedView {
   }
 }
 
-/// 구간 안 자리 막대(사이트 `TierBandBar.tsx`, docs/47 14-9): 위 숫자(최고 5판 평균, 막대 안쪽으로 밀어 넣음), 막대(지금 티어 색으로
-/// 왼쪽 끝부터 표시까지 채움, 흰 세로 표시), 아래 양 끝(엠블럼 16pt·구간 이름·경계 시간, 꼭대기는 오른쪽 「0.00」만)
+/// 구간 안 자리 막대(사이트 `TierBandBar.tsx`, docs/47 14-9): 막대는 두 경계 바깥까지 꼬리로 이어지고 두 경계는 안쪽 눈금이다
+/// (사용자 2026-11-19). 위 숫자(최고 5판 평균, 지금 눈금 위 가운데, 막대 안쪽으로 밀어 넣음), 막대(지금 티어 색으로 왼쪽 눈금부터
+/// 지금 눈금까지 채움), 경계 눈금 아래 가운데에 경계 글(엠블럼 16pt·구간 이름·경계 시간, 꼭대기는 오른쪽 「0.00」만).
+/// 좌표는 `TierProgress.bandLayout`(사이트 `bandLayout`과 같은 셈)
 @MainActor
 final class TierBandView: FlippedView {
-  static let height: CGFloat = 16 + 2 + 8 + 2 + 18
+  static let height: CGFloat = 46
   private let value = NUI.label("", weight: .semibold)
   private let track = FlippedView()
   private let fillBar = FlippedView()
+  private let lowTick = FlippedView()
+  private let highTick = FlippedView()
   private let mark = FlippedView()
   private let leftIcon = NSImageView()
   private let leftName = NUI.label("", color: NUI.white(0.8))
@@ -316,13 +320,16 @@ final class TierBandView: FlippedView {
     super.init(frame: frame)
     track.fill = NUI.white(0.15)
     track.radius = 4
-    fillBar.radius = 4
     mark.fill = .white
     mark.radius = 2
+    for t in [lowTick, highTick] {
+      t.fill = NUI.white(0.7)
+      t.radius = 1
+    }
     for i in [leftIcon, rightIcon] { i.imageScaling = .scaleProportionallyUpOrDown }
     for v in [value, track, leftIcon, leftName, leftTime, rightIcon, rightName, rightTime] as [NSView] { addSubview(v) }
     track.addSubview(fillBar)
-    addSubview(mark)
+    for t in [lowTick, highTick, mark] { addSubview(t) }
     setAccessibilityElement(true)
     setAccessibilityRole(.image)
   }
@@ -350,33 +357,40 @@ final class TierBandView: FlippedView {
   override func layout() {
     super.layout()
     let w = bounds.width
-    let ratio = CGFloat(view?.ratio ?? 0)
+    // 경계 글 묶음 폭(사이트 `gap-1`: 엠블럼 16 · 4 · 이름 · 시간. 글 칸 폭에 제 여백이 있어 이름·시간 사이는 2)
+    let lnw = NUI.width(leftName)
+    let ltw = NUI.width(leftTime)
+    let leftW = 16 + 4 + lnw + 2 + ltw
+    let rnw = rightName.isHidden ? 0 : NUI.width(rightName)
+    let rtw = NUI.width(rightTime)
+    let rightW = rightName.isHidden ? rtw : 16 + 4 + rnw + 2 + rtw
     let vw = NUI.width(value)
-    value.frame = NSRect(
-      x: TierProgress.bandValueX(ratio: ratio, width: w, labelWidth: vw), y: 0, width: vw, height: 16)
+    let l = TierProgress.bandLayout(
+      ratio: view?.ratio ?? 0, width: Double(w), leftWidth: Double(leftW), rightWidth: Double(rightW),
+      valueWidth: Double(vw))
+    value.frame = NSRect(x: l.valueX, y: 0, width: vw, height: 16)
     track.frame = NSRect(x: 0, y: 18, width: w, height: 8)
-    fillBar.frame = NSRect(x: 0, y: 0, width: w * ratio, height: 8)
-    mark.frame = NSRect(x: w * ratio - 2, y: 14, width: 4, height: 16)
-    let y: CGFloat = 28
-    // 왼쪽: 엠블럼 · 이름 · 시간
-    leftIcon.frame = NSRect(x: 0, y: y + 1, width: 16, height: 16)
-    var x: CGFloat = 20
-    for l in [leftName, leftTime] {
-      let lw = NUI.width(l)
-      l.frame = NSRect(x: x, y: y, width: lw, height: 16)
-      x += lw + 2
-    }
-    // 오른쪽: 오른쪽 맞춤으로 시간부터 거꾸로
-    var r = w
-    let tw = NUI.width(rightTime)
-    rightTime.frame = NSRect(x: r - tw, y: y, width: tw, height: 16)
-    r -= tw + 2
+    fillBar.frame = NSRect(x: l.lowX, y: 0, width: l.markX - l.lowX, height: 8)
+    lowTick.frame = NSRect(x: l.lowX - 1, y: 15, width: 2, height: 14)
+    highTick.frame = NSRect(x: l.highX - 1, y: 15, width: 2, height: 14)
+    mark.frame = NSRect(x: l.markX - 2, y: 14, width: 4, height: 16)
+    let y: CGFloat = 30
+    // 왼쪽 경계 글: 왼쪽 눈금 아래 가운데
+    var x = CGFloat(l.leftX)
+    leftIcon.frame = NSRect(x: x, y: y, width: 16, height: 16)
+    x += 20
+    leftName.frame = NSRect(x: x, y: y, width: lnw, height: 16)
+    x += lnw + 2
+    leftTime.frame = NSRect(x: x, y: y, width: ltw, height: 16)
+    // 오른쪽 경계 글: 오른쪽 눈금 아래 가운데
+    x = CGFloat(l.rightX)
     if !rightName.isHidden {
-      let nw = NUI.width(rightName)
-      rightName.frame = NSRect(x: r - nw, y: y, width: nw, height: 16)
-      r -= nw + 4
-      rightIcon.frame = NSRect(x: r - 16, y: y + 1, width: 16, height: 16)
+      rightIcon.frame = NSRect(x: x, y: y, width: 16, height: 16)
+      x += 20
+      rightName.frame = NSRect(x: x, y: y, width: rnw, height: 16)
+      x += rnw + 2
     }
+    rightTime.frame = NSRect(x: x, y: y, width: rtw, height: 16)
   }
 }
 

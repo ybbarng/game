@@ -76,12 +76,33 @@ struct TierBandTests {
     #expect([v.leftName, v.leftTime, v.rightName, v.rightTime] == ["아이언 IV", "다 맞춤", "아이언 III", "15:00.00"])
   }
 
-  @Test func valueStaysInsideTheBar() {
-    // 왼쪽 끝은 0, 오른쪽 끝은 글 오른쪽이 막대 오른쪽에 붙고, 가운데는 비례
-    #expect(TierProgress.bandValueX(ratio: 0, width: 300, labelWidth: 50) == 0)
-    #expect(TierProgress.bandValueX(ratio: 1, width: 300, labelWidth: 50) == 250)
-    #expect(TierProgress.bandValueX(ratio: 0.5, width: 300, labelWidth: 50) == 125)
-    #expect(TierProgress.bandValueX(ratio: 0.5, width: 30, labelWidth: 50) == 0)
+  // 좌표 셈: 사이트 `progress-view.test.ts` 「구간 안 자리 막대 좌표」와 같은 예·같은 값
+  private func layout(_ r: Double, _ w: Double, _ l: Double, _ rt: Double, _ v: Double) -> TierProgress.BandLayout {
+    TierProgress.bandLayout(ratio: r, width: w, leftWidth: l, rightWidth: rt, valueWidth: v)
+  }
+
+  @Test func layoutTicksSitInsideByHalfTheLongerBoundaryText() {
+    #expect(layout(0.5, 300, 120, 100, 50) == .init(tail: 60, lowX: 60, highX: 240, markX: 150, leftX: 0, rightX: 190, valueX: 125))
+  }
+
+  @Test func layoutTopKeepsEqualTailsAndCentersShortRightText() {
+    #expect(layout(0, 300, 80, 28, 40) == .init(tail: 40, lowX: 40, highX: 260, markX: 40, leftX: 0, rightX: 246, valueX: 20))
+  }
+
+  @Test func layoutPushesValueInsideAtTheRightEnd() {
+    let l = layout(1, 300, 60, 60, 80)
+    #expect(l.markX == 270 && l.valueX == 220)
+  }
+
+  @Test func layoutTailIsAtLeast12AndAtMostAQuarter() {
+    #expect(layout(0.5, 300, 10, 10, 30).tail == 12)
+    let l = layout(0.5, 200, 140, 140, 30)
+    #expect(l.tail == 50 && l.leftX == 0 && l.rightX == 60)
+  }
+
+  @Test func layoutClampsRatioToTheTicks() {
+    #expect(layout(1.5, 300, 60, 60, 40).markX == 270)
+    #expect(layout(-1, 300, 60, 60, 40).markX == 30)
   }
 
   /// 시험용 막대 셈: 받은 5판 평균을 그대로 담는다

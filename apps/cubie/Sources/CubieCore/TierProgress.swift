@@ -203,9 +203,38 @@ public enum TierProgress {
       ratio: b.ratio, label: "\(leftName) \(leftTime) → \(right) · \(best5) \(value)")
   }
 
-  /// 표시 위 숫자 글의 왼쪽 x: 막대 안쪽으로 밀어 넣는다(사이트 `left: r%` + `translateX(-r%)`)
-  public static func bandValueX(ratio: Double, width: Double, labelWidth: Double) -> Double {
-    max(0, ratio * (width - labelWidth))
+  /// 꼬리(경계 눈금 바깥 막대)의 가장 짧은 폭(pt, 사이트 `BAND_MIN_TAIL`)
+  public static let bandMinTail: Double = 12
+
+  /// 구간 안 자리 막대의 그리기 좌표(pt, 막대 왼쪽 끝이 0. 사이트 `BandLayout`)
+  public struct BandLayout: Equatable, Sendable {
+    /// 양쪽 꼬리 폭(같은 폭)
+    public var tail: Double
+    /// 왼쪽 경계 눈금·오른쪽 경계 눈금·지금 자리 눈금의 x
+    public var lowX: Double
+    public var highX: Double
+    public var markX: Double
+    /// 경계 글(엠블럼·이름·시간 묶음)과 숫자 글의 왼쪽 x
+    public var leftX: Double
+    public var rightX: Double
+    public var valueX: Double
+  }
+
+  /// 막대는 경계 바깥까지 꼬리로 이어지고 두 경계는 안쪽 눈금이다(docs/47 14-9, 사용자 2026-11-19, 사이트 `bandLayout`과 같은 셈).
+  /// 꼬리 = 긴 경계 글의 절반(12 ~ 막대의 1/4), 글은 눈금 아래·위 가운데에 두되 막대 밖으로 나가면 안쪽으로 밀어 넣는다
+  public static func bandLayout(
+    ratio: Double, width: Double, leftWidth: Double, rightWidth: Double, valueWidth: Double
+  ) -> BandLayout {
+    func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { min(max(v, lo), max(lo, hi)) }
+    let tail = clamp(max(leftWidth, rightWidth) / 2, bandMinTail, width / 4)
+    let lowX = tail
+    let highX = width - tail
+    let markX = lowX + clamp(ratio, 0, 1) * (highX - lowX)
+    return BandLayout(
+      tail: tail, lowX: lowX, highX: highX, markX: markX,
+      leftX: clamp(lowX - leftWidth / 2, 0, width - leftWidth),
+      rightX: clamp(highX - rightWidth / 2, 0, width - rightWidth),
+      valueX: clamp(markX - valueWidth / 2, 0, width - valueWidth))
   }
 }
 

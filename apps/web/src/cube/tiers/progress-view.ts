@@ -91,6 +91,57 @@ export interface BandView {
   label: string;
 }
 
+/** 꼬리(경계 눈금 바깥 막대)의 가장 짧은 폭(px). 「0.00」처럼 짧은 글만 있어도 막대가 경계 밖으로 이어져 보이게 */
+export const BAND_MIN_TAIL = 12;
+
+/** 구간 안 자리 막대의 그리기 좌표(px, 막대 왼쪽 끝이 0). 앱 `TierProgress.bandLayout`이 같은 셈을 한다 */
+export interface BandLayout {
+  /** 양쪽 꼬리 폭(같은 폭) */
+  tail: number;
+  /** 왼쪽 경계 눈금(지금 구간 상한)·오른쪽 경계 눈금(바로 위 구간 상한)·지금 자리 눈금의 x */
+  lowX: number;
+  highX: number;
+  markX: number;
+  /** 경계 글(엠블럼·이름·시간 묶음)과 숫자 글의 왼쪽 x */
+  leftX: number;
+  rightX: number;
+  valueX: number;
+}
+
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(Math.max(v, lo), Math.max(lo, hi));
+
+/**
+ * 막대는 경계 바깥까지 꼬리로 이어지고, 두 경계는 막대 안쪽의 눈금이다(docs/47 14-9, 사용자 2026-11-19).
+ * 꼬리 폭은 두 경계 글 가운데 긴 쪽의 절반(경계 글을 눈금 아래 가운데에 두어도 막대 밖으로 나가지 않게), 막대의 1/4까지.
+ * 글은 눈금 아래·위 가운데에 두되 막대 밖으로 나가면 안쪽으로 밀어 넣는다. 자리(ratio)는 두 경계 눈금 사이에서 센다
+ */
+export function bandLayout(
+  ratio: number,
+  width: number,
+  leftWidth: number,
+  rightWidth: number,
+  valueWidth: number,
+): BandLayout {
+  const tail = clamp(
+    Math.max(leftWidth, rightWidth) / 2,
+    BAND_MIN_TAIL,
+    width / 4,
+  );
+  const lowX = tail;
+  const highX = width - tail;
+  const markX = lowX + clamp(ratio, 0, 1) * (highX - lowX);
+  return {
+    tail,
+    lowX,
+    highX,
+    markX,
+    leftX: clamp(lowX - leftWidth / 2, 0, width - leftWidth),
+    rightX: clamp(highX - rightWidth / 2, 0, width - rightWidth),
+    valueX: clamp(markX - valueWidth / 2, 0, width - valueWidth),
+  };
+}
+
 export function bandView(b: TierBand, ms: number): BandView {
   const leftName = tierName(b.here);
   const leftTime = b.lowMs === null ? BAND_OPEN_LOW : formatMs(b.lowMs);

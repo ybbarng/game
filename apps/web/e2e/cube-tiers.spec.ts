@@ -472,14 +472,56 @@ test(
   },
 );
 
-/** 막대 안에서 표시(흰 세로 선)의 가운데가 막대 왼쪽에서 몇 %인지(0~1) */
+/** 지금 자리 눈금(흰 세로 선)의 가운데가 왼쪽 경계 눈금에서 오른쪽 경계 눈금까지의 몇 %인지(0~1) */
 async function markerRatio(band: Locator): Promise<number> {
   return band.evaluate((e) => {
-    const track = e.querySelector("[data-band-track]") as HTMLElement;
-    const mark = e.querySelector("[data-band-mark]") as HTMLElement;
-    const t = track.getBoundingClientRect();
-    const m = mark.getBoundingClientRect();
-    return (m.left + m.width / 2 - t.left) / t.width;
+    const mid = (s: string) => {
+      const r = (e.querySelector(s) as HTMLElement).getBoundingClientRect();
+      return r.left + r.width / 2;
+    };
+    const low = mid("[data-band-tick='low']");
+    const high = mid("[data-band-tick='high']");
+    return (mid("[data-band-mark]") - low) / (high - low);
+  });
+}
+
+/**
+ * 막대 모양(docs/47 14-9, 사용자 2026-11-19): 경계 눈금은 막대 양 끝보다 안쪽(꼬리가 있다), 경계 글은 눈금 아래 가운데이거나
+ * 막대 안으로 밀려 있고, 경계 글·숫자는 막대(꼬리 포함)와 창 밖으로 나가지 않는다. 어긋난 것을 글로 돌려준다
+ */
+async function bandShapeProblems(band: Locator): Promise<string[]> {
+  return band.evaluate((e) => {
+    if (!e.querySelector("[data-band-mark]")) return ["눈금을 아직 안 그림"];
+    const box = (s: string) =>
+      (e.querySelector(s) as HTMLElement).getBoundingClientRect();
+    const t = box("[data-band-track]");
+    const low = box("[data-band-tick='low']");
+    const high = box("[data-band-tick='high']");
+    const lowX = low.left + low.width / 2;
+    const highX = high.left + high.width / 2;
+    const out: string[] = [];
+    if (lowX - t.left < 10) out.push(`왼쪽 꼬리 ${lowX - t.left}`);
+    if (t.right - highX < 10) out.push(`오른쪽 꼬리 ${t.right - highX}`);
+    const vw = document.documentElement.clientWidth;
+    for (const [name, s, x] of [
+      ["왼쪽 글", "[data-band-left]", lowX],
+      ["오른쪽 글", "[data-band-right]", highX],
+      ["숫자", "[data-band-value]", null],
+    ] as const) {
+      const r = box(s);
+      if (r.left < t.left - 0.5 || r.right > t.right + 0.5)
+        out.push(`${name} 막대 밖 ${r.left}~${r.right} / ${t.left}~${t.right}`);
+      if (r.left < 0 || r.right > vw) out.push(`${name} 창 밖`);
+      // 눈금 아래 가운데, 아니면 막대 끝에 붙여 밀어 넣음
+      const centered = x !== null && Math.abs(r.left + r.width / 2 - x) < 1;
+      const pushed =
+        Math.abs(r.left - t.left) < 1 || Math.abs(r.right - t.right) < 1;
+      if (x !== null && !centered && !pushed) out.push(`${name} 눈금과 떨어짐`);
+    }
+    // 두 경계 글은 겹치지 않는다
+    if (box("[data-band-left]").right > box("[data-band-right]").left)
+      out.push("두 경계 글이 겹침");
+    return out;
   });
 }
 
@@ -535,6 +577,7 @@ test(
       "브론즈 I2:30.00",
     );
     await expect(band.locator("[data-band-value]")).toHaveText("2:35.09");
+    await expect.poll(() => bandShapeProblems(band)).toEqual([]);
     expect(await markerRatio(band)).toBeCloseTo(0.87275, 2);
     // 막대는 다음 판 목표 바로 위
     const below = await page
@@ -551,6 +594,7 @@ test(
     await expect(band).toHaveAttribute("data-cube-tier-band", "challenger");
     await expect(band.locator("[data-band-right]")).toHaveText("0.00");
     await expect(band.locator("[data-band-left]")).toHaveText("챌린저1.50");
+    await expect.poll(() => bandShapeProblems(band)).toEqual([]);
     expect(await markerRatio(band)).toBeCloseTo(0.25 / 1.5, 2);
     await shot(page, "mini-records-band-top", info.project.name);
 
@@ -561,19 +605,17 @@ test(
     ).toHaveCount(1);
     await expect(band).toHaveCount(0);
 
-    // 휴대폰 너비: 숫자가 막대 밖으로 나가지 않고 옆으로 넘치지 않는다
+    // 휴대폰 너비(320px): 경계 글·숫자가 막대와 창 밖으로 나가지 않고 옆으로 넘치지 않는다. 꼭대기도
     await page.locator("[data-mini-tier-size='3']").click();
     await page.setViewportSize({ width: 320, height: 640 });
-    const inside = await band.evaluate((e) => {
-      const t = (
-        e.querySelector("[data-band-track]") as HTMLElement
-      ).getBoundingClientRect();
-      const v = (
-        e.querySelector("[data-band-value]") as HTMLElement
-      ).getBoundingClientRect();
-      return v.left >= t.left - 0.5 && v.right <= t.right + 0.5;
-    });
-    expect(inside).toBe(true);
+    await expect(band).toHaveAttribute("data-cube-tier-band", "bronze");
+    await expect.poll(() => bandShapeProblems(band)).toEqual([]);
+    expect(await markerRatio(band)).toBeCloseTo(0.87275, 2);
+    await noSideScroll(page);
+    await shot(page, "mini-records-band-phone", info.project.name);
+    await page.locator("[data-mini-tier-size='2']").click();
+    await expect(band).toHaveAttribute("data-cube-tier-band", "challenger");
+    await expect.poll(() => bandShapeProblems(band)).toEqual([]);
     await noSideScroll(page);
   },
 );
