@@ -95,6 +95,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         // `pick <티어 0~9>`: 티어표 사다리 칸 누르기(docs/52 5-11)
         m.pickTier = { [weak self] t in (self?.sheets[.tiers] as? NativeTiersWindow)?.page.pick(t) }
+        // `place tiers <화면 번호>`: 티어표 창을 그 화면 가운데로(알파 0.01, 마우스는 지나감, 포커스는 그대로). HDR 판정이 창이
+        // 놓인 화면을 따르는지 본다(docs/52 5-16). `place tiers off`면 다시 화면 밖으로
+        m.placeTiers = { [weak self] arg in
+          guard let w = self?.sheets[.tiers]?.window else { return "no window" }
+          if let i = Int(arg), NSScreen.screens.indices.contains(i) {
+            let s = NSScreen.screens[i].frame
+            w.ignoresMouseEvents = true
+            w.alphaValue = 0.01
+            w.setFrameOrigin(NSPoint(x: s.midX - w.frame.width / 2, y: s.midY - w.frame.height / 2))
+          } else if arg != "stay" {
+            w.setFrameOrigin(NSPoint(x: -30000, y: -30000))
+          }
+          let page = (self?.sheets[.tiers] as? NativeTiersWindow)?.page
+          return "screen=\(w.screen?.localizedName ?? "nil") hdr=\(page?.hero.hdr == true ? 1 : 0)"
+        }
         nativeMeasure = m
       }
       return

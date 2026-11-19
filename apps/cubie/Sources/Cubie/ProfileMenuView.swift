@@ -20,6 +20,7 @@ final class ProfileMenuView: NSView {
   private var last: CFTimeInterval = 0
   /// 재기·시험: 지금 흔드는지
   var swaying: Bool { timer != nil }
+  private var stats = MainActor.assumeIsolated { SwayStats(name: "menu") }
 
   static let height: CGFloat = 52
   private static let side: CGFloat = 14
@@ -83,11 +84,26 @@ final class ProfileMenuView: NSView {
     super.viewDidMoveToWindow()
     // 메뉴를 다시 열면 강조 없이 시작한다
     if window == nil { hovering = false }
-    // 메뉴가 뜬 화면이 HDR이면 반짝임을 흰색보다 밝게(docs/52 5-16)
-    if let swayView, let id = profile.emblemTier, window != nil {
-      MainActor.assumeIsolated { swayView.useHdr(EmblemArt.hdrOn(tier: id, screen: window?.screen)) }
-    }
+    hdrDecided = false
+    refreshHdr()
     updateSway()
+  }
+
+  /// HDR을 정했는지와 그때의 화면(메뉴 창이 다른 화면에 놓이면 다시 정한다)
+  private var hdrDecided = false
+  private var hdrScreen: ObjectIdentifier?
+
+  /// 메뉴가 뜬 화면이 HDR이면 반짝임을 흰색보다 밝게(docs/52 5-16). 메뉴 창이 붙은 뒤에야 화면에 놓일 수 있어 흔드는 동안에도
+  /// 화면이 바뀌었는지만 본다(바뀌지 않으면 아무것도 하지 않는다)
+  private func refreshHdr() {
+    MainActor.assumeIsolated {
+      guard let swayView, let id = profile.emblemTier, let window else { return }
+      let screen = window.screen.map(ObjectIdentifier.init)
+      guard !hdrDecided || screen != hdrScreen else { return }
+      hdrDecided = true
+      hdrScreen = screen
+      swayView.useHdr(EmblemArt.hdrOn(tier: id, screen: window.screen))
+    }
   }
 
   /// 메뉴가 열려 있고(창에 붙어 있고) 동작 줄이기가 아니면 흔든다. 메뉴는 따로 도는 고리(event tracking)라 .common에 둔다
@@ -105,10 +121,13 @@ final class ProfileMenuView: NSView {
             self.timer = nil
             return
           }
+          self.refreshHdr()
           let now = CACurrentMediaTime()
           self.sway = self.sway.step(min(100, (now - self.last) * 1000))
           self.last = now
+          let t0 = CACurrentMediaTime()
           self.swayView?.yaw = self.sway.yaw
+          self.stats.add((CACurrentMediaTime() - t0) * 1000, hdr: self.swayView?.hdr ?? false)
         }
       }
       RunLoop.main.add(t, forMode: .common)

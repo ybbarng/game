@@ -8,20 +8,24 @@ import QuartzCore
 /// 다음 티어까지 줄일 시간)과 열 티어 사다리. 무엇을 보일지는 `CubieCore.TierShowcase`가 정한다.
 ///
 /// 앱은 3D를 띄우지 않는다. 사이트 3D가 그리는 장을 좌우 각마다 미리 찍은 그림을 넘긴다.
-/// - 큰 칸: 21장(±0.5 라디안) 가운데 이웃한 두 장을 겹쳐 사이 각을 메운다. 지금 보이는 장만 풀어 둔다(작은 기억 4장).
-///   흔들기는 초당 20번 각을 셈해 층 그림·투명도만 바꾸고, 그 사이 투명도는 합성기가 잇는다.
+/// - 큰 칸: 21장(±0.5 라디안) 가운데 이웃한 두 장을 겹쳐 사이 각을 메운다. 보이는 두 장과 앞뒤 두 장씩만 둔다(`SwayFrames`,
+///   많아야 여섯 장). 그림 풀기·HDR 셈은 백그라운드에서 앞질러 하고(docs/52 5-16 「흔들기 끊김」), 흔들기는 초당 20번 각을 셈해
+///   만들어 둔 층 그림·투명도만 바꾼다. 그 사이 투명도는 합성기가 잇는다.
 /// - 사다리: 사이트 진열 칸 그림(17각 띠)을 그대로 묶는다. 쉬는 칸은 정면 한 장만 두고, 흔드는 칸 하나만 띠를 풀어
 ///   `contentsRect`를 3초 동안 넘긴다(합성기가 넘긴다, 앱은 3초에 한 번 칸을 바꾼다).
 /// - 창이 보이지 않거나(가려짐·내림·닫힘) 동작 줄이기 설정이면 모두 멈춘다.
 @MainActor
 enum EmblemArt {
-  /// 그림 파일 → 다 푼 그림(그릴 때 다시 풀지 않게)
-  static func decode(_ url: URL) -> CGImage? {
+  /// 그림 파일 → 다 푼 그림(그릴 때 다시 풀지 않게). 백그라운드에서도 부른다
+  nonisolated static func decode(_ url: URL) -> CGImage? {
     guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
     return CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
   }
 
-  static func swayFrame(_ id: String, _ i: Int) -> URL? {
+  /// 그림 만들기 줄(큰 칸 각도 그림·사다리 띠, 하나씩 차례로). 흔드는 길(주 스레드)은 여기서 만든 그림을 꺼내기만 한다
+  nonisolated static let work = DispatchQueue(label: "kr.byb.cubie.emblem-frames", qos: .userInitiated)
+
+  nonisolated static func swayFrame(_ id: String, _ i: Int) -> URL? {
     Bundle.main.url(
       forResource: String(format: "%02d", i), withExtension: "webp", subdirectory: "Emblems/sway/\(id)")
   }
@@ -30,14 +34,14 @@ enum EmblemArt {
     Bundle.main.url(forResource: "\(id)-menu", withExtension: "webp", subdirectory: "Emblems/sway")
   }
 
-  static func ladderStrip(_ id: String) -> URL? {
+  nonisolated static func ladderStrip(_ id: String) -> URL? {
     Bundle.main.url(forResource: id, withExtension: "webp", subdirectory: "Emblems/ladder")
   }
 
   // MARK: HDR(docs/52 5-16)
 
   /// 큰 칸 그림 `i`번과 같은 각의 HDR 배율 지도(보석 티어만)
-  static func hdrGain(_ id: String, _ i: Int) -> URL? {
+  nonisolated static func hdrGain(_ id: String, _ i: Int) -> URL? {
     Bundle.main.url(forResource: String(format: "%02d", i), withExtension: "webp", subdirectory: "Emblems/hdr/\(id)")
   }
 
@@ -52,15 +56,22 @@ enum EmblemArt {
       ProcessInfo.processInfo.environment["CUBIE_EMBLEM_HDR"] ?? UserDefaults.standard.string(forKey: "emblemHdr"))
   }
 
-  /// 이 티어를 이 화면에서 HDR로 그리는지(화면이 흰색보다 밝게 낼 수 있을 때, `EmblemHdr.use`)
+  /// 이 티어를 이 화면에서 HDR로 그리는지(창·메뉴가 놓인 화면이 흰색보다 밝게 낼 수 있을 때, `EmblemHdr.use`). 화면을 모르면
+  /// (아직 창에 붙지 않았거나 창이 어느 화면에도 없으면) SDR: 주 화면(`NSScreen.main`)으로 넘겨짚으면 SDR 화면(LG 등)에 놓인
+  /// 창도 내장 화면을 따라 HDR을 켤 수 있다. 창이 화면에 놓이면 `ScreenWatch`·창 보임 감시가 다시 정한다
   static func hdrOn(tier: String, screen: NSScreen?) -> Bool {
-    let room = (screen ?? NSScreen.main)?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1
-    return EmblemHdr.use(tier: tier, screenHeadroom: Double(room), force: hdrForce)
+    let room = screen?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1
+    let on = EmblemHdr.use(tier: tier, screenHeadroom: Double(room), force: hdrForce)
+    if Config.debug || Config.measure {
+      print("[cubie] emblem hdr=\(on ? 1 : 0) tier=\(tier) screen=\(screen?.localizedName ?? "nil") room=\(room)")
+      fflush(stdout)
+    }
+    return on
   }
 
   /// 색 그림(SDR)에 같은 크기 배율 지도를 곱한 HDR 그림: 선형 sRGB 확장 범위, 반 정밀도 실수, 흰색의 `EmblemHdr.headroom`배까지
   /// (`CGImageCreateWithContentHeadroom`). 크기가 다르거나 만들지 못하면 nil(그때는 SDR 그대로 쓴다)
-  static func hdr(_ color: CGImage, gain: CGImage) -> CGImage? { EmblemHdr.image(color: color, gain: gain) }
+  nonisolated static func hdr(_ color: CGImage, gain: CGImage) -> CGImage? { EmblemHdr.image(color: color, gain: gain) }
 
   /// 층이 흰색보다 밝은 그림을 그대로 내보내게(꺼면 SDR로 자른다). macOS 26부터 `preferredDynamicRange`, 그 앞은
   /// `wantsExtendedDynamicRangeContent`
@@ -72,11 +83,11 @@ enum EmblemArt {
     }
   }
 
-  private static let space = CGColorSpace(name: CGColorSpace.sRGB)!
-  private static let bitmap = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+  nonisolated private static let space = CGColorSpace(name: CGColorSpace.sRGB)!
+  nonisolated private static let bitmap = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
 
   /// 그림의 한 부분을 따로 떼어 낸 새 그림(원래 그림을 붙잡지 않는다). `dim`이면 CSS `filter`처럼 밝기·채도를 바꾼다
-  static func copy(_ img: CGImage, rect: CGRect? = nil, dim: TierShowcase.Dim? = nil) -> CGImage? {
+  nonisolated static func copy(_ img: CGImage, rect: CGRect? = nil, dim: TierShowcase.Dim? = nil) -> CGImage? {
     let r = rect ?? CGRect(x: 0, y: 0, width: img.width, height: img.height)
     let w = Int(r.width)
     let h = Int(r.height)
@@ -165,10 +176,28 @@ final class MotionWatch {
 @MainActor
 final class ScreenWatch {
   private var tokens: [NSObjectProtocol] = []
+  private weak var window: NSWindow?
+  private var last = ""
 
   func watch(_ window: NSWindow?, _ fire: @escaping @MainActor () -> Void) {
     stop()
-    let run: @Sendable (Notification) -> Void = { _ in MainActor.assumeIsolated { fire() } }
+    // 화면 설정 알림은 화면 구성이 그대로여도 자주 온다(이 맥 내장 화면: 초당 약 12번, 지금 밝기 한도가 바뀔 때마다로 보인다).
+    // 창이 놓인 화면이나 그 화면이 낼 수 있는 한도가 바뀔 때만 부른다
+    self.window = window
+    last = Self.key(window)
+    let run: @Sendable (Notification) -> Void = { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        let now = Self.key(self.window)
+        guard now != self.last else { return }
+        self.last = now
+        if Config.debug || Config.measure {
+          print("[cubie] screen changed \(self.window?.screen?.localizedName ?? "nil")")
+          fflush(stdout)
+        }
+        fire()
+      }
+    }
     let c = NotificationCenter.default
     if let window {
       tokens.append(c.addObserver(forName: NSWindow.didChangeScreenNotification, object: window, queue: .main, using: run))
@@ -180,6 +209,52 @@ final class ScreenWatch {
   func stop() {
     tokens.forEach { NotificationCenter.default.removeObserver($0) }
     tokens = []
+  }
+
+  /// 창이 놓인 화면과 그 화면이 낼 수 있는 밝기 한도
+  private static func key(_ window: NSWindow?) -> String {
+    guard let s = window?.screen else { return "nil" }
+    return "\(ObjectIdentifier(s).hashValue):\(s.maximumPotentialExtendedDynamicRangeColorComponentValue)"
+  }
+}
+
+/// 백그라운드에서 만든 그림을 주 스레드로 넘기는 상자(만든 뒤에는 아무도 고치지 않는다)
+struct FrameBox: @unchecked Sendable {
+  let image: CGImage
+}
+
+/// 흔드는 동안 한 장 갱신(층 그림·투명도 바꾸기) 시간을 모아 3초마다 한 줄로 찍는다(`CUBIE_DEBUG`·재기 모드만).
+/// 예산은 120Hz 화면 한 주기의 85%(7.1ms, 사이트 `quality.ts`와 같은 셈)
+@MainActor
+struct SwayStats {
+  let name: String
+  static let budgetMs = 7.1
+  private var n = 0
+  private var sum = 0.0
+  private var worst = 0.0
+  private var over = 0
+  private var since = CACurrentMediaTime()
+
+  init(name: String) { self.name = name }
+
+  mutating func add(_ ms: Double, hdr: Bool) {
+    guard Config.debug || Config.measure else { return }
+    n += 1
+    sum += ms
+    worst = max(worst, ms)
+    if ms > Self.budgetMs { over += 1 }
+    let now = CACurrentMediaTime()
+    guard now - since >= 3 else { return }
+    print(
+      String(
+        format: "[cubie] sway %@ hdr=%d ticks=%d avg=%.2fms max=%.2fms over7.1=%d", name, hdr ? 1 : 0, n, sum / Double(n), worst,
+        over))
+    fflush(stdout)
+    n = 0
+    sum = 0
+    worst = 0
+    over = 0
+    since = now
   }
 }
 
@@ -200,8 +275,8 @@ final class EmblemSwayView: NSView, ShotPicture {
   private let hi = CALayer()
   private(set) var tier = -1
   private var locked = false
-  private var cache: [Int: CGImage] = [:]
-  private var order: [Int] = []
+  /// 각도 그림 창고: 흔드는 길은 여기서 꺼내기만 한다(docs/52 5-16 「흔들기 끊김」)
+  private var frames = SwayFrames<CGImage>(count: TierShowcase.heroFrames)
   private var sway = TierShowcase.Sway.from(0)
   private(set) var yaw = 0.0
   private var shown: (Int, Int, Double) = (-1, -1, -1)
@@ -257,8 +332,6 @@ final class EmblemSwayView: NSView, ShotPicture {
     let first = tier < 0
     tier = t
     locked = l
-    cache = [:]
-    order = []
     sway = .from(0)
     yaw = 0
     drag = nil
@@ -266,6 +339,15 @@ final class EmblemSwayView: NSView, ShotPicture {
     homing = nil
     shown = (-1, -1, -1)
     setHdr(wantsHdr)
+    frames.reset()
+    // 정면 두 장은 SDR로 바로(풀기 한 번, 고를 때 한 번뿐). HDR이면 제 그림이 백그라운드에서 오는 대로 같은 자리에 바꿔 낀다
+    let f = TierShowcase.frames(yaw: 0, count: TierShowcase.heroFrames)
+    let id = TierInfo.ids[min(max(t, 0), 9)]
+    for i in Set([f.lo, f.hi]) {
+      if let img = Self.makeFrame(tier: id, i, locked: l, hdr: false) {
+        if hdr { frames.placeholder(i, img) } else { frames.deliver(i, img, generation: frames.generation) }
+      }
+    }
     let before = lo.contents
     render()
     if !first, let before { crossfade(lo, from: before) }
@@ -284,21 +366,34 @@ final class EmblemSwayView: NSView, ShotPicture {
 
   private func crossfade(_ layer: CALayer, from old: Any) { Self.crossfade(layer, from: old) }
 
-  private func image(_ i: Int) -> CGImage? {
-    if let c = cache[i] {
-      order.removeAll { $0 == i }
-      order.append(i)
-      return c
-    }
-    let id = TierInfo.ids[min(max(tier, 0), 9)]
+  /// 각도 그림 한 장을 만든다(풀기, 잠김이면 어둡게, HDR이면 배율 지도 곱하기). HDR 한 장은 수~십수 ms라 흔드는 길에서
+  /// 부르지 않는다: 티어를 고를 때 정면 SDR 한 장만 주 스레드에서, 나머지는 `prepare`가 백그라운드에서(docs/52 5-16)
+  nonisolated static func makeFrame(tier id: String, _ i: Int, locked: Bool, hdr: Bool) -> CGImage? {
     guard let url = EmblemArt.swayFrame(id, i), var img = EmblemArt.decode(url) else { return nil }
     if locked, let d = EmblemArt.copy(img, dim: TierShowcase.locked) { img = d }
     if hdr, let g = EmblemArt.hdrGain(id, i).flatMap(EmblemArt.decode), let h = EmblemArt.hdr(img, gain: g) { img = h }
-    cache[i] = img
-    order.append(i)
-    // 이웃한 두 장과 다음에 올 장만 둔다(560px 한 장이 1.2MB)
-    while order.count > 4 { cache[order.removeFirst()] = nil }
     return img
+  }
+
+  /// 창고가 원하는 장을 백그라운드에서 만들어 넣는다. 지금 보이는 장이 오면 바로 바꿔 끼운다
+  private func prepare(_ todo: [Int]) {
+    guard !todo.isEmpty, tier >= 0 else { return }
+    let id = TierInfo.ids[min(tier, 9)]
+    let (locked, hdr, gen) = (self.locked, self.hdr, frames.generation)
+    for i in todo {
+      EmblemArt.work.async { [weak self] in
+        let img = Self.makeFrame(tier: id, i, locked: locked, hdr: hdr).map(FrameBox.init)
+        DispatchQueue.main.async {
+          MainActor.assumeIsolated {
+            guard let self, self.frames.deliver(i, img?.image, generation: gen) else { return }
+            if i == self.shown.0 || i == self.shown.1 {
+              self.shown = (-1, -1, -1)
+              self.render()
+            }
+          }
+        }
+      }
+    }
   }
 
   /// 흔들기 시계 간격(초). 사이의 투명도는 합성기가 이어 준다(`render(smooth:)`)
@@ -308,11 +403,14 @@ final class EmblemSwayView: NSView, ShotPicture {
   private func render(smooth: Bool = false) {
     let f = TierShowcase.frames(yaw: yaw, count: TierShowcase.heroFrames)
     if f.lo == shown.0, f.hi == shown.1, abs(f.frac - shown.2) < 0.004 { return }
+    prepare(frames.need(lo: f.lo, hi: f.hi))
+    // 두 장 가운데 아직 만들지 못한 장이 있으면(빠르게 끌 때) 앞 그림을 그대로 둔다. 오면 `prepare`가 다시 부른다
+    guard let a = frames.frame(f.lo), let b = frames.frame(f.hi) else { return }
     let same = f.lo == shown.0 && f.hi == shown.1
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    if f.lo != shown.0 { lo.contents = image(f.lo) }
-    if f.hi != shown.1 { hi.contents = image(f.hi) }
+    if f.lo != shown.0 { lo.contents = a }
+    if f.hi != shown.1 { hi.contents = b }
     if smooth, same {
       let a = CABasicAnimation(keyPath: "opacity")
       a.fromValue = hi.presentation()?.opacity ?? hi.opacity
@@ -333,7 +431,11 @@ final class EmblemSwayView: NSView, ShotPicture {
 
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
-    watch.watch(window) { [weak self] in self?.update() }
+    // 창이 처음 화면에 나오거나 다시 보일 때도 HDR을 다시 정한다(창이 놓인 화면을 그때 안다)
+    watch.watch(window) { [weak self] in
+      self?.refreshHdr()
+      self?.update()
+    }
     screens.watch(window) { [weak self] in self?.refreshHdr() }
     refreshHdr()
     update()
@@ -355,8 +457,8 @@ final class EmblemSwayView: NSView, ShotPicture {
     let on = wantsHdr
     guard on != hdr else { return }
     setHdr(on)
-    cache = [:]
-    order = []
+    // 있던 그림은 새 그림이 올 때까지 보이게 남긴다(자리·각 그대로)
+    frames.reset(keep: true)
     shown = (-1, -1, -1)
     render()
   }
@@ -403,8 +505,13 @@ final class EmblemSwayView: NSView, ShotPicture {
     }
     sway = sway.step(dt)
     yaw = sway.yaw
+    let t0 = CACurrentMediaTime()
     render(smooth: true)
+    stats.add((CACurrentMediaTime() - t0) * 1000, hdr: hdr)
   }
+
+  /// 재기(`CUBIE_DEBUG`·재기 모드): 흔드는 동안 한 장 갱신 시간
+  private var stats = SwayStats(name: "hero")
 
   private func goHome() {
     homing = (yaw, CACurrentMediaTime())
@@ -859,17 +966,69 @@ final class TierLadderView: NSView {
       timer = nil
       sweepingCell?.endSweep()
       sweepingCell = nil
+      readyStrip = nil
     }
   }
 
-  /// 다음 칸을 흔든다(아래 티어부터 차례로, 한 번에 한 칸)
+  /// 다음에 흔들 칸의 띠(백그라운드에서 미리 만든 것): 차례 번호, 그때 그 칸이 보고 있는 칸이었는지, 띠
+  private var readyStrip: (index: Int, viewing: Bool, box: FrameBox)?
+
+  private func cell(at index: Int) -> LadderCellView {
+    cells[TierShowcase.ladderCell(at: Double(index) * TierShowcase.ladderSweepMs)]
+  }
+
+  /// 다음 칸을 흔든다(아래 티어부터 차례로, 한 번에 한 칸). 띠(3808×224) 풀기와 어둡게 칠하기는 한 번에 5~22ms라(이 맥)
+  /// 주 스레드에서 하면 그때마다 큰 칸 흔들기가 한 번 멈춘다. 그래서 다음 칸 띠를 백그라운드에서 미리 만들어 두고 여기서는
+  /// 꺼내기만 한다(docs/52 5-16 「흔들기 끊김」). 아직 없으면 만들어지는 대로 시작한다
   private func nextSweep() {
+    let t0 = CACurrentMediaTime()
     sweepingCell?.endSweep()
-    let c = cells[TierShowcase.ladderCell(at: Double(sweepIndex) * TierShowcase.ladderSweepMs)]
+    sweepingCell = nil
+    let index = sweepIndex
     sweepIndex += 1
-    guard let url = EmblemArt.ladderStrip(TierInfo.ids[c.tier]), let raw = EmblemArt.decode(url) else { return }
-    let strip = c.viewing ? raw : (EmblemArt.copy(raw, dim: TierShowcase.rest) ?? raw)
+    let c = cell(at: index)
+    if let r = readyStrip, r.index == index, r.viewing == c.viewing {
+      startSweep(c, r.box.image)
+    } else {
+      prepareStrip(index, start: true)
+    }
+    readyStrip = nil
+    prepareStrip(index + 1, start: false)
+    if Config.debug || Config.measure {
+      print(String(format: "[cubie] ladder sweep tier=%d ms=%.2f", c.tier, (CACurrentMediaTime() - t0) * 1000))
+      fflush(stdout)
+    }
+  }
+
+  private func startSweep(_ c: LadderCellView, _ strip: CGImage) {
     c.sweep(strip: strip)
     sweepingCell = c
+  }
+
+  /// `index`번째 차례 칸의 띠를 백그라운드에서 만든다. `start`면 다 되는 대로(그 차례가 아직 지금이면) 흔들기 시작
+  private func prepareStrip(_ index: Int, start: Bool) {
+    let c = cell(at: index)
+    let id = TierInfo.ids[c.tier]
+    let viewing = c.viewing
+    EmblemArt.work.async { [weak self] in
+      let box = Self.makeStrip(id, viewing: viewing).map(FrameBox.init)
+      DispatchQueue.main.async {
+        MainActor.assumeIsolated {
+          guard let self, let box, self.timer != nil else { return }
+          if start {
+            let c = self.cell(at: index)
+            if self.sweepIndex == index + 1, self.sweepingCell == nil, c.viewing == viewing { self.startSweep(c, box.image) }
+          } else if self.sweepIndex == index {
+            self.readyStrip = (index, viewing, box)
+          }
+        }
+      }
+    }
+  }
+
+  /// 칸 띠: 보고 있는 칸은 제 밝기, 쉬는 칸은 쉬는 밝기
+  nonisolated static func makeStrip(_ id: String, viewing: Bool) -> CGImage? {
+    guard let url = EmblemArt.ladderStrip(id), let raw = EmblemArt.decode(url) else { return nil }
+    return viewing ? raw : (EmblemArt.copy(raw, dim: TierShowcase.rest) ?? raw)
   }
 }
