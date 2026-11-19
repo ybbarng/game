@@ -293,11 +293,14 @@ final class RecordsRootView: FlippedView {
     }
     empty.frame = NSRect(x: 8, y: listTop, width: inner, height: 16)
     scroll.frame = NSRect(x: 8, y: listTop, width: inner, height: max(0, bottom - listTop))
-    let rowH = RecordRowView.height
-    for (i, r) in rows.enumerated() {
-      r.frame = NSRect(x: 0, y: CGFloat(i) * rowH, width: inner, height: rowH)
+    // 줄 높이는 줄마다(좁은 창에서 칩 묶음을 둘째 줄로 내린 줄은 더 높다)
+    var ry: CGFloat = 0
+    for r in rows {
+      let rh = r.height(width: inner)
+      r.frame = NSRect(x: 0, y: ry, width: inner, height: rh)
+      ry += rh
     }
-    list.frame = NSRect(x: 0, y: 0, width: inner, height: max(scroll.frame.height, CGFloat(rows.count) * rowH))
+    list.frame = NSRect(x: 0, y: 0, width: inner, height: max(scroll.frame.height, ry))
   }
 }
 
@@ -537,9 +540,17 @@ final class TierCell: FlippedView {
 @MainActor
 final class RecordRowView: FlippedView {
   static let height: CGFloat = 21
+  /// 칩 묶음을 둘째 줄로 내린 줄의 더 높아지는 몫(칩 16 + 사이 2)
+  static let badgeLine: CGFloat = 18
   let row: RecordsSheet.Row
   private(set) var replayButton: Chip?
   private var parts: [NSView] = []
+  private var badges: [NSView] = []
+
+  /// 폭 `w`에서 이 줄의 높이(칩 묶음을 둘째 줄로 내리면 더 높다, `RecordsSheet.badgesOnOwnLine`)
+  func height(width w: CGFloat) -> CGFloat {
+    RecordsSheet.badgesOnOwnLine(width: Double(w), badges: badges.count) ? Self.height + Self.badgeLine : Self.height
+  }
   private let line = FlippedView()
 
   /// 티어를 정한 5판이면 그 몫(밝은 바탕, 빠진 두 판은 괄호·흐리게, 사이트 `data-mini-best-five`)
@@ -571,6 +582,7 @@ final class RecordRowView: FlippedView {
       h.toolTip = RecordsSheet.hintsTip
       badges.append(h)
     }
+    self.badges = badges
     parts += badges
     parts.append(NUI.label(RecordsSheet.moves(row.moves), color: NUI.white(0.6)))
     if row.canReplay {
@@ -590,15 +602,28 @@ final class RecordRowView: FlippedView {
     // 번호 w-6, 때 w-20, 시간은 남은 자리(flex-1), 나머지는 글 폭대로. 칸 사이 8
     parts[0].frame = NSRect(x: 0, y: y, width: 24, height: h)
     parts[1].frame = NSRect(x: 32, y: y, width: 80, height: h)
-    // 시간 칸은 글보다 줄지 않는다(사이트 flex-1의 최소 폭). 자리가 모자라면 오른쪽 칸들이 밀린다
-    let widths = parts[3...].map { ($0 as? Chip)?.fit.width ?? NUI.width($0 as! NSTextField) }
+    // 시간 칸은 글보다 줄지 않는다(사이트 flex-1의 최소 폭). 좁은 줄은 칩 묶음을 시간 칸 아래 둘째 줄로 내린다
+    let below = RecordsSheet.badgesOnOwnLine(width: Double(bounds.width), badges: badges.count)
+    let fit = { (v: NSView) in (v as? Chip)?.fit.width ?? NUI.width(v as! NSTextField) }
+    let inline = parts[3...].filter { v in !(below && badges.contains(where: { $0 === v })) }
+    let widths = inline.map(fit)
     let rightW = widths.reduce(0, +) + CGFloat(widths.count) * 8
-    let timeW = max(NUI.width(parts[2] as! NSTextField), bounds.width - 120 - rightW)
-    parts[2].frame = NSRect(x: 120, y: y, width: timeW, height: h)
-    var x = 120 + timeW + 8
-    for (v, w) in zip(parts[3...], widths) {
+    let indent = CGFloat(RecordsSheet.badgesIndent)
+    let timeW = max(NUI.width(parts[2] as! NSTextField), bounds.width - indent - rightW)
+    parts[2].frame = NSRect(x: indent, y: y, width: timeW, height: h)
+    var x = indent + timeW + 8
+    for (v, w) in zip(inline, widths) {
       v.frame = NSRect(x: x, y: y, width: w, height: h)
       x += w + 8
+    }
+    if below {
+      // 사이트 칩 사이 `gap-1`
+      var bx = indent
+      for v in badges {
+        let w = fit(v)
+        v.frame = NSRect(x: bx, y: y + h + 2, width: w, height: h)
+        bx += w + 4
+      }
     }
     line.frame = NSRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1)
   }

@@ -822,21 +822,27 @@ test(
   },
 );
 
-/** 기록 줄마다 입력 표시 칩 밖의 글(번호·때·시간·수·「다시 보기」)이 두 줄로 갈린 것 */
+/** 기록 줄마다 글 칸(번호·때·시간·입력 표시 칩 하나하나·수·「다시 보기」)이 두 줄로 갈렸거나 줄 밖으로 나간 것 */
 function recordRowSplits(page: Page) {
   return page.evaluate(() => {
     const out: string[] = [];
     for (const li of document.querySelectorAll<HTMLElement>(
       "[data-mini-record]",
     )) {
-      for (const c of li.children) {
-        if (c.matches("[data-mini-source]")) continue;
+      const row = li.getBoundingClientRect();
+      const cells = [...li.children].flatMap((c) =>
+        c.matches("[data-mini-badges]") ? [...c.children] : [c],
+      );
+      for (const c of cells) {
         const range = document.createRange();
         range.selectNodeContents(c);
         const tops = new Set(
           [...range.getClientRects()].map((r) => Math.round(r.top)),
         );
         if (tops.size > 1) out.push(`「${c.textContent}」 ${tops.size}줄`);
+        const r = c.getBoundingClientRect();
+        if (r.right > row.right + 0.5 || r.left < row.left - 0.5)
+          out.push(`「${c.textContent}」 줄 밖`);
       }
     }
     return out;
@@ -844,7 +850,7 @@ function recordRowSplits(page: Page) {
 }
 
 test(
-  "Cubie 기록 창 가장 작은 크기(320×600): 기록 줄의 시간·수·「다시 보기」는 갈리지 않고, 다시 보기 큐브는 상자 안에 든다",
+  "Cubie 기록 창 가장 작은 크기(320×600): 기록 줄의 글 칸과 표시 칩은 한 줄씩 줄 안에(칩은 시간 칸 아래 둘째 줄), 다시 보기 큐브는 상자 안에 든다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     await page.addInitScript(() => {
@@ -880,6 +886,19 @@ test(
     await page.goto("/cube/mini?view=records");
     await expect(page.locator("[data-mini-source='synthetic']")).toBeVisible();
     await expect.poll(() => recordRowSplits(page)).toEqual([]);
+    // 칩 묶음은 시간 칸 아래 둘째 줄, 왼쪽 120px(앱 `RecordsSheet.badgesIndent`와 같은 자리)
+    const chip = await page
+      .locator("[data-mini-source='synthetic']")
+      .evaluate((e) => {
+        const li = e.closest("[data-mini-record]") as HTMLElement;
+        const time = (li.children[2] as HTMLElement).getBoundingClientRect();
+        const r = e.getBoundingClientRect();
+        return {
+          left: Math.round(r.left - li.getBoundingClientRect().left),
+          below: r.top >= time.bottom - 0.5,
+        };
+      });
+    expect(chip).toEqual({ left: 120, below: true });
     await noSideScroll(page);
     await page.locator("[data-mini-replay-open]").first().click();
     const box = page.locator("[data-mini-replay]");

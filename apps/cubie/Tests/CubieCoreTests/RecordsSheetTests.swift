@@ -88,4 +88,13 @@ struct RecordsSheetTests {
     #expect(ReplayPlayer.moveMs(steps, 2, base: 90) == 90)
     #expect(ReplayPlayer.moveMs([ReplayPlayer.Step(at: 0, moves: "R"), ReplayPlayer.Step(at: 10, moves: "U")], 0, base: 90) == 40)
   }
+
+  /// 가장 작은 창(320, 줄 폭 304)에서 칩과 「다시 보기」를 한 줄에 넣으면 「다시 보기」가 줄 밖으로 밀렸다(docs/52 5-15)
+  @Test func narrowRowsPutBadgesOnTheirOwnLine() {
+    let rowWidth = { (window: Double) in window - 16 }
+    #expect(RecordsSheet.badgesOnOwnLine(width: rowWidth(SheetSize.records.minWidth), badges: 1))
+    #expect(!RecordsSheet.badgesOnOwnLine(width: rowWidth(SheetSize.records.width), badges: 2))
+    // 칩이 없는 줄은 좁아도 한 줄
+    #expect(!RecordsSheet.badgesOnOwnLine(width: rowWidth(SheetSize.records.minWidth), badges: 0))
+  }
 }

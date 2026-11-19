@@ -1966,15 +1966,18 @@ function RecordsPanel({
                 key={`${r.no}-${r.at}`}
                 data-mini-record
                 {...(mark ? { "data-mini-best-five": mark } : {})}
-                // 가장 좁은 창(320)에서도 번호·때·시간·수·「다시 보기」는 한 덩이로(「59 / 수」, 「다시 보 / 기」로
-                // 끊지 않는다). 입력 표시 칩만 낱말 사이에서 줄을 바꾼다(docs/52 5-15)
+                // 줄 안 글은 갈라 줄을 바꾸지 않는다(「59 / 수」, 「다시 보 / 기」 아님). 줄 폭이 340px보다 좁으면
+                // (가장 작은 창 320) 입력 표시 칩 묶음을 시간 칸 아래 둘째 줄로 내린다. 앱 `RecordRowView`가 같은
+                // 폭(`RecordsSheet.badgesWrapBelow`)에서 같은 자리(왼쪽 120px)로 내린다(docs/52 5-15)
                 className={cn(
-                  "flex items-start gap-2 whitespace-nowrap border-white/10 border-b py-0.5",
+                  "@container flex flex-wrap items-start gap-x-2 gap-y-0.5 whitespace-nowrap border-white/10 border-b py-0.5",
                   mark && "bg-amber-300/10",
                 )}
               >
-                <span className="w-6 text-white/40">{r.no}</span>
-                <span className="w-20 text-white/60">{shortTime(r.at)}</span>
+                <span className="w-6 shrink-0 text-white/40">{r.no}</span>
+                <span className="w-20 shrink-0 text-white/60">
+                  {shortTime(r.at)}
+                </span>
                 {/* 최고 5판 평균에서 빠진 가장 빠른·느린 판은 대회 표기처럼 괄호 */}
                 <span
                   className={cn(
@@ -1984,30 +1987,39 @@ function RecordsPanel({
                 >
                   {out ? `(${formatMs(r.ms)})` : formatMs(r.ms)}
                 </span>
-                {/* 실제 키보드가 아닌 입력이 섞인 판만 표시(막지는 않는다) */}
-                {r.keyOrigin === "synthetic" && (
+                {(r.keyOrigin === "synthetic" ||
+                  r.inputs?.includes("swipe") ||
+                  (r.hints ?? 0) > 0) && (
                   <span
-                    data-mini-source="synthetic"
-                    className="whitespace-normal break-keep rounded bg-amber-500/25 px-1 text-amber-200"
+                    data-mini-badges
+                    className="flex gap-2 @max-[340px]:order-last @max-[340px]:basis-full @max-[340px]:gap-1 @max-[340px]:pl-[120px]"
                   >
-                    다른 프로그램 입력
-                  </span>
-                )}
-                {r.inputs?.includes("swipe") && (
-                  <span
-                    data-mini-source="swipe"
-                    className="whitespace-normal break-keep rounded bg-white/10 px-1 text-white/70"
-                  >
-                    마우스·화면
-                  </span>
-                )}
-                {(r.hints ?? 0) > 0 && (
-                  <span
-                    data-mini-record-hints={r.hints}
-                    title="힌트를 본 판이 든 5판은 티어에 넣지 않아요"
-                    className="rounded bg-sky-500/25 px-1 text-sky-200"
-                  >
-                    힌트 {r.hints}번
+                    {/* 실제 키보드가 아닌 입력이 섞인 판만 표시(막지는 않는다) */}
+                    {r.keyOrigin === "synthetic" && (
+                      <span
+                        data-mini-source="synthetic"
+                        className="rounded bg-amber-500/25 px-1 text-amber-200"
+                      >
+                        다른 프로그램 입력
+                      </span>
+                    )}
+                    {r.inputs?.includes("swipe") && (
+                      <span
+                        data-mini-source="swipe"
+                        className="rounded bg-white/10 px-1 text-white/70"
+                      >
+                        마우스·화면
+                      </span>
+                    )}
+                    {(r.hints ?? 0) > 0 && (
+                      <span
+                        data-mini-record-hints={r.hints}
+                        title="힌트를 본 판이 든 5판은 티어에 넣지 않아요"
+                        className="rounded bg-sky-500/25 px-1 text-sky-200"
+                      >
+                        힌트 {r.hints}번
+                      </span>
+                    )}
                   </span>
                 )}
                 <span className="text-white/60">{r.moves}수</span>

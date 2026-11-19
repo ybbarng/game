@@ -50,6 +50,18 @@ public enum RecordsSheet {
     return MiniBook.formatMs(v)
   }
 
+  // MARK: 기록 줄
+
+  /// 기록 줄 폭이 이보다 좁으면 입력 표시 칩(다른 프로그램 입력·마우스·화면·힌트) 묶음을 시간 칸 아래 둘째 줄로 내린다.
+  /// 가장 작은 창(320, 줄 폭 304)에서 칩과 수·「다시 보기」를 한 줄에 다 넣으면 「다시 보기」가 줄 밖으로 밀렸다.
+  /// 사이트 `RecordsPanel`도 같은 폭(`@max-[340px]`)에서 같은 자리로 내린다(docs/52 5-15)
+  public static let badgesWrapBelow: Double = 340
+  /// 둘째 줄 칩 묶음의 왼쪽 자리(번호 24 + 8 + 때 80 + 8, 시간 칸과 같은 x)
+  public static let badgesIndent: Double = 120
+
+  /// 그 폭의 줄에서 칩 묶음을 둘째 줄로 내리나
+  public static func badgesOnOwnLine(width: Double, badges: Int) -> Bool { badges > 0 && width < badgesWrapBelow }
+
   // MARK: 티어 칸
 
   /// 티어 칸 위 글(「6×6 1:40.00」, 티어가 없으면 「6×6 」, 사이트 `MiniTiers`)
