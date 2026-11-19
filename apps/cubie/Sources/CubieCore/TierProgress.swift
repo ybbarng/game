@@ -148,6 +148,8 @@ public enum TierProgress {
 
   /// 지금 구간 안의 자리(코어 `tier_band`, 사이트 `TierBand`)
   public struct Band: Equatable, Sendable {
+    /// 바로 아래 구간(막대 왼쪽 칸). 맨 아래면 nil
+    public var down: (tier: Int, division: Int?)?
     /// 지금 구간: 0 아이언 … 9 챌린저, 0 IV … 3 I(없으면 nil)
     public var tier: Int
     public var division: Int?
@@ -160,7 +162,11 @@ public enum TierProgress {
     /// 0 왼쪽 ~ 1 오른쪽
     public var ratio: Double
 
-    public init(tier: Int, division: Int?, lowMs: Double?, up: (tier: Int, division: Int?)?, highMs: Double, ratio: Double) {
+    public init(
+      down: (tier: Int, division: Int?)?, tier: Int, division: Int?, lowMs: Double?, up: (tier: Int, division: Int?)?,
+      highMs: Double, ratio: Double
+    ) {
+      self.down = down
       self.tier = tier
       self.division = division
       self.lowMs = lowMs
@@ -170,18 +176,21 @@ public enum TierProgress {
     }
 
     public static func == (a: Band, b: Band) -> Bool {
-      a.tier == b.tier && a.division == b.division && a.lowMs == b.lowMs && a.up?.tier == b.up?.tier
+      a.down?.tier == b.down?.tier && a.down?.division == b.down?.division && (a.down == nil) == (b.down == nil)
+        && a.tier == b.tier && a.division == b.division && a.lowMs == b.lowMs && a.up?.tier == b.up?.tier
         && a.up?.division == b.up?.division && a.highMs == b.highMs && a.ratio == b.ratio
     }
   }
 
-  /// 막대의 글(사이트 `BandView`)
+  /// 막대(세 칸 사다리)의 글(사이트 `BandView`)
   public struct BandView: Equatable, Sendable {
-    public var leftName: String
-    public var leftTime: String
-    /// 꼭대기면 nil
-    public var rightName: String?
-    public var rightTime: String
+    /// 칸 이름: 왼쪽 칸 = 바로 아래 구간(맨 아래면 nil), 가운데 = 지금 구간, 오른쪽 = 바로 위 구간(꼭대기면 nil)
+    public var downName: String?
+    public var hereName: String
+    public var upName: String?
+    /// 왼쪽 경계 아래 시간(상한 없으면 「다 맞춤」)·오른쪽 경계 아래 시간(꼭대기면 「0.00」)
+    public var lowTime: String
+    public var highTime: String
     public var value: String
     public var ratio: Double
     /// 접근성 이름: 「브론즈 II 3:10.00 → 브론즈 I 2:30.00 · 최고 5판 평균 2:35.09」
@@ -192,49 +201,108 @@ public enum TierProgress {
   public static let bandOpenLow = "다 맞춤"
 
   public static func bandView(_ b: Band, ms: Double) -> BandView {
-    let leftName = placeName(tier: b.tier, division: b.division)
-    let leftTime = b.lowMs.map { MiniBook.formatMs($0) } ?? bandOpenLow
-    let rightName = b.up.map { placeName(tier: $0.tier, division: $0.division) }
-    let rightTime = MiniBook.formatMs(b.highMs)
+    let hereName = placeName(tier: b.tier, division: b.division)
+    let lowTime = b.lowMs.map { MiniBook.formatMs($0) } ?? bandOpenLow
+    let upName = b.up.map { placeName(tier: $0.tier, division: $0.division) }
+    let highTime = MiniBook.formatMs(b.highMs)
     let value = MiniBook.formatMs(ms)
-    let right = rightName.map { "\($0) \(rightTime)" } ?? rightTime
+    let right = upName.map { "\($0) \(highTime)" } ?? highTime
     return BandView(
-      leftName: leftName, leftTime: leftTime, rightName: rightName, rightTime: rightTime, value: value,
-      ratio: b.ratio, label: "\(leftName) \(leftTime) → \(right) · \(best5) \(value)")
+      downName: b.down.map { placeName(tier: $0.tier, division: $0.division) }, hereName: hereName, upName: upName,
+      lowTime: lowTime, highTime: highTime, value: value,
+      ratio: b.ratio, label: "\(hereName) \(lowTime) → \(right) · \(best5) \(value)")
   }
 
-  /// 꼬리(경계 눈금 바깥 막대)의 가장 짧은 폭(pt, 사이트 `BAND_MIN_TAIL`)
-  public static let bandMinTail: Double = 12
+  /// 옆 칸의 가장 좁은 폭(pt, 사이트 `BAND_MIN_SIDE`)
+  public static let bandMinSide: Double = 24
+  /// 칸 이름 앞 엠블럼 크기(pt, 사이트 `BAND_EMBLEM`). 옆 칸 이름이 안 들어가면 이것만
+  public static let bandEmblem: Double = 14
+  /// 칸 사이 틈(pt, 사이트 `BAND_GAP`)
+  public static let bandGap: Double = 1
+  /// 칸 색 진하기(사이트 `BAND_ALPHA`): 지금 칸 지나온 부분·남은 부분·옆 칸
+  public static let bandAlpha = (done: 1.0, rest: 0.4, side: 0.16)
+
+  /// 막대 폭과 잰 글 폭(pt, 사이트 `BandWidths`). 칸 이름 폭은 엠블럼·사이 틈 포함, 없는 칸은 nil
+  public struct BandWidths: Equatable, Sendable {
+    public var width: Double
+    public var down: Double?
+    public var here: Double
+    public var up: Double?
+    public var low: Double
+    public var high: Double
+    public var value: Double
+
+    public init(width: Double, down: Double?, here: Double, up: Double?, low: Double, high: Double, value: Double) {
+      self.width = width
+      self.down = down
+      self.here = here
+      self.up = up
+      self.low = low
+      self.high = high
+      self.value = value
+    }
+  }
 
   /// 구간 안 자리 막대의 그리기 좌표(pt, 막대 왼쪽 끝이 0. 사이트 `BandLayout`)
   public struct BandLayout: Equatable, Sendable {
-    /// 양쪽 꼬리 폭(같은 폭)
-    public var tail: Double
-    /// 왼쪽 경계 눈금·오른쪽 경계 눈금·지금 자리 눈금의 x
+    /// 옆 칸 폭(있는 쪽은 같은 폭)
+    public var side: Double
+    /// 왼쪽 경계·오른쪽 경계·지금 자리의 x(옆 칸이 없으면 경계가 막대 끝)
     public var lowX: Double
     public var highX: Double
     public var markX: Double
-    /// 경계 글(엠블럼·이름·시간 묶음)과 숫자 글의 왼쪽 x
-    public var leftX: Double
-    public var rightX: Double
+    /// 칸 이름 글의 왼쪽 x(없는 칸은 nil)
+    public var downX: Double?
+    public var hereX: Double
+    public var upX: Double?
+    /// 옆 칸 이름이 안 들어가 엠블럼만 둔다
+    public var downShort: Bool
+    public var upShort: Bool
+    /// 경계 시간 글·숫자 글의 왼쪽 x
+    public var lowTimeX: Double
+    public var highTimeX: Double
     public var valueX: Double
+
+    public init(
+      side: Double, lowX: Double, highX: Double, markX: Double, downX: Double?, hereX: Double, upX: Double?,
+      downShort: Bool, upShort: Bool, lowTimeX: Double, highTimeX: Double, valueX: Double
+    ) {
+      self.side = side
+      self.lowX = lowX
+      self.highX = highX
+      self.markX = markX
+      self.downX = downX
+      self.hereX = hereX
+      self.upX = upX
+      self.downShort = downShort
+      self.upShort = upShort
+      self.lowTimeX = lowTimeX
+      self.highTimeX = highTimeX
+      self.valueX = valueX
+    }
   }
 
-  /// 막대는 경계 바깥까지 꼬리로 이어지고 두 경계는 안쪽 눈금이다(docs/47 14-9, 사용자 2026-11-19, 사이트 `bandLayout`과 같은 셈).
-  /// 꼬리 = 긴 경계 글의 절반(12 ~ 막대의 1/4), 글은 눈금 아래·위 가운데에 두되 막대 밖으로 나가면 안쪽으로 밀어 넣는다
-  public static func bandLayout(
-    ratio: Double, width: Double, leftWidth: Double, rightWidth: Double, valueWidth: Double
-  ) -> BandLayout {
+  /// 세 칸 사다리(docs/47 14-9, 사용자 2026-11-19, 사이트 `bandLayout`과 같은 셈): 왼쪽 칸 = 바로 아래 구간, 가운데 = 지금 구간,
+  /// 오른쪽 = 바로 위 구간. 옆 칸 폭 = 긴 옆 칸 이름(24 ~ 막대의 1/4), 1/4에도 안 들어가면 엠블럼만. 옆 칸이 없으면 지금 칸이
+  /// 막대 끝까지 넓어진다. 이름은 칸 아래 가운데, 시간은 경계 아래 가운데, 숫자는 지금 자리 위 가운데(막대 밖이면 안쪽으로)
+  public static func bandLayout(ratio: Double, _ w: BandWidths) -> BandLayout {
     func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { min(max(v, lo), max(lo, hi)) }
-    let tail = clamp(max(leftWidth, rightWidth) / 2, bandMinTail, width / 4)
-    let lowX = tail
-    let highX = width - tail
+    let width = w.width
+    let sides = [w.down, w.up].compactMap { $0 }
+    let side = sides.isEmpty ? 0 : clamp(sides.max()!, bandMinSide, width / 4)
+    let lowX = w.down != nil ? side : 0
+    let highX = w.up != nil ? width - side : width
     let markX = lowX + clamp(ratio, 0, 1) * (highX - lowX)
+    let downShort = w.down.map { $0 > side } ?? false
+    let upShort = w.up.map { $0 > side } ?? false
+    func at(_ center: Double, _ v: Double) -> Double { clamp(center - v / 2, 0, width - v) }
     return BandLayout(
-      tail: tail, lowX: lowX, highX: highX, markX: markX,
-      leftX: clamp(lowX - leftWidth / 2, 0, width - leftWidth),
-      rightX: clamp(highX - rightWidth / 2, 0, width - rightWidth),
-      valueX: clamp(markX - valueWidth / 2, 0, width - valueWidth))
+      side: side, lowX: lowX, highX: highX, markX: markX,
+      downX: w.down.map { at(side / 2, downShort ? bandEmblem : $0) },
+      hereX: at((lowX + highX) / 2, w.here),
+      upX: w.up.map { at(width - side / 2, upShort ? bandEmblem : $0) },
+      downShort: downShort, upShort: upShort,
+      lowTimeX: at(lowX, w.low), highTimeX: at(highX, w.high), valueX: at(markX, w.value))
   }
 }
 

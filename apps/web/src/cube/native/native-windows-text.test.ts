@@ -104,6 +104,9 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       '"다 맞춤"',
       " → ",
       " · ",
+      // 세 칸 색 진하기(사이트 `BAND_ALPHA`, 앱 `bandAlpha`)
+      "done: 1",
+      "rest: 0.4, side: 0.16",
     ]));
 
   it("티어 이력(TierHistoryChart·history-chart, 앱 TierHistoryLayout.swift)", () =>

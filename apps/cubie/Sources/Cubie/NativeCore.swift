@@ -101,6 +101,7 @@ extension RustTierMath: TierBandMath {
     var out = CubieTierBand()
     guard cubie_tier_band(UInt32(n), ms, &out) else { return nil }
     return TierProgress.Band(
+      down: out.down_tier >= 0 ? (Int(out.down_tier), out.down_division >= 0 ? Int(out.down_division) : nil) : nil,
       tier: Int(out.tier), division: out.division >= 0 ? Int(out.division) : nil,
       lowMs: out.low_ms >= 0 ? out.low_ms : nil,
       up: out.up_tier >= 0 ? (Int(out.up_tier), out.up_division >= 0 ? Int(out.up_division) : nil) : nil,

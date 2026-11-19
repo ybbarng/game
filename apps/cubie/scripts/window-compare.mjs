@@ -96,11 +96,16 @@ function sampleStore() {
     record(i + 1, 5, ms),
   );
   five.reverse();
+  // 6×6은 맨 아래(아이언, 상한 없음, 5판 평균 100분): 아래 칸 없이 지금 칸이 막대 왼쪽 끝부터인 장면
+  const six = [5_900_000, 6_000_000, 6_100_000, 5_800_000, 6_200_000].map(
+    (ms, i) => record(i + 1, 6, ms),
+  );
+  six.reverse();
   const mini = {
     version: 1,
     n: 3,
     mirror: true,
-    records: { 3: three, 2: two, 5: five },
+    records: { 3: three, 2: two, 5: five, 6: six },
     best5: {},
   };
   // 사이트 혼자 맞추기 기록도 넣어 둔다(앱 티어표·`records=cubie` 사이트 창은 이것을 보지 않아야 한다)
@@ -146,8 +151,14 @@ const WINDOWS = [
     name: "records",
     path: "/cube/mini?view=records",
     size: { width: 380, height: 600 },
-    // 구간 안 자리 막대: 가운데(3×3, 첫 장면), 꼭대기(5×5), 5판 전(4×4)
-    shots: ["records", "records-replay", "records-top", "records-none"],
+    // 구간 안 자리 막대: 가운데(3×3, 첫 장면), 꼭대기(5×5), 맨 아래(6×6), 5판 전(4×4)
+    shots: [
+      "records",
+      "records-replay",
+      "records-top",
+      "records-bottom",
+      "records-none",
+    ],
   },
   {
     name: "tiers",
@@ -222,13 +233,16 @@ try {
         await page.waitForSelector("[data-cube-ready]");
         await page.waitForTimeout(300);
       }
-      if (shot === "records-top" || shot === "records-none") {
+      const bandSize = {
+        "records-top": 5,
+        "records-bottom": 6,
+        "records-none": 4,
+      }[shot];
+      if (bandSize) {
         // 네이티브는 새 기록 창에서 크기만 고른다(다시 보기 닫힘)
         await ctx.close();
         [ctx, page] = await open(store);
-        await page
-          .locator(`[data-mini-tier-size='${shot === "records-top" ? 5 : 4}']`)
-          .click();
+        await page.locator(`[data-mini-tier-size='${bandSize}']`).click();
         await page.waitForTimeout(300);
       }
       await page.screenshot({
