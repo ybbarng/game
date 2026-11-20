@@ -10,11 +10,12 @@ public enum RecordsSheet {
   // MARK: 글(사이트와 같다)
 
   public static let tiersTitle = "티어"
-  public static let tiersBasis = "Cubie 기록 기준 · 최고 5판 평균(Ao5)"
+  /// 티어를 매기는 값. 어느 기록인지(「Cubie 기록 기준」)는 화면 글로 덧붙이지 않는다(고정 규칙 3절, 2026-11-20)
+  public static let tiersBasis = "최고 5판 평균(Ao5)"
   public static let tiersLink = "티어표"
   public static let tierPending = "5판 뒤에"
   public static let tiersNote =
-    "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자 맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요."
+    "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요."
   public static let title = "기록"
   /// 요약 이름: 최근 n판 평균과 티어를 정한 최고 5판 평균을 이름으로 가른다(2026-11-18)
   public static let summaryLabels = ["최고", "평균", TierProgress.recent5, TierProgress.recent12, TierProgress.best5]

@@ -76,6 +76,34 @@ struct TierShowcaseTests {
     #expect(TierShowcase.divisionsLine([6.5]) == nil)
   }
 
+  /// 줄일 시간 글(2026-11-20 사용자: 「챌린저까지 2:08.98」은 무슨 시간인지 헷갈렸다). 열 티어 모두 사이트 `gapText`와 같은
+  /// 글이다(웹 `native-windows-text.test.ts`가 이 글을 사이트에서 다시 만들어 이 파일에 있는지 본다)
+  @Test func gapTextForEveryTier() {
+    let lines = TierSheet.labels.map { TierShowcase.gapText($0, 1230) }
+    #expect(
+      lines == [
+        "아이언이 되시려면 평균을 1.23초 줄여야 해요.",
+        "브론즈가 되시려면 평균을 1.23초 줄여야 해요.",
+        "실버가 되시려면 평균을 1.23초 줄여야 해요.",
+        "골드가 되시려면 평균을 1.23초 줄여야 해요.",
+        "플래티넘이 되시려면 평균을 1.23초 줄여야 해요.",
+        "에메랄드가 되시려면 평균을 1.23초 줄여야 해요.",
+        "다이아몬드가 되시려면 평균을 1.23초 줄여야 해요.",
+        "마스터가 되시려면 평균을 1.23초 줄여야 해요.",
+        "그랜드마스터가 되시려면 평균을 1.23초 줄여야 해요.",
+        "챌린저가 되시려면 평균을 1.23초 줄여야 해요.",
+      ])
+    // 1분부터는 「초」 없이
+    #expect(TierShowcase.gapText("챌린저", 128_980) == "챌린저가 되시려면 평균을 2:08.98 줄여야 해요.")
+  }
+
+  /// 1/100초 아래 나머지는 올린다: 기준까지 1ms만 남아도 「0.00초」가 아니다
+  @Test func gapTimeRoundsUpToHundredths() {
+    #expect(TierShowcase.gapTime(1) == "0.01초")
+    #expect(TierShowcase.gapTime(14_120) == "14.12초")
+    #expect(TierShowcase.gapTime(14_121) == "14.13초")
+  }
+
   @Test func swayLikeTheSite() {
     var s = TierShowcase.Sway.from(0)
     #expect(s.yaw == 0)

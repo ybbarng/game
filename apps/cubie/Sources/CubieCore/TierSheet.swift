@@ -19,7 +19,6 @@ public enum TierSheet {
   public static let mineLabel = "내 최고 5판 평균"
   /// 앱 티어표는 Cubie 기록으로 센다(사이트 `records=cubie`와 같은 글)
   public static let none = "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요."
-  public static let deviceOnly = "Cubie 기록 기준이에요. 기록은 이 기기에만 저장돼요."
   public static let headTier = "티어"
   public static let headWca = "WCA 경기자 중"
   public static let outside = "대회 밖"

@@ -283,7 +283,7 @@ function MinePatterns({
       <h2 className="font-semibold text-white/90">내 패턴</h2>
       <p className="text-sm text-white/70">
         공식을 넣으면 맞춘 큐브에 했을 때의 모양을 바로 보여 줘요. 마음에 들면
-        이 기기에 저장해 두세요.
+        저장해 두세요.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <form

@@ -3,7 +3,8 @@
 import { type CSSProperties, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { formatMs, formatSeconds } from "../records";
+import { josaOf, subj } from "@/lib/josa";
+import { formatMs } from "../records";
 import { Emblem3D } from "./Emblem3D";
 import { DivisionPips, EmblemStill } from "./EmblemStill";
 import {
@@ -16,7 +17,7 @@ import {
 } from "./emblem3d/poster";
 import { ladderRing } from "./ladderRing";
 import { NoBreakTimes } from "./NoBreakTimes";
-import { nextSolveText } from "./progress-view";
+import { GAP_END, GAP_MIDDLE, gapTime, nextSolveText } from "./progress-view";
 import { type MyTier, type NextSolve, nextTier, tierName } from "./rank";
 import { cutText, TIER_TONE, type TierBasis } from "./TierTable";
 import {
@@ -137,6 +138,8 @@ function TierHero({
   return (
     <section
       data-cube-tier-mine-box
+      // 어느 기록으로 매겼는지는 화면 글로 밝히지 않고(덧붙임 문구, 고정 규칙 3절) 시험이 이 속성으로 본다
+      data-cube-tier-basis={basis}
       data-cube-tier-view={picked ? "pick" : "mine"}
       className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 px-4 py-4 sm:flex-row sm:gap-6"
     >
@@ -229,18 +232,20 @@ function TierHero({
             className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2"
           >
             <EmblemStill tier={next.tier} size={48} />
-            <p className="min-w-0">
-              <span className="block">
+            <p className="min-w-0 break-keep">
+              <span data-cube-next-line className="block">
                 <span className={cn("font-semibold", TIER_TONE[next.tier])}>
                   {TIER_LABEL[next.tier]}
                 </span>
-                까지{" "}
+                {josaOf(TIER_LABEL[next.tier], subj)}
+                {GAP_MIDDLE}
                 <span
                   data-cube-next-gap
-                  className="font-mono font-semibold tabular-nums"
+                  className="whitespace-nowrap font-mono font-semibold tabular-nums"
                 >
-                  {formatSeconds(next.gapMs)}
+                  {gapTime(next.gapMs)}
                 </span>
+                {GAP_END}
               </span>
               <span className="block text-white/50 text-xs">
                 5판 평균 {cutText(next.cutMs / 1000)} 이하
@@ -255,7 +260,7 @@ function TierHero({
             className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2"
           >
             <EmblemStill tier={mine.place.tier} size={48} />
-            <p className="min-w-0">
+            <p className="min-w-0 break-keep">
               <span className="block">
                 <span
                   className={cn("font-semibold", TIER_TONE[mine.place.tier])}
@@ -267,25 +272,24 @@ function TierHero({
                 </span>
               </span>
               {gap !== null && (
-                <span className="block text-white/50 text-xs">
-                  {TIER_LABEL[tier]}까지{" "}
-                  <span data-cube-picked-gap className="font-mono tabular-nums">
-                    {formatSeconds(gap)}
+                <span
+                  data-cube-picked-line
+                  className="block text-white/50 text-xs"
+                >
+                  {subj(TIER_LABEL[tier])}
+                  {GAP_MIDDLE}
+                  <span
+                    data-cube-picked-gap
+                    className="whitespace-nowrap font-mono tabular-nums"
+                  >
+                    {gapTime(gap)}
                   </span>
+                  {GAP_END}
                 </span>
               )}
             </p>
           </div>
         )}
-        <p
-          data-cube-tier-basis={basis}
-          className="text-center text-white/50 text-xs sm:text-left"
-        >
-          {basis === "cubie"
-            ? "Cubie 기록 기준이에요."
-            : "혼자 맞추기 기록 기준이에요."}{" "}
-          기록은 이 기기에만 저장돼요.
-        </p>
       </div>
     </section>
   );

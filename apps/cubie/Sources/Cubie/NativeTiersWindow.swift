@@ -73,7 +73,6 @@ final class TiersPageView: NSView {
   private let noneLine = NUI.paragraph(TierSheet.none, size: 14, color: NUI.white(0.7), lineHeight: 20)
   private let nextBox = InfoBox()
   private let pickedBox = InfoBox()
-  private let device = NUI.paragraph(TierSheet.deviceOnly, color: NUI.white(0.5), lineHeight: 16)
   // 진열: 사다리
   let ladder = TierLadderView()
   // 티어 이력(docs/47 14-8)
@@ -125,7 +124,7 @@ final class TiersPageView: NSView {
 
   /// 위쪽 큰 칸 안의 것들(테두리 상자 위에 겹쳐 놓는다)
   private var heroParts: [NSView] {
-    [hero, pips, heroName, heroLine, heroSub, heroGoal, noneLine, nextBox, pickedBox, device]
+    [hero, pips, heroName, heroLine, heroSub, heroGoal, noneLine, nextBox, pickedBox]
   }
 
   @objc private func openCredit() {
@@ -183,8 +182,9 @@ final class TiersPageView: NSView {
   private func text(_ s: String, _ size: CGFloat, _ weight: NSFont.Weight = .regular, _ color: NSColor = .white, mono: Bool = false)
     -> NSAttributedString
   {
+    // 숫자와 단위가 줄 끝에서 갈리지 않게(「1.23 / 초」, `TextWrap`)
     NSAttributedString(
-      string: s,
+      string: TextWrap.keepNumberUnits(s),
       attributes: [
         .font: mono ? NSFont.monospacedSystemFont(ofSize: size, weight: weight) : NUI.font(size, weight, mono: true),
         .foregroundColor: color,
@@ -235,8 +235,9 @@ final class TiersPageView: NSView {
         emblem: TierInfo.ids[next.tier],
         line1: join([
           text(TierSheet.labels[next.tier], 14, .semibold, tone(next.tier)),
-          text(TierShowcase.until + " ", 14),
-          text(MiniBook.formatSeconds(next.gapMs), 14, .semibold, .white, mono: true),
+          text(TierShowcase.subjectJosa(TierSheet.labels[next.tier]) + TierShowcase.gapMiddle, 14),
+          text(TierShowcase.gapTime(next.gapMs), 14, .semibold, .white, mono: true),
+          text(TierShowcase.gapEnd, 14),
         ]),
         line2: text(TierShowcase.cutLine(next.cutMs / 1000), 12, .regular, NUI.white(0.5)))
     }
@@ -250,8 +251,9 @@ final class TiersPageView: NSView {
         ]),
         line2: st.pickedGapMs.map { gap in
           join([
-            text(label + TierShowcase.until + " ", 12, .regular, NUI.white(0.5)),
-            text(MiniBook.formatSeconds(gap), 12, .regular, NUI.white(0.5), mono: true),
+            text(TierShowcase.subject(label) + TierShowcase.gapMiddle, 12, .regular, NUI.white(0.5)),
+            text(TierShowcase.gapTime(gap), 12, .regular, NUI.white(0.5), mono: true),
+            text(TierShowcase.gapEnd, 12, .regular, NUI.white(0.5)),
           ])
         })
     }
@@ -287,9 +289,8 @@ final class TiersPageView: NSView {
       if !heroGoal.isHidden { h += 4 + NUI.height(heroGoal, width: rw) }
       blocks.append((heroName, h))
     }
-    if !nextBox.isHidden { blocks.append((nextBox, nextBox.height)) }
-    if !pickedBox.isHidden { blocks.append((pickedBox, pickedBox.height)) }
-    blocks.append((device, NUI.height(device, width: rw)))
+    if !nextBox.isHidden { blocks.append((nextBox, nextBox.height(width: rw))) }
+    if !pickedBox.isHidden { blocks.append((pickedBox, pickedBox.height(width: rw))) }
     let rightH = blocks.map(\.1).reduce(0, +) + CGFloat(blocks.count - 1) * 12
     let boxH = max(leftH, rightH) + 32
     heroBox.frame = NSRect(x: x0, y: y, width: w, height: boxH)
@@ -311,7 +312,7 @@ final class TiersPageView: NSView {
     }
     // 숨긴 작은 상자도 제 크기를 준다(크기 0인 채 두면 그 안의 글 칸이 음수 너비가 된다)
     for b in [nextBox, pickedBox] where b.isHidden {
-      b.frame = NSRect(x: rx, y: 0, width: rw, height: b.height)
+      b.frame = NSRect(x: rx, y: 0, width: rw, height: b.height(width: rw))
     }
     // 위에서는 상자 기준으로 놓았다. 쪽 기준으로 옮긴다
     for v in heroParts { v.frame = v.frame.offsetBy(dx: x0, dy: y) }
@@ -370,12 +371,16 @@ final class TiersPageView: NSView {
 }
 
 /// 진열 큰 칸 오른쪽의 작은 상자(사이트 `rounded-xl bg-white/5 px-3 py-2`): 정지 엠블럼 48pt와 글 두 줄(다음 티어, 고른 티어를
-/// 보는 동안의 내 기록)
+/// 보는 동안의 내 기록). 「그랜드마스터가 되시려면 평균을 2:08.98 줄여야 해요.」처럼 긴 줄은 자르지 않고 낱말 단위로 줄을
+/// 바꾼다(사이트 `break-keep`)
 @MainActor
 final class InfoBox: FlippedView {
   private let emblem = NSImageView()
-  private let line1 = NSTextField(labelWithString: "")
-  private let line2 = NSTextField(labelWithString: "")
+  private let line1 = NSTextField(wrappingLabelWithString: "")
+  private let line2 = NSTextField(wrappingLabelWithString: "")
+  /// 글 칸 왼쪽(엠블럼 옆)과 오른쪽 여백
+  private static let textX: CGFloat = 12 + 48 + 12
+  private static let padRight: CGFloat = 12
 
   override init(frame: NSRect) {
     super.init(frame: frame)
@@ -385,33 +390,51 @@ final class InfoBox: FlippedView {
     for l in [line1, line2] {
       l.drawsBackground = false
       l.isSelectable = false
-      l.lineBreakMode = .byTruncatingTail
     }
     for v in [emblem, line1, line2] as [NSView] { addSubview(v) }
   }
 
   required init?(coder: NSCoder) { fatalError("코드로만 만든다") }
 
-  var height: CGFloat { 48 + 16 }
+  /// 너비 `w`일 때 상자 높이(한 줄씩이면 엠블럼 48pt + 위아래 8pt)
+  func height(width w: CGFloat) -> CGFloat { max(48, textHeights(width: textWidth(w)).total) + 16 }
+
+  private func textWidth(_ w: CGFloat) -> CGFloat { max(0, w - Self.textX - Self.padRight) }
+
+  /// 줄마다 높이(한 줄이면 14pt 20, 12pt 16)
+  private func textHeights(width tw: CGFloat) -> (h1: CGFloat, h2: CGFloat, total: CGFloat) {
+    let h1 = max(20, NUI.height(line1, width: tw))
+    let h2 = line2.isHidden ? 0 : max(16, NUI.height(line2, width: tw))
+    return (h1, h2, h1 + h2)
+  }
 
   func show(emblem id: String, line1 a: NSAttributedString, line2 b: NSAttributedString?) {
     emblem.image = NUI.emblem(id, big: true)
-    line1.attributedStringValue = a
-    line2.attributedStringValue = b ?? NSAttributedString()
+    line1.attributedStringValue = Self.wrapping(a)
+    line2.attributedStringValue = Self.wrapping(b ?? NSAttributedString())
     line2.isHidden = b == nil
     needsLayout = true
   }
 
+  /// 낱말 단위 줄바꿈(`NUI.attributed`와 같은 문단 꼴)
+  private static func wrapping(_ s: NSAttributedString) -> NSAttributedString {
+    let p = NSMutableParagraphStyle()
+    p.lineBreakMode = .byWordWrapping
+    p.lineBreakStrategy = .hangulWordPriority
+    let m = NSMutableAttributedString(attributedString: s)
+    m.addAttribute(.paragraphStyle, value: p, range: NSRange(location: 0, length: m.length))
+    return m
+  }
+
   override func layout() {
     super.layout()
-    emblem.frame = NSRect(x: 12, y: 8, width: 48, height: 48)
-    let tx: CGFloat = 12 + 48 + 12
-    let th: CGFloat = line2.isHidden ? 20 : 36
-    let ty = max(0, (bounds.height - th) / 2)
+    emblem.frame = NSRect(x: 12, y: max(8, (bounds.height - 48) / 2), width: 48, height: 48)
     // 숨긴 상자는 크기가 0일 수 있다(글 칸이 음수 너비가 되지 않게)
-    let tw = max(0, bounds.width - tx - 12)
-    line1.frame = NSRect(x: tx, y: ty, width: tw, height: 20)
-    line2.frame = NSRect(x: tx, y: ty + 20, width: tw, height: 16)
+    let tw = textWidth(bounds.width)
+    let h = textHeights(width: tw)
+    let ty = max(0, (bounds.height - h.total) / 2)
+    line1.frame = NSRect(x: Self.textX, y: ty, width: tw, height: h.h1)
+    line2.frame = NSRect(x: Self.textX, y: ty + h.h1, width: tw, height: h.h2)
   }
 }
 

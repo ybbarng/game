@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { PRESET_LABEL } from "../input/keymaps";
 import { SCRAMBLE_SHOW_LABEL } from "../scramble-show";
 import { COLOR_SCHEME_LABEL } from "../settings";
+import { gapText } from "../tiers/progress-view";
+import { TIER_IDS, TIER_LABEL } from "../tiers/table";
 
 declare global {
   interface ImportMeta {
@@ -21,6 +23,7 @@ const FILES = import.meta.glob<string>(
     "../../../../cubie/Sources/CubieCore/RecordsSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierShowcase.swift",
+    "../../../../cubie/Tests/CubieCoreTests/TierShowcaseTests.swift",
     "../../../../cubie/Sources/CubieCore/SettingsSheet.swift",
     "../../../../cubie/Sources/CubieCore/TierProgress.swift",
     "../tiers/progress-view.ts",
@@ -70,10 +73,10 @@ function sameText(
 describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
   it("기록 창(MiniCubeApp RecordsPage)", () =>
     sameText("MiniCubeApp.tsx", "RecordsSheet.swift", [
-      "Cubie 기록 기준 · 최고 5판 평균(Ao5)",
+      "최고 5판 평균(Ao5)",
       "티어표",
       "5판 뒤에",
-      "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자 맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.",
+      "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.",
       "아직 기록이 없어요.",
       "다른 프로그램 입력",
       "마우스·화면",
@@ -127,8 +130,6 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "내 최고 5판 평균",
       // 앱 티어표는 Cubie 기록으로 센다(사이트는 `?records=cubie`일 때 같은 글)
       "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.",
-      "Cubie 기록 기준이에요.",
-      "기록은 이 기기에만 저장돼요.",
       "칸의 시간은 그 구간에 드는 최고 5판 평균의 상한이에요. 「WCA 경기자 중」은 그 티어에 드는 시간 이하인 대회 경기자의 비율이에요(",
       "평균 기록이 있는 약",
       "그랜드마스터·챌린저 경계는 그때의 세계 약 1,000위·300위 기록이라 해마다 빨라질 수 있어요.",
@@ -197,11 +198,27 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
   it("티어 진열(TierShowcase, 앱 TierShowcase.swift)", () =>
     sameText("TierShowcase.tsx", "TierShowcase.swift", [
       "모든 티어",
-      "까지",
       " 이하",
       "5판 평균 ",
       " · ",
     ]));
+
+  it("티어 진열 줄일 시간 글(progress-view gapText, 앱 TierShowcase.gapText)", () =>
+    sameText("progress-view.ts", "TierShowcase.swift", [
+      '" 되시려면 평균을 "',
+      '" 줄여야 해요."',
+    ]));
+
+  it("열 티어 모두 줄일 시간 글이 사이트와 앱에서 같다(티어 이름 뒤 「이/가」는 받침으로)", () => {
+    // 앱 시험 `TierShowcaseTests` 「gapTextForEveryTier」가 앱 `TierShowcase.gapText(이름, 1230)`이 이 글과 같은지 본다
+    const app = source("TierShowcaseTests.swift");
+    const lines = TIER_IDS.map((t) => gapText(TIER_LABEL[t], 1230));
+    expect(lines[0]).toBe("아이언이 되시려면 평균을 1.23초 줄여야 해요.");
+    expect(lines[4]).toBe("플래티넘이 되시려면 평균을 1.23초 줄여야 해요.");
+    expect(lines[9]).toBe("챌린저가 되시려면 평균을 1.23초 줄여야 해요.");
+    for (const line of lines)
+      expect(app, `앱 시험에 「${line}」가 없다`).toContain(`"${line}"`);
+  });
 
   it("티어 기준표(TierTable)", () =>
     sameText("TierTable.tsx", "TierSheet.swift", [

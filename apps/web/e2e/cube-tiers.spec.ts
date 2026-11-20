@@ -267,6 +267,10 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   const next = page.locator("[data-cube-next-tier]");
   await expect(next).toHaveAttribute("data-cube-next-tier", "master");
   await expect(next.locator("[data-cube-next-gap]")).toHaveText("3.40초");
+  // 무슨 시간인지 문장으로(2026-11-20 사용자 「'챌린저까지' 저 부분도 무슨 말을 하는지 헷갈리지 않아?」)
+  await expect(next.locator("[data-cube-next-line]")).toHaveText(
+    "마스터가 되시려면 평균을 3.40초 줄여야 해요.",
+  );
   await expect(next).toContainText("5판 평균 10초 이하");
   // 정지 그림: 내 티어(3D 대신) + 다음 티어
   await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 2);
@@ -388,9 +392,10 @@ test(
     const box = page.locator("[data-cube-tier-mine-box]");
     await expect(page.locator("[data-cube-my-tier]")).toHaveText("브론즈 II");
     await expect(box).toContainText("내 최고 5판 평균 2:35.09");
-    await expect(page.locator("[data-cube-tier-basis]")).toHaveText(
-      "Cubie 기록 기준이에요. 기록은 이 기기에만 저장돼요.",
-    );
+    // 어느 기록으로 매겼는지는 글이 아니라 속성으로 본다(덧붙임 문구 없음, 고정 규칙 3절, 2026-11-20)
+    await expect(box).toHaveAttribute("data-cube-tier-basis", "cubie");
+    await expect(box).not.toContainText("기록 기준");
+    await expect(box).not.toContainText("기기에만");
     await expect(page.locator("[data-cube-tier-mine]")).toHaveAttribute(
       "data-cube-tier-row",
       "bronze",

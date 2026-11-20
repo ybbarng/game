@@ -309,9 +309,7 @@ function MiniTiers({
     >
       <div className="flex items-baseline gap-2">
         <h2 className="font-bold text-sm">티어</h2>
-        <span className="text-white/60">
-          Cubie 기록 기준 · 최고 5판 평균(Ao5)
-        </span>
+        <span className="text-white/60">최고 5판 평균(Ao5)</span>
         <a
           href={`/cube/tiers?n=${n}&records=cubie`}
           className="ml-auto text-white/70 underline-offset-2 hover:underline"
@@ -375,8 +373,8 @@ function MiniTiers({
         </p>
       )}
       <p className="break-keep text-white/50">
-        Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자
-        맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.
+        Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 힌트를 쓴 판이
+        든 5판은 티어에 넣지 않아요.
       </p>
     </section>
   );

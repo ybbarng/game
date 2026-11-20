@@ -3,6 +3,7 @@
  * Cubie 기록 창 사이트 화면(`MiniCubeApp` `RecordsPanel`), 티어 화면(`TierShowcase`)이 함께 쓰고, 앱 네이티브 창은 같은 글을
  * `apps/cubie/Sources/CubieCore/RecordsSheet.swift`·`TierSheet.swift`에 둔다(`native-windows-text.test.ts`가 본다).
  */
+import { subj } from "@/lib/josa";
 import { formatMs, formatSeconds } from "../records";
 import {
   bestFiveDetail,
@@ -70,6 +71,28 @@ export function nextSolveText(s: NextSolve): string {
   if (s.kind === "within") return `다음 판 ${formatMs(s.ms)} 안이면 ${to}`;
   if (s.kind === "any") return `다음 판을 맞추면 ${to}`;
   return `다음 판 하나로는 ${to}에 못 닿아요. 최고 5판 평균을 ${formatSeconds(s.gapMs)} 줄여야 해요.`;
+}
+
+/**
+ * 티어 진열의 「실버가 되시려면 평균을 1.23초 줄여야 해요.」(다음 티어 상자, 다른 티어를 골랐을 때 내 기록 상자). 시간은 내
+ * 최고 5판 평균을 그 티어 기준까지 줄여야 하는 만큼이다(2026-11-20 사용자 「'챌린저까지' 저 부분도 무슨 말을 하는지 헷갈리지
+ * 않아?」: 「챌린저까지 2:08.98」만 두면 무슨 시간인지 몰랐다). 티어 이름 뒤 「이/가」는 받침으로 고른다(아이언·플래티넘은
+ * 「이」, `subj`). 화면은 티어 이름·시간을 따로 그려 조각을 쓴다. 앱 `TierShowcase.gapMiddle`·`gapEnd`·`subject`가 같은 글이다
+ */
+export const GAP_MIDDLE = " 되시려면 평균을 ";
+export const GAP_END = " 줄여야 해요.";
+
+/**
+ * 줄일 시간 글. 1/100초 아래 나머지는 올린다: 기준까지 1ms만 남아도 「0.00초 줄여야 해요」가 되지 않고, 보인 만큼 줄이면
+ * 반드시 그 티어에 든다(앱 `TierShowcase.gapTime`)
+ */
+export function gapTime(ms: number): string {
+  return formatSeconds(Math.ceil(ms / 10) * 10);
+}
+
+/** 「실버가 되시려면 평균을 1.23초 줄여야 해요.」 한 줄 글 */
+export function gapText(label: string, ms: number): string {
+  return `${subj(label)}${GAP_MIDDLE}${gapTime(ms)}${GAP_END}`;
 }
 
 /**

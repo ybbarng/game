@@ -769,9 +769,11 @@ test(
     await expect(records.locator("[data-mini-record]")).toHaveCount(5);
     await expect(records.locator("[data-mini-best]")).toHaveText("1:00.50");
     await expect(records.locator("[data-mini-records-close]")).toHaveCount(0);
-    // 크기별 티어(Cubie 기록 기준): 4×4는 Ao5 1:02.00의 티어, 2×2는 5판이 안 돼 없음
+    // 크기별 티어(Cubie 기록으로 매긴다, 위에 넣은 Cubie 기록의 값이 보이는지로 확인): 4×4는 Ao5 1:02.00의 티어, 2×2는 5판이
+    // 안 돼 없음. 어느 기록인지 밝히는 덧붙임 글은 두지 않는다(고정 규칙 3절, 2026-11-20)
     const tiers = page.locator("[data-mini-tiers]");
-    await expect(tiers).toContainText("Cubie 기록 기준");
+    await expect(tiers).toContainText("최고 5판 평균(Ao5)");
+    await expect(tiers).not.toContainText("기록 기준");
     const four = tiers.locator("[data-mini-tier-size='4']");
     await expect(four).toContainText("1:02.00");
     await expect(four.locator("[data-cube-tier]")).toHaveCount(1);

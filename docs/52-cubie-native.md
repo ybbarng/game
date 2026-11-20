@@ -753,7 +753,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 **판을 내기 전에 사용자가 볼 것**
 
 1. 메뉴 「기록 보기」: 크기별 티어·요약·목록이 0.2.0 사이트 창과 같은지, 「다시 보기」로 큐브와 거울이 섞인 모양에서 돌아가는지(멈추기·이어 보기·처음부터·닫기), 크기를 바꾸면 보던 판이 닫히는지, 큐브를 맞추면 열린 창에 한 줄이 더해지는지, Esc로 닫히는지.
-2. 기록 창의 「티어표」와 메뉴 「티어표」: 지금 크기로 열리는지, 크기 단추, 기록 창과 같은 티어인지(2026-11-18 5-14: Cubie 기록 기준), 기록이 없으면 「이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.」, WCA 주소가 브라우저로 열리는지.
+2. 기록 창의 「티어표」와 메뉴 「티어표」: 지금 크기로 열리는지, 크기 단추, 기록 창과 같은 티어인지(2026-11-18 5-14: Cubie 기록으로 매긴다), 기록이 없으면 「이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.」, WCA 주소가 브라우저로 열리는지.
 3. 메뉴 「키 배치·색…」: 색 묶음·면 색·회전 속도·섞기 연출·스티커 없는 모양·소리를 바꾸면 창을 닫지 않아도 큐브에 바로 들어가는지, 「두 손」↔「표기」를 바꾸고 바로 키로 돌려 보기·F1 표, 「사용자」를 누르면 지금 키가 그대로인지, 「사용자 배치 편집…」·「모든 설정…」 사이트 창에서 바꾸고 닫으면 네이티브 설정 창과 큐브에 들어가는지.
 4. 세 창의 글자·줄 간격이 어색하지 않은지(비교판은 화면 밖에서 그린 그림이다).
 
@@ -972,7 +972,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 사용자 「내 기록에 맞게 티어가 보이지 않는 것 같은데 점검해줘」(스크린샷: 기록 창은 「Cubie 기록 기준 · 최고 Ao5」 3×3 브론즈 II, 티어표 창 3×3은 「이 크기는 아직 Ao5가 없습니다」).
 
 - **원인**: 앱 안의 티어 표시 셋 가운데 기록 창(`NativeRecordsWindow`)과 메뉴 프로필 칸(`NativeCubeWindow` `book.tier`)은 Cubie 기록(`cube.mini.v1`)으로 셌지만, 티어표 창(`NativeTiersWindow`)만 사이트 티어 화면을 옮길 때 그 화면의 `useMyTier`(사이트 혼자 맞추기 기록 `cube.records.v1`·`cube.best5.v1`)를 그대로 옮겼다. 앱에서 맞춘 판은 혼자 맞추기 기록에 쌓이지 않으니 늘 「아직 없음」이었다. 0.2.0~0.6.0 모두 같다. 사이트 창으로 여는 길(`CUBIE_WEB_WINDOWS=1`, 기록 창 사이트 화면의 「티어표」 링크)도 같은 원인이었다.
-- **고침**: 티어표 창의 내 티어는 `TierSheet.mine`(= `MiniBook.tier`, 기록 창과 같은 함수). 앱이 여는 사이트 티어표 주소에 `records=cubie`를 붙이고 사이트 `TiersApp`이 그 주소면 `miniTier`로 센다(`TierTable.tsx` `basisFromSearch`·`loadMyTier`). 브라우저의 사이트 티어 화면은 그대로 혼자 맞추기 기록이다. 큰 칸 아래 한 줄이 어느 기록인지 밝힌다(「Cubie 기록 기준이에요.」·「혼자 맞추기 기록 기준이에요.」 + 「기록은 이 기기에만 저장돼요.」).
+- **고침**: 티어표 창의 내 티어는 `TierSheet.mine`(= `MiniBook.tier`, 기록 창과 같은 함수). 앱이 여는 사이트 티어표 주소에 `records=cubie`를 붙이고 사이트 `TiersApp`이 그 주소면 `miniTier`로 센다(`TierTable.tsx` `basisFromSearch`·`loadMyTier`). 브라우저의 사이트 티어 화면은 그대로 혼자 맞추기 기록이다. 처음에는 큰 칸 아래 한 줄이 어느 기록인지 밝혔지만(「Cubie 기록 기준이에요.」·「혼자 맞추기 기록 기준이에요.」 + 「기록은 이 기기에만 저장돼요.」), 2026-11-20 사용자 「잡스런 문구 없애주고」로 지웠다(고정 규칙 3절 덧붙임 문구). 어느 기록을 읽는지는 시험이 본다: 앱 `TierSheetTests` 「tiersWindowUsesCubieRecordsLikeRecordsWindow」, 사이트 진열 상자의 `data-cube-tier-basis` 속성(`cube-tiers.spec.ts`), 문구가 다시 들어오면 `no-record-notes.test.ts`가 실패한다.
 - **글**: 티어 화면 글을 해요체로, 「Ao5」를 처음 보는 사람도 알게 「5판 평균」으로 쓰고 매기는 법 문단에서 「5판 평균(Ao5)」으로 한 번 푼다. 앱 티어표 빈 상태는 사이트 혼자 맞추기로 가는 링크 대신 「Cubie에서 5판 맞추면 생겨요.」.
 - 시험: 앱 `TierSheetTests` 「tiersWindowUsesCubieRecordsLikeRecordsWindow」(고치기 전 실패 확인), 화면 `cube-tiers.spec.ts` 「Cubie 창(records=cubie)은 Cubie 기록으로…」(사용자 3×3 11판 → 브론즈 II 2:35.09), 글 `native-windows-text.test.ts`.
 - **Cubie 새 판이 필요하다**(티어표 창은 앱이 그린다).
