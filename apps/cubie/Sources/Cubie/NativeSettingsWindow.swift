@@ -60,7 +60,6 @@ final class SettingsPageView: FlippedView {
   private let slider = NSSlider(value: 90, minValue: 0, maxValue: 200, target: nil, action: nil)
   private let showLabel = NUI.label(SettingsSheet.scrambleShow, size: 14, mono: false)
   private var showChips: [Chip] = []
-  private let showNote = NUI.paragraph(SettingsSheet.scrambleShowNote, color: NUI.white(0.5), lineHeight: 16)
   private let hiddenLabel = NUI.label(SettingsSheet.hidden, size: 14, mono: false)
   private var hiddenChips: [Chip] = []
   private let stickerless = NSButton(checkboxWithTitle: SettingsSheet.stickerless, target: nil, action: nil)
@@ -133,7 +132,7 @@ final class SettingsPageView: FlippedView {
     }
     all.action = { [weak self] in self?.openWeb?() }
     var views: [NSView] = [back, title, keymapTitle, keysMap, keysLearn, customBox, port, colorsTitle, customChip, preview]
-    views.append(contentsOf: [viewTitle, speedLabel, speedValue, slider, showLabel, showNote, hiddenLabel, all])
+    views.append(contentsOf: [viewTitle, speedLabel, speedValue, slider, showLabel, hiddenLabel, all])
     views.append(contentsOf: checks as [NSView])
     views.append(contentsOf: hiddenChips as [NSView])
     views.append(contentsOf: presetChips as [NSView])
@@ -317,10 +316,7 @@ final class SettingsPageView: FlippedView {
     y += 28 + 12
     showLabel.frame = NSRect(x: x0, y: y + 4, width: NUI.width(showLabel), height: 20)
     row(showChips, x: showLabel.frame.maxX + 8, y: y)
-    y += 28 + 4
-    let nh = NUI.height(showNote, width: w)
-    showNote.frame = NSRect(x: x0, y: y, width: w, height: nh)
-    y += nh + 12
+    y += 28 + 12
     hiddenLabel.frame = NSRect(x: x0, y: y + 4, width: NUI.width(hiddenLabel), height: 20)
     row(hiddenChips, x: hiddenLabel.frame.maxX + 8, y: y)
     y += 28 + 12

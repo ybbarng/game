@@ -597,12 +597,6 @@ function LayoutStep({ onDone }: { onDone: () => void }) {
           </button>
         ))}
       </div>
-      {preset === "custom" && (
-        <p className="text-white/60 text-xs">
-          지금은 설정에서 만든 사용자 배치를 쓰고 있어요. 아래는 「두 손」
-          규칙이에요.
-        </p>
-      )}
       {preset === "notation" ? (
         <p
           className="break-keep text-sm text-white/85"

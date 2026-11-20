@@ -59,11 +59,7 @@ export function KeyCaps({
         키 없음
       </a>
     ) : (
-      <span
-        data-move-keys=""
-        title="설정에서 키를 놓을 수 있어요"
-        className={cls}
-      >
+      <span data-move-keys="" className={cls}>
         키 없음
       </span>
     );

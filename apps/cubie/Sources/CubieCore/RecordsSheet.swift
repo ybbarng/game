@@ -14,8 +14,6 @@ public enum RecordsSheet {
   public static let tiersBasis = "최고 5판 평균(Ao5)"
   public static let tiersLink = "티어표"
   public static let tierPending = "5판 뒤에"
-  public static let tiersNote =
-    "Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요."
   public static let title = "기록"
   /// 요약 이름: 최근 n판 평균과 티어를 정한 최고 5판 평균을 이름으로 가른다(2026-11-18)
   public static let summaryLabels = ["최고", "평균", TierProgress.recent5, TierProgress.recent12, TierProgress.best5]
@@ -32,7 +30,6 @@ public enum RecordsSheet {
   public static let empty = "아직 기록이 없어요."
   public static let synthetic = "다른 프로그램 입력"
   public static let swipe = "마우스·화면"
-  public static let hintsTip = "힌트를 본 판이 든 5판은 티어에 넣지 않아요"
   public static let replay = "다시 보기"
   public static let pause = "멈추기"
   public static let resume = "이어 보기"

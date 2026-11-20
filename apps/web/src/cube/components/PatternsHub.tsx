@@ -160,8 +160,7 @@ function RecordList() {
   if (rows.length === 0)
     return (
       <p className="text-sm text-white/70" data-pattern-records-empty>
-        아직 기록이 없어요. 「만들기」에서 목표 모양을 만들면 모양마다 가장 빠른
-        기록이 남아요.
+        아직 기록이 없어요.
       </p>
     );
   return (

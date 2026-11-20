@@ -166,10 +166,6 @@ function PatternList({
           </a>
         </nav>
       </div>
-      <p className="text-sm text-white/70">
-        맞춘 큐브에 공식 하나만 하면 예쁜 무늬가 생겨요. 카드를 열어 한 수씩
-        보고, 내 키로 직접 만들어 보세요.
-      </p>
 
       {PATTERN_SIZES.map((n) => (
         <section
@@ -281,10 +277,6 @@ function MinePatterns({
       data-pattern-mine
     >
       <h2 className="font-semibold text-white/90">내 패턴</h2>
-      <p className="text-sm text-white/70">
-        공식을 넣으면 맞춘 큐브에 했을 때의 모양을 바로 보여 줘요. 마음에 들면
-        저장해 두세요.
-      </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <form
           className="flex flex-1 flex-col gap-2 text-sm"

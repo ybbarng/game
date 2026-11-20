@@ -212,7 +212,7 @@ function TierHero({
             data-cube-tier-none
             className="text-center text-white/70 sm:text-left"
           >
-            이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.
+            이 크기는 아직 5판 평균이 없어요.
           </p>
         ) : (
           <p

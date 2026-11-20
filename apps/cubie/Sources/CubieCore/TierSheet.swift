@@ -18,7 +18,7 @@ public enum TierSheet {
     "골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고, 아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔어요. 큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰, 크기가 달라도 같은 티어면 비슷한 실력이에요."
   public static let mineLabel = "내 최고 5판 평균"
   /// 앱 티어표는 Cubie 기록으로 센다(사이트 `records=cubie`와 같은 글)
-  public static let none = "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요."
+  public static let none = "이 크기는 아직 5판 평균이 없어요."
   public static let headTier = "티어"
   public static let headWca = "WCA 경기자 중"
   public static let outside = "대회 밖"

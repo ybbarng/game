@@ -838,7 +838,7 @@ function FormulaDrill({
             </button>
             {best !== undefined && (
               <span className="text-white/60 text-xs">
-                이 기기 최고 초당 {best.toFixed(2)}수
+                최고 초당 {best.toFixed(2)}수
               </span>
             )}
           </div>

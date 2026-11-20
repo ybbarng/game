@@ -26,7 +26,6 @@ public enum SettingsSheet {
   public static let scrambleShows: [(id: String, label: String)] = [
     ("auto", "크기에 맞게"), ("instant", "바로"), ("moves", "하나씩 빠르게"), ("spin", "짧은 연출"),
   ]
-  public static let scrambleShowNote = "크기에 맞게는 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출이에요."
   /// 공식 연습 가리기의 가린 칸 색(사이트 `hidden`, 큐브 창 `CubeSettings.hiddenColor`)
   public static let hidden = "가린 스티커"
   public static let hiddenChoices: [(id: String, label: String)] = [("black", "검정"), ("gray", "회색")]

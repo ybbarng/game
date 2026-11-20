@@ -283,8 +283,8 @@ function TimeWithBreaks({ text }: { text: string }) {
 }
 
 /**
- * 크기별 최고 Ao5와 티어(Cubie 기록 기준, docs/47 15-6). 티어는 사이트와 같은 규칙(최고 Ao5, `tiers/rank.ts`)이지만
- * 기록은 미니 모드 것이라(살펴보기 없이·포커스 있는 동안만 잼) 그렇게 밝힌다
+ * 크기별 최고 Ao5와 티어(Cubie 기록 기준, docs/47 15-6). 티어는 사이트와 같은 규칙(최고 Ao5, `tiers/rank.ts`)이고
+ * 기록은 미니 모드 것이다. 재는 규칙·어느 기록인지는 화면 글로 덧붙이지 않는다(고정 규칙 3절, 2026-11-20)
  */
 function MiniTiers({
   version,
@@ -372,10 +372,6 @@ function MiniTiers({
           <NoBreakTimes text={nextSolveText(goal)} />
         </p>
       )}
-      <p className="break-keep text-white/50">
-        Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 힌트를 쓴 판이
-        든 5판은 티어에 넣지 않아요.
-      </p>
     </section>
   );
 }
@@ -407,6 +403,20 @@ const DEPTH_RULE =
   "숫자 n 다음 면 키는 그 면의 n번째 층 하나, 숫자 n 다음 Shift + 면 키는 바깥 n층을 같이 돌려요(7×7 바깥 세 층은 3 → Shift+I).";
 
 /**
+ * 저장된 키 배치에서 Cubie가 쓰지 않는 동작(처음으로·살펴보기, `MiniCube`의 키 처리)을 뺀 것. Esc는 앱의 「이전 앱으로」다.
+ * 쓰지 않는 키를 글로 덧붙여 알리지 않고 표에서 뺀다(고정 규칙 3절)
+ */
+function cubieKeymap(): Keymap {
+  const k = loadKeymap();
+  return {
+    ...k,
+    bindings: k.bindings.filter(
+      (b) => b.action !== "reset" && b.action !== "inspectionSkip",
+    ),
+  };
+}
+
+/**
  * 단축키 창(앱 0.1.8까지 메뉴 「단축키 보기」가 보통 창으로 연다. 0.1.9부터는 큐브 옆 `KeysPanelPage`): 앱 단축키 짧은
  * 목록과, 지금 키 배치·크기의 큐브 키를 사이트 단축키 표와 같은 키보드 그림으로. 섞기·되돌리기는 배치에서 읽는다
  */
@@ -415,7 +425,7 @@ function KeysPage() {
   const [keymap, setKeymap] = useState<Keymap | null>(null);
   useEffect(() => {
     const reload = () => {
-      setKeymap(loadKeymap());
+      setKeymap(cubieKeymap());
       setN(loadMiniPrefs().n);
     };
     reload();
@@ -479,11 +489,7 @@ function KeysPage() {
           <p className="break-keep text-white/60 text-xs">
             칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는
             Alt와 함께 칠 때예요. 흐린 글은 이 크기에서 쓰지 않아요.
-            {keymap.preset === "twoHand" && n >= 3 && <> {DEPTH_RULE}</>}{" "}
-            Cubie에서 Esc는 「처음으로」가 아니라 이전 앱으로 돌아가는 키이고,
-            Space(살펴보기)는 쓰지 않아요. 마우스로는 큐브를 돌려 보지 않으니
-            보는 각도는 큐브 통째 돌리기(x·y·z) 키로 바꿔요. 배치는 메뉴 「키
-            배치·색…」에서 바꿔요.
+            {keymap.preset === "twoHand" && n >= 3 && <> {DEPTH_RULE}</>}
           </p>
         </div>
       )}
@@ -506,16 +512,7 @@ function KeysPanelPage() {
     const q = Number(new URLSearchParams(window.location.search).get("n"));
     return isMiniSize(q) ? q : loadMiniPrefs().n;
   });
-  // Cubie가 쓰지 않는 동작(처음으로·살펴보기, `MiniCube`의 키 처리)은 표에서 뺀다. Esc는 앱의 「표 닫기·이전 앱으로」다
-  const [keymap] = useState<Keymap>(() => {
-    const k = loadKeymap();
-    return {
-      ...k,
-      bindings: k.bindings.filter(
-        (b) => b.action !== "reset" && b.action !== "inspectionSkip",
-      ),
-    };
-  });
+  const [keymap] = useState<Keymap>(cubieKeymap);
   const [pressed, setPressed] = useState<{ code: string; id: number } | null>(
     null,
   );
@@ -2012,7 +2009,6 @@ function RecordsPanel({
                     {(r.hints ?? 0) > 0 && (
                       <span
                         data-mini-record-hints={r.hints}
-                        title="힌트를 본 판이 든 5판은 티어에 넣지 않아요"
                         className="rounded bg-sky-500/25 px-1 text-sky-200"
                       >
                         힌트 {r.hints}번

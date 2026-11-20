@@ -7,7 +7,7 @@ import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import { presetKeymap } from "../input";
 import { keysForMove } from "../keys/move-keys";
-import { TWO_HAND_RULE, TWO_HAND_RULES } from "../keys/two-hand";
+import { TWO_HAND_RULES } from "../keys/two-hand";
 import { FINGER_DRILLS, FINGER_INTRO } from "../learn/fingers";
 import { fingerQuiz } from "../learn/interact";
 import { algTokens } from "../learn/notation";
@@ -173,15 +173,6 @@ export function FingersApp() {
 
           <section className="flex flex-col gap-3">
             <p className="break-keep text-sm text-white/80">{drill.note}</p>
-            {!noKeyboard && (
-              <p
-                className="break-keep text-white/55 text-xs"
-                data-fingers-keys-note
-              >
-                칸 아래 키는 「두 손」 배치에서 같은 수를 치는 키예요.{" "}
-                {TWO_HAND_RULE}
-              </p>
-            )}
             <ol className="flex flex-wrap gap-1.5">
               {tokens.map((t, i) => {
                 const f = fingers[i] as FingerToken | undefined;
