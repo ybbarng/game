@@ -250,7 +250,7 @@ export function StardrawDemo() {
               {current ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-white/70">
-                    이번 회차에 예측했습니다. 「지금 관측」을 눌러 보세요.
+                    이번 회차에 예측했습니다.
                   </p>
                   <Receipt
                     ticket={current.ticket}
@@ -324,7 +324,7 @@ export function StardrawDemo() {
                 )
               ) : (
                 <p className="text-sm text-white/60">
-                  예측한 뒤 「지금 관측」을 누르면 여기서 관측을 봅니다.
+                  아직 관측한 회차가 없습니다.
                 </p>
               )}
             </Step>
@@ -420,8 +420,7 @@ export function StardrawDemo() {
                         </>
                       ) : (
                         <p className="text-sm text-white/60">
-                          입상자 폰에서 「확인 링크 만들기」를 누르면 그 링크를
-                          여기서 엽니다.
+                          아직 연 확인 링크가 없습니다.
                         </p>
                       )}
                     </Pane>
@@ -429,9 +428,7 @@ export function StardrawDemo() {
                 </div>
               ) : (
                 <p className="text-sm text-white/60">
-                  입상한 예측서가 있으면 여기서 입상자 폰과 확인하는 사람 화면을
-                  나란히 놓고 확인해 봅니다. 예측할 때 「1등 되게」를 눌러
-                  보세요.
+                  아직 입상한 예측서가 없습니다.
                 </p>
               )}
             </Step>

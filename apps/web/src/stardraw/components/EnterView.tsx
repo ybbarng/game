@@ -710,7 +710,6 @@ export function EnterView({
         <ClosedNotice
           name={roundShort(services.ledger.schedule, writing ?? watching)}
           now={status.now}
-          saved={picked.length > 0}
           onGo={() => onWatchDraw?.(watching)}
         />
       ) : (
@@ -829,12 +828,10 @@ const CLOSED_GO_SECONDS = 5;
 function ClosedNotice({
   name,
   now,
-  saved,
   onGo,
 }: {
   name: string;
   now: number;
-  saved: boolean;
   onGo: () => void;
 }) {
   const [since] = useState(now);
@@ -856,11 +853,6 @@ function ClosedNotice({
       <p className="break-keep text-sm text-white/75 tabular-nums">
         {left}초 뒤 관측지로 이동합니다.
       </p>
-      {saved && (
-        <p className="break-keep text-white/55 text-xs">
-          바구니에 담은 별은 저장해 둡니다.
-        </p>
-      )}
       <button
         type="button"
         onClick={() => {

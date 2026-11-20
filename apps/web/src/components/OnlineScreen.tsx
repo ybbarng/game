@@ -413,7 +413,6 @@ export function OnlineScreen({
                 규칙: {ruleName(encodeRuleString(rules))}
                 {" · "}
                 {rules.playerCount}명
-                <span className="block">빈자리는 컴퓨터가 채워요.</span>
               </p>
             )}
             {isHost && <RoomKindPicker />}

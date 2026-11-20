@@ -1,6 +1,6 @@
 "use client";
 
-import { DEAL_SIZES, YAK_DESCRIPTIONS, YAK_NAMES } from "@game/minhwatu-engine";
+import { YAK_DESCRIPTIONS, YAK_NAMES } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
@@ -115,7 +115,6 @@ function SubScreen({
 function MinhwatuOptions({ onBack }: { onBack: () => void }) {
   const s = useMinhwatuSettings();
   const level = MINHWATU_LEVELS.find((l) => l.value === s.level);
-  const deal = DEAL_SIZES[s.players];
   return (
     <SubScreen title="민화투 옵션" onBack={onBack}>
       <Section title="인원">
@@ -130,10 +129,6 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          손에 {deal.hand}장씩 들고 바닥에 {deal.floor}장을 펼쳐 시작해요.
-          나홀로 민화투는 나 말고 모두 컴퓨터가 앉아요.
-        </p>
       </Section>
       <Section title="판 수">
         <div className="flex flex-wrap gap-1.5">
@@ -147,9 +142,6 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          판 점수를 더한 합계로 1등을 가려요.
-        </p>
       </Section>
       <Section title="약 점수(초약·풍약·비약)">
         <div className="flex flex-wrap gap-1.5">
@@ -179,10 +171,6 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
             사오동 40점
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          초단(4·5·7월 띠 3장)은 동네에 따라 약으로 세지 않기도 하고,
-          사오동(11월 오동 4장)은 약으로 세는 곳이 적어요.
-        </p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -198,9 +186,6 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">{level?.description}</p>
       </Section>
-      <p className="text-xs opacity-60">
-        다함께 민화투도 여기서 고른 인원·판 수·약으로 방을 열어요.
-      </p>
     </SubScreen>
   );
 }
@@ -317,14 +302,14 @@ function MinhwatuHome({
       together={{
         icon: "👥",
         title: "다함께 민화투",
-        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "민화투 배우기",
         learned,
         total: MINHWATU_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 짝 맞추기부터 ${MINHWATU_LESSONS.length}단원이 있어요.`,
+        firstHint: `짝 맞추기부터 ${MINHWATU_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

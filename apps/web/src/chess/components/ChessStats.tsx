@@ -11,7 +11,7 @@ export function ChessStats({ book }: { book: StatsBook }) {
   if (s.rounds === 0)
     return (
       <p className="rounded-2xl bg-white/5 p-6 text-center text-sm text-white/60">
-        아직 끝낸 체스 판이 없어요. 한 판 두고 오세요.
+        아직 끝낸 체스 판이 없어요.
       </p>
     );
   return (

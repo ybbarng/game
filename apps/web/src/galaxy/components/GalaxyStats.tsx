@@ -24,7 +24,7 @@ export function GalaxyStats({ book }: { book: StatsBook }) {
   if (s.rounds === 0)
     return (
       <p className="rounded-2xl bg-white/5 p-6 text-center text-sm text-white/60">
-        아직 끝낸 은하 한 바퀴 판이 없어요. 한 판 하고 오세요.
+        아직 끝낸 은하 한 바퀴 판이 없어요.
         {old ? ` ${old}` : ""}
       </p>
     );

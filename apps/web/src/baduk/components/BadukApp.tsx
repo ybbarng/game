@@ -164,8 +164,7 @@ function BadukOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          흑이 먼저 두는 대신 백이 더 받는 점수예요. 0.5가 붙어 있어 비기는 일이
-          없어요.
+          흑이 먼저 두는 대신 백이 더 받는 점수예요.
         </p>
       </Section>
       <Section title="개인 시간">
@@ -210,7 +209,6 @@ function BadukOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">여러 판이면 판마다 흑백을 바꿔요.</p>
       </Section>
       <Section title="단수 표시">
         <div className="flex flex-wrap gap-1.5">
@@ -224,13 +222,7 @@ function BadukOptions({ onBack }: { onBack: () => void }) {
             감추기
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          활로가 하나 남은 돌(단수)에 빨간 테두리를 둘러요.
-        </p>
       </Section>
-      <p className="text-xs opacity-60">
-        다함께 바둑도 여기서 고른 판 크기·덤·판 수·시간으로 방을 열어요.
-      </p>
     </SubScreen>
   );
 }
@@ -338,14 +330,14 @@ function BadukHome({
       together={{
         icon: "👥",
         title: "다함께 바둑",
-        detail: "링크로 친구를 불러요. 서버 없이 바로 이어져요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "바둑 배우기",
         learned,
         total: BADUK_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 돌 놓기부터 ${BADUK_LESSONS.length}단원이 있어요.`,
+        firstHint: `돌 놓기부터 ${BADUK_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}
@@ -524,7 +516,7 @@ export function BadukApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `돌 잡기·살리기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 읽는 단원 ${LESSON_SET.puzzleIds.length}개, 구석에서 흔히 두는 정해진 수 ${JOSEKI_SET.puzzleIds.length}개, 빈 판 첫 몇 수 ${FUSEKI_SET.puzzleIds.length}개가 있어요. 규칙을 익혔다면 여기서 실력을 키워요.`,
+          detail: `돌 잡기·살리기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 읽는 단원 ${LESSON_SET.puzzleIds.length}개, 구석에서 흔히 두는 정해진 수 ${JOSEKI_SET.puzzleIds.length}개, 빈 판 첫 몇 수 ${FUSEKI_SET.puzzleIds.length}개가 있어요.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

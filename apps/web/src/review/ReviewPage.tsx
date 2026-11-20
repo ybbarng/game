@@ -122,11 +122,6 @@ export function ReviewPage() {
             그 게임 기록이 이 기기에 없어요.
           </p>
         )}
-        <p className="text-sm text-white/60">
-          판이 끝날 때마다 이 기기에 남겨요(최근 50게임). 혼자 하기와 친구와
-          하기를 남기고, 배우기는 남기지 않아요. 친구와 한 판은 판이 끝나 모두
-          공개된 뒤의 카드로 남아요.
-        </p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <button
             type="button"
@@ -162,7 +157,7 @@ export function ReviewPage() {
         </div>
         {list === null ? null : list.length === 0 ? (
           <p className="rounded-2xl bg-black/35 p-4 text-sm text-white/70">
-            아직 남긴 게임이 없어요. 한 판을 끝까지 두면 여기에 생겨요.
+            아직 남긴 게임이 없어요.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">

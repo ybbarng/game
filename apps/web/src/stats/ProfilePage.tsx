@@ -337,7 +337,7 @@ export function ProfilePage() {
         <Card title="기록 관리">
           <p className="text-sm text-white/60">
             기록은 이 브라우저에만 있어요. 브라우저 데이터를 지우면 함께
-            사라지니, 가끔 내보내 두세요. 다른 기기에서 가져오면 합쳐요.
+            사라지니, 가끔 내보내 두세요.
           </p>
           <div className="flex flex-wrap gap-2 text-sm">
             <button
@@ -397,27 +397,13 @@ export function ProfilePage() {
   );
 }
 
-/** 받침이 있으면 "을", 없으면 "를"(오목을, 마이티를) */
-function objectParticle(word: string): string {
-  const code = (word.at(-1) ?? "").charCodeAt(0) - 0xac00;
-  return code >= 0 && code < 11172 && code % 28 !== 0 ? "을" : "를";
-}
-
-function Empty({ what }: { what: string }) {
-  return (
-    <Card title="아직 기록이 없어요">
-      <p className="text-sm text-white/70">
-        {what}
-        {objectParticle(what)} 한 판 끝까지 두면 여기에 쌓여요. 혼자 하기와
-        친구와 하기를 모두 기록하고, 배우기는 기록하지 않아요.
-      </p>
-    </Card>
-  );
+function Empty() {
+  return <Card title="아직 기록이 없어요" />;
 }
 
 function MightyStats({ book }: { book: StatsBook }) {
   const s = summarizeMighty(book.rounds, book.games);
-  if (s.rounds === 0) return <Empty what="마이티" />;
+  if (s.rounds === 0) return <Empty />;
   const c = s.counts;
   return (
     <>
@@ -574,7 +560,7 @@ function MightyStats({ book }: { book: StatsBook }) {
 
 function HeartsStats({ book }: { book: StatsBook }) {
   const s = summarizeHearts(book.rounds, book.games);
-  if (s.rounds === 0) return <Empty what="하트" />;
+  if (s.rounds === 0) return <Empty />;
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -638,7 +624,7 @@ function HeartsStats({ book }: { book: StatsBook }) {
 
 function OmokStats({ book }: { book: StatsBook }) {
   const s = summarizeOmok(book.rounds);
-  if (s.rounds === 0) return <Empty what="오목" />;
+  if (s.rounds === 0) return <Empty />;
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -679,7 +665,7 @@ function OmokStats({ book }: { book: StatsBook }) {
 
 function BadukStats({ book }: { book: StatsBook }) {
   const s = summarizeBaduk(book.rounds);
-  if (s.rounds === 0) return <Empty what="바둑" />;
+  if (s.rounds === 0) return <Empty />;
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -716,7 +702,7 @@ function BadukStats({ book }: { book: StatsBook }) {
 
 function JanggiStats({ book }: { book: StatsBook }) {
   const s = summarizeJanggi(book.rounds);
-  if (s.rounds === 0) return <Empty what="장기" />;
+  if (s.rounds === 0) return <Empty />;
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

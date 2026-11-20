@@ -467,12 +467,6 @@ function Board({
               />
             </p>
           )}
-        {!compact && situation.voids.some((v) => v.length > 0) && (
-          <p className="mt-1 text-[11px] text-white/50">
-            "<SuitText text="♣" /> 없음"은 그 무늬가 나왔을 때 따라 내지 못해,
-            그 무늬가 손에 없다는 게 드러났다는 뜻이에요.
-          </p>
-        )}
       </section>
       <section>
         <h3

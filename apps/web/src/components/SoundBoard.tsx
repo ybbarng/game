@@ -314,8 +314,7 @@ export function SoundBoard() {
     <main className="min-h-dvh bg-[#0a3622] p-4 text-white">
       <h1 className="mb-1 font-bold text-lg">효과음</h1>
       <p className="mb-4 text-sm text-white/70">
-        누르면 그 소리가 나요. 숫자는 귀에 느껴지는 크기, 가장 큰 순간의 크기,
-        들리는 길이예요.
+        숫자는 귀에 느껴지는 크기, 가장 큰 순간의 크기, 들리는 길이예요.
       </p>
       <button
         type="button"

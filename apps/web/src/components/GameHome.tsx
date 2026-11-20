@@ -113,7 +113,7 @@ export function GameHome({
   const learnDetail = !learn
     ? ""
     : learn.learned >= learn.total
-      ? "모든 단원을 마쳤어요. 언제든 다시 볼 수 있어요."
+      ? "모든 단원을 마쳤어요."
       : learn.learned > 0
         ? `${learn.learned}/${learn.total} 단원 마침`
         : learn.firstHint;

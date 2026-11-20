@@ -171,8 +171,8 @@ function YutOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">
           {s.flatPercent === 60
-            ? "가락마다 배가 위로 올 확률이 60%예요. 개·걸이 잦고 모는 드물어요(2.6%)."
-            : "가락마다 배가 위로 올 확률이 반반이에요. 모가 6.3%로 늘어나요."}
+            ? "가락마다 배가 위로 올 확률이 60%예요."
+            : "가락마다 배가 위로 올 확률이 반반이에요."}
         </p>
       </Section>
       <Section title="참먹이">
@@ -190,11 +190,6 @@ function YutOptions({ onBack }: { onBack: () => void }) {
             서도 남
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          {s.landOnHome
-            ? "말이 참먹이에 딱 멈춰도 판에서 나가요."
-            : "말이 참먹이를 지나쳐야 판에서 나가요. 참먹이에 딱 멈추면 그 자리에 섰다가, 다음에 무엇이 나와도 나가요."}
-        </p>
       </Section>
       <Section title="낙">
         <div className="flex flex-wrap gap-1.5">
@@ -205,11 +200,11 @@ function YutOptions({ onBack }: { onBack: () => void }) {
             없음
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          {s.nak
-            ? "윷을 던져 받는 짚 깔개(멍석) 밖으로 윷가락이 떨어지면 낙이에요. 낙이 난 던지기는 없던 일이 되고 더 던지지 못해요. 그 차례에 먼저 나온 결과는 그대로 써요. 옆으로 치우칠수록, 빨리 튕길수록, 끝까지 다 당겨 아주 높이 던질수록 낙이 잘 나요. 옆으로 쓸어 던지면 반드시 낙이에요. 절반쯤 당겨 곧장 위로 천천히 튕기면 낙이 나지 않아요."
-            : "어떻게 던져도 낙이 없어요."}
-        </p>
+        {s.nak && (
+          <p className="text-xs opacity-60">
+            윷을 던져 받는 짚 깔개(멍석) 밖으로 윷가락이 떨어지면 낙이에요.
+          </p>
+        )}
       </Section>
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
@@ -244,17 +239,8 @@ function YutOptions({ onBack }: { onBack: () => void }) {
               끔
             </Chip>
           </div>
-          <p className="text-xs opacity-60">
-            {s.vibrate === false
-              ? "윷가락이 멈춰도 폰이 떨리지 않아요."
-              : "던진 윷가락이 하나씩 멈출 때마다 폰이 짧게 떨리고, 윷이나 모가 나오면 두 번 떨려요."}
-          </p>
         </Section>
       )}
-      <p className="text-xs opacity-60">
-        다함께 윷놀이도 여기서 고른 규칙으로 방을 열어요. 빈자리는 컴퓨터가
-        맡아요.
-      </p>
     </SubScreen>
   );
 }
@@ -370,7 +356,7 @@ function YutHome({
         title: "윷놀이 배우기",
         learned,
         total: YUT_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. ${YUT_LESSONS.length}단원이 있어요.`,
+        firstHint: `${YUT_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

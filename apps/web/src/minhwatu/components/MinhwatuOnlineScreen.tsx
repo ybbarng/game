@@ -356,10 +356,7 @@ export function MinhwatuOnlineScreen({
               />
             </label>
             {isHost && (
-              <p className="text-white/60 text-xs">
-                {describeRules(rules)}. 빈자리는 컴퓨터(중수)가 앉고, 첫 판 선은
-                무작위, 그 뒤로는 앞 판 1등이 선이에요.
-              </p>
+              <p className="text-white/60 text-xs">{describeRules(rules)}</p>
             )}
             {isHost && <RoomKindPicker />}
             <button

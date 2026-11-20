@@ -21,8 +21,6 @@ import {
 import { formatTime, LottoBall, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 
-/** 이보다 관측이 적으면 숫자가 크게 출렁인다고 밝힌다 */
-const FEW_DRAWS = 30;
 /** 회차별 예측 막대 수 */
 const SERIES = 48;
 const PERIOD_LABEL: Record<StatsPeriod, string> = {
@@ -190,11 +188,6 @@ function Overview({
           </div>
         ))}
       </dl>
-      {stats.draws < FEW_DRAWS && (
-        <p className="text-amber-100/80 text-xs">
-          아직 {stats.draws}회뿐이라 아래 숫자는 크게 출렁입니다.
-        </p>
-      )}
     </Card>
   );
 }

@@ -1354,7 +1354,7 @@ test(
     await page.getByRole("button", { name: "자동", exact: true }).click();
     await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
     const closed = page.locator("[data-enter-closed]");
-    await expect(closed).toContainText("바구니에 담은 별은 저장해 둡니다.");
+    await expect(closed).toContainText("예측이 마감되었습니다.");
     // 몇 초 뒤 같은 주소에서 관측지로
     await page.clock.fastForward(6000);
     await page.clock.resume();

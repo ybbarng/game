@@ -139,9 +139,6 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          나홀로 나이롱뽕은 나머지 자리에 컴퓨터가 앉아요.
-        </p>
       </Section>
       <Section title="판 수">
         <div className="flex flex-wrap gap-1.5">
@@ -170,8 +167,7 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">
           뽕을 한 번 이상 한 뒤 손에 남은 숫자 합이 이 값 이하이면, 더미에서
-          가져오기 전에 스톱할 수 있어요. 내 합이 다른 모든 사람보다 낮지 않으면
-          스톱 벌점 30점을 더 받아요.
+          가져오기 전에 스톱할 수 있어요.
         </p>
       </Section>
       <Section title="뽕 바가지">
@@ -203,9 +199,6 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          누가 카드를 버린 뒤 뽕을 외칠지 정하는 시간이에요.
-        </p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -348,14 +341,14 @@ function NyrongppongHome({
       together={{
         icon: "👥",
         title: "다함께 나이롱뽕",
-        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "나이롱뽕 배우기",
         learned,
         total: NYRONGPPONG_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 버리기부터 뽕까지 ${NYRONGPPONG_LESSONS.length}단원이 있어요.`,
+        firstHint: `버리기부터 뽕까지 ${NYRONGPPONG_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

@@ -164,9 +164,6 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          비긴 판은 누구의 승리로도 세지 않아요.
-        </p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -194,7 +191,6 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">여러 판이면 판마다 백·흑을 바꿔요.</p>
       </Section>
       <Section title="칸 이름">
         <div className="flex flex-wrap gap-1.5">
@@ -227,10 +223,6 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
             감추기
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          내 차례에 잡혀도 되잡을 기물이 없거나, 값이 더 낮은 기물에 잡힐 수
-          있는 내 기물에 주황 점선을 둘러요.
-        </p>
       </Section>
       <Section title="기물 모양">
         <div className="flex flex-wrap gap-1.5">
@@ -249,15 +241,7 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
             <PieceIcon key={p} piece={p} className="size-9" />
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          {s.pieces === "3d"
-            ? "빛과 그림자가 있는 나무 기물이에요."
-            : "글꼴에 든 체스 기호예요. 기호가 없는 기기에서는 네모로 보일 수 있어요."}
-        </p>
       </Section>
-      <p className="text-xs opacity-60">
-        다함께 체스도 여기서 고른 판 수와 시간으로 방을 열어요.
-      </p>
     </SubScreen>
   );
 }
@@ -370,14 +354,14 @@ function ChessHome({
       together={{
         icon: "👥",
         title: "다함께 체스",
-        detail: "링크로 친구를 불러요. 서버 없이 바로 이어져요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "체스 배우기",
         learned,
         total: CHESS_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 기물 움직임부터 ${CHESS_LESSONS.length}단원이 있어요.`,
+        firstHint: `기물 움직임부터 ${CHESS_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}
@@ -507,7 +491,7 @@ export function ChessApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `이름난 첫 수들 ${OPENING_SET.puzzleIds.length}개, 메이트·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 퀸·룩 하나·룩 둘로 메이트하는 엔드게임 연습 ${ENDGAME_STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요. 규칙을 익혔다면 여기서 실력을 키워요.`,
+          detail: `이름난 첫 수들 ${OPENING_SET.puzzleIds.length}개, 메이트·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 퀸·룩 하나·룩 둘로 메이트하는 엔드게임 연습 ${ENDGAME_STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

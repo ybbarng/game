@@ -12,15 +12,7 @@ const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}`;
 /** 내 기록의 민화투 탭: 판 평균 점수·1등·약 */
 export function MinhwatuStats({ book }: { book: StatsBook }) {
   const s = summarizeMinhwatu(book.rounds, book.games);
-  if (s.rounds === 0)
-    return (
-      <Card title="아직 기록이 없어요">
-        <p className="text-sm text-white/70">
-          민화투를 한 판 끝까지 치면 여기에 쌓여요. 혼자 하기와 친구와 하기를
-          모두 기록하고, 배우기는 기록하지 않아요.
-        </p>
-      </Card>
-    );
+  if (s.rounds === 0) return <Card title="아직 기록이 없어요" />;
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

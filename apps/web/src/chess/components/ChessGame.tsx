@@ -399,9 +399,6 @@ export function ChessGame({
               >
                 거절
               </button>
-              <span className="text-white/60 text-xs">
-                그냥 두어도 거절이에요.
-              </span>
             </div>
           )}
           <p
