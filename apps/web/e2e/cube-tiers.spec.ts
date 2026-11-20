@@ -433,7 +433,7 @@ test(
     await page.locator("[data-cube-tier-size='4']").click();
     await expect(page).toHaveURL(/records=cubie/);
     await expect(page.locator("[data-cube-tier-none]")).toHaveText(
-      "이 크기는 아직 5판 평균이 없어요. Cubie에서 5판 맞추면 생겨요.",
+      "이 크기는 아직 5판 평균이 없어요.",
     );
     // 브라우저의 사이트 티어 화면은 사이트 혼자 맞추기 기록 그대로(Cubie 기록을 섞지 않는다)
     await page.goto("/cube/tiers?n=3");

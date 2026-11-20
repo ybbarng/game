@@ -148,11 +148,6 @@ export function ShapeSoloApp({
               보여요. 큐브를 돌려 같은 모양을 만들면 끝이에요. 첫 수를 두면
               시간이 흐르고, 모양마다 가장 빠른 기록이 남아요.
             </p>
-            <p className="break-keep text-white/60 text-xs">
-              큐브를 어느 쪽으로 들고 만들어도 같은 모양이면 돼요. 막히면
-              「만드는 법」을 눌러 보세요. 만드는 법을 본 판은 기록이 따로
-              남아요.
-            </p>
             <button
               type="button"
               data-cube-shape-intro-ok

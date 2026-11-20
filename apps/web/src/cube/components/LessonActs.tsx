@@ -746,11 +746,6 @@ export function PlayPanel({
           처음으로
         </button>
       </div>
-      {spec.choose && (
-        <p className="text-white/50 text-xs">
-          큐브의 칸을 누르면 그 조각을 따라가요.
-        </p>
-      )}
       <CubePlay
         flow="large"
         n={n}

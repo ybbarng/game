@@ -820,19 +820,6 @@ function CubeRaceView({
             >
               {scramble}
             </p>
-            {/* 판 시작 전·살펴보기 동안: 무엇을 할 수 있는지 미리 알린다 */}
-            {(phase === "commit" ||
-              phase === "reveal" ||
-              phase === "inspect") &&
-              mine && (
-                <p
-                  data-cube-inspect-hint
-                  className="mx-auto break-keep rounded-full border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-center text-sky-100 text-xs"
-                >
-                  살펴보기: 보기만 해요(끌거나 ←·↓ 키로 둘러보기). 시간이 열리면
-                  면을 돌려요.
-                </p>
-              )}
             {/* 내 핸디캡(출발 늦추기·목표)은 판 내내 보인다 */}
             {mine &&
               (myDelayMs > 0 || myGoal || myHelp) &&

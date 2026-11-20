@@ -98,7 +98,6 @@ final class RecordsRootView: FlippedView {
   private let tiersBasis = NUI.label(RecordsSheet.tiersBasis, color: NUI.white(0.6))
   private let tiersLink = Chip(RecordsSheet.tiersLink, look: Chip.Look(text: NUI.white(0.7), padX: 0))
   private var tierButtons: [TierCell] = []
-  private let tiersNote = NUI.paragraph(RecordsSheet.tiersNote, color: NUI.white(0.5), lineHeight: 16)
   /// 고른 크기의 구간 안 자리 막대(사이트 `TierBandBar`, 5판 평균이 없으면 숨김)
   let band = TierBandView()
   /// 고른 크기의 다음 판 목표(사이트 `data-mini-next-solve`)
@@ -121,7 +120,7 @@ final class RecordsRootView: FlippedView {
     super.init(frame: NSRect(origin: .zero, size: NativeRecordsWindow.size.initial))
     fill = NUI.color(NUI.Hex.neutral950)
     addSubview(tiers)
-    for v in [tiersTitle, tiersBasis, tiersLink, band, goalLine, tiersNote, tiersLine] as [NSView] { tiers.addSubview(v) }
+    for v in [tiersTitle, tiersBasis, tiersLink, band, goalLine, tiersLine] as [NSView] { tiers.addSubview(v) }
     tiersLink.action = { [weak self] in self?.owner?.openTiers() }
     tiersLine.fill = NUI.white(0.1)
     for s in RecordsSheet.sizes {
@@ -255,9 +254,8 @@ final class RecordsRootView: FlippedView {
       goalLine.frame = NSRect(x: 8, y: y, width: inner, height: gh)
       y += gh + 4
     }
-    let nh = NUI.height(tiersNote, width: inner)
-    tiersNote.frame = NSRect(x: 8, y: y, width: inner, height: nh)
-    y += nh + 8
+    // 마지막 줄 아래 gap 4는 위에서 더했다. 나머지 4로 사이트 `p-2`(아래 8)
+    y += 4
     tiers.frame = NSRect(x: 0, y: 0, width: w, height: y + 1)
     tiersLine.frame = NSRect(x: 0, y: y, width: w, height: 1)
     y += 1
@@ -579,7 +577,6 @@ final class RecordRowView: FlippedView {
     }
     if row.hints > 0 {
       let h = Chip(RecordsSheet.hints(row.hints), look: Chip.Look(fill: NUI.color(NUI.Hex.sky500, 0.25), text: NUI.color(NUI.Hex.sky200)))
-      h.toolTip = RecordsSheet.hintsTip
       badges.append(h)
     }
     self.badges = badges

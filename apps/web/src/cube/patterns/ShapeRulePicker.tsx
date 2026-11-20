@@ -94,20 +94,8 @@ export function ShapeRulePicker({
               </button>
             ))}
           </div>
-          {formula === false && (
-            <span
-              data-cube-shape-formula-off
-              className="text-amber-200/90 text-xs"
-            >
-              만드는 법 보기를 껐어요. 외운 공식으로 겨뤄요.
-            </span>
-          )}
         </fieldset>
       )}
-      <p className="text-white/50 text-xs">
-        판마다 목표 모양이 하나 나와요. 먼저 그 모양을 만든 사람이 이겨요.
-        큐브를 어느 쪽으로 들고 만들어도 같은 모양이면 돼요.
-      </p>
     </div>
   );
 }

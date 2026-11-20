@@ -380,11 +380,7 @@ export function TryPanel({
                     <MoveChip notation={taughtHint.move} keysOf={keysOf} link />
                   </span>
                 </p>
-              ) : (
-                <p className="text-white/50 text-xs">
-                  막히면 「힌트 2」로 다음 수를 봐요.
-                </p>
-              )}
+              ) : null}
             </>
           ) : (
             <p
@@ -396,9 +392,6 @@ export function TryPanel({
             </p>
           )}
         </div>
-      )}
-      {answer.length === 0 && !taught && (
-        <p className="text-white/50 text-xs">정해진 모범 답 없음</p>
       )}
 
       <CubePlay
