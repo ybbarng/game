@@ -119,27 +119,3 @@ public enum EmblemHdr {
     return out
   }
 }
-
-/// 메뉴 프로필 칸 엠블럼 미리보기(docs/52 5-16): 내 기록을 바꾸지 않고 다른 티어 엠블럼을 메뉴에서 본다. 숨은 설정
-/// `defaults write kr.byb.cubie previewTier <티어 id>`로 켜고 `defaults delete kr.byb.cubie previewTier`로 끈다. 메뉴
-/// 프로필 칸의 엠블럼만 바꾸고(이름·티어 글·기록 창·티어표 창은 그대로), 화면에 따로 알리는 글을 두지 않는다
-public enum EmblemPreview {
-  public static let defaultsKey = "previewTier"
-
-  /// 설정 값 → 티어 id(`TierInfo.ids` 가운데 하나, 대소문자·앞뒤 빈칸은 따지지 않음). 모르는 값이면 nil(미리보기 없음)
-  public static func tier(_ raw: String?) -> String? {
-    guard let s = raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), TierInfo.ids.contains(s) else {
-      return nil
-    }
-    return s
-  }
-
-  /// 미리보기 티어가 있으면 엠블럼(그림·티어 id)만 그 티어로 바꾼 프로필
-  public static func apply(_ p: Profile, tier: String?, emblem: (String) -> Data?) -> Profile {
-    guard let tier else { return p }
-    var q = p
-    q.emblem = emblem(tier)
-    q.emblemTier = tier
-    return q
-  }
-}
