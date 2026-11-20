@@ -14,6 +14,11 @@
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <description>&lt;p&gt;티어표·기록·설정 창의 덧붙임 설명 글을 없앴어요. 스크롤 막대가 생겨도 기록 창 「다시 보기」 단추가 가리지 않아요. 메뉴 엠블럼 숨은 미리보기 설정을 없앴어요.&lt;/p&gt;</description>
       <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.11.3/Cubie.zip" length="10833764" type="application/octet-stream" sparkle:edSignature="QP7yH5OCSlXSJX6fKOR6zfYADp3AbbDoSaUanJUtnmFvwH3cJNYhX1EJmZiJTza5ozHNPrha13Q4b97rINyLDQ=="/>
+      <sparkle:deltas>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.2-0.11.3.delta" sparkle:deltaFrom="0.11.2" length="275050" type="application/octet-stream" sparkle:edSignature="E0rnrqDB25K5AR9jTSOjM2RTQ50w68HiJA1wuVUTFLUSBZbsomjLEBtwlUBwXJgtpw0rrZFc6BIrnFNWvY16Ag=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.1-0.11.3.delta" sparkle:deltaFrom="0.11.1" length="296646" type="application/octet-stream" sparkle:edSignature="LmVlQWunFBohNTe2XeT+id8tP46rLbwizyFfUDtTx7TyEHjhJyF5p5StokLVDXsGY/4Si6NkSotx4iPy8kQgBA=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.0-0.11.3.delta" sparkle:deltaFrom="0.11.0" length="380214" type="application/octet-stream" sparkle:edSignature="jsIyxqy74yFQ2+kaQatyS2fGxHKmXqCwaBvHjX8mySB7iy80TLoOwUgB5viUbqndJ7Bn/CuCWX6asBibZNjACQ=="/>
+      </sparkle:deltas>
     </item>
     <item>
       <title>Cubie 0.11.2</title>

@@ -93,15 +93,20 @@ CUBIE_WEB_WINDOWS=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 되돌림: 기
 apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장." --dry-run   # 미리 보기: dist/0.2.0-dry-run/ 에만, 서명 안 함
 apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장."             # VERSION·appcast·노트를 고친다
 /Users/ybbarng/.local/bin/cubie-release 0.2.0                                # GitHub Release만 만든다
+apps/cubie/scripts/release.sh --deltas-only 0.2.0 [--dry-run]                 # 이미 낸 맨 위 판에 차이 파일만 더한다
 ```
 
-스크립트는 시험 → 판 올리기 → universal 빌드·서명 → `dist/<판>/Cubie.zip` → EdDSA 서명 → `apps/web/public/cubie/appcast.xml` 맨 위에 새 판 → `release-notes/<판>.md`(appcast 설명과 같은 글, 커밋한다)까지 하고, 「GitHub Release 만들기」와 「PR」 명령을 찍는다. 작업 트리(`.claude/worktrees/*`)에서 돌렸으면 zip과 노트를 기본 저장소 폴더의 같은 자리에도 복사한다.
+스크립트는 시험 → 판 올리기 → universal 빌드·서명 → `dist/<판>/Cubie.zip` → 차이 파일 → EdDSA 서명 → `apps/web/public/cubie/appcast.xml` 맨 위에 새 판 → `release-notes/<판>.md`(appcast 설명과 같은 글, 커밋한다)까지 하고, 「GitHub Release 만들기」와 「PR」 명령을 찍는다. 작업 트리(`.claude/worktrees/*`)에서 돌렸으면 zip과 노트를 기본 저장소 폴더의 같은 자리에도 복사한다.
+
+**차이 업데이트**: 깔린 앱이 전체 zip(약 10.8MB) 대신 바뀐 부분만 받게, appcast 바로 아래 판 3개(`--deltas <개수>`, 0이면 안 만듦)에서 새 판으로 가는 차이 파일을 Sparkle `BinaryDelta create`로 만든다. 옛 판에 `BinaryDelta apply`로 적용한 결과가 새 zip 안 앱과 같은지(`diff -rq --no-dereference`, `codesign --verify`) 보고 서명해, 새 판 항목에 `<sparkle:deltas>`로 적는다(0.11.2 → 0.11.3이 275,050바이트, 전체의 약 2.5%). 차이 파일은 GitHub Release가 아니라 사이트 `apps/web/public/cubie/deltas/<옛 판>-<새 판>.delta`에 두고 appcast PR에 함께 커밋한다(찍히는 `git add`에 들어 있다). 앱은 늘 맨 위 판으로만 가므로 차이 목록은 맨 위 판에만 두고, 아래 판 항목의 차이 목록과 더는 가리키지 않는 차이 파일은 스크립트가 지운다(저장소에는 늘 차이 파일 3개쯤만 남는다). 옛 판 zip은 기본 저장소 폴더 `apps/cubie/dist/<판>/Cubie.zip`(git 밖)에서 읽으니 지우지 않는다. 없으면 그 판은 건너뛰고 끝에 적는다(그 판의 앱은 전체 zip을 받는다). appcast 셈은 `apps/web/src/cubie/appcast.ts`(시험 `appcast.test.ts`가 저장소 appcast와 차이 파일이 맞는지도 본다)이고, 스크립트는 `scripts/appcast-deltas.mjs`로 부른다.
+
+`--deltas-only <판>`은 이미 낸 맨 위 판에 차이 파일만 더한다. 빌드·시험·VERSION·노트는 건드리지 않고, `dist/<판>/Cubie.zip`이 appcast의 길이·서명과 같은지 먼저 본다. 저장소에 같은 이름 차이 파일이 있으면 다시 적용해 맞을 때 그대로 쓴다. 끝에 그 PR 명령을 찍는다.
 
 Release는 `~/.local/bin/cubie-release <판>`이 만든다. 판 번호 하나만 받고, 기본 저장소 폴더의 `apps/cubie/dist/<판>/Cubie.zip`과 `apps/cubie/release-notes/<판>.md`를 `cubie-v<판>` 태그로 올린다(`--latest=false`, zip 안 앱 판이 인자와 다르거나 같은 릴리스가 있으면 멈춘다). 허락은 game `.claude/settings.local.json`에 이 스크립트 경로만 둔다(사용자가 직접 넣는다). push·PR은 찍힌 명령을 보고 사람이 직접 돌린다. Release를 먼저 만들고, 그다음 appcast PR을 머지한다. appcast가 사이트에 올라가야 깔린 앱들이 새 판을 본다. zip을 다시 만들면 서명이 바뀌니 appcast와 함께 만든 그 zip을 올린다.
 
 README의 내려받기 주소 `https://game.byb.kr/cubie/download`는 사이트가 빌드할 때 appcast 맨 위 판의 zip을 가리킨다(`apps/web/src/app/cubie/download`). 그래서 appcast PR이 머지되어 사이트가 다시 배포되면 README를 고치지 않아도 새 판을 내려받는다.
 
-서명 열쇠를 읽을 때마다 로그인 암호 창이 뜬다. 그래서 실제 판은 `sign_update`를 한 번만 부르고, 확인은 `scripts/verify-ed.swift`가 `Info.plist`의 공개 열쇠로만 한다. `--dry-run`은 열쇠를 읽지 않는다(서명 자리에 가짜 값).
+서명 열쇠를 읽을 때마다 로그인 암호 창이 뜬다. zip과 차이 파일 여럿을 서명하므로 `security find-generic-password`로 열쇠를 한 번만 읽어 셸 변수에 두고, 파일마다 `sign_update --ed-key-file -`에 표준 입력으로 넘긴다(화면·파일·명령 줄에 남기지 않는다). 그 길이 안 되면 파일마다 `sign_update --account`로 돌아간다(그때는 파일 수만큼 창이 뜬다). 확인은 `scripts/verify-ed.swift`가 `Info.plist`의 공개 열쇠로만 한다. `--dry-run`은 열쇠를 읽지 않는다(서명 자리에 가짜 값, 차이 파일은 만들고 적용 확인까지 한다).
 
 서명 열쇠는 이 맥 로그인 키체인에만 있다(계정 `kr.byb.cubie`, Sparkle `generate_keys`로 만듦). 이 열쇠를 잃으면 이미 깔린 앱이 새 판을 받지 못한다. 다른 맥에서 내려면 `apps/cubie/.build/artifacts/sparkle/Sparkle/bin/generate_keys --account kr.byb.cubie -x <파일>`로 꺼내 그 맥에서 `-f <파일>`로 넣고, 파일은 지운다.
 
