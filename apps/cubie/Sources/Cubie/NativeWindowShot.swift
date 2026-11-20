@@ -69,6 +69,9 @@ enum NativeWindowShot {
     customWindow.page.editor.shotAnswerYes()
     customWindow.page.port.setOpen(true)
     ok = shoot(customWindow.window, name: "native-settings-custom", dir: dir, fullHeight: true) && ok
+    // 같은 장면을 막대가 내용 폭을 차지하는 꼴로(내보내기·가져오기 글 상자 안 막대 포함)
+    legacyScrollers(customWindow.window)
+    ok = shoot(customWindow.window, name: "native-settings-custom-scroll", dir: dir, fullHeight: true) && ok
     // 가장 작은 크기(docs/52 5-8 「창 최소 크기」): 창을 `contentMinSize`까지 줄여 글이 잘리지 않는지 본다
     let recordsMin = NativeRecordsWindow(book: book) { settings }
     shrink(recordsMin)
@@ -77,6 +80,27 @@ enum NativeWindowShot {
       recordsMin.watch(first)
       ok = shoot(recordsMin.window, name: "native-records-min-replay", dir: dir) && ok
     }
+    // 판이 많아 세로 스크롤 막대가 내용 폭을 차지하는 꼴(macOS 「스크롤 막대 보기: 항상」·마우스 연결, 2026-11-20 「다시 보기」가
+    // 막대에 가려 잘렸다): 기록 창 처음 너비·가장 작은 너비, 티어표·설정 창은 굴리는 창 그대로(막대가 보이게)
+    if let path = ProcessInfo.processInfo.environment["CUBIE_WINDOW_SHOT_STORE_MANY"],
+      let data = FileManager.default.contents(atPath: path),
+      let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: String]
+    {
+      let manyBook = MiniBook(store: MemoryStore(d), math: RustTierMath())
+      let scrolled = NativeRecordsWindow(book: manyBook) { settings }
+      legacyScrollers(scrolled.window)
+      ok = shoot(scrolled.window, name: "native-records-scroll", dir: dir) && ok
+      let scrolledMin = NativeRecordsWindow(book: manyBook) { settings }
+      legacyScrollers(scrolledMin.window)
+      shrink(scrolledMin)
+      ok = shoot(scrolledMin.window, name: "native-records-scroll-min", dir: dir) && ok
+    }
+    let tiersScroll = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
+    legacyScrollers(tiersScroll.window)
+    ok = shoot(tiersScroll.window, name: "native-tiers-scroll", dir: dir) && ok
+    let settingsScroll = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
+    legacyScrollers(settingsScroll.window)
+    ok = shoot(settingsScroll.window, name: "native-settings-scroll", dir: dir) && ok
     let tiersMin = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
     shrink(tiersMin)
     ok = shoot(tiersMin.window, name: "native-tiers-min", dir: dir, fullHeight: true) && ok
@@ -152,6 +176,18 @@ enum NativeWindowShot {
     sheet.window.contentView?.layoutSubtreeIfNeeded()
   }
 
+  /// 창 안 스크롤 보기 모두 막대가 내용 폭을 차지하는 꼴로(`.legacy`, 시스템 설정과 상관없이). 다시 배치한다
+  static func legacyScrollers(_ window: NSWindow) {
+    guard let root = window.contentView else { return }
+    for s in ([root] + allSubviews(root)).compactMap({ $0 as? NSScrollView }) {
+      s.scrollerStyle = .legacy
+      s.autohidesScrollers = true
+      s.tile()
+    }
+    root.needsLayout = true
+    root.layoutSubtreeIfNeeded()
+  }
+
   /// 창 내용을 PNG로(배율 2). `fullHeight`면 굴리는 내용 전체 높이로
   static func shoot(_ window: NSWindow, name: String, dir: String, fullHeight: Bool = false) -> Bool {
     guard var view = window.contentView else { return false }
@@ -161,6 +197,12 @@ enum NativeWindowShot {
       // 문서 높이를 다시 셈한 뒤 한 번 더 배치한다
       doc.needsLayout = true
       doc.layoutSubtreeIfNeeded()
+    }
+    // 배치가 가라앉을 때까지(막대가 생겨 내용 폭이 바뀌면 `ContentScrollView.tile()`이 다음 차례 배치를 main 큐에 건다.
+    // 화면 창과 같은 길로 가게 실행 루프를 잠깐 돌린다)
+    for _ in 0..<3 {
+      view.window?.contentView?.layoutSubtreeIfNeeded()
+      RunLoop.main.run(until: Date().addingTimeInterval(0.02))
     }
     view.layoutSubtreeIfNeeded()
     view.displayIfNeeded()

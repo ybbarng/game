@@ -139,6 +139,43 @@ class FlippedView: NSView {
   }
 }
 
+/// 문서 보기를 늘 내용 폭(스크롤 막대 몫을 뺀 `contentView` 폭)에 맞추는 스크롤 보기. 막대가 내용 폭을 차지하는 꼴(macOS
+/// 「스크롤 막대 보기: 항상」·마우스를 이은 맥)에서 막대가 생기거나 사라지면(내용이 길어짐·설정이 바뀜·창 크기) AppKit이
+/// `tile()`로 내용 칸을 다시 나누는데, 문서 보기는 폭만 바뀌고 다시 배치되지 않아 오른쪽 끝이 막대 밑에 가려졌다(2026-11-20
+/// 기록 창 「다시 보기」, 티어표·설정 창 오른쪽 여백). 여기서 폭을 맞추고 폭이 바뀌면 다시 배치한다
+@MainActor
+final class ContentScrollView: NSScrollView {
+  /// 문서 보기 폭을 여기서 맞추나(기록 창처럼 바깥이 줄 폭을 직접 셈하면 끄고 `onTile`로 다시 배치한다)
+  var fitsDocumentWidth = true
+  /// 내용 칸을 다시 나눈 뒤(막대가 생기거나 사라짐·막대 꼴이 바뀜·크기)
+  var onTile: (() -> Void)?
+  private var laidWidth: CGFloat = -1
+
+  /// 지금 막대 꼴에서 세로 막대가 차지하는 폭(겹치는 막대는 0)
+  var scrollerWidth: CGFloat {
+    NSScroller.scrollerWidth(for: verticalScroller?.controlSize ?? .regular, scrollerStyle: scrollerStyle)
+  }
+
+  override func tile() {
+    super.tile()
+    if fitsDocumentWidth, let doc = documentView {
+      let w = contentView.bounds.width
+      if abs(doc.frame.width - w) > 0.5 { doc.setFrameSize(NSSize(width: w, height: doc.frame.height)) }
+      if abs(w - laidWidth) > 0.5 {
+        laidWidth = w
+        doc.needsLayout = true
+        // 문서 보기 자신의 `layout()` 안에서 막대가 생기면(높이를 정해 `tile()`) 위 표시가 그 `layout()`이 끝날 때 지워진다.
+        // 다음 차례에 표시를 다시 걸고 배치한다
+        DispatchQueue.main.async { [weak doc] in
+          doc?.needsLayout = true
+          doc?.layoutSubtreeIfNeeded()
+        }
+      }
+    }
+    onTile?()
+  }
+}
+
 extension NUI {
   /// 둥근 상자 바탕·1pt 테두리
   static func drawBox(_ r: NSRect, fill: NSColor?, border: NSColor?, radius: CGFloat) {

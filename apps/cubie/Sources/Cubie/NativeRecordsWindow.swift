@@ -110,8 +110,11 @@ final class RecordsRootView: FlippedView {
   private var summaryValues: [NSTextField] = []
   private var summaryLabels: [NSTextField] = []
   private let empty = NUI.label(RecordsSheet.empty, color: NUI.white(0.6))
-  private let scroll = NSScrollView()
+  /// 줄 폭은 여기 `layout()`이 내용 폭(`ScrollContent.width`)으로 셈하고, 막대 꼴이 바뀌면 `onTile`로 다시 셈한다
+  private let scroll = ContentScrollView()
   private let list = FlippedView()
+  /// 마지막으로 셈한 줄 폭(스크롤 막대를 뺀 내용 폭, 시험·스크린샷이 본다)
+  private(set) var rowWidth: CGFloat = 0
   private var rows: [RecordRowView] = []
   private(set) var replay: ReplayBoxView?
   private var n = 3
@@ -154,6 +157,12 @@ final class RecordsRootView: FlippedView {
     scroll.hasVerticalScroller = true
     scroll.autohidesScrollers = true
     scroll.documentView = list
+    scroll.fitsDocumentWidth = false
+    scroll.onTile = { [weak self] in
+      // 막대가 생기거나 사라졌거나 막대 꼴이 바뀌어 내용 폭이 셈한 줄 폭과 다르면 다시 놓는다
+      guard let self, abs(self.scroll.contentView.bounds.width - self.rowWidth) > 0.5 else { return }
+      self.needsLayout = true
+    }
     addSubview(scroll)
   }
 
@@ -290,15 +299,25 @@ final class RecordsRootView: FlippedView {
       listTop = y + rh + 6
     }
     empty.frame = NSRect(x: 8, y: listTop, width: inner, height: 16)
-    scroll.frame = NSRect(x: 8, y: listTop, width: inner, height: max(0, bottom - listTop))
-    // 줄 높이는 줄마다(좁은 창에서 칩 묶음을 둘째 줄로 내린 줄은 더 높다)
+    let visible = max(0, bottom - listTop)
+    scroll.frame = NSRect(x: 8, y: listTop, width: inner, height: visible)
+    // 줄 폭은 스크롤 보기 바깥 폭이 아니라 내용 폭(막대가 내용 폭을 차지하는 꼴이면 판이 많을 때 막대 몫을 뺀다, 2026-11-20
+    // 「다시 보기」가 막대에 가려 잘렸다). 줄 높이는 줄마다(좁은 창에서 칩 묶음을 둘째 줄로 내린 줄은 더 높다)
+    let rows = self.rows
+    let rw = CGFloat(
+      ScrollContent.width(frame: Double(inner), visibleHeight: Double(visible), scroller: Double(scroll.scrollerWidth)) { w in
+        rows.reduce(0) { $0 + Double($1.height(width: CGFloat(w))) }
+      })
+    rowWidth = rw
     var ry: CGFloat = 0
     for r in rows {
-      let rh = r.height(width: inner)
-      r.frame = NSRect(x: 0, y: ry, width: inner, height: rh)
+      let rh = r.height(width: rw)
+      r.frame = NSRect(x: 0, y: ry, width: rw, height: rh)
+      r.needsLayout = true
       ry += rh
     }
-    list.frame = NSRect(x: 0, y: 0, width: inner, height: max(scroll.frame.height, ry))
+    list.frame = NSRect(x: 0, y: 0, width: rw, height: max(visible, ry))
+    scroll.tile()
   }
 }
 
@@ -563,6 +582,8 @@ final class RecordRowView: FlippedView {
     addSubview(line)
     let no = NUI.label("\(row.no)", color: NUI.white(0.4))
     let when = NUI.label(row.when, color: NUI.white(0.6))
+    // 줄이 모자라 때 칸이 줄면 끝을 줄임표로(「다시 보기」 대신 때가 준다)
+    when.lineBreakMode = .byTruncatingTail
     let out = mark == .fast || mark == .slow
     let time = NUI.label(
       RecordsSheet.timeText(row.time, mark: mark), weight: .semibold,
@@ -596,23 +617,22 @@ final class RecordRowView: FlippedView {
     super.layout()
     let h: CGFloat = 16
     let y: CGFloat = 2
-    // 번호 w-6, 때 w-20, 시간은 남은 자리(flex-1), 나머지는 글 폭대로. 칸 사이 8
-    parts[0].frame = NSRect(x: 0, y: y, width: 24, height: h)
-    parts[1].frame = NSRect(x: 32, y: y, width: 80, height: h)
-    // 시간 칸은 글보다 줄지 않는다(사이트 flex-1의 최소 폭). 좁은 줄은 칩 묶음을 시간 칸 아래 둘째 줄로 내린다
+    // 번호 w-6, 때 w-20, 시간은 남은 자리(flex-1), 나머지는 글 폭대로. 칸 사이 8. 시간 뒤 칸(칩·수·「다시 보기」)은 줄지 않고
+    // 다 보이며, 모자라면 때 칸이 줄어든다(`RecordsSheet.rowColumns`). 좁은 줄은 칩 묶음을 시간 칸 아래 둘째 줄로 내린다
     let below = RecordsSheet.badgesOnOwnLine(width: Double(bounds.width), badges: badges.count)
     let fit = { (v: NSView) in (v as? Chip)?.fit.width ?? NUI.width(v as! NSTextField) }
     let inline = parts[3...].filter { v in !(below && badges.contains(where: { $0 === v })) }
     let widths = inline.map(fit)
-    let rightW = widths.reduce(0, +) + CGFloat(widths.count) * 8
-    let indent = CGFloat(RecordsSheet.badgesIndent)
-    let timeW = max(NUI.width(parts[2] as! NSTextField), bounds.width - indent - rightW)
-    parts[2].frame = NSRect(x: indent, y: y, width: timeW, height: h)
-    var x = indent + timeW + 8
-    for (v, w) in zip(inline, widths) {
-      v.frame = NSRect(x: x, y: y, width: w, height: h)
-      x += w + 8
+    let cols = RecordsSheet.rowColumns(
+      width: Double(bounds.width), time: Double(NUI.width(parts[2] as! NSTextField)), right: widths.map(Double.init))
+    parts[0].frame = NSRect(x: 0, y: y, width: RecordsSheet.rowNoWidth, height: h)
+    parts[1].frame = NSRect(x: RecordsSheet.rowNoWidth + RecordsSheet.rowGap, y: y, width: cols.whenWidth, height: h)
+    parts[1].isHidden = cols.whenWidth < 1
+    parts[2].frame = NSRect(x: cols.timeX, y: y, width: cols.timeWidth, height: h)
+    for (i, v) in inline.enumerated() {
+      v.frame = NSRect(x: cols.rightX[i], y: y, width: widths[i], height: h)
     }
+    let indent = CGFloat(cols.timeX)
     if below {
       // 사이트 칩 사이 `gap-1`
       var bx = indent

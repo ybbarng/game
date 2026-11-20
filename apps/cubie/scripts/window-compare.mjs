@@ -6,6 +6,7 @@
 //   node apps/cubie/scripts/window-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr] [앱 실행 파일]
 //
 // 결과: <폴더>/native-*.png·web-*.png(따로), <폴더>/compare-records.png·compare-records-min.png(가장 작은 320×600)·
+// compare-records-scroll.png(판 20개, 스크롤 막대가 내용 폭을 차지하는 꼴로 380·320)·
 // compare-tiers.png·compare-settings.png(비교판,
 // 티어표는 진열의 내 티어·챌린저 고름·기록 없음 셋, 설정은 기본·「사용자」 겹친 키 묻기·바꾼 뒤 셋). 네이티브만 찍는 메뉴 프로필
 // 칸 흔들기는 native-profile-sway-dark·light.png(티어 넷 × 각 여섯).
@@ -138,9 +139,35 @@ function sampleStore() {
   };
 }
 
+/** 판이 많아 기록 목록에 세로 스크롤 막대가 생기는 저장소(3×3 20판). 막대가 내용 폭을 차지할 때 「다시 보기」가 잘리지 않는지 */
+function manyStore(base) {
+  const mini = JSON.parse(base["cube.mini.v1"]);
+  const sol = inverse(SCRAMBLE);
+  const three = [];
+  for (let i = 0; i < 20; i++) {
+    const no = i + 1;
+    three.unshift(
+      record(no, 3, 19_000 + ((no * 1_733) % 9_000), {
+        scramble: SCRAMBLE,
+        seed: 2000 + no,
+        replay: replayOf(sol, 300),
+        ...(no === 6 ? { hints: 1 } : {}),
+      }),
+    );
+  }
+  mini.records = { ...mini.records, 3: three };
+  return { ...base, "cube.mini.v1": JSON.stringify(mini) };
+}
+
 const store = sampleStore();
 const storePath = path.join(dir, "store.json");
 writeFileSync(storePath, JSON.stringify(store));
+const many = manyStore(store);
+const manyPath = path.join(dir, "store-many.json");
+writeFileSync(manyPath, JSON.stringify(many));
+/** 스크롤 막대가 내용 폭을 차지하게(macOS 「스크롤 막대 보기: 항상」·마우스 연결과 같은 꼴). WebKit은 이 꾸밈이 있으면 겹치는 막대 대신 자리를 차지하는 막대를 그린다 */
+const LEGACY_SCROLLBAR =
+  "::-webkit-scrollbar{width:15px;height:15px;background:#2a2a2a}::-webkit-scrollbar-thumb{background:#8a8a8a;border-radius:8px;border:4px solid #2a2a2a}";
 
 // 네이티브: 화면 밖 스크린샷 모드
 execFileSync(APP, [], {
@@ -148,6 +175,7 @@ execFileSync(APP, [], {
     ...process.env,
     CUBIE_WINDOW_SHOT: dir,
     CUBIE_WINDOW_SHOT_STORE: storePath,
+    CUBIE_WINDOW_SHOT_STORE_MANY: manyPath,
   },
   stdio: "inherit",
 });
@@ -175,6 +203,16 @@ const WINDOWS = [
     path: "/cube/mini?view=records",
     size: { width: 320, height: 600 },
     shots: ["records-min", "records-min-replay"],
+  },
+  {
+    // 판이 많아 세로 스크롤 막대가 내용 폭을 차지하는 기록 창(2026-11-20 「다시 보기」가 막대에 가려 잘렸다):
+    // 처음 너비 380과 가장 작은 320
+    name: "records-scroll",
+    path: "/cube/mini?view=records",
+    size: { width: 380, height: 600 },
+    data: many,
+    scrollbar: true,
+    shots: ["records-scroll", "records-scroll-min"],
   },
   {
     name: "tiers",
@@ -206,16 +244,27 @@ try {
         colorScheme: "dark",
         ...(w.reducedMotion ? { reducedMotion: w.reducedMotion } : {}),
       });
-      await c.addInitScript((d) => {
-        for (const [k, v] of Object.entries(d)) localStorage.setItem(k, v);
-      }, data);
+      await c.addInitScript(
+        ([d, css]) => {
+          for (const [k, v] of Object.entries(d)) localStorage.setItem(k, v);
+          // 막대 꾸밈은 처음 그리기 전에 넣는다(그린 뒤 넣으면 WebKit이 겹치는 막대를 그대로 둔다)
+          if (css) {
+            document.addEventListener("DOMContentLoaded", () => {
+              const s = document.createElement("style");
+              s.textContent = css;
+              document.head.appendChild(s);
+            });
+          }
+        },
+        [data, w.scrollbar ? LEGACY_SCROLLBAR : ""],
+      );
       const p = await c.newPage();
       await p.goto(`${BASE}${w.path}`);
       await p.waitForLoadState("networkidle");
       await p.waitForTimeout(500);
       return [c, p];
     };
-    let [ctx, page] = await open(store);
+    let [ctx, page] = await open(w.data ?? store);
     for (const shot of w.shots) {
       if (shot === "tiers-pick") {
         await page.locator("[data-cube-ladder='challenger']").click();
@@ -248,6 +297,10 @@ try {
         await page.locator("[data-mini-replay-open]").first().click();
         await page.waitForSelector("[data-cube-ready]");
         await page.waitForTimeout(300);
+      }
+      if (shot === "records-scroll-min") {
+        await ctx.close();
+        [ctx, page] = await open(w.data ?? store, { ...w.size, width: 320 });
       }
       const bandSize = {
         "records-top": 5,
@@ -286,7 +339,10 @@ try {
     const img = (f) => f;
     const cols = pairs
       .map((s) => {
-        const width = s === "records-narrow" ? 320 : w.size.width;
+        const width =
+          s === "records-narrow" || s === "records-scroll-min"
+            ? 320
+            : w.size.width;
         return `<figure><figcaption>네이티브 · ${s}</figcaption><img src="${img(`native-${s}.png`)}" style="width:${width}px"></figure>
 <figure><figcaption>사이트(WebKit) · ${s}</figcaption><img src="${img(`web-${s}.png`)}" style="width:${width}px"></figure>`;
       })
