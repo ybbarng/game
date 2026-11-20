@@ -183,12 +183,13 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     ).toBe("none");
   });
 
-  it("맥 앱 Cubie와 그 업데이트 목록만: 화면 시험 없음", () => {
+  it("맥 앱 Cubie와 그 업데이트 목록·차이 파일만: 화면 시험 없음", () => {
     expect(
       pick(
         "apps/cubie/scripts/release.sh",
         "apps/cubie/VERSION",
         "apps/web/public/cubie/appcast.xml",
+        "apps/web/public/cubie/deltas/0.11.2-0.11.3.delta",
       ).mode,
     ).toBe("none");
   });

@@ -93,7 +93,8 @@ const IGNORE = [
   // Rust 큐브 코어와 공통 시험 자료(docs/52 5절). 사이트 빌드에 들어가지 않고 CI의 rust 작업이 본다
   /^native\//,
   // Cubie 업데이트 목록(Sparkle appcast). 웹은 내려받기 페이지가 빌드 때 맨 위 판만 읽는다. 그 읽기는 단위 시험
-  // (src/cubie/appcast.test.ts, 저장소 파일을 그대로 읽는다)이 보므로 새 판마다 화면 시험을 돌리지 않는다
+  // (src/cubie/appcast.test.ts, 저장소 파일을 그대로 읽는다)이 보므로 새 판마다 화면 시험을 돌리지 않는다.
+  // 차이 업데이트 파일(public/cubie/deltas/)도 앱만 받는 파일이라 같다(같은 시험이 appcast와 맞는지 본다)
   /^apps\/web\/public\/cubie\//,
 ];
 
