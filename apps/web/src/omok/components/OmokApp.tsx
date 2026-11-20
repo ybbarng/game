@@ -193,7 +193,6 @@ function OmokOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">여러 판이면 판마다 흑백을 바꿔요.</p>
       </Section>
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -204,9 +203,6 @@ function OmokOptions({ onBack }: { onBack: () => void }) {
         />
         내 차례에 금지 자리를 ×로 보이기
       </label>
-      <p className="text-xs opacity-60">
-        다함께 오목도 여기서 고른 규칙과 판 수로 방을 열어요.
-      </p>
     </SubScreen>
   );
 }
@@ -325,14 +321,14 @@ function OmokHome({
       together={{
         icon: "👥",
         title: "다함께 오목",
-        detail: "링크로 친구를 불러요. 서버 없이 바로 이어져요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "오목 배우기",
         learned,
         total: OMOK_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. ${OMOK_LESSONS.length}단원과 직접 둬 보는 과제 4개가 있어요.`,
+        firstHint: `${OMOK_LESSONS.length}단원과 직접 둬 보는 과제 4개가 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}
@@ -440,7 +436,7 @@ export function OmokApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `넷으로 몰아 이기기·막기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요. 규칙을 익혔다면 여기서 실력을 키워요.`,
+          detail: `넷으로 몰아 이기기·막기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

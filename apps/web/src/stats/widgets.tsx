@@ -180,7 +180,7 @@ export function TrendLine({
   const [hover, setHover] = useState<number | null>(null);
   if (values.length < 2)
     return (
-      <p className="text-sm text-white/50">판이 더 쌓이면 흐름을 그려요.</p>
+      <p className="text-sm text-white/50">아직 흐름을 그릴 판이 모자라요.</p>
     );
   const W = 320;
   const H = 120;
@@ -266,7 +266,7 @@ export function Card({
   className,
 }: {
   title: string;
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
 }) {
   return (

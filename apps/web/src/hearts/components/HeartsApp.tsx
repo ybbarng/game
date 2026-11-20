@@ -167,14 +167,14 @@ export function HeartsApp() {
       together={{
         icon: "👥",
         title: "다함께 하트",
-        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
+        detail: "링크로 친구를 불러요.",
         onClick: () => setScreen({ kind: "online", room: null }),
       }}
       learn={{
         title: "하트 배우기",
         learned,
         total: HEARTS_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. ${HEARTS_LESSONS.length}단원과 미션 3개가 있어요.`,
+        firstHint: `${HEARTS_LESSONS.length}단원과 미션 3개가 있어요.`,
         onClick: () => setScreen({ kind: "tutorial" }),
       }}
       onOptions={() => setScreen({ kind: "options" })}
@@ -339,10 +339,6 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
               onChange={(endScore) => update({ endScore })}
             />
           </Section>
-          <p className="text-xs opacity-60">
-            카드 디자인, 진행 속도, 효과음, 컴퓨터 이름은 마이티 옵션 화면에서
-            고른 것을 함께 써요.
-          </p>
         </div>
       </div>
     </main>
@@ -411,8 +407,7 @@ function HeartsRulesScreen({ onBack }: { onBack: () => void }) {
           ))}
         </dl>
         <p className="text-center text-xs opacity-50">
-          윈도우 하트의 규칙을 따랐어요. 규칙은 옵션에서 바꿀 수 있어요. 친구와
-          할 때의 공정성은{" "}
+          친구와 할 때의 공정성은{" "}
           <a href="/security" className="underline">
             어떻게 지켜지나요?
           </a>

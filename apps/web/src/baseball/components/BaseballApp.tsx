@@ -135,11 +135,6 @@ function BaseballOptions({ onBack }: { onBack: () => void }) {
             컴퓨터 수만 맞히기
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          {s.soloMode === "duel"
-            ? "나도 비밀 수를 정하고 컴퓨터와 번갈아 맞혀요."
-            : "컴퓨터가 숨긴 수를 몇 번 만에 맞히나 혼자 풀어요."}
-        </p>
       </Section>
       <Section title="자릿수">
         <div className="flex flex-wrap gap-1.5">
@@ -173,11 +168,12 @@ function BaseballOptions({ onBack }: { onBack: () => void }) {
             먼저 맞히면 승
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          {s.fair
-            ? "먼저 묻는 사람(선공)이 맞히면, 나중에 묻는 사람(후공)도 같은 횟수가 되도록 한 번 더 물어요. 둘 다 맞히면 비겨요."
-            : "먼저 맞힌 사람이 이겨요. 먼저 묻는 쪽이 조금 유리해요."}
-        </p>
+        {s.fair && (
+          <p className="text-xs opacity-60">
+            먼저 묻는 사람(선공)이 맞히면, 나중에 묻는 사람(후공)도 같은 횟수가
+            되도록 한 번 더 물어요.
+          </p>
+        )}
       </Section>
       <Section title="판 수(서로 맞히기)">
         <div className="flex flex-wrap gap-1.5">
@@ -194,7 +190,6 @@ function BaseballOptions({ onBack }: { onBack: () => void }) {
       </Section>
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
-        <p className="text-xs opacity-60">맞힐 차례에만 시계가 가요.</p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -219,9 +214,6 @@ function BaseballOptions({ onBack }: { onBack: () => void }) {
         />
         지금까지 답과 맞는 후보 수 보이기
       </label>
-      <p className="text-xs opacity-60">
-        다함께 숫자야구는 늘 서로 맞히기로, 여기서 고른 규칙으로 방을 열어요.
-      </p>
     </SubScreen>
   );
 }
@@ -339,7 +331,7 @@ function BaseballHome({
         title: "숫자야구 배우기",
         learned,
         total: BASEBALL_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. ${BASEBALL_LESSONS.length}단원과 미션 4개가 있어요.`,
+        firstHint: `${BASEBALL_LESSONS.length}단원과 미션 4개가 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

@@ -127,9 +127,6 @@ function OnecardOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          나홀로 원카드는 나머지 자리에 컴퓨터가 앉아요.
-        </p>
       </Section>
       <Section title="처음 받는 카드">
         <div className="flex flex-wrap gap-1.5">
@@ -296,7 +293,7 @@ function OnecardHome({
         title: "원카드 배우기",
         learned,
         total: ONECARD_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 카드 내기부터 원카드 외치기까지 ${ONECARD_LESSONS.length}단원이 있어요.`,
+        firstHint: `카드 내기부터 원카드 외치기까지 ${ONECARD_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

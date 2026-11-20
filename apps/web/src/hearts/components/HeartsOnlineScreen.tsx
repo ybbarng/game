@@ -377,7 +377,6 @@ export function HeartsOnlineScreen({
             {isHost && (
               <p className="text-xs opacity-60">
                 {PLAYER_COUNT}명 · 끝 점수 {rules.endScore}점
-                <span className="block">빈자리는 컴퓨터가 채워요.</span>
               </p>
             )}
             {isHost && <RoomKindPicker />}

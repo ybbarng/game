@@ -84,10 +84,6 @@ export function PickPanel({
   const theme = useCardTheme();
   return (
     <Panel title="한 장을 고르세요">
-      <p className="text-center text-xs opacity-70">
-        2명 규칙은 덱에서 두 장을 보고 한 장씩 골라 손에 든 카드를 만들어요.
-        고르지 않은 카드는 이번 판에서 빠져요.
-      </p>
       <div className="flex justify-center gap-4">
         {(
           [

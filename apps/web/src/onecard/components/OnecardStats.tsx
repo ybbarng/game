@@ -8,14 +8,7 @@ import { summarizeOnecard } from "../kit";
 /** 내 기록의 원카드 탭(ProfilePage가 탭으로 붙인다) */
 export function OnecardStats({ book }: { book: StatsBook }) {
   const s = summarizeOnecard(book.rounds, book.games);
-  if (s.games === 0)
-    return (
-      <Card title="아직 기록이 없어요">
-        <p className="text-sm text-white/70">
-          원카드를 한 판 끝까지 하면 여기에 쌓여요.
-        </p>
-      </Card>
-    );
+  if (s.games === 0) return <Card title="아직 기록이 없어요" />;
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

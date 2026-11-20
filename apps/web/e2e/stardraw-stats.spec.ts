@@ -19,7 +19,6 @@ test(
     const stats = page.getByRole("region", { name: "관측 기록" });
     await expect(stats).toBeVisible();
     await expect(stats.locator("dt:text-is('관측') + dd")).toHaveText("2회");
-    await expect(stats.getByText(/아직 2회뿐이라/)).toBeVisible();
     // 두 회차 빛난 별(겹치면 12개보다 적다)만큼 관측 하늘에 빛이 있다
     const glows = page.locator("[data-observed-sky] circle[data-drawn]");
     expect(await glows.count()).toBeGreaterThan(5);

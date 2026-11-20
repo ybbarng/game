@@ -359,8 +359,7 @@ export function GostopOnlineScreen({
             {isHost && (
               <p className="text-white/60 text-xs">
                 {rules.players === 2 ? "맞고(2명)" : "고스톱(3명)"} ·{" "}
-                {rules.rounds}판 · {gukjin?.label}. 게임이 끝나면 기록을 공개해
-                모두가 다시 계산해 확인해요.
+                {rules.rounds}판 · {gukjin?.label}
               </p>
             )}
             {isHost && <RoomKindPicker />}

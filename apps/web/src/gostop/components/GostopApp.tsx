@@ -120,10 +120,6 @@ function GostopOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          맞고는 10장씩 받고 바닥에 8장을 펼치며, 7점부터 고를 부를 수 있어요.
-          셋은 7장씩 받고 바닥에 6장을 펼치며, 3점부터 고를 부를 수 있어요.
-        </p>
       </Section>
       <Section title="판 수">
         <div className="flex flex-wrap gap-1.5">
@@ -137,9 +133,6 @@ function GostopOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          정한 판 수를 치면 점수 합이 가장 많은 사람이 이겨요.
-        </p>
       </Section>
       <Section title="국진(9월 열끗)">
         <div className="flex flex-wrap gap-1.5">
@@ -169,10 +162,6 @@ function GostopOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">{level?.description}</p>
       </Section>
-      <p className="text-xs opacity-60">
-        다함께 고스톱도 여기서 고른 인원·판 수·국진 규칙으로 방을 열어요.
-        빈자리에는 컴퓨터(중수)가 앉아요.
-      </p>
     </SubScreen>
   );
 }
@@ -318,14 +307,14 @@ function GostopHome({
       together={{
         icon: "👥",
         title: "다함께 고스톱",
-        detail: "링크로 친구를 불러요. 빈자리는 컴퓨터가 앉아요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "고스톱 배우기",
         learned,
         total: GOSTOP_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 짝 맞추기부터 ${GOSTOP_LESSONS.length}단원이 있어요.`,
+        firstHint: `짝 맞추기부터 ${GOSTOP_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

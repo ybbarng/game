@@ -147,11 +147,7 @@ export function HwatuFairBar({
             >
               게임 끝내기
             </button>
-          ) : (
-            <span className="text-xs opacity-70">
-              오래 걸리면 끝낼지 투표해요.
-            </span>
-          )}
+          ) : null}
         </div>
       )}
     </>

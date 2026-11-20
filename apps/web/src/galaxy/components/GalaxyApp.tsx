@@ -252,10 +252,6 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
             끔
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          켜면 우주선이 움직이는 동안 판을 살짝 당겨 따라가요. 끄면 판 전체를
-          보여 줘요.
-        </p>
       </Section>
     </SubScreen>
   );
@@ -414,7 +410,7 @@ function GalaxyHome({
         title: "은하 한 바퀴 배우기",
         learned,
         total: GALAXY_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. ${GALAXY_LESSONS.length}단원이 있어요.`,
+        firstHint: `${GALAXY_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

@@ -189,10 +189,6 @@ function JanggiOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          여러 판이면 판마다 초·한을 바꿔요. 한은 뒤에 두는 대신 점수로 가릴 때
-          덤 1.5점을 더 받아요.
-        </p>
       </Section>
       <Section title="기물 글자">
         <div className="flex flex-wrap gap-1.5">
@@ -222,14 +218,7 @@ function JanggiOptions({ onBack }: { onBack: () => void }) {
             감추기
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          잡혀도 되잡을 기물이 없거나, 점수가 더 낮은 기물이 노리는 내 기물에
-          빨간 점선 고리를 둘러요.
-        </p>
       </Section>
-      <p className="text-xs opacity-60">
-        다함께 장기도 여기서 고른 빅장 규칙과 판 수로 방을 열어요.
-      </p>
     </SubScreen>
   );
 }
@@ -243,7 +232,7 @@ function JanggiRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "기물",
-      "한 편에 열여섯 개예요. 왕 노릇을 하는 궁 하나(초는 楚, 한은 漢), 차 車 둘, 포 包 둘, 마 馬 둘, 상 象 둘, 사 士 둘, 졸 다섯이에요. 졸은 초가 卒(졸), 한이 兵(병)이라 써요. 옵션에서 한글 글자로 바꿀 수 있어요.",
+      "한 편에 열여섯 개예요. 왕 노릇을 하는 궁 하나(초는 楚, 한은 漢), 차 車 둘, 포 包 둘, 마 馬 둘, 상 象 둘, 사 士 둘, 졸 다섯이에요. 졸은 초가 卒(졸), 한이 兵(병)이라 써요.",
     ],
     [
       "목표",
@@ -362,14 +351,14 @@ function JanggiHome({
       together={{
         icon: "👥",
         title: "다함께 장기",
-        detail: "링크로 친구를 불러요. 서버 없이 바로 이어져요.",
+        detail: "링크로 친구를 불러요.",
         onClick: onOnline,
       }}
       learn={{
         title: "장기 배우기",
         learned,
         total: JANGGI_LESSONS.length,
-        firstHint: `처음이라면 여기서 시작해요. 기물 움직임부터 ${JANGGI_LESSONS.length}단원이 있어요.`,
+        firstHint: `기물 움직임부터 ${JANGGI_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}
@@ -495,7 +484,7 @@ export function JanggiApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `외통·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요. 규칙을 익혔다면 여기서 실력을 키워요.`,
+          detail: `외통·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

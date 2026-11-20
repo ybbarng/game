@@ -1,3 +1,4 @@
+import { BROWSER } from "./browser";
 import {
   type BrowserContext,
   expect,
@@ -14,10 +15,14 @@ import {
  *   크롬은 기본으로 내 주소를 mDNS 이름으로 숨기는데, 헤드리스에서는 그 이름이 풀리지 않을 수 있어 끈다.
  *
  * 판정 값은 실제 시간으로 잰 값이라 넉넉한 기준(속인 300ms 가운데 150ms 넘게 / 아래)으로 가른다.
+ * `launchOptions`를 통째로 바꾸면 e2e/browser.ts의 샌드박스(`chromiumSandbox`)가 빠지므로 펼친 뒤 인자만 더한다.
  */
+const baseArgs: readonly string[] =
+  (BROWSER.launchOptions as { args?: readonly string[] }).args ?? [];
 test.use({
   launchOptions: {
-    args: ["--disable-features=WebRtcHideLocalIpsWithMdns"],
+    ...BROWSER.launchOptions,
+    args: [...baseArgs, "--disable-features=WebRtcHideLocalIpsWithMdns"],
   },
 });
 

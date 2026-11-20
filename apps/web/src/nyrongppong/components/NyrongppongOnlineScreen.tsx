@@ -360,10 +360,7 @@ export function NyrongppongOnlineScreen({
                 {rules.players}명 · {rules.rounds}판 · 스톱{" "}
                 {rules.stopLimit === 0 ? "없음" : `합 ${rules.stopLimit} 이하`}{" "}
                 · 바가지 +{rules.bagaji} · 버릴 때마다 모두{" "}
-                {ONLINE_CALL_SECONDS}초씩 뽕을 기다려요(누가 뽕할 수 있는지
-                드러나지 않게). 빈 자리는 컴퓨터(중수)가 앉아요. 패는 방장
-                기기가 섞고, 게임이 끝나면 섞은 값과 기록을 공개해 모두가 다시
-                확인해요.
+                {ONLINE_CALL_SECONDS}초씩 뽕을 기다려요.
               </p>
             )}
             {isHost && <RoomKindPicker />}

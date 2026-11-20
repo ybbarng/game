@@ -371,9 +371,7 @@ export function LineScreen({
           </p>
         )}
         {status === "done" && revealed && (
-          <p className="text-sm text-white/70">
-            수를 본 뒤 끝냈어요. 다음에 보지 않고 다시 두어 보세요
-          </p>
+          <p className="text-sm text-white/70">수를 본 뒤 끝냈어요.</p>
         )}
         <div className="flex flex-wrap justify-center gap-2">
           {status === "play" && (

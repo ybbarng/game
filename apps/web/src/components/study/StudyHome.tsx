@@ -226,9 +226,6 @@ function ReviewSection({
       </div>
       {first ? (
         <>
-          <p className="text-sm opacity-70">
-            틀렸거나 푼 지 오래된 문제를 다시 풀어요.
-          </p>
           <div className="flex flex-wrap gap-1.5">
             {due.map((id) => (
               <button
