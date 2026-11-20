@@ -287,7 +287,7 @@ if [ "$IN_WORKTREE" = 1 ] && [ "$DELTAS_ONLY" = 0 ]; then
   echo "==> 기본 저장소 폴더로 복사(cubie-release가 그 자리를 읽는다)"
   if [ "$DRY" = 1 ]; then
     echo "   (--dry-run: 복사하지 않는다)"
-    echo "   $HERE/dist/$VERSION/Cubie.zip → $FIXED_ZIP"
+    echo "   $HERE/$OUT/Cubie.zip → $FIXED_ZIP"
     echo "   $HERE/$NOTES_FILE → $FIXED_NOTES"
   else
     mkdir -p "$(dirname "$FIXED_ZIP")" "$(dirname "$FIXED_NOTES")"
