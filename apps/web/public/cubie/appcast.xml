@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.11.2</title>
+      <pubDate>Fri, 20 Nov 2026 01:40:54 +0000</pubDate>
+      <sparkle:version>0.11.2</sparkle:version>
+      <sparkle:shortVersionString>0.11.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;티어표 창 아래의 덧붙임 문구를 없애고, 다음 티어까지 줄일 시간을 「챌린저가 되시려면 평균을 … 줄여야 해요.」처럼 문장으로 보여요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.11.2/Cubie.zip" length="10830513" type="application/octet-stream" sparkle:edSignature="oXHGIWsOoTxJaBh1XH8eXtl23+VtMA2V4ObFbcpOx5mpUW6+5lVVCAZ2dG8q8cN+dH0xLsknjbZbpo6/IiHmDA=="/>
+    </item>
+    <item>
       <title>Cubie 0.11.1</title>
       <pubDate>Thu, 19 Nov 2026 10:17:54 +0000</pubDate>
       <sparkle:version>0.11.1</sparkle:version>
