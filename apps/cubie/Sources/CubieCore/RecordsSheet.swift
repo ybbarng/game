@@ -54,11 +54,47 @@ public enum RecordsSheet {
   /// 가장 작은 창(320, 줄 폭 304)에서 칩과 수·「다시 보기」를 한 줄에 다 넣으면 「다시 보기」가 줄 밖으로 밀렸다.
   /// 사이트 `RecordsPanel`도 같은 폭(`@max-[340px]`)에서 같은 자리로 내린다(docs/52 5-15)
   public static let badgesWrapBelow: Double = 340
-  /// 둘째 줄 칩 묶음의 왼쪽 자리(번호 24 + 8 + 때 80 + 8, 시간 칸과 같은 x)
-  public static let badgesIndent: Double = 120
+  /// 둘째 줄 칩 묶음의 왼쪽 자리(번호 24 + 8 + 때 80 + 8, 시간 칸과 같은 x. 사이트 `pl-[120px]`). 줄이 모자라 때 칸이 줄면
+  /// 앱은 시간 칸 자리(`RowColumns.timeX`)를 따른다
+  public static var badgesIndent: Double { rowNoWidth + rowGap + rowWhenWidth + rowGap }
 
   /// 그 폭의 줄에서 칩 묶음을 둘째 줄로 내리나
   public static func badgesOnOwnLine(width: Double, badges: Int) -> Bool { badges > 0 && width < badgesWrapBelow }
+
+  /// 번호 칸(사이트 `w-6`)·때 칸(`w-20`)·칸 사이(`gap-x-2`)
+  public static let rowNoWidth: Double = 24
+  public static let rowWhenWidth: Double = 80
+  public static let rowGap: Double = 8
+
+  /// 기록 한 줄의 칸 자리
+  public struct RowColumns: Equatable, Sendable {
+    /// 때 칸 폭(줄이 모자라면 줄어든다)
+    public let whenWidth: Double
+    public let timeX: Double
+    public let timeWidth: Double
+    /// 시간 뒤 칸(칩·수·「다시 보기」)의 왼쪽 자리
+    public let rightX: [Double]
+    /// 마지막 칸의 오른쪽 끝
+    public let end: Double
+  }
+
+  /// 내용 폭 `width`(스크롤 막대를 뺀 폭, `ScrollContent.width`) 줄의 칸 자리. 시간 칸은 남은 자리(사이트 `flex-1`)이고 글보다
+  /// 줄지 않는다. 시간 뒤 칸(`right`, 글 폭)은 줄지 않고 다 보이며, 그래도 모자라면 때 칸이 줄어든다(오른쪽 끝이 내용 폭을 넘지
+  /// 않는다, 2026-11-20 「다시 보기」가 막대에 가려 잘렸다)
+  public static func rowColumns(width: Double, time: Double, right: [Double]) -> RowColumns {
+    let rightW = right.reduce(0, +) + Double(right.count) * rowGap
+    let rest = width - (rowNoWidth + rowGap + rowGap + time + rightW)
+    let when = max(0, min(rowWhenWidth, rest))
+    let timeX = rowNoWidth + rowGap + when + rowGap
+    let timeW = max(time, width - timeX - rightW)
+    var x = timeX + timeW + rowGap
+    var xs: [Double] = []
+    for w in right {
+      xs.append(x)
+      x += w + rowGap
+    }
+    return RowColumns(whenWidth: when, timeX: timeX, timeWidth: timeW, rightX: xs, end: right.isEmpty ? timeX + timeW : x - rowGap)
+  }
 
   // MARK: 티어 칸
 

@@ -10,7 +10,8 @@ import CubieNativeC
 final class NativeSettingsWindow: NativeSheetWindow {
   static let size = SheetSize.settings
   let page: SettingsPageView
-  private let scroll = NSScrollView()
+  /// 막대가 생기면 내용 폭만큼 다시 배치한다(`ContentScrollView`)
+  private let scroll = ContentScrollView()
 
   init(store: KeyValueStore, onChange: @escaping () -> Void, openWeb: @escaping () -> Void) {
     page = SettingsPageView(store: store)

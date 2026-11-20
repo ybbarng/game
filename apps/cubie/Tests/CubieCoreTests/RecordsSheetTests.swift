@@ -97,4 +97,56 @@ struct RecordsSheetTests {
     // 칩이 없는 줄은 좁아도 한 줄
     #expect(!RecordsSheet.badgesOnOwnLine(width: rowWidth(SheetSize.records.minWidth), badges: 0))
   }
+
+  // MARK: 스크롤 막대가 내용 폭을 차지할 때(2026-11-20 「다시 보기」가 막대에 가려 「다시 보」까지만 보였다)
+
+  /// 줄 하나 높이 21, 막대가 내용 폭을 차지하는 꼴(`.legacy`)의 보통 막대 폭 15
+  private static let legacyScroller = 15.0
+  private static func listHeight(rows: Int) -> (Double) -> Double { { _ in Double(rows) * 21 } }
+  /// 시간 뒤 칸: 「60수」 26, 「다시 보기」 칩 56(앱 글꼴로 잰 폭과 비슷한 값)
+  private static let movesAndReplay = [26.0, 56.0]
+
+  @Test func rowsFollowTheContentWidthWhenTheScrollerTakesRoom() {
+    // 처음 창 380: 스크롤 보기 바깥 폭 364, 판 16개(336)가 보이는 높이 200보다 길어 막대가 15를 차지한다
+    let frame = SheetSize.records.width - 16
+    let width = ScrollContent.width(frame: frame, visibleHeight: 200, scroller: Self.legacyScroller, contentHeight: Self.listHeight(rows: 16))
+    #expect(width == 349)
+    let cols = RecordsSheet.rowColumns(width: width, time: 40, right: Self.movesAndReplay)
+    // 「다시 보기」 오른쪽 끝이 막대 앞(내용 폭 안)에서 끝난다
+    #expect(cols.end == 349)
+    #expect(cols.whenWidth == RecordsSheet.rowWhenWidth)
+    // 예전처럼 바깥 폭으로 셈하면 「다시 보기」 끝이 364로 막대 밑(349~364)에 들어가 잘린다
+    #expect(RecordsSheet.rowColumns(width: frame, time: 40, right: Self.movesAndReplay).end == 364)
+  }
+
+  @Test func overlayScrollersAndShortListsKeepTheFullWidth() {
+    let frame = SheetSize.records.width - 16
+    // 겹치는 막대(트랙패드 맥 기본)는 폭을 차지하지 않는다
+    #expect(ScrollContent.width(frame: frame, visibleHeight: 200, scroller: 0, contentHeight: Self.listHeight(rows: 16)) == 364)
+    // 판이 적어 막대가 생기지 않으면 바깥 폭 그대로
+    #expect(ScrollContent.width(frame: frame, visibleHeight: 200, scroller: Self.legacyScroller, contentHeight: Self.listHeight(rows: 9)) == 364)
+  }
+
+  @Test func narrowestWindowShowsTheWholeReplayButtonBesideTheScroller() {
+    // 가장 작은 창 320: 바깥 폭 304 − 막대 15 = 289. 6×6 긴 시간(「100:00.00」 62)이어도 「다시 보기」가 다 들어간다
+    let width = ScrollContent.width(
+      frame: SheetSize.records.minWidth - 16, visibleHeight: 120, scroller: Self.legacyScroller, contentHeight: Self.listHeight(rows: 16))
+    #expect(width == 289)
+    let cols = RecordsSheet.rowColumns(width: width, time: 62, right: Self.movesAndReplay)
+    #expect(cols.whenWidth == RecordsSheet.rowWhenWidth)
+    #expect(cols.rightX == [199, 233])
+    #expect(cols.end == 289)
+  }
+
+  @Test func whenColumnShrinksBeforeTheReplayButtonIsCut() {
+    // 더 좁으면 때 칸이 줄고, 수·「다시 보기」는 제 폭 그대로 내용 폭 끝에서 끝난다
+    let cols = RecordsSheet.rowColumns(width: 250, time: 62, right: Self.movesAndReplay)
+    #expect(cols.whenWidth == 50)
+    #expect(cols.timeX == 90)
+    #expect(cols.timeWidth == 62)
+    #expect(cols.rightX == [160, 194])
+    #expect(cols.end == 250)
+    // 넓은 줄에서 시간 칸 자리는 둘째 줄 칩 묶음 자리(사이트 `pl-[120px]`)와 같다
+    #expect(RecordsSheet.rowColumns(width: 364, time: 40, right: Self.movesAndReplay).timeX == RecordsSheet.badgesIndent)
+  }
 }
