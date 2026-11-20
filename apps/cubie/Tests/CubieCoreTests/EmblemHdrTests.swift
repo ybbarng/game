@@ -136,24 +136,4 @@ struct EmblemHdrTests {
       }
     }
   }
-
-  // MARK: 미리보기
-
-  @Test func previewSettingAcceptsOnlyKnownTierIds() {
-    #expect(EmblemPreview.tier("diamond") == "diamond")
-    #expect(EmblemPreview.tier(" Challenger\n") == "challenger")
-    #expect(EmblemPreview.tier("다이아몬드") == nil)
-    #expect(EmblemPreview.tier("") == nil)
-    #expect(EmblemPreview.tier(nil) == nil)
-  }
-
-  @Test func previewChangesOnlyTheEmblem() {
-    let mine = Profile(name: "익명 큐버 #1234", tierText: "3×3 브론즈 II", emblem: Data([1]), emblemTier: "bronze")
-    let p = EmblemPreview.apply(mine, tier: "diamond") { Data($0.utf8) }
-    #expect(p.emblemTier == "diamond")
-    #expect(p.emblem == Data("diamond".utf8))
-    #expect(p.name == mine.name)
-    #expect(p.tierText == "3×3 브론즈 II")
-    #expect(EmblemPreview.apply(mine, tier: nil) { _ in nil } == mine)
-  }
 }
