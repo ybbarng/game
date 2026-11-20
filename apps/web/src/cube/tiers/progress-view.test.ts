@@ -4,6 +4,8 @@ import {
   bandLayout,
   bandView,
   bestFiveView,
+  gapText,
+  gapTime,
   nextSolveText,
   rangeText,
   timePieces,
@@ -182,6 +184,23 @@ describe("기록 줄에 티어를 정한 5판 짚기", () => {
     expect(v && rangeText(v)).toBe("1~5번");
     expect(v?.marks.get(5)).toBe("fast");
     expect(v?.marks.get(1)).toBe("slow");
+  });
+});
+
+describe("티어 진열 줄일 시간 글", () => {
+  it("무슨 시간인지 문장으로, 티어 이름 뒤 「이/가」는 받침으로(아이언·플래티넘은 「이」)", () => {
+    expect(gapText("챌린저", 128_980)).toBe(
+      "챌린저가 되시려면 평균을 2:08.98 줄여야 해요.",
+    );
+    expect(gapText("플래티넘", 14_120)).toBe(
+      "플래티넘이 되시려면 평균을 14.12초 줄여야 해요.",
+    );
+  });
+
+  it("1/100초 아래 나머지는 올려, 기준까지 1ms만 남아도 「0.00초」가 아니다", () => {
+    expect(gapTime(1)).toBe("0.01초");
+    expect(gapTime(14_120)).toBe("14.12초");
+    expect(gapTime(14_121)).toBe("14.13초");
   });
 });
 

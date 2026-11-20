@@ -930,7 +930,6 @@ function SettingsPanel({
           </li>
           <li>
             5번 평균은 가장 좋은 것과 나쁜 것을 빼고 셋의 평균이에요(대회 방식).
-            기록은 이 기기에만 남아요.
           </li>
         </ul>
       </details>

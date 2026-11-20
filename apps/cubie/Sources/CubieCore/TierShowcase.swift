@@ -195,7 +195,31 @@ public enum TierShowcase {
   // MARK: 글(사이트와 같다, 웹 시험 `native-windows-text.test.ts`)
 
   public static let ladderLabel = "모든 티어"
-  public static let until = "까지"
+
+  /// 「실버가 되시려면 평균을 1.23초 줄여야 해요.」(다음 티어 상자, 고른 티어의 내 기록 상자 둘째 줄). 시간은 내 최고 5판 평균을
+  /// 그 티어 기준까지 줄여야 하는 만큼(2026-11-20 사용자: 「챌린저까지 2:08.98」만 두면 무슨 시간인지 헷갈렸다). 사이트
+  /// `progress-view.ts` `GAP_MIDDLE`·`GAP_END`·`gapText`와 같다
+  public static let gapMiddle = " 되시려면 평균을 "
+  public static let gapEnd = " 줄여야 해요."
+
+  /// 티어 이름 + 「이/가」(받침이 있으면 「이」: 아이언·플래티넘). 사이트 `subj`(`@game/mighty-engine/josa`)와 같은 셈
+  public static func subject(_ label: String) -> String { label + subjectJosa(label) }
+
+  /// 「이/가」 조사만(이름은 티어 색으로 따로 칠할 때, 사이트 `josaOf(이름, subj)`)
+  public static func subjectJosa(_ label: String) -> String {
+    guard let ch = label.unicodeScalars.last, (0xAC00...0xD7A3).contains(ch.value) else { return "이(가)" }
+    return (ch.value - 0xAC00) % 28 == 0 ? "가" : "이"
+  }
+
+  /// 줄일 시간 글. 1/100초 아래 나머지는 올린다(1ms만 남아도 「0.00초」가 되지 않게, 사이트 `gapTime`)
+  public static func gapTime(_ ms: Double) -> String {
+    MiniBook.formatSeconds((ms / 10).rounded(.up) * 10)
+  }
+
+  /// 한 줄 글(사이트 `gapText`). 화면은 이름·시간을 따로 칠해 조각을 쓴다
+  public static func gapText(_ label: String, _ ms: Double) -> String {
+    subject(label) + gapMiddle + gapTime(ms) + gapEnd
+  }
 
   /// 사다리 칸 시간(「14초 이하」, 아이언 「다 맞춤」)
   public static func ladderCut(_ cut: Double?) -> String {

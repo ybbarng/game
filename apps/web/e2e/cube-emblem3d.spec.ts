@@ -215,6 +215,9 @@ test("사다리: 누르면 위쪽 큰 칸이 그 티어로, 같은 칸·내 티�
   await expect(box.locator("[data-cube-tier-picked]")).toHaveText("챌린저");
   await expect(box).toContainText("5판 평균 6.5초 이하");
   await expect(box.locator("[data-cube-picked-gap]")).toHaveText("6.90초");
+  await expect(box.locator("[data-cube-picked-line]")).toHaveText(
+    "챌린저가 되시려면 평균을 6.90초 줄여야 해요.",
+  );
   await expect(cell("challenger")).toHaveAttribute("aria-pressed", "true");
   await shot(page, "picked-desktop");
   // 같은 칸을 다시 누르면 내 티어로
