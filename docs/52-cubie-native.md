@@ -1023,6 +1023,15 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 시험 `RecordsSheetTests`(내용 폭 셈, 380·320 창, 때 칸 줄기. 막대 몫을 빼지 않게 하면 실패 확인), 화면 `cube-mini-scrollbar.spec.ts`(헤드리스 Chrome의 `--hide-scrollbars`를 빼고 막대를 보이게 해 380·320에서 단추가 막대 앞 한 줄인지, 줄 폭을 막대만큼 넓히면 실패 확인). 비교판 `docs/cubie-native/compare-windows-records-scroll.webp`(`window-compare.mjs` 장면 `records-scroll`, 판 20개, 네이티브는 `.legacy`, 사이트 WebKit은 자리를 차지하는 막대 꾸밈), 네이티브만 `native-tiers-scroll`·`native-settings-scroll`·`native-settings-custom-scroll`.
 - **Cubie 새 판이 필요하다**(세 창은 앱이 그린다).
 
+### 5-18. 보통 창이 열린 동안 Dock·⌘Tab에 나오기, ⌘W로 닫기(2026-11-23)
+
+- 사용자 보고: 기록·티어표·설정 창이 다른 앱 창 뒤로 가면 ⌘Tab으로 고를 수 없어 찾지 못하고 남아 있었다. 앱이 늘 `.accessory`(Info.plist `LSUIElement`)라 Dock·⌘Tab에 안 나왔고, 메인 메뉴가 없어 ⌘W로도 닫히지 않았다.
+- 정한 것: 보통 창(네이티브 세 창 `sheets`와 사이트 창 `webWindows`, 최소화한 창 포함)이 하나라도 열린 동안만 `.regular`로 Dock·⌘Tab에 나오고, 모두 닫으면 `.accessory`로 돌아간다. 떠 있는 큐브 창·단축키 표·말풍선은 세지 않는다. 재기 모드(`.prohibited`)는 바꾸지 않는다. 판단은 `CubieCore/AppPresence.swift`(시험 `AppPresenceTests`, 일부러 틀리게 하면 실패 확인), 바꾸기는 `AppDelegate.updatePresence`(두 창 목록이 바뀔 때마다. `.accessory`로는 창 닫기가 끝난 다음 차례에).
+- `.regular`인 동안만 앱 메뉴를 건다: 「Cubie」(Cubie 끝내기 ⌘Q), 「창」(닫기 ⌘W·최소화 ⌘M, 키를 받는 보통 창에만, 큐브 창이면 아무것도 안 함). `.accessory`로 돌아갈 때 메뉴를 떼어 큐브 창의 ⌘Q는 예전처럼 앱을 끄지 않는다. 큐브 코어는 ⌘ 조합을 ⌘Z 말고 모두 무시해(`keymap.rs` `resolve_action`) 큐브 키와 부딪치지 않는다. 키 배치 편집기의 키 지정은 지역 감시가 메뉴보다 먼저 받는다. 비활성 메뉴 항목도 단축키를 먹으므로(AppKit, 따로 확인) 「꺼 두기」 대신 메뉴를 떼는 쪽을 골랐다.
+- 마지막 보통 창을 닫으면 `.accessory`로 바뀌며 앞 앱(창을 열기 전 쓰던 앱)이 다시 앞으로 온다. 큐브 창에 키가 남지 않는다.
+- 확인(번들 id만 바꾼 ad-hoc 사본, `CUBIE_DEBUG=1`의 `[cubie] presence regular|accessory`, `lsappinfo` 앱 종류): 기록 창을 열면 `Foreground`·Dock에 앱 아이콘, 「창 → 닫기」로 닫으면 `UIElement`로 돌아가고 큐브 창은 남음, 최소화한 동안은 `Foreground`, 다시 열면 펼쳐짐. ⌘W 키 자체는 키 입력을 앞 앱에 보내는 도구가 다른 앱에 닿을 수 있어 사람이 본다.
+- **Cubie 새 판이 필요하다**.
+
 ## 6. 윈도우판을 언제 어떻게 낼지
 
 - **Tauri로 먼저**: 몇 주 안에 낼 수 있고 지금 웹 화면을 그대로 쓴다. 메모리는 Edge 웹 화면이라 맥과 비슷하게 무겁다. 네이티브로 옮길 때 껍데기는 Rust라 일부(창·단축키·트레이)를 다시 쓸 수 있다.

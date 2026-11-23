@@ -39,9 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
   /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
   enum WebWindow { case records, tiers, settings }
-  private var webWindows: [WebWindow: NSWindow] = [:]
+  private var webWindows: [WebWindow: NSWindow] = [:] { didSet { updatePresence() } }
   /// 네이티브 화면일 때의 같은 창들(docs/52 5-8). WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 위 사이트 창을 쓴다
-  private var sheets: [WebWindow: NativeSheetWindow] = [:]
+  private var sheets: [WebWindow: NativeSheetWindow] = [:] { didSet { updatePresence() } }
+  /// 지금 활성화 정책(docs/52 5-18). 처음은 `main.swift`가 둔 `.accessory`, 재기 모드는 `.prohibited`라 nil(바꾸지 않음)
+  private var presence: AppPresence? = Config.measure ? nil : .menuBarOnly
+  /// 보통 창이 열린 동안만 거는 앱 메뉴(Cubie 끝내기 ⌘Q, 창 닫기 ⌘W·최소화 ⌘M)
+  private lazy var appMainMenu: NSMenu = buildMainMenu()
 
   /// 메모리 재기 모드(`Config.measure`)일 때만
   private var measure: Measure?
@@ -719,6 +723,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     webWindows[kind] = w
     present(w)
   }
+
+  // MARK: Dock·⌘Tab(docs/52 5-18)
+  // 보통 창이 다른 앱 뒤로 가면 ⌘Tab으로 고를 수 없어 찾지 못했다. 보통 창이 하나라도 열린 동안만 보통 앱(`.regular`)으로
+  // Dock·⌘Tab·앱 메뉴에 나오고, 모두 닫으면 메뉴 막대 아이콘만(`.accessory`)으로 돌아간다. 판단은 `CubieCore/AppPresence`
+
+  /// 열린 보통 창 수에 맞춰 정책을 바꾼다. `sheets`·`webWindows`가 바뀔 때마다 불린다
+  private func updatePresence() {
+    guard let want = AppPresence.forOpenWindows(sheets.count + webWindows.count, measuring: Config.measure),
+      want != presence
+    else { return }
+    switch want {
+    case .dockAndSwitcher:
+      // 창을 앞으로 가져오기(`bringToFront`) 전에 바꿔야 그 창과 함께 Dock·⌘Tab에 나온다
+      presence = want
+      NSApp.setActivationPolicy(.regular)
+      NSApp.mainMenu = appMainMenu
+      if Config.debug { print("[cubie] presence regular"); fflush(stdout) }
+    case .menuBarOnly:
+      // 창을 닫는 중(`windowWillClose`)에 부르므로 닫기가 끝난 뒤 바꾼다. 그 사이 다시 열었으면 그대로 둔다
+      DispatchQueue.main.async { [weak self] in
+        guard let self, self.sheets.isEmpty, self.webWindows.isEmpty, self.presence != .menuBarOnly else { return }
+        self.presence = .menuBarOnly
+        // 앱 메뉴를 걸어 둔 채면 큐브 창에서 ⌘Q가 앱을 끈다(예전처럼 큐브에 간다)
+        NSApp.mainMenu = nil
+        NSApp.setActivationPolicy(.accessory)
+        if Config.debug { print("[cubie] presence accessory"); fflush(stdout) }
+      }
+    }
+  }
+
+  /// 앱 메뉴(메뉴 막대 첫 칸, 이름은 번들 이름)와 창 메뉴. 큐브 코어는 ⌘ 조합을 ⌘Z 말고 모두 무시하므로(`keymap.rs`
+  /// `resolve_action`) 큐브 키와 부딪치지 않는다
+  private func buildMainMenu() -> NSMenu {
+    let main = NSMenu()
+    let appItem = NSMenuItem()
+    let appMenu = NSMenu(title: "Cubie")
+    let quit = NSMenuItem(title: "Cubie 끝내기", action: #selector(menuQuit), keyEquivalent: "q")
+    quit.target = self
+    appMenu.addItem(quit)
+    appItem.submenu = appMenu
+    main.addItem(appItem)
+    let windowItem = NSMenuItem()
+    let windowMenu = NSMenu(title: "창")
+    let close = NSMenuItem(title: "닫기", action: #selector(menuCloseWindow), keyEquivalent: "w")
+    close.target = self
+    windowMenu.addItem(close)
+    let mini = NSMenuItem(title: "최소화", action: #selector(menuMinimizeWindow), keyEquivalent: "m")
+    mini.target = self
+    windowMenu.addItem(mini)
+    windowItem.submenu = windowMenu
+    main.addItem(windowItem)
+    return main
+  }
+
+  /// 키를 받는 보통 창(기록·티어표·설정·사이트 창). 큐브 창·단축키 표·말풍선이면 nil(닫거나 줄이지 않는다)
+  private var frontNormalWindow: NSWindow? {
+    guard let w = NSApp.keyWindow else { return nil }
+    let normal = sheets.values.contains { $0.window === w } || webWindows.values.contains { $0 === w }
+    return normal ? w : nil
+  }
+
+  @objc private func menuCloseWindow() { frontNormalWindow?.performClose(nil) }
+  @objc private func menuMinimizeWindow() { frontNormalWindow?.performMiniaturize(nil) }
 
   /// 메뉴로 연 창을 앞으로. macOS 14부터 `NSApp.activate()`는 요청이라 다른 앱을 쓰던 중이면 거절되어, 첫 번에는
   /// 창이 다른 앱 뒤에 만들어져 안 보이고 두 번째부터 보였다(2026-11-10 사용자 「티어표 같은 걸 눌러도 처음에는 아무것도

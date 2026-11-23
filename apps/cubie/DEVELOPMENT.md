@@ -9,7 +9,7 @@
 ```sh
 apps/cubie/build.sh                       # apps/cubie/Cubie.app 을 만든다(이 맥 칩만, ad-hoc 서명)
 apps/cubie/build.sh --universal           # Apple Silicon·Intel 둘 다(배포본)
-open apps/cubie/Cubie.app                 # 띄우기(Dock 아이콘 없이 메뉴 막대에 큐브 아이콘)
+open apps/cubie/Cubie.app                 # 띄우기(메뉴 막대에 큐브 아이콘, Dock·⌘Tab에는 보통 창이 열린 동안만, docs/52 5-18)
 apps/cubie/test.sh                        # 화면 없는 단위 시험(포커스 돌려주기 판단, 키 출처 판정)
 ```
 
