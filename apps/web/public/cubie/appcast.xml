@@ -7,6 +7,20 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.11.4</title>
+      <pubDate>Mon, 23 Nov 2026 02:21:29 +0000</pubDate>
+      <sparkle:version>0.11.4</sparkle:version>
+      <sparkle:shortVersionString>0.11.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;기록·티어표·설정 창을 연 동안 Dock과 ⌘Tab에서 고를 수 있고, ⌘W로 닫을 수 있다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.11.4/Cubie.zip" length="10714833" type="application/octet-stream" sparkle:edSignature="MV3rzjzYNhvBzRjbUjjOk+usvtOAsoxOHoJysKn2bznTVjL4kjMB8DZJrmWY9Oy7siHzrmQpg7TKznOW40WiAQ=="/>
+      <sparkle:deltas>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.3-0.11.4.delta" sparkle:deltaFrom="0.11.3" length="218306" type="application/octet-stream" sparkle:edSignature="J0WfAjkj18KJCrs1buVgXTCt7W09J1ViiFGiQ/fwNoCbfFc3Up2RC8w3QbFgAAExjIdzXAsWYl6nFINSeHgBAw=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.2-0.11.4.delta" sparkle:deltaFrom="0.11.2" length="298202" type="application/octet-stream" sparkle:edSignature="wnvrzbDeluzrb08Qrw1dteaSNwHvAMo+3dYpydyhlEj1JLq1BmFD8GpKC8SlDfDVRoyL+pLdsO2x5A5xkhTxDg=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.1-0.11.4.delta" sparkle:deltaFrom="0.11.1" length="322450" type="application/octet-stream" sparkle:edSignature="VUcj9+KbWuFlVtb0AMouEMWa4V3pWH4qNrlGkGwnwulL4GgEounV4o3t+5FxgDqwpXJb3a8H3PXyeQAJtStLCA=="/>
+      </sparkle:deltas>
+    </item>
+    <item>
       <title>Cubie 0.11.3</title>
       <pubDate>Fri, 20 Nov 2026 05:26:16 +0000</pubDate>
       <sparkle:version>0.11.3</sparkle:version>
@@ -14,11 +28,6 @@
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <description>&lt;p&gt;티어표·기록·설정 창의 덧붙임 설명 글을 없앴어요. 스크롤 막대가 생겨도 기록 창 「다시 보기」 단추가 가리지 않아요. 메뉴 엠블럼 숨은 미리보기 설정을 없앴어요.&lt;/p&gt;</description>
       <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.11.3/Cubie.zip" length="10833764" type="application/octet-stream" sparkle:edSignature="QP7yH5OCSlXSJX6fKOR6zfYADp3AbbDoSaUanJUtnmFvwH3cJNYhX1EJmZiJTza5ozHNPrha13Q4b97rINyLDQ=="/>
-      <sparkle:deltas>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.2-0.11.3.delta" sparkle:deltaFrom="0.11.2" length="275050" type="application/octet-stream" sparkle:edSignature="E0rnrqDB25K5AR9jTSOjM2RTQ50w68HiJA1wuVUTFLUSBZbsomjLEBtwlUBwXJgtpw0rrZFc6BIrnFNWvY16Ag=="/>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.1-0.11.3.delta" sparkle:deltaFrom="0.11.1" length="296646" type="application/octet-stream" sparkle:edSignature="LmVlQWunFBohNTe2XeT+id8tP46rLbwizyFfUDtTx7TyEHjhJyF5p5StokLVDXsGY/4Si6NkSotx4iPy8kQgBA=="/>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.0-0.11.3.delta" sparkle:deltaFrom="0.11.0" length="380214" type="application/octet-stream" sparkle:edSignature="jsIyxqy74yFQ2+kaQatyS2fGxHKmXqCwaBvHjX8mySB7iy80TLoOwUgB5viUbqndJ7Bn/CuCWX6asBibZNjACQ=="/>
-      </sparkle:deltas>
     </item>
     <item>
       <title>Cubie 0.11.2</title>
