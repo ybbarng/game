@@ -333,7 +333,18 @@ class NativeSheetWindow: NSObject, NSWindowDelegate {
     window.center()
   }
 
-  func windowWillClose(_ notification: Notification) { onClose?() }
+  func windowWillClose(_ notification: Notification) {
+    NativeSheetWindow.releaseAutosave(window)
+    onClose?()
+  }
+
+  /// 닫는 창의 크기·자리를 저장하고 이름을 놓는다(같은 이름은 살아 있는 창 하나만 가질 수 있어, 다시 연 창이 이어받게)
+  static func releaseAutosave(_ w: NSWindow) {
+    let name = w.frameAutosaveName
+    guard !name.isEmpty else { return }
+    w.saveFrame(usingName: name)
+    w.setFrameAutosaveName("")
+  }
   func windowDidBecomeKey(_ notification: Notification) { becameKey() }
   /// 창이 다시 앞에 왔다(사이트 화면의 `focus` 다시 읽기)
   func becameKey() {}

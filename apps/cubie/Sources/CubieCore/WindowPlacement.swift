@@ -122,4 +122,13 @@ public enum WindowPlacement {
     y = min(max(y, visible.minY), visible.maxY - bubble.height)
     return CGRect(x: x, y: y, width: bubble.width, height: bubble.height)
   }
+
+  /// 보통 창(기록·티어표·설정·사이트 창)을 열 자리. 기억한 자리(`saved`)가 아직 화면에 보이면 그대로, 아니면(처음 열거나
+  /// 그 화면을 뗐으면) 큐브 창이 있는 화면(`cubeScreen`, 모르면 첫 화면) 가운데에 `size`로. 화면보다 크면 화면 안으로 줄인다
+  public static func normalWindowFrame(saved: CGRect?, size: CGSize, cubeScreen: CGRect?, screens: [CGRect]) -> CGRect {
+    if let saved, saved.width > 0, saved.height > 0, isMostlyVisible(saved, screens: screens) { return saved }
+    guard let visible = cubeScreen ?? screens.first else { return CGRect(origin: .zero, size: size) }
+    let f = CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2, width: size.width, height: size.height)
+    return clamped(f, into: visible)
+  }
 }
