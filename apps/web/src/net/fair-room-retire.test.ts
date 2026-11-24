@@ -48,6 +48,23 @@ async function playUntil(
 
 /** 멘탈 포커 온라인 방: 도중에 그만하기(fair-room.test에서 나눠 동시에 돈다) */
 describe("멘탈 포커 온라인 대전: 도중에 그만하기", () => {
+  it("첫 화면을 받자마자 방장이 끝내도, 참가자는 시드 확인이 끝나길 기다려 게임 끝 검증을 통과한다", async () => {
+    // 마이티는 대국을 만든 뒤 시드를 공개하고, 참가자는 시드를 비동기로 확인한다. 가장 가벼운 2마는 첫 화면이
+    // 빨리 와서, 곧바로 끝내면 판 끝 기록이 시드 확인보다 먼저 닿는다(2026-11-25 전에는 「검증할 정보가 없어요.」).
+    const { host, guests, incidents } = await setup(
+      presetRules("standard2"),
+      1,
+    );
+    const audits: AuditResult[] = [];
+    for (const g of guests) g.on("audit", (r) => audits.push(r));
+    await host.start();
+    await until(() => guests.every((g) => g.match !== null));
+    host.abandon();
+    await until(() => audits.length === 1);
+    expect(audits).toEqual([{ ok: true }]);
+    expect(incidents).toEqual([]);
+  });
+
   it("첫 판 카드를 다 열기 전에 방장이 끝내도 참가자 게임 끝 검증은 통과한다(끝까지 치지 않은 판은 결과 없음)", async () => {
     const { host, guests, incidents } = await setup(
       presetRules("standard5"),
