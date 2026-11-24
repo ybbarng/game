@@ -7,10 +7,9 @@ import type {
   MinhwatuView,
 } from "@game/minhwatu-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type MinhwatuHostRoom = HostRoom<
   MinhwatuRules,
@@ -37,14 +36,5 @@ export const minhwatuSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endMinhwatuSession(): void {
-  clearHostingRoom();
-  if (minhwatuSession.host) {
-    minhwatuSession.host.finish();
-    const host = minhwatuSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  minhwatuSession.guest?.leave();
-  minhwatuSession.host = null;
-  minhwatuSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(minhwatuSession);
 }

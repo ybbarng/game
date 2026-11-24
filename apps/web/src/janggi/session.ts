@@ -6,10 +6,9 @@ import type {
   JanggiView,
 } from "@game/janggi-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type JanggiHostRoom = HostRoom<
   JanggiRules,
@@ -36,14 +35,5 @@ export const janggiSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endJanggiSession(): void {
-  clearHostingRoom();
-  if (janggiSession.host) {
-    janggiSession.host.finish();
-    const host = janggiSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  janggiSession.guest?.leave();
-  janggiSession.host = null;
-  janggiSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(janggiSession);
 }

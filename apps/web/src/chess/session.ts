@@ -6,10 +6,9 @@ import type {
   GameEvent,
 } from "@game/chess-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type ChessHostRoom = HostRoom<
   ChessRules,
@@ -36,14 +35,5 @@ export const chessSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endChessSession(): void {
-  clearHostingRoom();
-  if (chessSession.host) {
-    chessSession.host.finish();
-    const host = chessSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  chessSession.guest?.leave();
-  chessSession.host = null;
-  chessSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(chessSession);
 }

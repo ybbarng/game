@@ -7,10 +7,9 @@ import type {
 } from "@game/gostop-engine";
 import type { PresetDeal } from "@game/hwatu";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type GostopHostRoom = HostRoom<
   GostopRules,
@@ -37,14 +36,5 @@ export const gostopSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endGostopSession(): void {
-  clearHostingRoom();
-  if (gostopSession.host) {
-    gostopSession.host.finish();
-    const host = gostopSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  gostopSession.guest?.leave();
-  gostopSession.host = null;
-  gostopSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(gostopSession);
 }
