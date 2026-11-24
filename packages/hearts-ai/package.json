@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "하트 컴퓨터 플레이어 — PlayerView만 보고 행동을 고른다",
   "exports": {
     ".": "./src/index.ts"

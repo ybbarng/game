@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "n×n 큐브 엔진 — 상태, 표기, 수 적용, 맞춤 판정, 무작위 상태, 가리기, 순수 함수",
   "exports": {
     ".": "./src/index.ts"

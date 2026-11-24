@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "체스 규칙 엔진 — FIDE 규칙, 순수 함수",
   "exports": {
     ".": "./src/index.ts"

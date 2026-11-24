@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "화투 48장과 공통 도구 — 고스톱·민화투·나이롱뽕이 함께 쓴다",
   "exports": {
     ".": "./src/index.ts"

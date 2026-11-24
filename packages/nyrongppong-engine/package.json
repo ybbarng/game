@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "나이롱뽕 규칙 엔진 — 화투 버리기 게임, 순수 함수",
   "exports": {
     ".": "./src/index.ts"

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "윷놀이 컴퓨터 플레이어 — 입문·중수·고수",
   "exports": {
     ".": "./src/index.ts"

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "바둑 규칙 엔진 — 자리 세기(Tromp-Taylor), 순수 함수",
   "exports": {
     ".": "./src/index.ts"

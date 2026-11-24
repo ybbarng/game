@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "하트 규칙 엔진 — 윈도우 하트 규칙, 순수 함수",
   "exports": {
     ".": "./src/index.ts"

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "고스톱 규칙 엔진 — 맞고(2명)·고스톱(3명), 순수 함수",
   "exports": {
     ".": "./src/index.ts"
