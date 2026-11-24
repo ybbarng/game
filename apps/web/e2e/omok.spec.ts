@@ -42,7 +42,7 @@ async function placeOne(page: Page, touch: boolean): Promise<void> {
     if (touch) {
       await page.touchscreen.tap(p.x, p.y);
       await expect(page.getByRole("status")).toContainText(
-        `${pointName(x, y)}: 한 번 더 누르면 둬요.`,
+        `내 차례 · ${pointName(x, y)}`,
       );
       await page.touchscreen.tap(p.x, p.y);
     } else await page.mouse.click(p.x, p.y);
@@ -470,8 +470,8 @@ test(
     );
     // 힌트를 누르면 금지 안내는 지워지고 힌트 자리를 겨눈다.
     await page.getByRole("button", { name: "힌트" }).click();
-    await expect(page.getByRole("status")).toHaveText(
-      "B11: 한 번 더 누르면 둬요.",
+    await expect(page.getByRole("status")).not.toHaveText(
+      "F11: 흑은 4·4 금지예요.",
     );
     await play("B11");
     await expect(page.getByRole("status")).toHaveText(

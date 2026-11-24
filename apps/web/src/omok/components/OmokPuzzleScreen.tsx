@@ -131,9 +131,7 @@ function OmokPuzzleRun({
     setNotice(`${pointName(at)}: 흑은 ${banned.reason} 금지예요.`);
     return true;
   };
-  const prompt =
-    notice ??
-    (aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둬요.` : goal);
+  const prompt = notice ?? goal;
 
   return (
     <PuzzleScreen

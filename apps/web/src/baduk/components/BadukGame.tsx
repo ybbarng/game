@@ -159,10 +159,10 @@ export function BadukGame({
   if (view.phase === "play")
     status = myTurn
       ? aim !== null
-        ? `${pointName(aim, size)}: 한 번 더 누르면 둬요.`
+        ? `내 차례 · ${pointName(aim, size)}`
         : opponentPassed
           ? "상대가 쉬었어요 — 나도 쉬면 판 위 그대로 세요."
-          : "내 차례 — 판을 눌러 두세요."
+          : "내 차례예요."
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
@@ -312,6 +312,19 @@ export function BadukGame({
             )}
             {view.phase === "play" && (
               <>
+                {aim !== null && myTurn && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const at = aim;
+                      setAim(null);
+                      submit({ type: "place", at });
+                    }}
+                    className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                  >
+                    여기 두기
+                  </button>
+                )}
                 {!online && !mission && (
                   <button
                     type="button"

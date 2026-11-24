@@ -42,9 +42,9 @@ async function placeAt(page: Page, name: string, touch: boolean) {
   const py = box.y + (y + PAD) * unit;
   if (touch) {
     await page.touchscreen.tap(px, py);
-    await expect(page.getByRole("status")).toContainText(
-      `${name}: 한 번 더 누르면 둬요.`,
-    );
+    // 처음 누르면 겨누기만 한다: 상태 줄에 자리, 확정 단추 「여기 두기」가 뜬다(다시 눌러도 둔다)
+    await expect(page.getByRole("status")).toContainText(`내 차례 · ${name}`);
+    await expect(page.getByRole("button", { name: "여기 두기" })).toBeVisible();
     await page.touchscreen.tap(px, py);
   } else await page.mouse.click(px, py);
 }

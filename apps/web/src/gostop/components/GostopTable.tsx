@@ -407,7 +407,7 @@ export function GostopTable({
     if (sent.waiting) status = "보내는 중…";
     else if (d?.kind === "play")
       status = selected
-        ? "한 번 더 누르면 내요."
+        ? `내 차례 · ${cardOf(selected).name}`
         : d.cards.length === 0
           ? "뒤집기만 하세요."
           : "내 차례 — 낼 카드를 고르세요.";

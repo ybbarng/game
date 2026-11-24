@@ -485,7 +485,7 @@ export function MinhwatuTable({
       ? needTarget
         ? "같은 달 바닥 패가 둘이에요. 먹을 패를 누르세요."
         : selected
-          ? "한 번 더 누르면 내요."
+          ? `내 차례 · ${cardOf(selected).name}`
           : "내 차례 — 낼 패를 누르세요."
       : online
         ? `${name(view.turn)}의 차례`
@@ -750,6 +750,16 @@ export function MinhwatuTable({
             <p className="w-full text-center text-amber-200 text-xs">
               추천: {cardOf(hint).name}(바닥에 짝이 있어요)
             </p>
+          )}
+          {/* 겨눈 패를 내는 확정 단추(오목 「여기 두기」와 같은 꼴) */}
+          {myPlay && selected && !needTarget && (
+            <button
+              type="button"
+              onClick={() => onAct(selected, false)}
+              className={HWATU_PRIMARY}
+            >
+              내기
+            </button>
           )}
           {!over && !online && !mission && (
             <>
