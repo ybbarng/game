@@ -671,16 +671,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     present(s.window)
   }
 
-  /// 보통 창이 크기·자리를 기억한다(창마다 이름). 처음 열거나 기억한 자리가 화면 밖이면 큐브 창이 있는 화면 가운데에
-  /// (`WindowPlacement.normalWindowFrame`). 재기 모드는 화면 밖에 두므로 기억하지 않는다
+  /// 보통 창이 크기·자리를 기억한다(창마다 이름, `FrameMemory`). 처음 열거나 기억한 자리가 화면 밖이면 큐브 창이 있는 화면
+  /// 가운데에(`WindowPlacement.normalWindowFrame`). 재기 모드는 화면 밖에 두므로 기억하지 않는다
   private func placeNormalWindow(_ w: NSWindow, name: String) {
     guard !Config.measure else { return }
-    let saved: CGRect? = w.setFrameUsingName(name) ? w.frame : nil
+    let saved = FrameMemory.saved(name)
     let f = WindowPlacement.normalWindowFrame(
       saved: saved, size: w.frame.size, cubeScreen: cube.panel.screen?.visibleFrame,
       screens: NSScreen.screens.map(\.visibleFrame))
     w.setFrame(f, display: false)
-    w.setFrameAutosaveName(name)
+    FrameMemory.remember(w, name: name)
+    if Config.debug { print("[cubie] place \(name) saved=\(saved.map { "\($0)" } ?? "nil") -> \(f) now=\(w.frame)"); fflush(stdout) }
   }
 
   /// 연 창을 보인다. 재기 모드는 화면 밖에 두고 앞으로 가져오지 않는다(사용자 화면·포커스를 건드리지 않는다)
@@ -690,6 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       w.orderFrontRegardless()
     } else {
       Self.bringToFront(w)
+      if Config.debug { print("[cubie] present \(w.title) frame=\(w.frame)"); fflush(stdout) }
     }
   }
 
@@ -844,7 +846,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     guard let w = notification.object as? NSWindow,
       let kind = webWindows.first(where: { $0.value === w })?.key
     else { return }
-    NativeSheetWindow.releaseAutosave(w)
     webWindows[kind] = nil
     let opened = webOpened.removeValue(forKey: kind)
     guard kind == .settings else { return }

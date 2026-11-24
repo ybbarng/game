@@ -304,6 +304,43 @@ final class Chip: NSView {
   }
 }
 
+/// 보통 창(기록·티어표·설정·사이트 창)의 크기·자리 기억. 창마다 이름으로 UserDefaults `CubieWindowFrame.<이름>`에
+/// 화면 좌표 글(`NSStringFromRect`)로 둔다. AppKit의 `setFrameAutosaveName`·`setFrameUsingName`은 화면이 둘 이상일 때
+/// 저장한 화면이 아닌 주 화면 쪽으로 옮겨 되살려(내장 화면 300,219에 둔 창이 LG 화면 -2002,109로 떴다) 쓰지 않는다
+@MainActor
+enum FrameMemory {
+  static let prefix = "CubieWindowFrame."
+  private static var tokens: [ObjectIdentifier: [NSObjectProtocol]] = [:]
+
+  /// 기억한 자리(없으면 nil)
+  static func saved(_ name: String) -> CGRect? {
+    guard let s = UserDefaults.standard.string(forKey: prefix + name) else { return nil }
+    let r = NSRectFromString(s)
+    return r.width > 0 && r.height > 0 ? r : nil
+  }
+
+  /// 창이 옮겨지거나 크기가 바뀌거나 닫힐 때마다 그 자리를 저장한다(닫히면 감시를 뗀다)
+  static func remember(_ w: NSWindow, name: String) {
+    let id = ObjectIdentifier(w)
+    forget(id)
+    let c = NotificationCenter.default
+    tokens[id] = [NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.willCloseNotification].map { n in
+      let closing = n == NSWindow.willCloseNotification
+      return c.addObserver(forName: n, object: w, queue: .main) { [weak w] _ in
+        MainActor.assumeIsolated {
+          guard let w else { return }
+          if !w.isMiniaturized { UserDefaults.standard.set(NSStringFromRect(w.frame), forKey: prefix + name) }
+          if closing { forget(id) }
+        }
+      }
+    }
+  }
+
+  private static func forget(_ id: ObjectIdentifier) {
+    tokens.removeValue(forKey: id)?.forEach { NotificationCenter.default.removeObserver($0) }
+  }
+}
+
 extension SheetSize {
   var initial: NSSize { NSSize(width: width, height: height) }
   var minimum: NSSize { NSSize(width: minWidth, height: minHeight) }
@@ -333,18 +370,7 @@ class NativeSheetWindow: NSObject, NSWindowDelegate {
     window.center()
   }
 
-  func windowWillClose(_ notification: Notification) {
-    NativeSheetWindow.releaseAutosave(window)
-    onClose?()
-  }
-
-  /// 닫는 창의 크기·자리를 저장하고 이름을 놓는다(같은 이름은 살아 있는 창 하나만 가질 수 있어, 다시 연 창이 이어받게)
-  static func releaseAutosave(_ w: NSWindow) {
-    let name = w.frameAutosaveName
-    guard !name.isEmpty else { return }
-    w.saveFrame(usingName: name)
-    w.setFrameAutosaveName("")
-  }
+  func windowWillClose(_ notification: Notification) { onClose?() }
   func windowDidBecomeKey(_ notification: Notification) { becameKey() }
   /// 창이 다시 앞에 왔다(사이트 화면의 `focus` 다시 읽기)
   func becameKey() {}
