@@ -29,6 +29,7 @@ import {
 } from "@/net/host-store";
 import type { LobbyState } from "@/net/protocol";
 import {
+  endOnlineSession,
   fairStoreFor,
   hostFingerprintFromUrl,
   inviteUrl,
@@ -55,6 +56,14 @@ import {
   reportIncident,
 } from "./FairLine";
 import { InviteLink } from "./InviteLink";
+import {
+  NameForm,
+  NameInput,
+  RoomBackLink,
+  RoomError,
+  RoomFootnote,
+  usePlayerNameField,
+} from "./online-room";
 import { ActionButton } from "./panels/common";
 import { RuleEditor } from "./rules/RuleEditor";
 
@@ -90,7 +99,6 @@ export function OnlineScreen({
   onBack: () => void;
   onPlaying: () => void;
 }) {
-  const savedName = useSettings((s) => s.playerName);
   const customRules = useSettings((s) => s.customRules);
   const [editingRules, setEditingRules] = useState(false);
   /** 규칙 이름. 방장이 붙인 이름 → 기본 규칙·내 규칙 → "직접 정한 n마" */
@@ -104,7 +112,7 @@ export function OnlineScreen({
   const setSeatNames = useGame((s) => s.setSeatNames);
   const reconnecting = useGame((s) => s.reconnecting);
   const hostLeft = useGame((s) => s.hostLeft);
-  const [name, setName] = useState(savedName);
+  const [name, setName] = usePlayerNameField();
   const [phase, setPhase] = useState<Phase>("name");
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [roomCode] = useState(
@@ -145,10 +153,6 @@ export function OnlineScreen({
   const [history, setHistory] = useState<AuditRecord[]>([]);
   useEffect(() => setHistory(loadAuditHistory()), []);
   const started = useRef(false);
-
-  useEffect(() => {
-    if (savedName && !name) setName(savedName);
-  }, [savedName, name]);
 
   // 방장이 새로고침했으면 이름을 다시 묻지 않고 그 방을 다시 연다.
   const resumed = useRef(false);
@@ -362,6 +366,13 @@ export function OnlineScreen({
     }
   };
 
+  /** 연결하지 못했을 때 같은 방 주소로 다시 잇는다 */
+  const retry = () => {
+    endOnlineSession();
+    setError(null);
+    void enter();
+  };
+
   const start = async () => {
     const host = onlineSession.host;
     if (!host || starting) return;
@@ -397,17 +408,12 @@ export function OnlineScreen({
         </h2>
 
         {phase === "name" && (
-          <>
-            <label className="flex flex-col gap-1.5 text-sm">
-              내 이름
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={12}
-                placeholder="친구들에게 보일 이름"
-                className="rounded-lg border border-white/15 bg-black/40 px-3 py-2"
-              />
-            </label>
+          <NameForm onSubmit={() => void enter()}>
+            <NameInput
+              value={name}
+              onChange={setName}
+              placeholder="친구들에게 보일 이름"
+            />
             {isHost && (
               <p className="text-xs opacity-60">
                 규칙: {ruleName(encodeRuleString(rules))}
@@ -416,10 +422,7 @@ export function OnlineScreen({
               </p>
             )}
             {isHost && <RoomKindPicker />}
-            <ActionButton
-              className="py-3 text-base"
-              onClick={() => void enter()}
-            >
+            <ActionButton type="submit" className="py-3 text-base">
               {isHost ? "방 만들기" : "들어가기"}
             </ActionButton>
             {history.length > 0 && (
@@ -448,7 +451,7 @@ export function OnlineScreen({
                 </ul>
               </details>
             )}
-          </>
+          </NameForm>
         )}
 
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
@@ -492,6 +495,7 @@ export function OnlineScreen({
                     <button
                       key={r.key}
                       type="button"
+                      aria-pressed={r.code === lobby.ruleCode}
                       onClick={() => {
                         const decoded = decodeRuleString(r.code);
                         if (decoded.ok)
@@ -529,7 +533,7 @@ export function OnlineScreen({
                 isHost={isHost}
                 setFair={(fair) => onlineSession.host?.setFair(fair)}
               />
-              <p className="text-[11px] opacity-50">
+              <p className="text-white/70 text-xs">
                 규칙 문자열{" "}
                 <span className="select-all font-mono">{lobby.ruleCode}</span>
               </p>
@@ -596,9 +600,7 @@ export function OnlineScreen({
           </p>
         )}
         {phase === "error" && (
-          <p className="text-center text-red-300 text-sm">
-            연결하지 못했어요: {error}
-          </p>
+          <RoomError error={error} onRetry={retry} onBack={onBack} />
         )}
 
         <a
@@ -609,17 +611,11 @@ export function OnlineScreen({
         >
           이 방은 어떻게 지켜지나요?
         </a>
-        <p className="text-center text-[11px] leading-relaxed opacity-50">
+        <RoomFootnote>
           연결 문제를 고치려고 연결에 걸린 시간을 서버에 보내요(패·이름·채팅은
           보내지 않아요).
-        </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-center text-xs underline opacity-70"
-        >
-          처음으로
-        </button>
+        </RoomFootnote>
+        {phase !== "error" && <RoomBackLink onBack={onBack} />}
       </div>
       {editingRules && lobby && isHost && (
         <RuleEditor

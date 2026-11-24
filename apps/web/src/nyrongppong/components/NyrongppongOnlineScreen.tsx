@@ -14,6 +14,14 @@ import {
   reportIncident,
 } from "@/components/FairLine";
 import { InviteLink } from "@/components/InviteLink";
+import {
+  NameForm,
+  NameInput,
+  RoomBackLink,
+  RoomError,
+  RoomFootnote,
+  usePlayerNameField,
+} from "@/components/online-room";
 import { workerBotOption } from "@/game/bot-runner";
 import { useSettings } from "@/game/settings";
 import { useHwatuFair } from "@/hwatu/fair-bar";
@@ -29,6 +37,7 @@ import {
   setHostingRoom,
 } from "@/net/host-store";
 import type { LobbyState } from "@/net/protocol";
+import { endRoomSession } from "@/net/room-session";
 import {
   fairStoreFor,
   hostFingerprintFromUrl,
@@ -75,13 +84,12 @@ export function NyrongppongOnlineScreen({
   onBack: () => void;
   onPlaying: () => void;
 }) {
-  const savedName = useSettings((s) => s.playerName);
   const setPlayerName = useSettings((s) => s.setPlayerName);
   const attachOnline = useNyrongppong((s) => s.attachOnline);
   const setSeatNames = useNyrongppong((s) => s.setSeatNames);
   const reconnecting = useNyrongppong((s) => s.reconnecting);
   const hostLeft = useNyrongppong((s) => s.hostLeft);
-  const [name, setName] = useState(savedName);
+  const [name, setName] = usePlayerNameField();
   const [phase, setPhase] = useState<Phase>("name");
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [roomCode] = useState(
@@ -106,10 +114,6 @@ export function NyrongppongOnlineScreen({
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const isHost = roomFromUrl === null;
   const started = useRef(false);
-
-  useEffect(() => {
-    if (savedName && !name) setName(savedName);
-  }, [savedName, name]);
 
   // 방장이 새로고침했으면 이름을 다시 묻지 않고 그 방을 다시 연다.
   const resumed = useRef(false);
@@ -312,6 +316,13 @@ export function NyrongppongOnlineScreen({
     }
   };
 
+  /** 연결하지 못했을 때 같은 방 주소로 다시 잇는다 */
+  const retry = () => {
+    endRoomSession(nyrongppongSession);
+    setError(null);
+    void enter();
+  };
+
   const start = async () => {
     const host = nyrongppongSession.host;
     if (!host || starting) return;
@@ -344,17 +355,8 @@ export function NyrongppongOnlineScreen({
         </h2>
 
         {phase === "name" && (
-          <>
-            <label className="flex flex-col gap-1.5 text-sm">
-              내 이름
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={12}
-                placeholder="친구에게 보일 이름"
-                className="rounded-lg border border-white/15 bg-black/40 px-3 py-2"
-              />
-            </label>
+          <NameForm onSubmit={() => void enter()}>
+            <NameInput value={name} onChange={setName} />
             {isHost && (
               <p className="text-white/60 text-xs">
                 {rules.players}명 · {rules.rounds}판 · 스톱{" "}
@@ -365,13 +367,12 @@ export function NyrongppongOnlineScreen({
             )}
             {isHost && <RoomKindPicker />}
             <button
-              type="button"
-              onClick={() => void enter()}
+              type="submit"
               className="rounded-xl bg-amber-300 py-3 font-semibold text-black"
             >
               {isHost ? "방 만들기" : "들어가기"}
             </button>
-          </>
+          </NameForm>
         )}
 
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
@@ -467,22 +468,14 @@ export function NyrongppongOnlineScreen({
           <p className="text-center text-sm">방장이 방에서 내보냈어요.</p>
         )}
         {phase === "error" && (
-          <p className="text-center text-red-300 text-sm">
-            연결하지 못했어요: {error}
-          </p>
+          <RoomError error={error} onRetry={retry} onBack={onBack} />
         )}
 
-        <p className="text-center text-[11px] leading-relaxed opacity-50">
+        <RoomFootnote>
           서버 없이 기기끼리 바로 이어요. 연결 문제를 고치려고 연결에 걸린
           시간을 서버에 보내요(카드·이름·채팅은 보내지 않아요).
-        </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-center text-xs underline opacity-70"
-        >
-          처음으로
-        </button>
+        </RoomFootnote>
+        {phase !== "error" && <RoomBackLink onBack={onBack} />}
       </div>
     </main>
   );

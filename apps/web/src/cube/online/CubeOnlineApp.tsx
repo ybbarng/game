@@ -6,7 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";
 import { InviteLink } from "@/components/InviteLink";
+import {
+  INPUT_TEXT,
+  RoomError,
+  usePlayerNameField,
+} from "@/components/online-room";
 import { useSettings } from "@/game/settings";
+import { cn } from "@/lib/cn";
 import { useChat } from "@/net/chat";
 import {
   createHostIdentity,
@@ -157,7 +163,7 @@ async function connect(room: string, isHost: boolean): Promise<Transport> {
 export function CubeOnlineApp() {
   const savedName = useSettings((s) => s.playerName);
   const setPlayerName = useSettings((s) => s.setPlayerName);
-  const [name, setName] = useState("");
+  const [name, setName] = usePlayerNameField();
   const [phase, setPhase] = useState<Phase>("name");
   const [roomFromUrl, setRoomFromUrl] = useState<string | null | undefined>(
     undefined,
@@ -186,9 +192,6 @@ export function CubeOnlineApp() {
     setRoomCode(code ?? hosted ?? randomId(16));
     setPhone(touchOnly());
   }, []);
-  useEffect(() => {
-    if (savedName && !name) setName(savedName);
-  }, [savedName, name]);
   useEffect(
     () => () => {
       roomRef.current?.dispose();
@@ -303,30 +306,48 @@ export function CubeOnlineApp() {
         )}
 
         {!phone && phase === "name" && roomFromUrl !== undefined && (
-          <section className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-4">
+          <form
+            className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void enter();
+            }}
+          >
             <input
               value={name}
               maxLength={NAME_MAX}
               onChange={(e) => setName(e.target.value)}
               placeholder="이름"
               aria-label="이름"
-              className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5"
+              enterKeyHint="go"
+              autoComplete="nickname"
+              className={cn(
+                "rounded-lg border border-white/15 bg-black/40 px-2 py-1.5",
+                INPUT_TEXT,
+              )}
             />
             <button
-              type="button"
+              type="submit"
               data-cube-enter
-              onClick={() => void enter()}
               className="rounded-xl bg-sky-500 py-2 font-semibold text-black"
             >
               {isHost ? "방 만들기" : "들어가기"}
             </button>
-          </section>
+          </form>
         )}
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
         {phase === "error" && (
-          <p className="text-center text-red-300 text-sm">
-            연결하지 못했어요. 잠시 뒤 다시 들어와 보세요.
-          </p>
+          <RoomError
+            error={null}
+            onRetry={() => {
+              roomRef.current?.dispose();
+              roomRef.current = null;
+              transportRef.current?.leave();
+              transportRef.current = null;
+              setRoom(null);
+              void enter();
+            }}
+          />
         )}
         {room?.hostLeft && (
           <p role="status" className="text-center text-amber-300 text-sm">

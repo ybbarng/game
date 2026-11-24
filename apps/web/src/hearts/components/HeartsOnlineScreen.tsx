@@ -13,6 +13,14 @@ import {
   reportIncident,
 } from "@/components/FairLine";
 import { InviteLink } from "@/components/InviteLink";
+import {
+  NameForm,
+  NameInput,
+  RoomBackLink,
+  RoomError,
+  RoomFootnote,
+  usePlayerNameField,
+} from "@/components/online-room";
 import { ActionButton } from "@/components/panels/common";
 import { workerBotOption } from "@/game/bot-runner";
 import { useSettings } from "@/game/settings";
@@ -28,6 +36,7 @@ import {
   setHostingRoom,
 } from "@/net/host-store";
 import type { LobbyState } from "@/net/protocol";
+import { endRoomSession } from "@/net/room-session";
 import {
   fairStoreFor,
   hostFingerprintFromUrl,
@@ -73,13 +82,12 @@ export function HeartsOnlineScreen({
   onBack: () => void;
   onPlaying: () => void;
 }) {
-  const savedName = useSettings((s) => s.playerName);
   const setPlayerName = useSettings((s) => s.setPlayerName);
   const attachOnline = useHearts((s) => s.attachOnline);
   const setSeatNames = useHearts((s) => s.setSeatNames);
   const reconnecting = useHearts((s) => s.reconnecting);
   const hostLeft = useHearts((s) => s.hostLeft);
-  const [name, setName] = useState(savedName);
+  const [name, setName] = usePlayerNameField();
   const [phase, setPhase] = useState<Phase>("name");
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [roomCode] = useState(
@@ -117,10 +125,6 @@ export function HeartsOnlineScreen({
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const isHost = roomFromUrl === null;
   const started = useRef(false);
-
-  useEffect(() => {
-    if (savedName && !name) setName(savedName);
-  }, [savedName, name]);
 
   // 방장이 새로고침했으면 이름을 다시 묻지 않고 그 방을 다시 연다.
   const resumed = useRef(false);
@@ -330,6 +334,13 @@ export function HeartsOnlineScreen({
     }
   };
 
+  /** 연결하지 못했을 때 같은 방 주소로 다시 잇는다 */
+  const retry = () => {
+    endRoomSession(heartsSession);
+    setError(null);
+    void enter();
+  };
+
   const start = async () => {
     const host = heartsSession.host;
     if (!host || starting) return;
@@ -363,30 +374,22 @@ export function HeartsOnlineScreen({
         </h2>
 
         {phase === "name" && (
-          <>
-            <label className="flex flex-col gap-1.5 text-sm">
-              내 이름
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={12}
-                placeholder="친구들에게 보일 이름"
-                className="rounded-lg border border-white/15 bg-black/40 px-3 py-2"
-              />
-            </label>
+          <NameForm onSubmit={() => void enter()}>
+            <NameInput
+              value={name}
+              onChange={setName}
+              placeholder="친구들에게 보일 이름"
+            />
             {isHost && (
               <p className="text-xs opacity-60">
                 {PLAYER_COUNT}명 · 끝 점수 {rules.endScore}점
               </p>
             )}
             {isHost && <RoomKindPicker />}
-            <ActionButton
-              className="py-3 text-base"
-              onClick={() => void enter()}
-            >
+            <ActionButton type="submit" className="py-3 text-base">
               {isHost ? "방 만들기" : "들어가기"}
             </ActionButton>
-          </>
+          </NameForm>
         )}
 
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
@@ -415,7 +418,7 @@ export function HeartsOnlineScreen({
               isHost={isHost}
               setFair={(fair) => heartsSession.host?.setFair(fair)}
             />
-            <p className="text-[11px] opacity-50">
+            <p className="text-white/70 text-xs">
               규칙 문자열{" "}
               <span className="select-all font-mono">{lobby.ruleCode}</span>
             </p>
@@ -481,9 +484,7 @@ export function HeartsOnlineScreen({
           <p className="text-center text-sm">방장이 방에서 내보냈어요.</p>
         )}
         {phase === "error" && (
-          <p className="text-center text-red-300 text-sm">
-            연결하지 못했어요: {error}
-          </p>
+          <RoomError error={error} onRetry={retry} onBack={onBack} />
         )}
 
         <a
@@ -494,17 +495,11 @@ export function HeartsOnlineScreen({
         >
           이 방은 어떻게 지켜지나요?
         </a>
-        <p className="text-center text-[11px] leading-relaxed opacity-50">
+        <RoomFootnote>
           연결 문제를 고치려고 연결에 걸린 시간을 서버에 보내요(패·이름·채팅은
           보내지 않아요).
-        </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-center text-xs underline opacity-70"
-        >
-          처음으로
-        </button>
+        </RoomFootnote>
+        {phase !== "error" && <RoomBackLink onBack={onBack} />}
       </div>
     </main>
   );
