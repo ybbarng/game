@@ -44,6 +44,7 @@ import {
   setHostingRoom,
 } from "@/net/host-store";
 import type { LobbyState } from "@/net/protocol";
+import { roomGameKey, useRematch } from "@/net/rematch-store";
 import { endRoomSession } from "@/net/room-session";
 import {
   fairStoreFor,
@@ -240,18 +241,19 @@ export function RoomScreen<
   const [roomCode] = useState(
     () => roomFromUrl ?? resume?.room ?? randomId(16),
   );
-  const stats = {
+  /** 이 방 `gameNo`번째 게임의 내 기록 대상(한 판 더로 시작한 게임은 따로 남는다) */
+  const statsFor = (gameNo: number) => ({
     game: gameId,
     mode: "online" as const,
-    key: `online:${roomCode}`,
+    key: `online:${roomGameKey(roomCode, gameNo)}`,
     /** 같이 앉은 사람(나와 컴퓨터 빼고). 이 기기 내 기록에만 남는다 */
     people: sessionPeople(session),
-  };
+  });
   /** 방장: 복기용 기록은 방이 내준다(암호화방이면 판별 실제 패까지) */
   const hostArchive = (
     host: HostRoom<Rules, State, View, ActionT, Event, Extra>,
   ): ArchiveTarget => ({
-    ...stats,
+    ...statsFor(host.gameNo),
     seat: 0,
     seatNames: seatNamesOf(host.lobby()),
     source: () => host.archiveSource(),
@@ -292,12 +294,18 @@ export function RoomScreen<
     if (own) {
       const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
       if (failure) useStore.setState({ invalid: failure });
-      recordAudit(roomCode, failure);
+      recordAudit(roomGameKey(roomCode, session.guest?.gameNo ?? 1), failure);
     }
   };
 
   const syncLobby = (l: LobbyState) => {
     setLobby(l);
+    if (isHost)
+      useRematch.setState({
+        blocked:
+          game.needsFriend === true &&
+          !l.seats.some((s) => s.kind === "guest" && s.connected),
+      });
     useStore.getState().setSeatNames(seatNamesOf(l));
     useStore.setState({ offlineSeats: offlineSeatsOf(l) });
     if (game.fair)
@@ -315,7 +323,7 @@ export function RoomScreen<
   ) => {
     game.attach(match, {
       seatNames: seatNamesOf(host.lobby()),
-      stats,
+      stats: statsFor(host.gameNo),
       archive: hostArchive(host),
       claims: host.claims,
     });
@@ -325,6 +333,27 @@ export function RoomScreen<
         () => host.abandon(),
         (end) => host.vote(end),
       );
+  };
+
+  /** 방장: 판 끝 「한 판 더」. 같은 방·같은 규칙으로 새 게임을 시작해 대국 화면에 붙인다 */
+  const rematch = async (
+    host: HostRoom<Rules, State, View, ActionT, Event, Extra>,
+  ) => {
+    if (useRematch.getState().busy) return;
+    useRematch.setState({ busy: true });
+    try {
+      const match = await host.rematch();
+      if (match && session.host === host) {
+        // 앞 게임의 무효 표시·알림·부정 알림·섞는 중 표시는 새 게임에 남기지 않는다.
+        useStore.setState({ invalid: null, notice: null });
+        useFairBar.getState().clearRound();
+        attachHost(host, match);
+      }
+    } catch (e) {
+      useStore.setState({ notice: e instanceof Error ? e.message : String(e) });
+    } finally {
+      useRematch.setState({ busy: false });
+    }
   };
 
   const enter = async () => {
@@ -372,6 +401,11 @@ export function RoomScreen<
         if (game.fair)
           host.onIncident((n) => reportIncident(n, seatNamesOf(host.lobby())));
         host.onOwnError((e) => useStore.setState({ notice: e }));
+        useRematch.setState({
+          role: "host",
+          busy: false,
+          start: () => void rematch(host),
+        });
         host.onLobby(syncLobby);
         setHostingRoom(gameId, roomCode);
         setPhase("lobby");
@@ -416,9 +450,18 @@ export function RoomScreen<
         });
         guest.on("full", () => setPhase("full"));
         guest.on("kicked", () => setPhase("kicked"));
-        guest.on("hostLeft", () =>
-          useStore.setState({ hostLeft: true, reconnecting: false }),
-        );
+        useRematch.setState({ role: "guest", busy: false, start: null });
+        guest.on("hostLeft", () => {
+          useStore.setState({ hostLeft: true, reconnecting: false });
+          // 방장이 나갔으니 한 판 더를 기다리지 않는다.
+          useRematch.setState({ role: null });
+        });
+        // 한 판 더: 앞 게임 검증을 마치고 새 게임을 기다린다. 다음 첫 화면을 새 대국으로 붙인다.
+        guest.on("rematch", () => {
+          started.current = false;
+          useStore.setState({ invalid: null, notice: null });
+          useFairBar.getState().clearRound();
+        });
         guest.on("connection", (state) =>
           useStore.setState({ reconnecting: state === "reconnecting" }),
         );
@@ -459,7 +502,7 @@ export function RoomScreen<
           const view = guest.match?.current();
           saveGuestArchive(
             {
-              ...stats,
+              ...statsFor(guest.gameNo),
               seat: guest.seat ?? 0,
               seatNames: seatNamesOf(guest.lobby ?? EMPTY_LOBBY),
             },
@@ -473,7 +516,7 @@ export function RoomScreen<
           started.current = true;
           game.attach(match, {
             seatNames: seatNamesOf(guest.lobby ?? EMPTY_LOBBY),
-            stats,
+            stats: statsFor(guest.gameNo),
             claims: guest.claims,
           });
           if (game.fair)

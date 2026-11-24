@@ -1,6 +1,7 @@
 import { useChat } from "./chat";
 import { useFairBar } from "./fair-bar";
 import { clearHostingRoom } from "./host-store";
+import { useRematch } from "./rematch-store";
 
 /** 방장 쪽 방: 판 끝 기록을 공개하고(`finish`) 닫는다(`close`) */
 export type ClosableHost = { finish(): Promise<void> | void; close(): void };
@@ -31,4 +32,5 @@ export function endRoomSession(session: RoomSession): void {
   session.guest = null;
   useChat.getState().reset();
   useFairBar.getState().reset();
+  useRematch.getState().reset();
 }

@@ -52,8 +52,14 @@ async function placeOne(page: Page, touch: boolean): Promise<void> {
       return;
     } catch {}
     // 그사이 판이 끝났으면(컴퓨터가 이김) 더 둘 곳을 찾지 않는다.
-    // 빈칸 225곳을 1.5초씩 다 눌러 보다 시험 시간을 넘기던 경합이다
-    if (await page.getByRole("button", { name: "다시 하기" }).isVisible())
+    // 빈칸 225곳을 1.5초씩 다 눌러 보다 시험 시간을 넘기던 경합이다.
+    // 판 끝 단추: 혼자 하기는 「다시 하기」, 온라인은 「처음으로」만 늘 있다.
+    if (
+      await page
+        .getByRole("button", { name: /^(다시 하기|처음으로)$/ })
+        .first()
+        .isVisible()
+    )
       return;
   }
   throw new Error("둘 곳이 없다");
@@ -175,7 +181,7 @@ test("오목: 두던 게임은 새로고침해도 이어 둔다", {
 });
 
 test(
-  "오목: 방장이 방을 만들고 친구가 링크로 들어와 한 판을 둔다",
+  "오목: 방장이 방을 만들고 친구가 링크로 들어와 한 판을 두고, 같은 방에서 한 판 더 둔다",
   { tag: "@only-desktop" },
   async ({ context }, info) => {
     // 데스크톱에서만 돌린다
@@ -208,7 +214,7 @@ test(
     await expect(board(guest)).toBeVisible();
     await expect(guest.getByText("방장", { exact: true })).toBeVisible();
 
-    // 온라인 판 끝에는 「처음으로」만 둔다(같은 설정 새 판은 혼자 하기만).
+    // 온라인 판 끝: 방장은 「한 판 더」·「처음으로」, 참가자는 기다림 꼬리표와 「처음으로」.
     const over = (p: Page) => p.getByRole("button", { name: "처음으로" });
     for (let i = 0; i < 300; i++) {
       if ((await over(host).isVisible()) && (await over(guest).isVisible()))
@@ -227,11 +233,41 @@ test(
     expect(await stones(guest).count()).toBe(await stones(host).count());
     await guest.screenshot({ path: info.outputPath("omok-online-guest.png") });
 
-    // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
+    // 게임이 끝나면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
+    const verified = guest.getByText(/검증.*문제없음/);
+    await expect(verified).toHaveCount(1, { timeout: 10_000 });
+
+    // 한 판 더: 방장만 고르고 참가자는 기다린다. 누르면 두 화면 모두 빈 판의 새 게임으로 넘어간다.
+    await expect(guest.locator("[data-rematch-wait]")).toHaveText(
+      "방장이 고르는 중",
+    );
+    await expect(guest.getByRole("button", { name: "한 판 더" })).toHaveCount(
+      0,
+    );
+    await host.getByRole("button", { name: "한 판 더" }).click();
+    for (const p of [host, guest]) {
+      await expect(over(p)).toBeHidden();
+      await expect(stones(p)).toHaveCount(0);
+    }
+    // 새 게임은 둘 차례인 쪽이 기권해 바로 끝낸다.
+    const turnOf = async () => {
+      for (const p of [host, guest])
+        if ((await p.getByRole("status").textContent())?.includes("내 차례"))
+          return p;
+      return null;
+    };
+    await expect.poll(turnOf, { intervals: [50] }).not.toBeNull();
+    const mover = (await turnOf()) as Page;
+    await mover.getByRole("button", { name: "기권" }).click();
+    await mover.getByRole("button", { name: "기권하기" }).click();
+    await expect(over(host)).toBeVisible();
+    await expect(over(guest)).toBeVisible();
+    // 새 게임도 따로 검증한다.
+    await expect(verified).toHaveCount(2, { timeout: 10_000 });
+    await host.screenshot({ path: info.outputPath("omok-rematch-host.png") });
+
     await leaveOnline(host, "← 오목");
-    await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(guest.locator("[data-rematch-wait]")).toHaveCount(0);
     expect(errors).toEqual([]);
   },
 );
