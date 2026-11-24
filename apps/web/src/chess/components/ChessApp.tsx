@@ -29,6 +29,7 @@ import {
   useChessSettings,
 } from "../settings";
 import { type ChessSaved, clearChess, loadChess, useChess } from "../store";
+import { CHESS_STUDY_ORDER } from "../study-order";
 import { CHESS_LESSONS } from "../tutorial";
 import { PieceIcon } from "./ChessBoard";
 import { ChessEndgameScreen } from "./ChessEndgameScreen";
@@ -327,7 +328,7 @@ const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
   puzzleIds: s.puzzles.map((p) => p.id),
 }));
 
-/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩 하나·룩 둘·킹과 폰) */
+/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩 하나·룩 둘·폰을 퀸으로 만들기) */
 const ENDGAME_STUDY_SETS = ENDGAME_SETS.map((s) => ({
   id: s.id,
   title: s.title,
@@ -343,6 +344,16 @@ const OPENING_SET = {
   puzzleIds: CHESS_OPENING_SET.lines.map((l) => l.id),
   labels: CHESS_OPENING_SET.lines.map((l) => l.name),
 };
+
+/** 배우는 차례(`CHESS_STUDY_ORDER`)대로 늘어놓은 수 배우기 목록 */
+const ORDERED_STUDY_SETS = (() => {
+  const all = [OPENING_SET, ...STUDY_SETS, ...ENDGAME_STUDY_SETS];
+  return CHESS_STUDY_ORDER.map((id) => {
+    const set = all.find((s) => s.id === id);
+    if (!set) throw new Error(`수 배우기 목록에 없는 묶음: ${id}`);
+    return set;
+  });
+})();
 
 /** 목록에서 고른 것이 수순이면 수순 화면, 엔드게임 연습이면 연습 화면, 아니면 문제 화면 */
 const studyScreen = (id: string, review?: Review): Screen =>
@@ -440,7 +451,7 @@ export function ChessApp() {
       <StudyHome
         title="체스 수 배우기"
         background={BG}
-        sets={[OPENING_SET, ...STUDY_SETS, ...ENDGAME_STUDY_SETS]}
+        sets={ORDERED_STUDY_SETS}
         progress={useChessStudyProgress}
         onOpen={(id, review) => setScreen(studyScreen(id, review))}
         onBack={() => setScreen({ kind: "tutorial" })}
