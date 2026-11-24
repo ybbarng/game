@@ -16,13 +16,15 @@ import {
   methodSteps,
 } from "./endgame";
 
-const PIECES: readonly EndgamePiece[] = ["Q", "R", "RR"];
+const PIECES: readonly EndgamePiece[] = ["Q", "R", "RR", "P"];
 
-/** 그림 판의 흑 킹이 체크인가 */
+/** 그림 판의 흑 킹이 체크인가(폰은 대각선 앞 칸을 노린다) */
 const inCheck = (piece: EndgamePiece, b: DrillBoard) =>
   piece === "RR"
     ? krrkCheck({ wk: b.wk, bk: b.bk, p: b.p, q: b.q ?? -1 })
-    : kxkAttacks(piece, b.p, b.wk, b.bk);
+    : piece === "P"
+      ? b.bk >> 3 === (b.p >> 3) - 1 && Math.abs((b.bk & 7) - (b.p & 7)) === 1
+      : kxkAttacks(piece, b.p, b.wk, b.bk);
 
 describe.each(PIECES)("%s 단원 그림", (piece) => {
   const pages = endgamePages(piece);
@@ -126,6 +128,39 @@ describe("연습 판정", () => {
     expect(
       judgeDrill("RR", stale, { from: sq("h2"), to: sq("h7") }, 0),
     ).toEqual({ verdict: "wrong", miss: "stalemate" });
+  });
+
+  it("킹과 폰: 무사히 퀸이 되면 성공, 잡히는 승급·폰을 잡히게 둠·비기는 판·스테일메이트는 실패", () => {
+    // 퀸 되기: e8 옆에 내 킹(d8)
+    const queen = drillBoard("P", "k2K4/4P3/8/8/8/8/8/8 w - - 0 1");
+    expect(judgeDrill("P", queen, { from: sq("e7"), to: sq("e8") }, 0)).toEqual(
+      { verdict: "solved" },
+    );
+    // 흑 킹(f8) 옆 e8로 내 킹이 지키지 않는데 퀸으로 바꾸면 잡힌다
+    const taken = drillBoard("P", "5k2/4P3/8/8/8/8/8/K7 w - - 0 1");
+    expect(judgeDrill("P", taken, { from: sq("e7"), to: sq("e8") }, 0)).toEqual(
+      { verdict: "wrong", miss: "lost" },
+    );
+    // 흑 킹(d5) 옆의 폰(e4)을 지키던 킹이 떠난다
+    const left = drillBoard("P", "8/8/8/3k4/4P3/5K2/8/8 w - - 0 1");
+    expect(judgeDrill("P", left, { from: sq("f3"), to: sq("g3") }, 0)).toEqual({
+      verdict: "wrong",
+      miss: "lost",
+    });
+    // 이기는 칸(e6)의 킹이 마주 보기에서 물러나 비기는 판이 된다(Ke6·e4 대 Ke8 → Ke5)
+    const draw = drillBoard("P", "4k3/8/4K3/8/4P3/8/8/8 w - - 0 1");
+    expect(judgeDrill("P", draw, { from: sq("e6"), to: sq("e5") }, 0)).toEqual({
+      verdict: "wrong",
+      miss: "draw",
+    });
+    expect(judgeDrill("P", draw, { from: sq("e4"), to: sq("e5") }, 0)).toEqual({
+      verdict: "next",
+    });
+    // Kc7·b5 대 Ka8에서 b6으로 밀면 체크가 아닌데 흑 킹이 갈 칸이 없다
+    const stale = drillBoard("P", "k7/2K5/8/1P6/8/8/8/8 w - - 0 1");
+    expect(judgeDrill("P", stale, { from: sq("b5"), to: sq("b6") }, 0)).toEqual(
+      { verdict: "wrong", miss: "stalemate" },
+    );
   });
 
   it("정해진 수는 50수 규칙보다 적다", () => {

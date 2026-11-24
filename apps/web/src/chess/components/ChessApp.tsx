@@ -401,7 +401,7 @@ const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
   puzzleIds: s.puzzles.map((p) => p.id),
 }));
 
-/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩 하나·룩 둘) */
+/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩 하나·룩 둘·킹과 폰) */
 const ENDGAME_STUDY_SETS = ENDGAME_SETS.map((s) => ({
   id: s.id,
   title: s.title,
@@ -504,7 +504,7 @@ export function ChessApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `이름난 첫 수들 ${OPENING_SET.puzzleIds.length}개, 메이트·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 퀸·룩 하나·룩 둘로 메이트하는 엔드게임 연습 ${ENDGAME_STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
+          detail: `이름난 첫 수들 ${OPENING_SET.puzzleIds.length}개, 메이트·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 퀸·룩 하나·룩 둘로 메이트하고 폰을 퀸으로 만드는 엔드게임 연습 ${ENDGAME_STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

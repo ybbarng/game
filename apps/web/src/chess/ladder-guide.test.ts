@@ -32,7 +32,8 @@ const near = (a: number, b: number) =>
   Math.max(Math.abs((a & 7) - (b & 7)), Math.abs((a >> 3) - (b >> 3))) <= 1;
 
 /** 끝까지 따라간 결과: 메이트까지 가장 긴 수, 아니면 실패한 까닭 */
-type Worst = number | "stalemate" | "lost" | "stuck" | "loop";
+// 「draw」(비기는 판)는 폰 연습에만 나오지만 판정 결과의 종류는 같은 타입이다
+type Worst = number | "stalemate" | "lost" | "draw" | "stuck" | "loop";
 
 /**
  * 흑이 어떤 수로 받아도 방법대로 두면 몇 수 안에 메이트하나(백 차례 판, 가장 긴 갈래).

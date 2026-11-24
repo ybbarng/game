@@ -108,6 +108,58 @@ const LADDER_TERMS: OrderedTerm[] = [
   { term: "준비된 칸", use: /준비된 칸/, define: /\*\*준비된 칸\*\*/ },
 ];
 
+/** 킹과 폰 단원이 규칙 배우기에서 이어 쓰는 용어 */
+const PAWN_RULE_TERMS: OrderedTerm[] = [
+  ...RULE_TERMS.filter((t) => t.term !== "룩" && t.term !== "50수 규칙"),
+  { term: "폰", use: /폰/, define: /작은 기물 8개는 \*\*폰\*\*/ },
+  { term: "승급", use: /승급/, define: /\(승급\)/ },
+  {
+    term: "가로줄",
+    use: /가로줄/,
+    define: /가로줄은 백 쪽부터 1~8/,
+  },
+];
+
+/**
+ * 킹과 폰 단원이 새로 알리는 용어. 다른 엔드게임 단원과 따로 읽어도 되게 이 단원 안에서 처음부터 알린다.
+ * 「마주 보기」는 퀸·룩 단원에도 있지만 이 단원은 같은 세로줄만 보니 다시 알린다
+ */
+const PAWN_TERMS: OrderedTerm[] = [
+  {
+    term: "앞",
+    use: /(두|한) 줄 앞|더 앞|보다 앞|앞의 칸|바로 앞|앞으로/,
+    define: /\*\*앞\*\*은/,
+  },
+  { term: "폰의 사각형", use: /사각형/, define: /\*\*폰의 사각형\*\*/ },
+  { term: "이기는 칸", use: /이기는 칸/, define: /\*\*이기는 칸\*\*/ },
+  {
+    term: "마주 보기",
+    use: /마주 (보|봐|본|볼)/,
+    define: /\*\*마주 보기\*\*라고/,
+  },
+];
+
+describe("킹과 폰 단원 용어 순서(문장마다)", () => {
+  // 쪽 머리글(「폰의 사각형」)은 그 쪽이 뜻을 알릴 용어의 이름표라 본문 문장만 본다
+  const pawn: TextPlace[] = endgamePages("P").flatMap((page, i) =>
+    splitSentences(page.body.join("\n")).map((sentence, k) => ({
+      where: `킹과 폰 ${i + 1}쪽(${page.title}) ${k + 1}번째 문장`,
+      group: CHESS_LESSONS.length,
+      text: sentence,
+    })),
+  );
+
+  it("규칙 배우기에서 배운 용어는 그 뒤에 쓴다", () => {
+    expect(
+      earlyUses([...lessonPlaces(CHESS_LESSONS), ...pawn], PAWN_RULE_TERMS),
+    ).toEqual([]);
+  });
+
+  it("이 단원이 새로 알리는 용어는 뜻을 알린 문장부터 쓴다", () => {
+    expect(earlyUses(pawn, PAWN_TERMS)).toEqual([]);
+  });
+});
+
 describe("룩 둘 사다리 메이트 단원 용어 순서(문장마다)", () => {
   const ladder: TextPlace[] = endgamePages("RR").flatMap((page, i) =>
     splitSentences([page.title, ...page.body].join("\n")).map(
