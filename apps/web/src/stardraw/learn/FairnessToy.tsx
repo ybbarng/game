@@ -137,7 +137,7 @@ export function FairnessToy() {
               disabled={running}
               aria-label="묶음 크기(회차)"
               data-fair-window
-              className="w-20 rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-xs"
+              className="w-20 rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-base sm:text-xs"
             />
           </span>
         </Row>

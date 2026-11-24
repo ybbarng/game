@@ -655,7 +655,7 @@ function CaseDetail({
             autoCapitalize="off"
             autoComplete="off"
             placeholder={used}
-            className="rounded-lg bg-black/40 px-3 py-2 font-mono outline-none ring-1 ring-white/15 focus:ring-sky-400"
+            className="rounded-lg bg-black/40 px-3 py-2 font-mono outline-none ring-1 ring-white/15 focus:ring-sky-400 max-sm:text-base"
           />
         </label>
         {result && (

@@ -315,7 +315,7 @@ function MinePatterns({
               spellCheck={false}
               autoCapitalize="off"
               data-mine-alg
-              className="rounded-lg bg-white/10 px-3 py-2 font-mono"
+              className="rounded-lg bg-white/10 px-3 py-2 font-mono max-sm:text-base"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -326,7 +326,7 @@ function MinePatterns({
               onChange={(e) => setName(e.target.value)}
               placeholder="내 패턴"
               data-mine-name
-              className="rounded-lg bg-white/10 px-3 py-2"
+              className="rounded-lg bg-white/10 px-3 py-2 max-sm:text-base"
             />
           </label>
           {read && !read.ok && (

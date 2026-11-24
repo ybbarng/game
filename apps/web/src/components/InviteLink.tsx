@@ -52,7 +52,7 @@ export function InviteLink({
           readOnly
           value={link}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-lg bg-black/40 px-2 py-1.5 font-mono text-xs"
+          className="min-w-0 flex-1 rounded-lg bg-black/40 px-2 py-1.5 font-mono text-base sm:text-xs"
         />
         <ActionButton
           variant="secondary"

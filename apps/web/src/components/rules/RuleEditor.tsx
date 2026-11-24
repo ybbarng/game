@@ -128,7 +128,7 @@ export function RuleEditor({
             <select
               value={rules.playerCount}
               onChange={(e) => set("playerCount", Number(e.target.value))}
-              className="rounded-md bg-black/40 px-2 py-1"
+              className="rounded-md bg-black/40 px-2 py-1 max-sm:text-base"
             >
               {[2, 3, 4, 5, 6, 7].map((n) => (
                 <option key={n} value={n}>
@@ -150,7 +150,7 @@ export function RuleEditor({
                   Math.min(max, Math.max(4, Number(e.target.value) || 4)),
                 )
               }
-              className="w-20 rounded-md bg-black/40 px-2 py-1 text-right"
+              className="w-20 rounded-md bg-black/40 px-2 py-1 text-right max-sm:text-base"
             />
           </div>
           {CARD_FIELDS.map((f) => (

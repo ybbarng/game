@@ -85,7 +85,8 @@ export function ChatBox({
           maxLength={CHAT_MAX_LENGTH}
           placeholder="한마디"
           aria-label="채팅 입력"
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm"
+          enterKeyHint="send"
+          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-base sm:text-sm"
         />
         <button
           type="submit"

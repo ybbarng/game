@@ -704,7 +704,7 @@ function KeymapSection({
               readOnly
               value={exportKeymap(keymap)}
               rows={6}
-              className="rounded bg-black/30 p-2 font-mono"
+              className="rounded bg-black/30 p-2 font-mono max-sm:text-base"
               onFocus={(e) => e.target.select()}
             />
             <button
@@ -723,7 +723,7 @@ function KeymapSection({
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               rows={6}
-              className="rounded bg-black/30 p-2 font-mono"
+              className="rounded bg-black/30 p-2 font-mono max-sm:text-base"
             />
             <button
               type="button"

@@ -819,7 +819,7 @@ function FormulaDrill({
                     Math.max(1, Math.min(30, Number(e.target.value) || 1)),
                   )
                 }
-                className="w-16 rounded bg-white/10 px-2 py-1"
+                className="w-16 rounded bg-white/10 px-2 py-1 max-sm:text-base"
               />
               번
             </label>

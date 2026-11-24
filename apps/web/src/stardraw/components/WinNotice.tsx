@@ -192,7 +192,7 @@ function NoticeCard({
                 value={url}
                 aria-label="확인 링크"
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 font-mono text-xs"
+                className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 font-mono text-base sm:text-xs"
               />
               <div className={cn("grid gap-2", canShare && "grid-cols-2")}>
                 {canShare && (

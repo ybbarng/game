@@ -581,7 +581,7 @@ function ReissueForm({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="회사 이메일"
           aria-label="다시 발급할 회사 이메일"
-          className="min-w-0 flex-1 rounded-lg border border-white/20 bg-transparent px-3 py-1.5 text-sm"
+          className="min-w-0 flex-1 rounded-lg border border-white/20 bg-transparent px-3 py-1.5 text-base sm:text-sm"
         />
         <button
           type="submit"
@@ -821,7 +821,7 @@ function AffiliationForm({
             value={name}
             maxLength={20}
             onChange={(e) => setName(e.target.value)}
-            className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+            className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 max-sm:text-base"
           />
         </label>
         <label htmlFor={`${id}-badge`} className="flex flex-col gap-1 text-sm">
@@ -830,7 +830,7 @@ function AffiliationForm({
             id={`${id}-badge`}
             value={badge}
             onChange={(e) => setBadge(Number(e.target.value) as Badge)}
-            className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+            className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 max-sm:text-base"
           >
             {Object.entries(BADGES).map(([v, label]) => (
               <option key={v} value={v}>
@@ -846,7 +846,7 @@ function AffiliationForm({
             value={method}
             maxLength={20}
             onChange={(e) => setMethod(e.target.value)}
-            className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+            className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 max-sm:text-base"
           />
         </label>
       </div>
@@ -948,7 +948,7 @@ function ScheduleChange({
               <select
                 value={phase}
                 onChange={(e) => setPhase(e.target.value as "trial" | "live")}
-                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 max-sm:text-base"
                 data-schedule-phase
               >
                 <option value="trial">시험 단계 그대로(회차 길이만)</option>
@@ -961,7 +961,7 @@ function ScheduleChange({
             <select
               value={length}
               onChange={(e) => setLength(Number(e.target.value))}
-              className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+              className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 max-sm:text-base"
               data-schedule-length
             >
               {LENGTH_CHOICES.map((l) => (
@@ -981,7 +981,7 @@ function ScheduleChange({
               <select
                 value={chosen ?? ""}
                 onChange={(e) => setPick(Number(e.target.value))}
-                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 max-sm:text-base"
                 data-live-start
               >
                 {options.map((o) => (

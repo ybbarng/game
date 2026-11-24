@@ -185,7 +185,7 @@ export function KeysApp() {
               placeholder="동작이나 키"
               aria-label="동작이나 키로 찾기"
               data-keys-search
-              className="min-w-0 flex-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm print:hidden"
+              className="min-w-0 flex-1 rounded-lg bg-white/10 px-3 py-1.5 text-base sm:text-sm print:hidden"
             />
           </div>
           <table className="w-full text-sm">

@@ -127,7 +127,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               value={ruleText}
               onChange={(e) => chooseRule(e.target.value)}
               spellCheck={false}
-              className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 font-mono text-sm"
+              className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 font-mono text-base sm:text-sm"
             />
             {decoded && !decoded.ok && (
               <p className="text-red-300 text-xs">{decoded.reason}</p>
@@ -141,7 +141,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                     value={saveName}
                     onChange={(e) => setSaveName(e.target.value)}
                     placeholder="이 규칙의 이름 (예: 우리 학교 5마)"
-                    className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-xs"
+                    className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-base sm:text-xs"
                   />
                   <ActionButton
                     variant="secondary"
@@ -307,7 +307,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                   onChange={(e) => settings.setBotName(n, e.target.value)}
                   placeholder={botName([], n)}
                   maxLength={8}
-                  className="min-w-0 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs"
+                  className="min-w-0 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-base sm:text-xs"
                 />
               ))}
             </div>

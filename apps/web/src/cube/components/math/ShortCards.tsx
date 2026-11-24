@@ -295,7 +295,7 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
           onChange={(e) => setText(e.target.value)}
           placeholder="직접 쓰기: 예) F R' U2"
           data-order-input
-          className="min-w-0 flex-1 rounded-lg bg-white/10 px-3 py-1.5 font-mono text-sm"
+          className="min-w-0 flex-1 rounded-lg bg-white/10 px-3 py-1.5 font-mono text-base sm:text-sm"
         />
         <button
           type="submit"
