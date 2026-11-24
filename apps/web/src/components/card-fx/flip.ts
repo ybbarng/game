@@ -48,7 +48,12 @@ export function flipMs(steps: number, stepMs = FLIP_STEP_MS): number {
 }
 
 function measure(root: HTMLElement): Map<string, FlipSpot> {
-  const base = root.getBoundingClientRect();
+  // 무대의 안전 영역 테두리(SAFE_STAGE)만큼 안쪽이 절대 위치의 기준이다
+  const box = root.getBoundingClientRect();
+  const base = {
+    left: box.left + root.clientLeft,
+    top: box.top + root.clientTop,
+  };
   const spots = new Map<string, FlipSpot>();
   for (const el of root.querySelectorAll<HTMLElement>("[data-flip]")) {
     const id = el.dataset.flip;

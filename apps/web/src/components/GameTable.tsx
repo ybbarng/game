@@ -71,6 +71,7 @@ import { Scoreboard } from "./Scoreboard";
 import { SeatPlate } from "./SeatPlate";
 import { SettingsMenu } from "./SettingsMenu";
 import { SuitText } from "./SuitText";
+import { SAFE_STAGE } from "./safe-area";
 import { Term, TermProvider } from "./TermHint";
 import { MissionOverlay, type MissionProps } from "./tutorial/MissionOverlay";
 
@@ -222,7 +223,13 @@ export function GameTable({
   useAutoClear(notice, clearNotice);
 
   if (!view)
-    return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;
+    return (
+      <div
+        ref={stage.ref}
+        className={cn("h-dvh w-full", SAFE_STAGE)}
+        style={insetStyle}
+      />
+    );
 
   const { rules } = view;
   const n = rules.playerCount;
@@ -503,6 +510,7 @@ export function GameTable({
         ref={stage.ref}
         className={cn(
           "relative h-dvh w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,#166534_0%,#0a3622_75%)]",
+          SAFE_STAGE,
           fade.className,
         )}
         style={{ ...insetStyle, ...fade.style }}

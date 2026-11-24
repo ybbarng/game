@@ -21,6 +21,7 @@ import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
+import { SAFE_PY3_PX4 } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -295,6 +296,7 @@ export function YutGame({
       data-game="yut"
       className={cn(
         "relative isolate flex min-h-dvh flex-col items-center gap-3 overflow-x-clip px-4 py-3 text-white split:grid split:grid-cols-[minmax(0,min(38rem,calc(100dvh-4.5rem)))_minmax(0,22rem)] split:content-start split:items-start split:justify-center split:gap-x-6 lg:py-5",
+        SAFE_PY3_PX4,
         YUT_BG,
         mission && "pt-16",
       )}

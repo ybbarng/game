@@ -28,6 +28,7 @@ import { PANEL_BUTTONS, RoundEndButtons } from "@/components/RoundEndButtons";
 import { useRelayoutFade } from "@/components/relayout";
 import { SeatPlate } from "@/components/SeatPlate";
 import { SuitText } from "@/components/SuitText";
+import { SAFE_STAGE } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -142,7 +143,13 @@ export function HeartsTable({
   useAutoClear(notice, clearNotice);
 
   if (!view)
-    return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;
+    return (
+      <div
+        ref={stage.ref}
+        className={cn("h-dvh w-full", SAFE_STAGE)}
+        style={insetStyle}
+      />
+    );
 
   const me = view.seat;
   const offsetOf = (seat: number) => (seat - me + 4) % 4;
@@ -341,6 +348,7 @@ export function HeartsTable({
       ref={stage.ref}
       className={cn(
         "relative h-dvh w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,#7f1d1d_0%,#3b0a0a_80%)]",
+        SAFE_STAGE,
         fade.className,
       )}
       style={{ ...insetStyle, ...fade.style }}

@@ -14,6 +14,7 @@ import { ActionButton } from "@/components/panels/common";
 import { RoomScreen } from "@/components/RoomScreen";
 import { SuitStylePicker } from "@/components/SuitStylePicker";
 import { SuitText } from "@/components/SuitText";
+import { SAFE_P4 } from "@/components/safe-area";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -46,10 +47,7 @@ type Screen =
 
 const HEARTS_BG =
   "bg-[radial-gradient(ellipse_at_center,#7f1d1d_0%,#3b0a0a_80%)]";
-const BG = cn(
-  "flex min-h-dvh justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]",
-  HEARTS_BG,
-);
+const BG = cn("flex min-h-dvh justify-center p-4", SAFE_P4, HEARTS_BG);
 
 /** 하트(/hearts) */
 export function HeartsApp() {

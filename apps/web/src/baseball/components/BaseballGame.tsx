@@ -19,6 +19,7 @@ import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
+import { SAFE_PY3_PX4 } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -425,6 +426,7 @@ export function BaseballGame({
       data-game="baseball"
       className={cn(
         "ballpark relative isolate flex min-h-dvh flex-col items-center gap-2 overflow-x-clip px-4 py-3 sm:gap-3 short-landscape:gap-y-1.5 short-landscape:py-2 text-white split:grid split:grid-cols-[minmax(0,40rem)_minmax(0,21rem)] split:content-start split:items-start split:justify-center split:gap-x-5 lg:gap-x-8 lg:py-5",
+        SAFE_PY3_PX4,
         mission && "pt-16",
       )}
     >

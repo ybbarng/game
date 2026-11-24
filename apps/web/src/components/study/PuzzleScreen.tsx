@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { BACK_BUTTON } from "@/components/hit-area";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
+import { SAFE_PY3_PX4 } from "@/components/safe-area";
 import type { Cue } from "@/game/sound";
 import { playUiCue } from "@/game/ui-sound";
 import { cn } from "@/lib/cn";
@@ -241,7 +242,7 @@ export function PuzzleScreen({
   return (
     <main
       data-game={game}
-      className="flex min-h-dvh flex-col items-center gap-3 break-keep bg-[#1c1917] px-4 py-3 text-white wrap-anywhere split:grid split:grid-cols-[auto_minmax(0,18rem)] split:grid-rows-[auto_auto_1fr] split:content-center split:justify-center split:gap-x-6"
+      className={`flex min-h-dvh flex-col items-center gap-3 break-keep bg-[#1c1917] px-4 py-3 text-white wrap-anywhere split:grid split:grid-cols-[auto_minmax(0,18rem)] split:grid-rows-[auto_auto_1fr] split:content-center split:justify-center split:gap-x-6 ${SAFE_PY3_PX4}`}
     >
       <header className="flex w-full max-w-xl items-center gap-2 text-sm split:col-start-2 split:row-start-1">
         <button type="button" onClick={onExit} className={BACK_BUTTON}>

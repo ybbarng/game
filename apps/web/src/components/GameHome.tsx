@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 
 import { BackToGames } from "./BackToGames";
 import { MadeWith } from "./brand/MadeWith";
+import { SAFE_P4 } from "./safe-area";
 
 /** 큰 메뉴 단추 하나 */
 export interface HomeAction {
@@ -123,6 +124,7 @@ export function GameHome({
       data-game={theme}
       className={cn(
         "flex min-h-dvh items-center justify-center p-4 text-white",
+        SAFE_P4,
         background,
       )}
     >

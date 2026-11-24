@@ -12,6 +12,7 @@ import {
 import { BAR_BUTTON } from "@/components/GameSettingsMenu";
 import { HIT_AREA } from "@/components/hit-area";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
+import { SAFE_STAGE } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -69,7 +70,7 @@ export function HwatuStage({
       {mission && <MissionOverlay mission={mission} top={8} />}
       <div
         ref={stageRef}
-        className="relative h-dvh w-full"
+        className={cn("relative h-dvh w-full", SAFE_STAGE)}
         style={
           inset > 0
             ? { marginTop: inset, height: `calc(100dvh - ${inset}px)` }

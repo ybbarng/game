@@ -47,6 +47,7 @@ import { PANEL_BUTTONS, RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { useRelayoutFade } from "@/components/relayout";
 import { SeatPlate } from "@/components/SeatPlate";
+import { SAFE_STAGE } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -382,10 +383,11 @@ function spotOf(el: Element | null, stage: Element): Spot | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (r.width === 0) return null;
+  // 무대의 안전 영역 테두리(SAFE_STAGE)만큼 안쪽이 절대 위치의 기준이다
   const s = stage.getBoundingClientRect();
   return {
-    x: r.left - s.left + r.width / 2,
-    y: r.top - s.top + r.height / 2,
+    x: r.left - s.left - stage.clientLeft + r.width / 2,
+    y: r.top - s.top - stage.clientTop + r.height / 2,
     w: r.width,
   };
 }
@@ -740,6 +742,7 @@ export function OnecardGame({
       data-replay={replay ? "" : undefined}
       className={cn(
         "relative h-dvh w-full overflow-hidden text-white",
+        SAFE_STAGE,
         ONECARD_BG,
         fade.className,
       )}

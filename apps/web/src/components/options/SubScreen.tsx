@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { HIT_AREA } from "@/components/hit-area";
+import { SAFE_P4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
 
 /** 옵션 화면의 한 묶음: 작은 제목과 고르는 것 */
@@ -47,7 +48,7 @@ export function SubScreen({
       data-game={game}
       className={cn(
         "flex min-h-dvh justify-center p-4 text-white",
-        "pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]",
+        SAFE_P4,
         bg,
       )}
     >

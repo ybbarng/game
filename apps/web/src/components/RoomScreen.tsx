@@ -21,6 +21,7 @@ import {
   usePlayerNameField,
 } from "@/components/online-room";
 import { ActionButton } from "@/components/panels/common";
+import { SAFE_P4 } from "@/components/safe-area";
 import { workerBotOption } from "@/game/bot-runner";
 import type { MatchHost, Snapshot } from "@/game/host";
 import type { GameKit, KitBot } from "@/game/kit";
@@ -567,6 +568,7 @@ export function RoomScreen<
       {...(game.theme.dataGame ? { "data-game": game.theme.dataGame } : {})}
       className={cn(
         "flex min-h-dvh items-center justify-center p-4 text-white",
+        SAFE_P4,
         game.theme.background,
       )}
     >

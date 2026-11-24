@@ -10,6 +10,7 @@ import type { MissionStatus } from "@/tutorial/types";
 import { CardArt } from "../card-art/CardArt";
 import { ActionButton } from "../panels/common";
 import { SuitText } from "../SuitText";
+import { SAFE_P4 } from "../safe-area";
 import { TermAside } from "../TermHint";
 import type { TutorialKit } from "./kit";
 import { RichText } from "./RichText";
@@ -106,6 +107,7 @@ export function LessonPlayer<View, Event, Scenario, Action>({
     <main
       className={cn(
         "flex min-h-dvh items-center justify-center p-4",
+        SAFE_P4,
         tutorial.background,
       )}
     >

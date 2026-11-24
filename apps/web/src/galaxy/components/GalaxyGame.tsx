@@ -25,6 +25,7 @@ import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
+import { SAFE_PY2_PX3 } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -876,6 +877,7 @@ export function GalaxyGame({
       data-table-mode={mode}
       className={cn(
         "relative isolate flex min-h-dvh flex-col items-center gap-2 overflow-x-clip px-3 py-2 text-white",
+        SAFE_PY2_PX3,
         GALAXY_BG,
         mission && "pt-16",
       )}
