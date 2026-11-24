@@ -16,7 +16,11 @@ import {
   realHwatuAction,
   realOnecardAction,
 } from "@game/fair-play";
-import { type HeartsRules, viewOf as heartsViewOf } from "@game/hearts-engine";
+import {
+  type HeartsRules,
+  createMatch as heartsCreateMatch,
+  viewOf as heartsViewOf,
+} from "@game/hearts-engine";
 import {
   type Action,
   createRng,
@@ -35,7 +39,14 @@ import { botCheckFor, lobbyBotPlan } from "./bot-plan";
 import type { ClaimsResolved } from "./claim";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
-import { type FairReplayGame, verifyFairLog } from "./fair-verify";
+import {
+  endsWithRetire,
+  type FairReplayGame,
+  finishedRoundOf,
+  pickStanding,
+  STANDING_KEYS,
+  verifyFairLog,
+} from "./fair-verify";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
 import { verifyHostProof, welcomeStatement } from "./identity";
 import {
@@ -907,10 +918,47 @@ export class GuestRoom<
     for (const l of this.listeners.match) l(this.match);
   }
 
-  /** 이 기기가 받은 첫 화면의 판 번호(화투). 그보다 앞 판은 이 기기에서 검증할 수 없다 */
+  /** 이 기기가 받은 첫 화면의 판 번호(판 번호가 있는 게임). 그보다 앞 판은 이 기기에서 검증할 수 없다 */
   private firstRound: number | null = null;
   /** 새로고침 전에 남긴 멘탈 포커 진행에서 되살렸다(판 중간에 다시 들어왔다) */
   private resumedFair = false;
+
+  /**
+   * 방장이 보낸 원본 화면에서 본 판(`HostRounds`, 게임 끝 검증이 끝난 판을 가린다). 게임마다 새로 둔다
+   * (한 판 더 `beginRematch`: 앞 게임의 끝낸 판 번호가 남으면 새 게임의 같은 번호 판을 끝낸 판으로 본다)
+   */
+  private hostRounds = GuestRoom.freshHostRounds();
+
+  private static freshHostRounds(): {
+    last: number | null;
+    finished: Set<number>;
+  } {
+    return { last: null, finished: new Set() };
+  }
+
+  /** 방장이 보낸 마지막 원본 화면(그만둔 게임이면 끝 화면, `standingProblem`) */
+  private lastHostView: unknown = undefined;
+
+  /** 받은 원본 화면(자리 표 그대로)의 판 번호와 판 끝을 센다. 카드가 다 열리길 기다리지 않는다 */
+  private noteHostRound(view: unknown): void {
+    this.lastHostView = view;
+    const round = (view as { roundNumber?: unknown } | null)?.roundNumber;
+    if (
+      typeof round === "number" &&
+      (this.hostRounds.last === null || round > this.hostRounds.last)
+    )
+      this.hostRounds.last = round;
+    const table = this.kit.cardTable;
+    const kind = !table
+      ? this.kit.id === "hearts"
+        ? "hearts"
+        : "mighty"
+      : "kind" in table && table.kind === "onecard"
+        ? "onecard"
+        : (table as { viewRoundOver(view: never): boolean });
+    const finished = finishedRoundOf(kind, view);
+    if (finished !== null) this.hostRounds.finished.add(finished);
+  }
 
   private fairInput(log: readonly FairLogged[], complete = true) {
     const lobby = this.lobby;
@@ -942,6 +990,17 @@ export class GuestRoom<
       unchecked,
       sent: this.match.sent,
       seen: this.match.seen,
+      // 새로고침해 판 중간에 다시 들어왔으면 그 판은 처음부터 지켜보지 않았다.
+      watchedFrom:
+        this.firstRound === null
+          ? 1
+          : this.resumedFair
+            ? this.firstRound + 1
+            : this.firstRound,
+      hostRounds: this.hostRounds,
+      ...(this.lastHostView !== undefined
+        ? { finalView: this.lastHostView }
+        : {}),
     };
   }
 
@@ -987,6 +1046,8 @@ export class GuestRoom<
             deviceOf: (seat) => fair.deviceOf(seat),
           },
           flipCount,
+          // 그만둔 게임은 덱을 열지 않는다(끝까지 치지 않은 판, 결과 없음).
+          { retired: endsWithRetire(log) },
         ) as never,
       viewOf: (state, seat) =>
         spec.refreshView(spec.viewOf(state as State, seat)),
@@ -1023,6 +1084,14 @@ export class GuestRoom<
         ) as never,
       viewOf: (state, seat) =>
         spec.refreshView(spec.viewOf(state as State, seat)),
+      ...(STANDING_KEYS[kit.id]
+        ? {
+            standing: pickStanding(STANDING_KEYS[kit.id] ?? []),
+            // 시작할 때 점수는 패와 상관없다(엔진이 시드로 섞은 패로 만든다).
+            initial: (rules: unknown, seed: number) =>
+              spec.createMatch(rules as Rules, seed, undefined as never).state,
+          }
+        : {}),
       // 방장이 실은 쓴 시간(응답 창)도 떼고 견준다.
       realAction: (action) => {
         const bare = realHwatuAction(action) as ActionT;
@@ -1057,6 +1126,9 @@ export class GuestRoom<
           deals as never,
         ),
       viewOf: (state, seat) => heartsViewOf(state as never, seat),
+      standing: pickStanding(STANDING_KEYS.hearts ?? []),
+      initial: (rules, seed) =>
+        heartsCreateMatch({ rules: rules as HeartsRules, seed }).state,
       realAction: (action, cards) =>
         realHeartsAction(action as never, cards as never),
       annotate: (view, action) =>
@@ -1285,6 +1357,7 @@ export class GuestRoom<
             this.match?.resendLost(message.mine);
         }
         const snapshot = { view: message.view, events: message.events };
+        this.noteHostRound(message.view);
         // 화면마다 온 기록 속 내 행동 수. 멘탈 포커 자리는 화면을 받은 차례대로 하나씩 넘기므로 같은 차례로 짝짓는다
         this.mineQueue.push(
           typeof message.mine === "number" ? message.mine : undefined,
@@ -1424,6 +1497,10 @@ export class GuestRoom<
     this.mineQueue.length = 0;
     this.firstRound = null;
     this.resumedFair = false;
+    // 판 번호·판 끝·끝 화면도 게임 단위다. 앞 게임 검증(`auditTask`)은 위에서 끝났고, 바꿔 넣으므로 그 검증이
+    // 받은 값은 앞 게임 것 그대로다.
+    this.hostRounds = GuestRoom.freshHostRounds();
+    this.lastHostView = undefined;
     this.restoredSent = [];
     this.ownFair.length = 0;
     this.ownFairSeen.clear();
@@ -1460,8 +1537,14 @@ export class GuestRoom<
         : this.fair instanceof OnecardGuestSeat
           ? 1
           : null;
-    if (isCardSeat(this.fair) && round !== null && !view?.retired)
-      await this.fair.whenOpened(round);
+    if (isCardSeat(this.fair) && round !== null) {
+      // 그만둔 게임: 마지막 판이 판 끝까지 가지 않았으면 열리지 않으니 바로 앞 판(끝낸 판)이 열린 뒤에 본다.
+      // 판 끝까지 간 판(정산 직후 그만둠)은 판 끝 열쇠가 다 닿아 열린 뒤에 본다. 열리지 않은 끝낸 판은 게임 끝
+      // 검증이 잡는다(`unopenedRoundProblem`).
+      if (!view?.retired || this.hostRounds.finished.has(round))
+        await this.fair.whenOpened(round);
+      else if (round > 1) await this.fair.whenOpened(round - 1);
+    }
     // 마이티·하트도 마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다. 열쇠를 공개한 판이 다 열리길 기다린다
     // (화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다, `whenRevealedOpened`).
     if (

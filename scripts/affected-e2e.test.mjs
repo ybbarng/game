@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -566,12 +566,16 @@ describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 1
   );
   const noComments = (t) =>
     t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[\s;{}(),])\/\/.*$/gm, "$1");
-  const code = Object.fromEntries(
-    codeFiles.map((f) => [
-      f,
-      noComments(readFileSync(path.join(web, f), "utf8")),
-    ]),
-  );
+  // 낱말([\w-] 덩이) → 그 낱말을 쓰는 코드 파일. 클래스 이름이 앞뒤가 [\w-]가 아닌 자리에 나오는 것은 그 이름이
+  // 낱말 하나인 것과 같다. 예전에는 클래스마다 정규식을 만들어 코드 파일(약 1,100개, 글 9MB)을 모두 훑어 혼자
+  // 0.5~1초, 다른 시험과 함께 돌면 CPU를 나눠 5초를 넘었다. 글은 맥락을 만들며 읽은 것을 다시 쓴다(`ctx.readText`)
+  const filesOfWord = new Map();
+  for (const f of codeFiles) {
+    for (const word of new Set(noComments(ctx.readText(f)).match(/[\w-]+/g))) {
+      if (!filesOfWord.has(word)) filesOfWord.set(word, []);
+      filesOfWord.get(word).push(f);
+    }
+  }
   // 클래스가 아닌데 이름이 같은 것(SVG 그라디언트 id)
   const NOT_CLASS = { "src/stardraw/icon-art.tsx": ["sd-ball"] };
 
@@ -579,7 +583,7 @@ describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 1
     expect(cssFiles.length).toBeGreaterThan(5);
     const missing = [];
     for (const css of cssFiles) {
-      const text = noComments(readFileSync(path.join(web, css), "utf8"))
+      const text = noComments(ctx.readText(css))
         .replace(/url\([^)]*\)/g, "")
         .replace(/"[^"]*"/g, '""');
       const classes = new Set(
@@ -587,9 +591,8 @@ describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 1
       );
       const cssReach = ctx.reach[css] ?? new Set();
       for (const cl of classes) {
-        const re = new RegExp(`(?<![\\w-])${cl}(?![\\w-])`);
-        for (const f of codeFiles) {
-          if (NOT_CLASS[f]?.includes(cl) || !re.test(code[f])) continue;
+        for (const f of filesOfWord.get(cl) ?? []) {
+          if (NOT_CLASS[f]?.includes(cl)) continue;
           const lost = [...(ctx.reach[f] ?? [])].filter(
             (k) => !cssReach.has(k),
           );

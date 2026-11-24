@@ -19,6 +19,7 @@ import type { Card } from "@game/mighty-engine";
 import { obj, subj } from "@game/mighty-engine/josa";
 
 import { cardText, slotOfToken, tokenOf } from "./blind";
+import { nothingOpened } from "./nothing-opened";
 
 /*
  * 하트를 멘탈 포커로. 마이티와 같은 섞기·열쇠(device.ts)를 쓰고, 하트에만 있는 것을 여기 둔다.
@@ -217,7 +218,13 @@ export interface HeartsLogged {
 }
 
 export type HeartsReplayCheck =
-  | { ok: true; state: MatchState; states: MatchState[]; upTo: number }
+  | {
+      ok: true;
+      /** 첫 판 패도 모르면 null(`nothingOpened`) */
+      state: MatchState | null;
+      states: MatchState[];
+      upTo: number;
+    }
   | { ok: false; index: number; seat: number; reason: string };
 
 function decisive(events: readonly GameEvent[]): string {
@@ -243,8 +250,7 @@ export function checkHeartsReplay(
   observed?: readonly (readonly GameEvent[])[],
 ): HeartsReplayCheck {
   const first = deals.get(1);
-  if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
+  if (!first) return nothingOpened();
   let state = createMatch({ rules, seed, presetHands: first.hands }).state;
   const states = [state];
   for (const [index, entry] of log.entries()) {

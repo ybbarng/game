@@ -122,21 +122,40 @@ const toPosix = (p) => p.split(path.sep).join("/");
 function listFiles(dir, filter) {
   const out = [];
   const walk = (d) => {
-    let names;
+    let entries;
     try {
-      names = readdirSync(d);
+      // 이름과 함께 종류를 받아 파일마다 stat을 부르지 않는다
+      entries = readdirSync(d, { withFileTypes: true });
     } catch {
       return;
     }
-    for (const n of names) {
+    for (const e of entries) {
+      const n = e.name;
       if (n === "node_modules" || n.startsWith(".")) continue;
       const p = path.join(d, n);
-      if (statSync(p).isDirectory()) walk(p);
+      if (e.isDirectory()) walk(p);
       else if (filter(n)) out.push(p);
     }
   };
   walk(dir);
   return out;
+}
+
+/**
+ * 파일 글을 한 번만 읽는다(절대 경로 → 글). 맥락 하나(`loadContext`)를 만드는 동안 웹 파일마다 import 모으기·
+ * import 그래프·spec 주소 찾기가 같은 파일을 읽고, 시험(`ctx.readText`)도 또 읽는다. 예전에는 파일마다 서너 번
+ * 읽어(웹 파일 약 1,100개) 읽기가 시간의 70%였고, 다른 시험과 함께 돌면 디스크·CPU를 나눠 열 배쯤 느려졌다
+ */
+export function textReader() {
+  const cache = new Map();
+  return (abs) => {
+    let text = cache.get(abs);
+    if (text === undefined) {
+      text = readFileSync(abs, "utf8");
+      cache.set(abs, text);
+    }
+    return text;
+  };
 }
 
 /** 파일 안의 import 대상(정적·동적 import, re-export, new URL(…, import.meta.url)) */
@@ -189,6 +208,7 @@ export function readGameIds(registryText) {
 /** 저장소를 읽어 고르기에 필요한 것을 모은다 */
 export function loadContext(root) {
   const web = path.join(root, "apps/web");
+  const read = textReader();
   const gameIds = readGameIds(
     readFileSync(path.join(web, "src/games/registry.ts"), "utf8"),
   );
@@ -283,7 +303,7 @@ export function loadContext(root) {
     const rel = toPosix(path.relative(path.join(web, "src"), file));
     const from = webAreaOf(ctx, rel);
     const dispatcher = DISPATCHERS.includes(rel);
-    for (const spec of importsOf(readFileSync(file, "utf8"))) {
+    for (const spec of importsOf(read(file))) {
       if (spec.startsWith("@game/")) {
         addUser(spec, dispatcher ? (packageOwner(ctx, spec) ?? COMMON) : from);
         continue;
@@ -311,7 +331,7 @@ export function loadContext(root) {
     const user = n.endsWith(".spec.ts")
       ? `spec:${n.replace(/\.spec\.ts$/, "")}`
       : COMMON;
-    for (const spec of importsOf(readFileSync(file, "utf8"))) {
+    for (const spec of importsOf(read(file))) {
       if (spec.startsWith("@game/")) addUser(spec, user);
     }
   }
@@ -321,8 +341,10 @@ export function loadContext(root) {
   // 화면에 닿는 파일(2026-11-10, 주소 단위는 11-11). src/app의 주소(page·route·icon 등)마다 그 주소를 그릴 때 쓰는
   // 시작 파일(그 파일과 위 폴더들의 layout·template 등)에서 import를 따라가, 닿는 파일마다 그 파일에 닿는 주소를 모은다.
   // 어느 화면에서도 닿지 않는 파일(시험 전용 도우미 등)은 바뀌어도 화면 시험을 돌리지 않는다
-  const graph = importGraph(web);
+  const graph = importGraph(web, read);
   ctx.graph = graph;
+  /** apps/web 기준 경로의 글(맥락을 만들며 읽은 것을 다시 쓴다. 시험도 이것으로 읽는다) */
+  ctx.readText = (rel) => read(path.join(web, rel));
   const routes = appRoutes(path.join(web, "src/app"));
   const reach = {};
   // 루트 layout을 빼고 닿는 주소. 루트 layout의 StoreHydration이 모든 게임의 저장소를 불러 게임 폴더의 많은 파일이
@@ -340,7 +362,7 @@ export function loadContext(root) {
   ctx.ownReach = ownReach;
   // 주소 → 그 주소를 여는 spec. spec(과 그것이 불러 쓰는 시험 도구)에 적힌 주소 문자열·주소 정규식으로 모으고,
   // 연 화면이 링크·이동으로 넘겨 주는 공용 주소(내 기록 → 복기 등)도 따라간다
-  ctx.visits = specVisits(ctx, web, graph);
+  ctx.visits = specVisits(ctx, web, graph, read);
   ctx.routeSpecs = {};
   for (const [spec, keys] of Object.entries(ctx.visits)) {
     for (const k of keys) addTo(ctx.routeSpecs, k, spec);
@@ -510,7 +532,7 @@ export function linksInSource(text) {
  * 이어져 따라가면 큐브 spec 전부가 되므로, 눌러서 넘어가는 spec은 toHaveURL 등으로 그 주소를 적어 둔다.
  * 적지 않고 넘어가 놓친 것은 매일 전부 실행이 잡는다
  */
-function specVisits(ctx, web, graph) {
+function specVisits(ctx, web, graph, read) {
   const keys = ctx.routes.map((r) => r.key);
   const textCache = new Map();
   const textOf = (rel) => {
@@ -518,7 +540,7 @@ function specVisits(ctx, web, graph) {
       let text = "";
       if (/\.(tsx?|jsx?|mjs)$/.test(rel)) {
         try {
-          text = readFileSync(path.join(web, rel), "utf8");
+          text = read(path.join(web, rel));
         } catch {}
       }
       textCache.set(rel, {
@@ -554,7 +576,7 @@ function specVisits(ctx, web, graph) {
     const seen = new Set();
     for (const f of graph.walk([`e2e/${s}.spec.ts`])) {
       if (!f.startsWith("e2e/")) continue;
-      for (const p of pathsInSpec(readFileSync(path.join(web, f), "utf8"))) {
+      for (const p of pathsInSpec(read(path.join(web, f)))) {
         const k = routeOfPath(keys, p);
         if (k != null) seen.add(k);
       }
@@ -589,7 +611,7 @@ const RESOLVE_TAILS = [
  * apps/web 안의 import 그래프. `@/`와 상대 경로만 따라간다(작업 공간 패키지는 package.json으로 따로 본다).
  * 경로는 apps/web 기준. `?raw` 같은 꼬리는 뗀다
  */
-export function importGraph(web) {
+export function importGraph(web, read = textReader()) {
   const isFile = new Map();
   const fileExists = (p) => {
     if (!isFile.has(p)) {
@@ -611,7 +633,7 @@ export function importGraph(web) {
     const out = [];
     if (/\.(tsx?|jsx?|mjs|css)$/.test(rel)) {
       const abs = path.join(web, rel);
-      const text = readFileSync(abs, "utf8");
+      const text = read(abs);
       const g = importGaps(text);
       if (g.length) gaps.set(rel, g);
       for (const spec of importsOf(text)) {

@@ -331,11 +331,19 @@ test(
       0,
     );
     await host.getByRole("button", { name: "한 판 더" }).click();
-    for (const p of [host, guest]) {
-      // 새 비밀 값을 모으고 다시 함께 섞는 동안 기다린다.
-      await expect(p.locator("[data-outcome]")).toBeHidden({ timeout: 20_000 });
-      await expect(hand(p).first()).toBeVisible();
-    }
+    // 새 비밀 값을 모으고 다시 함께 섞는 동안 기다린다. 씨앗을 함께 새로 뽑으므로 새 게임이 총통(첫 손패에 같은 달
+    // 넉 장)으로 바로 끝나기도 한다. 한 판짜리라 그러면 결과 상자가 사라지지 않고 곧바로 새 결과로 바뀐다. 그래서
+    // 참가자 화면에서 결과 상자가 사라지거나 새 게임 검증 줄이 생기면 새 게임이 시작된 것으로 본다.
+    await expect
+      .poll(
+        async () =>
+          (await guest.locator("[data-outcome]").count()) === 0 ||
+          (await verified.count()) >= 2,
+        { timeout: 20_000, intervals: POLL },
+      )
+      .toBe(true);
+    // 새로 나눈 손패(아직 아무도 내지 않았다). 총통으로 끝난 판도 손패는 그대로 보인다.
+    for (const p of [host, guest]) await expect(hand(p)).toHaveCount(10);
     await expect(guest.getByRole("img", { name: /뒷면 10장/ })).toBeVisible();
     await playToEnd();
     // 새 게임도 처음부터 따로 검증한다.

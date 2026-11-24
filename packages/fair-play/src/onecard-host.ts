@@ -6,8 +6,10 @@ import type { BusyReason, Incident } from "./coordinator";
 import { FairDevice, type FairWire, type GroupName } from "./device";
 import { swapTokens } from "./hwatu-table";
 import type { FairControl } from "./messages";
+import { nothingOpened } from "./nothing-opened";
 import {
   checkOnecardReplay,
+  FIRST_DECK_MISSING,
   isOnecardReshuffle,
   OnecardDeck,
   type OnecardDeckSnapshot,
@@ -40,6 +42,24 @@ import type { PartySnapshot } from "./protocol";
 export interface OnecardViewLike {
   hand: string[];
   decision: unknown;
+}
+
+/**
+ * 그만둔 게임의 끝 화면: 결과 손패(`result.hands`) 가운데 열지 못한 카드(자리 표)가 든 손패를 null로 가린다
+ * (화면은 그 자리를 뒷면 부채로 그린다). 그러고도 자리 표가 남으면(결과 손패 밖) null
+ */
+export function hideUnopenedHands<View>(view: View): View | null {
+  const result = (view as { result?: { hands?: unknown } }).result;
+  const hands = Array.isArray(result?.hands)
+    ? (result.hands as unknown[]).map((h) =>
+        Array.isArray(h) &&
+        h.some((c) => typeof c === "string" && slotOfToken(c) !== null)
+          ? null
+          : h,
+      )
+    : result?.hands;
+  const next = result ? { ...view, result: { ...result, hands } } : view;
+  return JSON.stringify(next).includes('"?_') ? null : (next as View);
 }
 
 /** 원카드 멘탈 포커에 필요한 엔진 모양(판 끝 검증 모양 + 진행에 쓰는 것) */
@@ -96,10 +116,15 @@ export function checkOnecardTable<Rules, State, Action, Event>(
     deviceOf(seat: number): number;
   },
   flipsOf: (events: readonly Event[]) => number,
+  options: { retired?: boolean } = {},
 ): OnecardReplayCheck<State> {
   const first = deals.get(ROUND);
+  // 그만둔 게임(`retired`)은 덱을 열지 않는다(끊긴 사람 열쇠가 없을 수 있다). 다시 계산할 것이 없고 판은 결과 없음.
+  // 이미 낸 카드·뽑은 카드는 열 때마다 그 자리에서 확인했다(낸다고 한 카드와 연 카드, 열쇠 증명, 더미 차례).
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
+    return options.retired
+      ? nothingOpened()
+      : { ok: false, index: -1, seat: 0, reason: FIRST_DECK_MISSING };
   const flips = flipsOf(spec.createMatch(rules, seed, first.preset).events);
   const asked = requests.of(ROUND);
   const lead = asked.slice(0, flips);
@@ -275,8 +300,12 @@ abstract class OnecardSide<
   /** 화면 속 자리 표를 이 기기가 아는 카드로. 못 연 카드가 있으면 null */
   protected reveal(view: View): View | null {
     const swapped = swapTokens(view, this.deck.knownCards(ROUND));
-    if (swapped.missing > 0) return null;
-    return this.spec.refreshView(swapped.value);
+    if (swapped.missing === 0) return this.spec.refreshView(swapped.value);
+    // 그만둔 게임은 덱을 열지 않아 남의 손패가 끝 화면 결과에도 자리 표로 남는다. 그 손패는 가린 채(뒷면) 끝 화면을
+    // 보인다. 예전에는 열리길 기다리다 끝 화면이 영영 오지 않았다.
+    if ((view as { retired?: unknown }).retired !== true) return null;
+    const hidden = hideUnopenedHands(swapped.value);
+    return hidden ? this.spec.refreshView(hidden) : null;
   }
 
   /** 내 손패(자리 표)에서 이 카드가 있는 판 자리 */

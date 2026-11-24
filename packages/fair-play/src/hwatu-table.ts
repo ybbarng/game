@@ -10,6 +10,7 @@ import {
 } from "./coordinator";
 import { FairDevice, type FairWire, type GroupName } from "./device";
 import type { FairControl } from "./messages";
+import { nothingOpened } from "./nothing-opened";
 import type { PartySnapshot } from "./protocol";
 
 /*
@@ -583,7 +584,8 @@ export class HwatuCoordinator<
 }
 
 export type HwatuReplayCheck<State> =
-  | { ok: true; state: State; states: State[]; upTo: number }
+  /** 첫 판 패도 모르면 `state`는 null(`nothingOpened`) */
+  | { ok: true; state: State | null; states: State[]; upTo: number }
   | { ok: false; index: number; seat: number; reason: string };
 
 /**
@@ -609,8 +611,7 @@ export function checkHwatuReplay<
   },
 ): HwatuReplayCheck<State> {
   const first = deals.get(1);
-  if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
+  if (!first) return nothingOpened();
   let state = spec.createMatch(rules, seed, first.preset).state;
   const states = [state];
   let used = 0;

@@ -118,7 +118,9 @@ export const onecardStats: KitStats<OnecardView, GameEvent> = {
   roundNumber: () => 1,
   round(_start, end, events): OnecardRound | null {
     const result = end.result;
-    if (!result) return null;
+    // 그만둔 게임은 끝까지 치지 않은 판이라 결과가 없다. 그만둘 때의 등수는 남은 손패 장수로 매긴 것이고, 온라인
+    // 멘탈 포커에서는 덱을 열지 않아 아무도 다시 계산하지 못한다(방장 화면 그대로가 된다).
+    if (!result || end.retired) return null;
     const me = end.mySeat;
     return {
       players: end.rules.players,

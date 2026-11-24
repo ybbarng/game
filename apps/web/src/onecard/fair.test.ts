@@ -117,7 +117,7 @@ describe("원카드 멘탈 포커 연결 코드", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.upTo).toBe(LOG.length);
-      expect(result.state.hands[1]).toContain("H5");
+      expect(result.state?.hands[1]).toContain("H5");
     }
   });
 
