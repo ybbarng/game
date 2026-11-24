@@ -96,10 +96,12 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
     ]);
   });
 
-  it("첫 판을 끝내고 둘째 판 도중에 그만두면 참가자 게임 끝 검증은 통과한다(끝 화면 점수 = 첫 판까지 점수)", async () => {
+  it("판을 끝내고 다음 판 도중에 그만두면 참가자 게임 끝 검증은 통과한다(끝 화면 점수 = 앞 판까지 점수)", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
       kit: minhwatuRoomKit,
-      rules: { ...STANDARD_RULES, rounds: 3 },
+      // 섞기는 멘탈 포커의 진짜 난수라 판 결과를 고정할 수 없다. 첫 판이 0점으로 끝나는 패도 나와(14번에 한 번쯤)
+      // 점수가 생긴 판 뒤에 그만두도록 판을 넉넉히 둔다.
+      rules: { ...STANDARD_RULES, rounds: 6 },
       guests: 1,
       bot: minhwatuIntermediateBot,
       botLevel: 1,
@@ -109,16 +111,19 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
     await host.start();
     const view = () => host.match?.current() as MinhwatuView | undefined;
     const steps = () => host.match?.actionLog().length ?? 0;
-    let secondFrom: number | null = null;
+    // 점수가 생긴 판 뒤 다음 판의 몇 수째에서 그만둔다.
+    let roundFrom: { round: number; step: number } | null = null;
     await playHwatu({
       host,
       guests,
       bot: minhwatuBeginnerBot,
       incidents,
       done: () => {
-        if (view()?.roundNumber !== 2) return false;
-        secondFrom ??= steps();
-        return steps() >= secondFrom + 3;
+        const v = view();
+        if (!v || v.roundNumber < 2 || v.phase === "roundEnd") return false;
+        if (roundFrom?.round !== v.roundNumber)
+          roundFrom = { round: v.roundNumber, step: steps() };
+        return v.totals.some((t) => t !== 0) && steps() >= roundFrom.step + 3;
       },
     });
     expect(view()?.totals.some((t) => t !== 0)).toBe(true);
