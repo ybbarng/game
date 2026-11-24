@@ -13,7 +13,7 @@ describe("배우기 예시 이어 두기(연습 대국)", () => {
       pieces: openingPieces("NENE", "NENE"),
       moves: LINES.greedyRook,
     });
-    useJanggi.getState().startPractice(state, 1);
+    useJanggi.getState().startPractice(state, { level: 1 });
     expect(useJanggi.getState().practice).toBe(true);
     expect(useJanggi.getState().level).toBe(1);
     // 예시가 한 수로 끝나 내(초) 차례다. 한 수 두어 본다.

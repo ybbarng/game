@@ -64,10 +64,10 @@
   - `review`: 다음 수 해설
   - `botFor`, `guestMayAct`
 - [ ] `settings.ts`: 규칙·단계·고른 것을 저장(persist)한다. `StoreHydration`에서 rehydrate한다
-- [ ] `store.ts`
+- [ ] `store.ts`: **저장소 공장 `createMatchStore`(`game/match-store.ts`)로 만든다**(2026-11-25). 아래 항목은 공장이 모두 맡고, 게임 파일은 차이만 넘긴다: 게임 이름·키트·`botFor`, 이어하기 저장 칸 `savedMatchSlot("<게임>-save")`, 편 고르기 `seatFor`, 무르는 행동 `isTurn`(이번 판만이면 `opensRound`), 소리 `cues`, 남의 걸음 `byOther`와 쉼 `otherPause`, 카드 연출이 있으면 `sceneMs`·`opening`. 판 게임 넷(오목·장기·체스·바둑)과 화투 셋이 쓴다. 약속 후 공개 자동 행동처럼 공장에 없는 흐름이 꼭 필요하면 공장에 옵션을 더하고, 따로 저장소를 짜더라도 이어하기 저장은 `savedMatchSlot`을 쓴다
   - `newGame`, `resume`(이어하기), `attachOnline`, `submit`(실패하면 invalid 소리)
   - `undo`(혼자 하기만), `leave`
-  - `startPractice`(튜토리얼: 저장·기록·무르기 없음)
+  - `startPractice(장면, { level, rules })`(튜토리얼·배우기 예시: 저장·기록·무르기 없음, 단계 기본 입문)
   - 컴퓨터 수는 조금 기다렸다 보인다
   - 컴퓨터 수는 웹 워커에서 센다(2026-11-03, docs/26 8절): `game/bot-registry.ts` 등록부에 게임 한 줄(`<게임>BotFor(level)`, 화면용 고수가 있으면 `name: "advisor"`)을 넣고, 대국에 `...workerBotOption({ game, level })`을 넘긴다. 무르기·새 판·떠나기로 대국을 바꾸면 이전 대국을 `dispose()`한다. 온라인 화면도 `HostRoom`에 같은 열쇠를 넘긴다
   - 힌트·문제 받는 수처럼 화면에서 고수를 부르는 곳은 `decide`를 바로 부르지 않고 `adviseWith`(힌트는 `useHint().ask`)로 워커에 맡긴다

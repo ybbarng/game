@@ -14,6 +14,7 @@ import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { savedMatchSlot } from "@/game/saved-slot";
 import { paced } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
 import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
@@ -57,34 +58,10 @@ export type YutSaved = SavedMatch<YutRules, Action, undefined> & {
 /** 컴퓨터가 던지거나 움직인 것은 바로 보이지 않고 잠깐 기다렸다 보인다(생각하는 듯이) */
 const BOT_DELAY_MS = 550;
 
-const SAVE_KEY = "yut-save";
-
-function saveYut(saved: YutSaved): void {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-  } catch {
-    // 저장할 수 없으면 이어하기만 안 된다.
-  }
-}
-
-export function loadYut(): YutSaved | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as YutSaved;
-    return saved.version === 1 && Array.isArray(saved.log) ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearYut(): void {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    // 지울 수 없어도 문제없다.
-  }
-}
+const slot = savedMatchSlot<YutSaved>("yut-save");
+const saveYut = slot.save;
+export const loadYut = slot.load;
+export const clearYut = slot.clear;
 
 interface YutStore {
   host: YutHost | null;
