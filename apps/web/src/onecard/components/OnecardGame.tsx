@@ -36,6 +36,7 @@ import {
   useHandSpread,
 } from "@/components/card-fx";
 import { FairBar } from "@/components/FairBar";
+import { BAR_BUTTON, GameSettingsMenu } from "@/components/GameSettingsMenu";
 import { useHandControls } from "@/components/hand-controls";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
@@ -77,7 +78,6 @@ import { ONECARD_LEVELS } from "../settings";
 import { ShoutPress } from "../shout-press";
 import { useOnecard } from "../store";
 import { ONECARD_CARD, OnecardCardView } from "./OnecardCard";
-import { OnecardSettingsMenu } from "./OnecardSettingsMenu";
 import "@/onecard/components/onecard.css";
 
 /** 원카드 화면 배경(짙은 남색 펠트). 하트는 붉은 펠트, 마이티는 초록 펠트 */
@@ -764,7 +764,7 @@ export function OnecardGame({
         <>
           {/* 위쪽 막대(하트와 같은 자리·모양) */}
           <div
-            className="absolute z-[30] flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-xl bg-black/35 px-3 text-sm"
+            className="absolute z-[30] flex items-center gap-2 whitespace-nowrap rounded-xl bg-black/35 px-3 text-sm"
             style={{
               left: layout.hud.x,
               top: layout.hud.y,
@@ -785,7 +785,7 @@ export function OnecardGame({
               <button
                 type="button"
                 onClick={() => setChatOpen(!chatOpen)}
-                className="relative shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+                className={BAR_BUTTON}
               >
                 채팅
                 {chatUnread > 0 && (
@@ -798,7 +798,7 @@ export function OnecardGame({
             <button
               type="button"
               onClick={() => setShowSettings(true)}
-              className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+              className={BAR_BUTTON}
             >
               설정
             </button>
@@ -806,15 +806,16 @@ export function OnecardGame({
               <button
                 type="button"
                 onClick={() => setConfirmResign(true)}
-                className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+                className={BAR_BUTTON}
               >
                 기권
               </button>
             )}
+            {/* 위험한 「기권」과 붙지 않게 사이를 띄운다(넓힌 누르는 자리끼리 겹치지 않게) */}
             <button
               type="button"
               onClick={onExit}
-              className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+              className={cn(BAR_BUTTON, canResign && !confirmResign && "ml-4")}
             >
               나가기
             </button>
@@ -1249,7 +1250,11 @@ export function OnecardGame({
           )}
 
           {showSettings && (
-            <OnecardSettingsMenu onClose={() => setShowSettings(false)} />
+            <GameSettingsMenu
+              onClose={() => setShowSettings(false)}
+              tone="bg-[#0b1533]/95"
+              cards
+            />
           )}
         </>
       )}

@@ -4,6 +4,9 @@ import type { PlayerView, SeatRecord } from "@game/mighty-engine";
 
 import { cn } from "@/lib/cn";
 
+import { Dialog } from "./Dialog";
+import { HIT_AREA } from "./hit-area";
+
 function rate(wins: number, losses: number): string {
   const total = wins + losses;
   return total === 0
@@ -35,67 +38,66 @@ export function Scoreboard({
     view.order.filter((s) => (view.money[s] ?? 0) > (view.money[seat] ?? 0))
       .length + 1;
   return (
-    <div
-      className="fixed inset-0 z-[400] flex justify-end bg-black/50"
-      onPointerDown={onClose}
+    <Dialog
+      onClose={onClose}
+      labelledBy="scoreboard-title"
+      overlayClassName="flex justify-end bg-black/50"
+      className="flex h-full w-full max-w-md flex-col gap-3 overflow-y-auto bg-felt-dark p-4 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
     >
-      <div
-        className="flex h-full w-full max-w-md flex-col gap-3 overflow-y-auto bg-felt-dark p-4 shadow-2xl"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold text-lg">점수판 · {view.roundNumber}판</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            닫기
-          </button>
-        </div>
-        <table className="w-full text-sm tabular-nums">
-          <thead className="text-left text-xs opacity-60">
-            <tr>
-              <th className="py-1">등수</th>
-              <th>이름</th>
-              <th className="text-right">돈</th>
-              <th className="text-right">주공</th>
-              <th className="text-right">프렌드</th>
-              <th className="text-right">야당</th>
-              <th className="text-right">전체</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranked.map((seat) => {
-              const r = view.records[seat] as SeatRecord;
-              const [w, l] = totalOf(r);
-              return (
-                <tr
-                  key={seat}
-                  className={cn(
-                    "border-white/10 border-t",
-                    seat === view.seat && "font-bold text-amber-200",
-                  )}
-                >
-                  <td className="py-1.5">{rankOf(seat)}</td>
-                  <td>{seatName(seat)}</td>
-                  <td className="text-right">{(view.money[seat] ?? 0) * 10}</td>
-                  <td className="text-right text-xs">
-                    {rate(r.declarerWins, r.declarerLosses)}
-                  </td>
-                  <td className="text-right text-xs">
-                    {rate(r.friendWins, r.friendLosses)}
-                  </td>
-                  <td className="text-right text-xs">
-                    {rate(r.oppositionWins, r.oppositionLosses)}
-                  </td>
-                  <td className="text-right text-xs">{rate(w, l)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="flex items-center justify-between">
+        <h2 id="scoreboard-title" className="font-bold text-lg">
+          점수판 · {view.roundNumber}판
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(HIT_AREA, "rounded-lg bg-white/10 px-3 py-1 text-sm")}
+        >
+          닫기
+        </button>
       </div>
-    </div>
+      <table className="w-full text-sm tabular-nums">
+        <thead className="text-left text-xs opacity-60">
+          <tr>
+            <th className="py-1">등수</th>
+            <th>이름</th>
+            <th className="text-right">돈</th>
+            <th className="text-right">주공</th>
+            <th className="text-right">프렌드</th>
+            <th className="text-right">야당</th>
+            <th className="text-right">전체</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ranked.map((seat) => {
+            const r = view.records[seat] as SeatRecord;
+            const [w, l] = totalOf(r);
+            return (
+              <tr
+                key={seat}
+                className={cn(
+                  "border-white/10 border-t",
+                  seat === view.seat && "font-bold text-amber-200",
+                )}
+              >
+                <td className="py-1.5">{rankOf(seat)}</td>
+                <td>{seatName(seat)}</td>
+                <td className="text-right">{(view.money[seat] ?? 0) * 10}</td>
+                <td className="text-right text-xs">
+                  {rate(r.declarerWins, r.declarerLosses)}
+                </td>
+                <td className="text-right text-xs">
+                  {rate(r.friendWins, r.friendLosses)}
+                </td>
+                <td className="text-right text-xs">
+                  {rate(r.oppositionWins, r.oppositionLosses)}
+                </td>
+                <td className="text-right text-xs">{rate(w, l)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Dialog>
   );
 }

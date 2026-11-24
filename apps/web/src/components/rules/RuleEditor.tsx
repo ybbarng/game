@@ -6,6 +6,8 @@ import { type ReactNode, useState } from "react";
 import { cardLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";
 
+import { Dialog } from "../Dialog";
+import { HIT_AREA } from "../hit-area";
 import { ActionButton, CardPicker } from "../panels/common";
 import {
   BOOL_GROUPS,
@@ -109,157 +111,157 @@ export function RuleEditor({
   const max = maxGoal(rules);
 
   return (
-    <div className="fixed inset-0 z-[500] flex justify-center overflow-y-auto bg-felt-dark/95 p-3 backdrop-blur">
-      <div className="flex w-full max-w-lg flex-col gap-3 py-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold text-lg">규칙 자세히</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
+    <Dialog
+      onClose={onClose}
+      closeOnOutside={false}
+      labelledBy="rule-editor-title"
+      overlayClassName="flex justify-center overflow-y-auto bg-felt-dark/95 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
+      className="flex h-fit w-full max-w-lg flex-col gap-3 py-4"
+    >
+      <div className="flex items-center justify-between">
+        <h2 id="rule-editor-title" className="font-bold text-lg">
+          규칙 자세히
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(HIT_AREA, "rounded-lg bg-white/10 px-3 py-1 text-sm")}
+        >
+          닫기
+        </button>
+      </div>
+
+      <Section title="기본">
+        <div className="flex items-center justify-between py-1.5 text-sm">
+          <span>인원</span>
+          <select
+            value={rules.playerCount}
+            onChange={(e) => set("playerCount", Number(e.target.value))}
+            className="rounded-md bg-black/40 px-2 py-1 max-sm:text-base"
           >
-            닫기
-          </button>
-        </div>
-
-        <Section title="기본">
-          <div className="flex items-center justify-between py-1.5 text-sm">
-            <span>인원</span>
-            <select
-              value={rules.playerCount}
-              onChange={(e) => set("playerCount", Number(e.target.value))}
-              className="rounded-md bg-black/40 px-2 py-1 max-sm:text-base"
-            >
-              {[2, 3, 4, 5, 6, 7].map((n) => (
-                <option key={n} value={n}>
-                  {n}명
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center justify-between py-1.5 text-sm">
-            <span>최소 공약</span>
-            <input
-              type="number"
-              min={4}
-              max={max}
-              value={rules.minGoal}
-              onChange={(e) =>
-                set(
-                  "minGoal",
-                  Math.min(max, Math.max(4, Number(e.target.value) || 4)),
-                )
-              }
-              className="w-20 rounded-md bg-black/40 px-2 py-1 text-right max-sm:text-base"
-            />
-          </div>
-          {CARD_FIELDS.map((f) => (
-            <div key={f.key} className="py-1.5 text-sm">
-              <div className="flex items-center justify-between">
-                <span>{f.label}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPickingCard(pickingCard === f.key ? null : f.key)
-                  }
-                  className="rounded-md bg-white px-2 py-0.5 font-bold text-black"
-                >
-                  {cardLabel(rules[f.key])}
-                </button>
-              </div>
-              {pickingCard === f.key && (
-                <div className="mt-2">
-                  <CardPicker
-                    value={rules[f.key]}
-                    available={(c: Card) => c !== "JK"}
-                    allowJoker={false}
-                    onChange={(c) => set(f.key, c)}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </Section>
-
-        {BOOL_GROUPS.map((group) => (
-          <Section key={group.title} title={group.title}>
-            {group.fields.map((f) => (
-              <Toggle
-                key={f.key}
-                checked={rules[f.key]}
-                onChange={(v) => set(f.key, v)}
-                label={f.label}
-                hint={f.hint}
-              />
+            {[2, 3, 4, 5, 6, 7].map((n) => (
+              <option key={n} value={n}>
+                {n}명
+              </option>
             ))}
-            {group.title === "점수 배수" && rules.doubleForReverseRun && (
-              <div className="mt-1 pl-7">
-                <p className="mb-1 text-xs opacity-60">백런 조건</p>
-                <Choice
-                  value={rules.reverseRunCondition}
-                  options={REVERSE_RUN}
-                  onChange={(v) => set("reverseRunCondition", v)}
+          </select>
+        </div>
+        <div className="flex items-center justify-between py-1.5 text-sm">
+          <span>최소 공약</span>
+          <input
+            type="number"
+            min={4}
+            max={max}
+            value={rules.minGoal}
+            onChange={(e) =>
+              set(
+                "minGoal",
+                Math.min(max, Math.max(4, Number(e.target.value) || 4)),
+              )
+            }
+            className="w-20 rounded-md bg-black/40 px-2 py-1 text-right max-sm:text-base"
+          />
+        </div>
+        {CARD_FIELDS.map((f) => (
+          <div key={f.key} className="py-1.5 text-sm">
+            <div className="flex items-center justify-between">
+              <span>{f.label}</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setPickingCard(pickingCard === f.key ? null : f.key)
+                }
+                className="rounded-md bg-white px-2 py-0.5 font-bold text-black"
+              >
+                {cardLabel(rules[f.key])}
+              </button>
+            </div>
+            {pickingCard === f.key && (
+              <div className="mt-2">
+                <CardPicker
+                  value={rules[f.key]}
+                  available={(c: Card) => c !== "JK"}
+                  allowJoker={false}
+                  onChange={(c) => set(f.key, c)}
                 />
               </div>
             )}
-          </Section>
+          </div>
         ))}
+      </Section>
 
-        <Section title="딜미스">
-          <p className="pb-1 text-xs opacity-60">
-            받은 카드가 너무 나쁘면 딜미스를 선언하고 다시 나눠요. 켠 조건에
-            맞을 때 선언할 수 있어요.
-          </p>
-          {DEAL_MISS_FIELDS.map((f) => (
+      {BOOL_GROUPS.map((group) => (
+        <Section key={group.title} title={group.title}>
+          {group.fields.map((f) => (
             <Toggle
               key={f.key}
-              checked={rules.dealMiss[f.key]}
-              onChange={(v) =>
-                set("dealMiss", { ...rules.dealMiss, [f.key]: v })
-              }
+              checked={rules[f.key]}
+              onChange={(v) => set(f.key, v)}
               label={f.label}
               hint={f.hint}
             />
           ))}
-        </Section>
-
-        <Section title="여당이 이겼을 때 점수">
-          <p className="pb-1 text-xs opacity-60">
-            식으로 나온 값에 따라 돈이 오가요. 식에서 공약은 주공이 건 장수,
-            최소는 선거에서 부를 수 있는 가장 낮은 장수(최소 공약), 득점은
-            여당이 딴 점수 카드 장수예요.
-          </p>
-          <Choice
-            value={rules.winScoring}
-            options={WIN_SCORING}
-            onChange={(v) => set("winScoring", v)}
-          />
-        </Section>
-        <Section title="야당이 이겼을 때 점수">
-          <Choice
-            value={rules.loseScoring}
-            options={LOSE_SCORING}
-            onChange={(v) => set("loseScoring", v)}
-          />
-        </Section>
-
-        <div
-          className={cn(
-            "sticky bottom-0 flex gap-2 bg-gradient-to-t from-black/80 to-transparent pt-4 pb-2",
+          {group.title === "점수 배수" && rules.doubleForReverseRun && (
+            <div className="mt-1 pl-7">
+              <p className="mb-1 text-xs opacity-60">백런 조건</p>
+              <Choice
+                value={rules.reverseRunCondition}
+                options={REVERSE_RUN}
+                onChange={(v) => set("reverseRunCondition", v)}
+              />
+            </div>
           )}
-        >
-          <ActionButton
-            variant="secondary"
-            className="flex-1"
-            onClick={onClose}
-          >
-            취소
-          </ActionButton>
-          <ActionButton className="flex-1" onClick={() => onApply(rules)}>
-            이 규칙으로
-          </ActionButton>
-        </div>
+        </Section>
+      ))}
+
+      <Section title="딜미스">
+        <p className="pb-1 text-xs opacity-60">
+          받은 카드가 너무 나쁘면 딜미스를 선언하고 다시 나눠요. 켠 조건에 맞을
+          때 선언할 수 있어요.
+        </p>
+        {DEAL_MISS_FIELDS.map((f) => (
+          <Toggle
+            key={f.key}
+            checked={rules.dealMiss[f.key]}
+            onChange={(v) => set("dealMiss", { ...rules.dealMiss, [f.key]: v })}
+            label={f.label}
+            hint={f.hint}
+          />
+        ))}
+      </Section>
+
+      <Section title="여당이 이겼을 때 점수">
+        <p className="pb-1 text-xs opacity-60">
+          식으로 나온 값에 따라 돈이 오가요. 식에서 공약은 주공이 건 장수,
+          최소는 선거에서 부를 수 있는 가장 낮은 장수(최소 공약), 득점은 여당이
+          딴 점수 카드 장수예요.
+        </p>
+        <Choice
+          value={rules.winScoring}
+          options={WIN_SCORING}
+          onChange={(v) => set("winScoring", v)}
+        />
+      </Section>
+      <Section title="야당이 이겼을 때 점수">
+        <Choice
+          value={rules.loseScoring}
+          options={LOSE_SCORING}
+          onChange={(v) => set("loseScoring", v)}
+        />
+      </Section>
+
+      <div
+        className={cn(
+          "sticky bottom-0 flex gap-2 bg-gradient-to-t from-black/80 to-transparent pt-4 pb-2",
+        )}
+      >
+        <ActionButton variant="secondary" className="flex-1" onClick={onClose}>
+          취소
+        </ActionButton>
+        <ActionButton className="flex-1" onClick={() => onApply(rules)}>
+          이 규칙으로
+        </ActionButton>
       </div>
-    </div>
+    </Dialog>
   );
 }
