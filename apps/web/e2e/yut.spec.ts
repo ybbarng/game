@@ -1,4 +1,15 @@
-import { decodeYutRules } from "@game/yut-engine";
+import { createRng } from "@game/core";
+import { yutBotFor } from "@game/yut-ai";
+import {
+  type Action,
+  createMatch,
+  decodeYutRules,
+  pendingSeats,
+  STANDARD_RULES,
+  step,
+  viewOf,
+  type YutRules,
+} from "@game/yut-engine";
 
 // 옛 엔진(규칙 판 1, 몸짓 없음)으로 만든 판 기록
 import legacy from "../../../packages/yut-engine/src/legacy-y1.fixture.json" with {
@@ -584,6 +595,7 @@ test(
     await page.goto("/yut");
     await speedUpAnimations(page);
     await startSolo(page);
+    await toss3dReady(page);
     await expect(page.locator('[data-toss-3d="ready"]')).toBeVisible();
     expect(await sceneNow(page)).toBe("throw");
     await page.screenshot({ path: info.outputPath("yut-3d-ready.png") });
@@ -916,6 +928,7 @@ test(
     await page.goto("/yut");
     await speedUpAnimations(page);
     await startSolo(page);
+    await toss3dReady(page);
     await expect(page.locator('[data-toss-3d="ready"]')).toBeVisible();
     await fastForwardUntil(page, () => throwButton(page).isVisible(), {
       step: 200,
@@ -957,10 +970,8 @@ test(
 test("윷놀이 다시 보기(휴대폰, 3D 없음): 한 걸음 앞으로 가 새 던지기가 나오면 멍석 위에 결과를 보인다", {
   tag: "@only-phone-portrait",
 }, async ({ page }) => {
-  await leaveOneGame(page);
-  await page.goto("/review");
-  await page.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
-  await expect(page.locator("[data-yut-board]")).toBeVisible();
+  await seedArchive(page, botGameArchive());
+  await openYutArchive(page);
   await expect(mat(page)).toHaveAttribute("data-toss", "2d");
   await page.getByRole("button", { name: "처음" }).click();
   await watchShownResults(page);
@@ -974,36 +985,111 @@ test("윷놀이 다시 보기(휴대폰, 3D 없음): 한 걸음 앞으로 가 �
   expect(shown.filter((r) => !r.visible)).toEqual([]);
 });
 
-/** 입문 컴퓨터와 몇 수 두다 기권해 복기 기록 하나를 남긴다(연출 없이 빠르게) */
-async function leaveOneGame(page: Page): Promise<void> {
-  await page.goto("/yut");
-  await startSolo(page);
-  for (let i = 0; i < 4; i++) await playStep(page, false);
-  await untilMyThrow(page);
-  await page.getByRole("button", { name: "기권" }).click();
-  await page.getByRole("button", { name: "기권하기" }).click();
-  await expect
-    .poll(() => page.evaluate(finishedYutGames), { intervals: [50] })
-    .toBe(1);
+/** 복기 기록 한 판(저장소 `mighty-review`의 `games`에 넣는 모양) */
+interface YutArchive {
+  id: string;
+  game: "yut";
+  mode: "solo";
+  startedAt: number;
+  updatedAt: number;
+  rules: YutRules;
+  seed: number;
+  log: readonly { seat: number; action: Action }[];
+  seat: number;
+  seatNames: null;
+  rounds: number;
+  over: true;
 }
 
-/** 연출을 켜고 시계를 잡은 새 탭에서 복기 목록의 윷놀이 기록을 연다 */
-async function openReplay(page: Page): Promise<Page> {
-  const review = await page.context().newPage();
-  await review.addInitScript(() =>
-    sessionStorage.setItem("mighty-splash-seen", "1"),
+/**
+ * 입문 컴퓨터끼리 `steps`걸음 둔 뒤 내(0번 자리)가 기권한 윷놀이 한 판. 다시 보기 시험이 화면에서 한 판을 두지 않고
+ * 기록을 바로 넣게 한다(화면에서 둔 판이 복기에 쌓이는 길은 「끝낸 판은 내 기록에 쌓이고…」가 본다).
+ * 씨앗이 같으면 늘 같은 판이다
+ */
+function botGameArchive(seed = 7, steps = 40): YutArchive {
+  let { state } = createMatch(STANDARD_RULES, seed);
+  const rng = createRng(seed + 1);
+  const bot = yutBotFor(0);
+  const log: { seat: number; action: Action }[] = [];
+  while (log.length < steps) {
+    const seat = pendingSeats(state)[0];
+    if (seat === undefined) break;
+    const action = bot.decide(viewOf(state, seat), rng);
+    const result = step(state, seat, action);
+    if (!result.ok) throw new Error(result.error);
+    state = result.state;
+    log.push({ seat, action });
+  }
+  log.push({ seat: 0, action: { type: "resign" } });
+  return {
+    id: `solo:${seed}`,
+    game: "yut",
+    mode: "solo",
+    startedAt: Date.now(),
+    updatedAt: Date.now(),
+    rules: STANDARD_RULES,
+    seed,
+    log,
+    seat: 0,
+    seatNames: null,
+    rounds: 1,
+    over: true,
+  };
+}
+
+/** 복기 화면에서 기록 한 판을 넣고 다시 불러온다(목록에 그 판이 뜬다) */
+async function seedArchive(page: Page, archive: YutArchive): Promise<void> {
+  await page.goto("/review");
+  await page.evaluate(
+    (archive) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open("mighty-review", 1);
+        open.onupgradeneeded = () =>
+          open.result.createObjectStore("games", { keyPath: "id" });
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const tx = open.result.transaction("games", "readwrite");
+          tx.objectStore("games").put(archive);
+          tx.oncomplete = () => {
+            open.result.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+    archive,
   );
-  await review.emulateMedia({ reducedMotion: "no-preference" });
-  await review.clock.install();
-  await review.goto("/review");
-  // 숨은 탭이면 멍석이 그리지 않는다(대국을 둔 탭은 닫는다)
-  await page.close();
-  await review.bringToFront();
-  expect(await review.evaluate(() => document.hidden)).toBe(false);
-  await speedUpAnimations(review);
-  await review.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
-  await expect(review.locator("[data-yut-board]")).toBeVisible();
-  return review;
+  await page.reload();
+}
+
+/** 복기 목록에서 윷놀이 기록을 열어 다시 보기 화면을 띄운다 */
+async function openYutArchive(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
+  await expect(page.locator("[data-yut-board]")).toBeVisible();
+}
+
+/** 연출을 켜고 시계를 잡은 채 컴퓨터끼리 둔 판의 다시 보기를 연다 */
+async function openReplay(page: Page): Promise<Page> {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install();
+  await seedArchive(page, botGameArchive());
+  await speedUpAnimations(page);
+  await openYutArchive(page);
+  return page;
+}
+
+/**
+ * 3D 멍석이 붙을 때까지 기다린다. 장면을 붙일 때 반사 지도(PMREM)를 처음 만들며 GPU가 셰이더를 짓고 그린다. GPU 없는 CI는
+ * 이를 소프트웨어(SwiftShader)로 하고, 캔버스를 화면에 넘길 때 그 일이 끝나기를 기다리느라 페이지가 통째로 멈춘다(이 맥에서
+ * 소프트웨어로 그리면 약 0.7초, CI는 5초를 넘기도 했다). 기본 5초는 그 기계의 그리기 빠르기를 재는 꼴이라, 다른 3D 첫 장
+ * 기다리기(cube-emblem3d)처럼 조건으로 기다리고 상한은 멈춘 시험을 잡는 안전장치로만 둔다
+ */
+async function toss3dReady(page: Page): Promise<void> {
+  await expect(page.locator("[data-toss-3d]")).toHaveAttribute(
+    "data-toss-3d",
+    "ready",
+    { timeout: 30_000 },
+  );
 }
 
 /** 다시 보기 걸음 글(「던지기 n번 · 걸음/끝」) */
@@ -1044,12 +1130,8 @@ test(
   "윷놀이 다시 보기: 한 걸음 앞으로 가면 그 던지기를 3D 멍석에 굴리고, 건너뛰거나 뒤로 가면 멈춘 모습만 보인다",
   { tag: "@no-phone-landscape" },
   async ({ page }, info) => {
-    await leaveOneGame(page);
     const review = await openReplay(page);
-    await expect(review.locator("[data-toss-3d]")).toHaveAttribute(
-      "data-toss-3d",
-      "ready",
-    );
+    await toss3dReady(review);
     // 끝 걸음으로 연다: 마지막 던지기가 멈춘 모습, 굴린 적 없음
     await expect(mat(review)).toHaveAttribute("data-toss", "done");
     expect(await tossPlays(review)).toBe(0);
@@ -1112,12 +1194,8 @@ test(
 test("윷놀이 다시 보기: 자동 재생은 던지기 연출이 끝나고 결과를 보인 뒤에 다음 걸음으로 간다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
-  await leaveOneGame(page);
   const review = await openReplay(page);
-  await expect(review.locator("[data-toss-3d]")).toHaveAttribute(
-    "data-toss-3d",
-    "ready",
-  );
+  await toss3dReady(review);
   await review.getByRole("button", { name: "처음" }).click();
   await review.getByRole("button", { name: "자동 재생" }).click();
   await fastForwardUntil(
@@ -1148,43 +1226,22 @@ test("윷놀이 다시 보기: 몸짓이 없는 옛 기록(규칙 판 1)은 3D �
   const decoded = decodeYutRules(legacy.rules);
   if (!decoded.ok) throw new Error(decoded.reason);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.goto("/review");
   // 2026-11-17 전 엔진으로 만든 판을 복기 기록에 넣는다
-  await page.evaluate(
-    (archive) =>
-      new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open("mighty-review", 1);
-        open.onupgradeneeded = () =>
-          open.result.createObjectStore("games", { keyPath: "id" });
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-          const tx = open.result.transaction("games", "readwrite");
-          tx.objectStore("games").put(archive);
-          tx.oncomplete = () => {
-            open.result.close();
-            resolve();
-          };
-          tx.onerror = () => reject(tx.error);
-        };
-      }),
-    {
-      id: `solo:${legacy.seed}`,
-      game: "yut",
-      mode: "solo",
-      startedAt: Date.now(),
-      updatedAt: Date.now(),
-      rules: decoded.rules,
-      seed: legacy.seed,
-      log: legacy.log,
-      seat: 0,
-      seatNames: null,
-      rounds: 1,
-      over: true,
-    },
-  );
-  await page.reload();
-  await page.getByRole("button", { name: /🪵 윷놀이 · 혼자/ }).click();
-  await expect(page.locator("[data-yut-board]")).toBeVisible();
+  await seedArchive(page, {
+    id: `solo:${legacy.seed}`,
+    game: "yut",
+    mode: "solo",
+    startedAt: Date.now(),
+    updatedAt: Date.now(),
+    rules: decoded.rules,
+    seed: legacy.seed,
+    log: legacy.log as YutArchive["log"],
+    seat: 0,
+    seatNames: null,
+    rounds: 1,
+    over: true,
+  });
+  await openYutArchive(page);
   await expect(mat(page)).toHaveAttribute("data-toss", "2d");
   await page.getByRole("button", { name: "처음" }).click();
   for (let i = 0; i < 12; i++)

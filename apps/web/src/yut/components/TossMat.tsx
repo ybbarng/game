@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 
 import { buzz } from "../haptics";
 import { setTossDirector, useYut } from "../store";
+import { loadTossScene } from "../toss/load";
 import { planFor, type ReplayCue, resultLabel } from "../toss/plan";
 import type { TossPlan } from "../toss/sim";
 import type { FrameStats, TossScene } from "../toss/toss-scene";
@@ -113,7 +114,7 @@ function useTossScene(
       loseRef.current();
     };
     canvas.addEventListener("webglcontextlost", lost);
-    void import("../toss/toss-scene")
+    void loadTossScene()
       .then(({ createTossScene }) => {
         if (disposed) return;
         const scene = createTossScene(canvas);

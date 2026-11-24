@@ -56,7 +56,11 @@ const BaseballReplay = dynamic(
   { loading },
 );
 const YutReplay = dynamic(
-  () => import("@/yut/components/YutReplay").then((m) => m.YutReplay),
+  () => {
+    // 3D 멍석 장면(three.js)도 다시 보기 화면과 함께 받기 시작한다(화면이 뜬 뒤에 받으면 멍석이 한 박자 늦다)
+    void import("@/yut/toss/load").then((m) => m.preloadTossScene());
+    return import("@/yut/components/YutReplay").then((m) => m.YutReplay);
+  },
   { loading },
 );
 const GalaxyReplay = dynamic(
