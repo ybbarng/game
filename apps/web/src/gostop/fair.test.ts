@@ -41,6 +41,7 @@ describe("고스톱 카드 표 약속", () => {
       for (const seed of [1, 2, 3]) {
         const sim = simulateCardTable({
           kit: gostopKit,
+          spec: gostopFair,
           rules,
           seed,
           bot: gostopBeginnerBot,
@@ -59,6 +60,7 @@ describe("고스톱 카드 표 약속", () => {
     for (const seed of [1, 5, 10]) {
       simulateCardTable({
         kit: gostopKit,
+        spec: gostopFair,
         rules: { ...MATGO_RULES, rounds: 1 },
         seed,
         bot: shaker,
@@ -105,6 +107,7 @@ describe("고스톱 카드 표 약속", () => {
     for (let deckSeed = 1; deckSeed < 400 && found === 0; deckSeed++) {
       const sim = simulateCardTable({
         kit: gostopKit,
+        spec: gostopFair,
         rules: { ...GOSTOP3_RULES, rounds: 1 },
         seed: 1,
         deckSeed,

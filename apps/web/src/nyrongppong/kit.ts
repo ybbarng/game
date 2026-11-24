@@ -31,7 +31,6 @@ import { hwatuReviewDeals } from "@/hwatu/fair";
 import { obj } from "@/lib/josa";
 import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
-import { nyrongppongFair } from "./fair";
 
 export type NyrongppongKit = GameKit<
   NyrongppongRules,
@@ -244,7 +243,8 @@ export const nyrongppongKit: NyrongppongKit = {
   step,
   viewOf,
   replay: (rules, seed, log, preset) => replay(rules, seed, log, preset),
-  cardTable: nyrongppongFair,
+  loadFairTable: () =>
+    import("./fair-table").then((m) => m.nyrongppongFairTable),
   pendingSeats,
   playerCount: (rules) => rules.players,
   encodeRules: encodeNyrongppongRules,

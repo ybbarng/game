@@ -30,7 +30,6 @@ import type { GameRecord, RoundRecord } from "@/stats/records";
 import { onecardBotFor, toKitBot } from "./bots";
 import { cardName, SUIT_NAMES } from "./cards";
 import { onecardClaims } from "./claims";
-import { onecardFair } from "./fair";
 
 /**
  * 판 시작 재료: 섞인 덱(`OnecardSetup`, 없으면 씨앗으로 섞는다) 또는 멘탈 포커 판의 처음 패
@@ -315,7 +314,7 @@ export const onecardKit: OnecardKit = {
   verifyUnsignedDone: (context) => onecardVerifier.verifyUnsignedDone(context),
   // 암호화방(멘탈 포커): 방장도 남의 패를 모른다. 다시 섞기는 새 섞기 사슬로(`autoAction`이 낸 다시 섞기를
   // 방장 진행이 받아 버린 더미를 알리고 그 조각의 자리 표로 바꾼다)
-  cardTable: onecardFair,
+  loadFairTable: () => import("./fair-table").then((m) => m.onecardFairTable),
   retireAction: { type: "retire" },
   stats: onecardStats,
   botCanAct: (view) => view.phase === "play",

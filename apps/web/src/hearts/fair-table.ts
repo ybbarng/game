@@ -57,6 +57,7 @@ export const heartsFairTable: KitFairTable<
     return {
       table,
       presetDeal: () => table.presetHands(),
+      begin: (events) => table.begin(events),
       maskView: (view) => ({
         ...view,
         hand: [],
@@ -69,8 +70,10 @@ export const heartsFairTable: KitFairTable<
     };
   },
   guest: (options) => new HeartsGuestSeat(options),
-  replay: HEARTS_REPLAY,
+  replay: () => HEARTS_REPLAY,
   finishedRound: (view) => finishedRoundOf("hearts", view),
+  // 열쇠를 공개한 판이 다 열리길 기다린다(화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다).
+  whenEndOpened: (seat) => (seat as HeartsGuestSeat).whenRevealedOpened(),
 };
 
 /** 멘탈 포커 판을 채운 하트 킷(시험이 방을 바로 만들 때. 화면은 `withFairTable`로 불러 채운다) */

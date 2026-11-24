@@ -20,12 +20,13 @@ import { neverOpens } from "@/net/unopened-round-fixture";
 
 import { onecardBotFor, toKitBot } from "./bots";
 import { onecardFair } from "./fair";
-import { onecardKit } from "./kit";
+import { onecardFairTableOf, onecardRoomKit } from "./fair-table";
+import { type OnecardKit, onecardKit } from "./kit";
 
 describe("원카드 암호화방: 도중에 그만하기", () => {
   it("덱을 열기 전에 방장이 끝내도 참가자 게임 끝 검증은 통과한다(끝까지 치지 않은 판은 결과 없음)", async () => {
     const { host, guests, incidents, audits, clock } = await setupHwatu({
-      kit: onecardKit,
+      kit: onecardRoomKit,
       rules: { ...STANDARD_ONECARD_RULES, players: 2 },
       guests: 1,
       bot: toKitBot(onecardBotFor(1)),
@@ -111,9 +112,9 @@ const SHORT = [
   "D9",
   "D10",
 ] as const;
-const shortKit = {
+const shortKit: OnecardKit = {
   ...onecardKit,
-  cardTable: { ...onecardFair, deckCards: SHORT },
+  fairTable: onecardFairTableOf({ ...onecardFair, deckCards: SHORT }),
 };
 const SHORT_RULES = {
   ...STANDARD_ONECARD_RULES,

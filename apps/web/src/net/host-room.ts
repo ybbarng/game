@@ -1,9 +1,7 @@
 import {
   type Clock,
   type GroupName,
-  HwatuHostTable,
   type Incident,
-  OnecardHostTable,
   type PartySnapshot,
   realClock,
 } from "@game/fair-play";
@@ -29,7 +27,12 @@ import { serializeDeals } from "@/review/replay";
 import { lobbyBotFields } from "./bot-plan";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
-import { FAIR_TABLE_MISSING, type KitHostTable } from "./fair-table";
+import {
+  FAIR_TABLE_MISSING,
+  type KitFairHost,
+  type KitFairTable,
+  type KitHostTable,
+} from "./fair-table";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
 import type { HostRestore, HostSaved, HostStore } from "./host-store";
 import {
@@ -66,10 +69,7 @@ export interface HostRoomOptions<
   Event = GameEvent,
   Extra = PresetDeal,
 > {
-  /**
-   * 어떤 게임의 방인가. 암호화방(`fair`)이면 판을 만들 수 있어야 한다: 화투 셋·원카드는 `cardTable`,
-   * 마이티·하트는 `fairTable`(`withFairTable`로 불러 채운 킷)
-   */
+  /** 어떤 게임의 방인가. 암호화방(`fair`)이면 판을 만들 수 있어야 한다(`withFairTable`로 `fairTable`을 채운 킷) */
   kit: GameKit<Rules, State, View, ActionT, Event, Extra>;
   transport: Transport;
   hostName: string;
@@ -184,10 +184,10 @@ export class HostRoom<
   private errorListeners = new Set<(error: string) => void>();
   private fairOption: { group: GroupName } | null;
   /** 멘탈 포커 진행(이 판이 멘탈 포커일 때) */
-  fair:
-    | KitHostTable<State, View, ActionT, Event>
-    | CardTable<Rules, State, ActionT, Event>
-    | null = null;
+  fair: KitHostTable<State, View, ActionT, Event> | null = null;
+  /** 그 진행을 만든 킷의 방장 판(참가자가 판을 나눠 받았다는 알림을 받는다) */
+  private fairHost: KitFairHost<State, View, ActionT, Event, Extra> | null =
+    null;
   /** 오간 멘탈 포커 메시지. 다시 연결된 참가자에게 다시 보낸다 */
   private readonly fpLog: { from: number; message: FairMessage }[] = [];
   /** 자리별 마지막 채팅 시각. 도배를 막는다 */
@@ -398,9 +398,19 @@ export class HostRoom<
     const resume = resumed.resume as ResumeState<State, ActionT>;
     let match: LocalMatch<Rules, State, View, ActionT, Event, Extra>;
     if (group && resumed.table) {
-      match = this.startFair(resumed.seed, group, {
+      const fairTable = this.loadedFairTable();
+      const fairHost = this.createFairHost(
+        fairTable,
+        resumed.seed,
+        group,
+        resumed.table.device,
+      );
+      match = this.fairMatch(fairHost, resumed.seed, {
         resume,
-        device: resumed.table.device,
+        // 시드로 판을 정하는 판은 첫 판 패를 다시 나누지 않는다(나누기는 섞기를 새로 시작한다).
+        ...(fairTable.seeded
+          ? {}
+          : { preset: fairHost.host.presetDeal() as Extra }),
       });
       this.match = match;
       const table = this.fair as NonNullable<typeof this.fair>;
@@ -627,6 +637,7 @@ export class HostRoom<
     this.match?.dispose();
     this.match = null;
     this.fair = null;
+    this.fairHost = null;
     this.seed = null;
     this.audited = false;
     this.auditing = null;
@@ -889,43 +900,29 @@ export class HostRoom<
 
     this.seed = derived.seed;
     const group = this.fairGroup();
-    if (group && this.kit.cardTable) {
-      // 화투: 첫 판을 함께 섞고 나눈 뒤(바닥이 열리고 모두 준비되면) 그 패로 대국을 만든다.
+    const sendSeed = () =>
       this.send({
         t: "seed",
         reveals: this.reveals(),
         commitments: this.commitments,
       });
-      const table = this.createCardTable(derived.seed, group);
-      const preset = await table.firstDeal();
+    let match: LocalMatch<Rules, State, View, ActionT, Event, Extra>;
+    if (group) {
+      const fairTable = this.loadedFairTable();
+      // 판을 시드로 정하는 판(화투 셋·원카드)은 시드를 먼저 공개해 모두 첫 판 섞기에 끼게 하고, 첫 판을 함께 섞고
+      // 나눈 뒤(바닥이 열리고 모두 준비되면) 그 패로 대국을 만든다.
+      if (fairTable.seeded) sendSeed();
+      const fair = this.createFairHost(fairTable, derived.seed, group);
+      const dealt = fair.host.presetDeal();
+      const preset = dealt instanceof Promise ? await dealt : dealt;
       if (!preset) throw new Error("첫 판을 나누다 멈췄다");
-      const match = this.cardTableMatch(table, derived.seed, { preset });
+      match = this.fairMatch(fair, derived.seed, { preset });
       this.match = match;
-      // 첫 판이 바로 끝날 수 있다(고스톱 총통): 다음 판 섞기를 시작한다.
-      table.after(match.rawState(), match.created);
-      this.subscribeGuests(match);
-      this.watchClaims(match);
-      for (const [seat, guest] of this.guests)
-        if (guest.peerId)
-          this.send(
-            {
-              t: "snapshot",
-              view: match.viewFor(seat),
-              events: this.kit.startEvents(match.viewFor(0)),
-              mine: mineOf(match, seat),
-            },
-            guest.peerId,
-          );
-      // 첫 판이 바로 끝나 게임도 끝났으면(한 판짜리 총통) 뒤따르는 화면이 없어 구독에서 판 끝 기록을 보내지 못한다.
-      if (this.kit.isOver(match.viewFor(0))) void this.sendAudit();
-      this.broadcastLobby();
-      this.persist();
-      return match;
-    }
-    const fair = group ? this.startKitFair(derived.seed, group) : null;
-    const match =
-      fair?.match ??
-      new LocalMatch<Rules, State, View, ActionT, Event, Extra>({
+      // 그 밖(마이티·하트)은 시드가 덱을 정하지 않으므로 대국을 만든 뒤 공개한다(참가자가 판마다 진행을 다시 계산한다).
+      if (!fairTable.seeded) sendSeed();
+      fair.host.begin(match.created);
+    } else {
+      match = new LocalMatch<Rules, State, View, ActionT, Event, Extra>({
         kit: this.kit,
         rules: this.rules,
         seed: derived.seed,
@@ -937,15 +934,7 @@ export class HostRoom<
         ...(this.runBot ? { runBot: this.runBot } : {}),
         afterStep: () => this.persist(),
       });
-    this.match = match;
-    if (fair) {
-      // 시드는 덱을 정하지 않으므로 바로 공개한다(참가자가 판마다 진행을 다시 계산한다).
-      this.send({
-        t: "seed",
-        reveals: this.reveals(),
-        commitments: this.commitments,
-      });
-      fair.table.begin(match.created);
+      this.match = match;
     }
     const startEvents = this.kit.startEvents(match.viewFor(0));
     this.subscribeGuests(match);
@@ -962,131 +951,46 @@ export class HostRoom<
           guest.peerId,
         );
     }
+    // 첫 판이 바로 끝나 게임도 끝났으면(화투 한 판짜리 총통) 뒤따르는 화면이 없어 구독에서 판 끝 기록을 보내지 못한다.
+    if (this.fair && this.kit.isOver(match.viewFor(0))) void this.sendAudit();
     this.broadcastLobby();
     this.persist();
     return match;
   }
 
-  /** 화투 멘탈 포커 진행(바닥·더미가 있는 카드 게임, `kit.cardTable`) */
-  private createCardTable(
-    seed: number,
-    group: GroupName,
-    restore?: FairResume,
-  ): CardTable<Rules, State, ActionT, Event> {
-    const spec = this.kit.cardTable as NonNullable<typeof this.kit.cardTable>;
-    const out = this.fairOut();
-    type Match = LocalMatch<Rules, State, View, ActionT, Event, Extra>;
-    // 판은 자기 게임의 대국 하나에 묶는다. 방을 그만둬(`abandon`) `this.match`가 비거나 한 판 더로 새 대국이 들어온 뒤에도
-    // 앞 게임 판의 늦은 계산(다음 판 준비 등)은 자기 대국을 읽는다(바꾸기는 `out.live()`가 막는다)
-    let own: Match | null = null;
-    const get = (): Match => {
-      if (!own && this.match) own = this.match as Match;
-      return (own ?? this.match) as Match;
-    };
-    const hooks = {
-      patch: (fn: (state: State) => State) => {
-        // 한 판 더 뒤 앞 게임 진행이 늦게 부르면 새 대국을 건드리지 않는다.
-        if (!out.live()) return;
-        get().patchState(fn);
-        this.persist();
-      },
-      state: () => get().rawState(),
-      log: () => get().actionLog(),
-      refresh: () => {
-        if (out.live()) this.match?.refresh();
-      },
-      broadcast: out.broadcast,
-      onIncident: out.incident,
-    };
-    const common = {
-      rules: this.rules,
-      seed,
-      guestSeats: [...this.guests.keys()],
-      group,
-      clock: this.clock,
-      ...(restore ? { restore: restore.device } : {}),
-      hooks,
-    };
-    // 원카드: 판 도중 뽑기·다시 섞기 사슬(OnecardHostTable), 그 밖 화투 셋(HwatuHostTable)
-    const table: CardTable<Rules, State, ActionT, Event> =
-      "kind" in spec && spec.kind === "onecard"
-        ? new OnecardHostTable({ ...common, spec })
-        : new HwatuHostTable({
-            ...common,
-            spec: spec as Exclude<typeof spec, { kind: "onecard" }>,
-          });
-    this.fair = table;
-    table.device.on("persist", () => this.persist());
-    watchFairDevice(table.device);
-    return table;
-  }
-
-  /** 화투 멘탈 포커 대국: 엔진은 자리 표를 든 채 진행하고, 카드는 HwatuHostTable이 연다 */
-  private cardTableMatch(
-    table: CardTable<Rules, State, ActionT, Event>,
-    seed: number,
-    start: { preset: unknown } | { resume: unknown },
-  ): LocalMatch<Rules, State, View, ActionT, Event, Extra> {
-    return new LocalMatch<Rules, State, View, ActionT, Event, Extra>({
-      kit: this.kit,
-      rules: this.rules,
-      seed,
-      humanSeat: 0,
-      humanSeats: [0, ...this.guests.keys()],
-      ...("preset" in start ? { presetDeal: start.preset as Extra } : {}),
-      ...(this.bot ? { bot: this.bot } : {}),
-      clock: this.clock,
-      ...(this.pace ? { pace: this.pace } : {}),
-      ...(this.runBot ? { runBot: this.runBot } : {}),
-      step: (state, seat, action) => table.step(state, seat, action),
-      prepare: (state, seat, action) => table.prepare(state, seat, action),
-      revealView: (seat, view) => table.viewFor(seat, view as never) as View,
-      // 카드를 아직 못 열었으면 손패와 결정을 숨긴다(자리 표로 결정하지 않게).
-      maskView: (_seat, view) => ({ ...view, hand: [], decision: null }),
-      pendingSeats: (state) => table.pendingSeats(state),
-      afterStep: (state, events) => {
-        table.after(state, events);
-        this.persist();
-      },
-      onLateError: (seat, error) => {
-        if (seat === 0) for (const l of this.errorListeners) l(error);
-        const peerId = this.guests.get(seat)?.peerId;
-        if (peerId) this.send({ t: "rejected", error }, peerId);
-      },
-      ...("resume" in start ? { resume: start.resume as never } : {}),
-    });
-  }
-
-  /** 멘탈 포커 판: 엔진은 자리 표를 든 채 진행하고, 카드 열기·증명은 킷이 만든 판이 맡는다 */
-  private startFair(
-    seed: number,
-    group: GroupName,
-    restore?: FairResume<State, ActionT>,
-  ): LocalMatch<Rules, State, View, ActionT, Event, Extra> {
-    if (this.kit.cardTable) {
-      const table = this.createCardTable(seed, group, restore);
-      return this.cardTableMatch(table, seed, { resume: restore?.resume });
-    }
-    return this.startKitFair(seed, group, restore).match;
+  /** 킷의 멘탈 포커 판. 암호화방은 `withFairTable`로 불러 채운 킷이어야 한다 */
+  private loadedFairTable(): KitFairTable<
+    Rules,
+    State,
+    View,
+    ActionT,
+    Event,
+    Extra
+  > {
+    const fairTable = this.kit.fairTable;
+    if (!fairTable) throw new Error(FAIR_TABLE_MISSING);
+    return fairTable;
   }
 
   /**
-   * 판마다 함께 섞어 나눈 패로 끝까지 치는 카드 게임(마이티·하트)의 멘탈 포커 판: 킷의 판(`kit.fairTable`)을 만들고
-   * 그 판으로 대국을 만든다
+   * 멘탈 포커 판(킷의 판 `kit.fairTable`)을 만든다. 판은 자기 게임의 대국 하나에 묶는다(`bind`, 대국을 만들면
+   * `fairMatch`가 묶는다). 한 판 더로 새 대국이 들어온 뒤에도 앞 게임 판의 늦은 계산(다음 판 준비 등)은 자기 대국을
+   * 읽고, 바꾸기·다시 보내기·내보내기는 `out.live()`가 막는다
    */
-  private startKitFair(
+  private createFairHost(
+    fairTable: KitFairTable<Rules, State, View, ActionT, Event, Extra>,
     seed: number,
     group: GroupName,
-    restore?: FairResume<State, ActionT>,
+    restore?: Record<number, PartySnapshot>,
   ): {
-    table: KitHostTable<State, View, ActionT, Event>;
-    match: LocalMatch<Rules, State, View, ActionT, Event, Extra>;
+    host: KitFairHost<State, View, ActionT, Event, Extra>;
+    bind: (
+      match: LocalMatch<Rules, State, View, ActionT, Event, Extra>,
+    ) => void;
   } {
-    const fairTable = this.kit.fairTable;
-    if (!fairTable) throw new Error(FAIR_TABLE_MISSING);
     type Match = LocalMatch<Rules, State, View, ActionT, Event, Extra>;
-    let match: Match | null = null;
-    const get = () => match as Match;
+    let own: Match | null = null;
+    const get = () => (own ?? this.match) as Match;
     const out = this.fairOut();
     const host = fairTable.host({
       rules: this.rules,
@@ -1094,15 +998,20 @@ export class HostRoom<
       guestSeats: [...this.guests.keys()],
       group,
       clock: this.clock,
-      ...(restore ? { restore: restore.device } : {}),
+      ...(restore ? { restore } : {}),
       hooks: {
         patch: (fn) => {
+          // 한 판 더 뒤 앞 게임 진행이 늦게 부르면 새 대국을 건드리지 않는다.
+          if (!out.live()) return;
           get().patchState(fn);
           this.persist();
         },
         state: () => get().rawState(),
         log: () => get().actionLog(),
-        refresh: () => get().refresh(),
+        // 첫 판을 나누는 동안(대국을 만들기 전)에도 부른다.
+        refresh: () => {
+          if (out.live()) (own ?? this.match)?.refresh();
+        },
         broadcast: (message) => out.broadcast(message),
         // 넘긴 카드 열쇠(하트): 받는 참가자에게만. 다시 보내기 기록(fpLog)에도 남기지 않는다.
         sendTo: (message, device) => {
@@ -1115,16 +1024,32 @@ export class HostRoom<
     });
     const table = host.table;
     this.fair = table;
+    this.fairHost = host;
     table.device.on("persist", () => this.persist());
     watchFairDevice(table.device);
+    return {
+      host,
+      bind: (match) => {
+        own = match;
+      },
+    };
+  }
+
+  /** 멘탈 포커 대국: 엔진은 자리 표를 든 채 진행하고, 카드 열기·증명은 킷이 만든 판이 맡는다 */
+  private fairMatch(
+    { host, bind }: ReturnType<typeof this.createFairHost>,
+    seed: number,
+    start: { preset?: Extra; resume?: ResumeState<State, ActionT> },
+  ): LocalMatch<Rules, State, View, ActionT, Event, Extra> {
+    const table = host.table;
     const pendingSeats = host.pendingSeats;
-    match = new LocalMatch<Rules, State, View, ActionT, Event, Extra>({
+    const match = new LocalMatch<Rules, State, View, ActionT, Event, Extra>({
       kit: this.kit,
       rules: this.rules,
       seed,
       humanSeat: 0,
       humanSeats: [0, ...this.guests.keys()],
-      presetDeal: host.presetDeal(),
+      ...(start.preset !== undefined ? { presetDeal: start.preset } : {}),
       ...(this.bot ? { bot: this.bot } : {}),
       clock: this.clock,
       ...(this.pace ? { pace: this.pace } : {}),
@@ -1146,9 +1071,10 @@ export class HostRoom<
         const peerId = this.guests.get(seat)?.peerId;
         if (peerId) this.send({ t: "rejected", error }, peerId);
       },
-      ...(restore ? { resume: restore.resume } : {}),
+      ...(start.resume ? { resume: start.resume } : {}),
     });
-    return { table, match };
+    bind(match);
+    return match;
   }
 
   /**
@@ -1296,7 +1222,7 @@ export class HostRoom<
         table.receive(message, seat);
         break;
       case "ready":
-        if (table instanceof HwatuHostTable) table.receive(message, seat);
+        this.fairHost?.ready?.(message, seat);
         break;
       case "answer":
         // 물음을 내는 판(마이티)만 답을 받는다.
@@ -1581,21 +1507,6 @@ export class HostRoom<
     this.updateVote();
     this.broadcastLobby();
   }
-}
-
-/** 화투 멘탈 포커 진행(화면 모양은 게임마다 다르다) */
-type CardTable<R, S, A, E> =
-  | HwatuTableOf<R, S, A, E>
-  | OnecardTableOf<R, S, A, E>;
-// biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
-type HwatuTableOf<R, S, A, E> = HwatuHostTable<R, S, any, A, E>;
-// biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
-type OnecardTableOf<R, S, A, E> = OnecardHostTable<R, S, any, A, E>;
-
-/** 새로고침한 방장이 멘탈 포커 판을 이어 갈 때 */
-interface FairResume<State = unknown, ActionT = unknown> {
-  resume: ResumeState<State, ActionT>;
-  device: Record<number, PartySnapshot>;
 }
 
 /** 그 자리 행동이 기록에 몇 개인가(참가자가 보낸 행동이 들어갔는지 알려 주는 수) */

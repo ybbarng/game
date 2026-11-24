@@ -1,17 +1,10 @@
 import { createRng } from "@game/core";
 import {
   type Clock,
-  checkHwatuReplay,
-  checkOnecardTable,
   type FairLogged,
-  flipCount,
-  HwatuGuestSeat,
   type Incident,
-  OnecardGuestSeat,
   type PartySnapshot,
   realClock,
-  realHwatuAction,
-  realOnecardAction,
 } from "@game/fair-play";
 import type {
   Action,
@@ -30,14 +23,7 @@ import type { ClaimsResolved } from "./claim";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
 import { FAIR_TABLE_MISSING, type KitFairSeat } from "./fair-table";
-import {
-  endsWithRetire,
-  type FairReplayGame,
-  finishedRoundOf,
-  pickStanding,
-  STANDING_KEYS,
-  verifyFairLog,
-} from "./fair-verify";
+import { verifyFairLog } from "./fair-verify";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
 import { verifyHostProof, welcomeStatement } from "./identity";
 import {
@@ -230,8 +216,8 @@ export interface GuestRoomOptions<
   Extra = PresetDeal,
 > {
   /**
-   * 어떤 게임의 방인가. 판 끝 검증도 이 게임 엔진으로 한다. 암호화방에 들어가려면 판을 만들 수 있어야 한다:
-   * 화투 셋·원카드는 `cardTable`, 마이티·하트는 `fairTable`(`withFairTable`로 불러 채운 킷)
+   * 어떤 게임의 방인가. 판 끝 검증도 이 게임 엔진으로 한다. 암호화방에 들어가려면 판을 만들 수 있어야 한다
+   * (`withFairTable`로 `fairTable`을 채운 킷)
    */
   kit: GameKit<Rules, State, View, ActionT, Event, Extra>;
   transport: Transport;
@@ -444,9 +430,9 @@ export class GuestRoom<
     rematch: new Set(),
   };
   /** 멘탈 포커 진행(이 방이 멘탈 포커일 때, 첫 화면을 받으면 만든다) */
-  fair: KitFairSeat | AnyHwatuSeat | AnyOnecardSeat | null = null;
-  /** 화투: 시드를 확인하기 전에 온 화면·걸음별 사건(멘탈 포커 진행은 시드가 있어야 만든다) */
-  private cardEarly: {
+  fair: KitFairSeat | null = null;
+  /** 판을 시드로 정하는 판: 시드를 확인하기 전에 온 화면·걸음별 사건(멘탈 포커 진행은 시드가 있어야 만든다) */
+  private seedEarly: {
     snapshots: { view: View; events: Event[]; resync: boolean }[];
     history: unknown[] | null;
   } = { snapshots: [], history: null };
@@ -710,8 +696,10 @@ export class GuestRoom<
     const rules = this.kit.decodeRules(lobby.ruleCode);
     if (!rules.ok) return null;
     const seat = this.seat;
-    // 화투는 시드로 판마다의 선(나이롱뽕 손패 장수)을 계산하므로 시드를 확인한 뒤에 만든다.
-    if (this.kit.cardTable && this.fairSeed === null) return null;
+    const fairTable = this.kit.fairTable;
+    if (!fairTable) throw new Error(FAIR_TABLE_MISSING);
+    // 판을 시드로 정하는 판(화투 셋·원카드)은 시드로 판마다의 선(나이롱뽕 손패 장수)을 계산하므로 시드를 확인한 뒤에 만든다.
+    if (fairTable.seeded && this.fairSeed === null) return null;
     const saved = this.fairStore?.load() ?? null;
     this.resumedFair = saved !== null;
     // 만든 때의 게임 번호. 한 판 더 뒤 앞 게임 진행이 늦게 보내거나 알리는 것은 버린다.
@@ -741,54 +729,34 @@ export class GuestRoom<
     const verify = (deal: number, log: unknown) => {
       if (live()) void this.verifyRound(deal, log as FairLogged[]);
     };
-    const spec = this.kit.cardTable;
-    const fairTable = this.kit.fairTable;
-    if (!spec && !fairTable) throw new Error(FAIR_TABLE_MISSING);
-    const fair =
-      spec && "kind" in spec && spec.kind === "onecard"
-        ? new OnecardGuestSeat({
-            ...common,
-            spec,
-            rules: rules.rules,
-            seed: this.fairSeed as number,
-            onSnapshot: deliver,
-            onVerify: verify,
-          })
-        : spec
-          ? new HwatuGuestSeat({
-              ...common,
-              spec: spec as Exclude<typeof spec, { kind: "onecard" }>,
-              rules: rules.rules,
-              seed: this.fairSeed as number,
-              onSnapshot: deliver,
-              onVerify: verify,
-            })
-          : (fairTable as NonNullable<typeof fairTable>).guest({
-              ...common,
-              rules: rules.rules,
-              // 넘긴 카드 열쇠(하트)는 받는 기기에게만 직접 보낸다(방장을 거치지 않는다).
-              sendTo: (message, device) => {
-                if (!live()) return;
-                const tagged = tagFair(message, gen);
-                if (device === 0) this.rememberOwn(tagged, 0);
-                const peer = this.peerOfDevice(device);
-                if (peer) this.transport.send(tagged, peer);
-              },
-              onSnapshot: deliver,
-              onVerify: verify,
-            });
+    const fair = fairTable.guest({
+      ...common,
+      rules: rules.rules,
+      ...(fairTable.seeded ? { seed: this.fairSeed as number } : {}),
+      // 넘긴 카드 열쇠(하트)는 받는 기기에게만 직접 보낸다(방장을 거치지 않는다).
+      sendTo: (message, device) => {
+        if (!live()) return;
+        const tagged = tagFair(message, gen);
+        if (device === 0) this.rememberOwn(tagged, 0);
+        const peer = this.peerOfDevice(device);
+        if (peer) this.transport.send(tagged, peer);
+      },
+      onSnapshot: deliver,
+      onVerify: verify,
+    });
     this.fair = fair;
     this.restoredSent = saved?.sent ?? [];
     fair.device.on("persist", () => this.persistFair());
     watchFairDevice(fair.device);
     for (const { message, from } of this.fairEarly.splice(0))
       fair.receive(message, from);
-    if (isCardSeat(fair)) {
-      fair.start();
-      const history = this.cardEarly.history;
-      this.cardEarly.history = null;
-      if (history) fair.history(history as never);
-      for (const s of this.cardEarly.snapshots.splice(0))
+    if (fairTable.seeded) {
+      // 시드가 공개됐으니 첫 판 섞기에 끼고, 시드를 확인하기 전에 온 걸음별 사건·화면을 넘긴다.
+      fair.start?.();
+      const history = this.seedEarly.history;
+      this.seedEarly.history = null;
+      if (history) fair.history(history);
+      for (const s of this.seedEarly.snapshots.splice(0))
         fair.snapshot(s.view, s.events, s.resync);
     }
     return fair;
@@ -916,16 +884,8 @@ export class GuestRoom<
       (this.hostRounds.last === null || round > this.hostRounds.last)
     )
       this.hostRounds.last = round;
-    const table = this.kit.cardTable;
     // 멘탈 포커 판이 없는 게임(판 게임 등)은 세지 않는다(멘탈 포커 판 끝 검증에만 쓴다).
-    const finished = table
-      ? finishedRoundOf(
-          "kind" in table && table.kind === "onecard"
-            ? "onecard"
-            : (table as { viewRoundOver(view: never): boolean }),
-          view,
-        )
-      : (this.kit.fairTable?.finishedRound(view) ?? null);
+    const finished = this.kit.fairTable?.finishedRound(view) ?? null;
     if (finished !== null) this.hostRounds.finished.add(finished);
   }
 
@@ -943,10 +903,13 @@ export class GuestRoom<
       lobby,
       log.some((e) => e.bot === true || botSeats.has(e.seat)),
     );
-    const game = this.kit.cardTable
-      ? this.cardReplay(complete)
-      : this.kit.fairTable?.replay;
-    if (!game) return null;
+    const fairTable = this.kit.fairTable;
+    if (!fairTable) return null;
+    const game = fairTable.replay({
+      kit: this.kit,
+      seat: this.fair,
+      verifyContext: this.verifyContext(complete),
+    });
     return {
       game,
       rules: rules.rules,
@@ -973,116 +936,6 @@ export class GuestRoom<
     };
   }
 
-  /**
-   * 원카드 판 다시 계산하기: 처음 덱과 다시 섞은 더미의 진짜 카드로 돌리며, 방장이 더미를 엔진이 먹은 대로만
-   * (같은 차례, 같은 사람에게) 열었는지, 다시 섞을 카드를 버린 더미대로 알렸는지 본다(`checkOnecardTable`)
-   */
-  private onecardReplay(
-    spec: Extract<
-      NonNullable<
-        GameKit<Rules, State, View, ActionT, Event, Extra>["cardTable"]
-      >,
-      { kind: "onecard" }
-    >,
-    complete: boolean,
-  ): FairReplayGame {
-    const kit = this.kit;
-    const fair = this.fair as AnyOnecardSeat;
-    const context = this.verifyContext(complete);
-    return {
-      ...(kit.verifyUnsigned
-        ? {
-            unsigned: (state, entry, index) =>
-              kit.verifyUnsigned?.({
-                before: state as State,
-                seat: entry.seat,
-                action: realOnecardAction(entry.action) as ActionT,
-                index,
-                context,
-              }) ?? null,
-            unsignedDone: () => kit.verifyUnsignedDone?.(context) ?? null,
-          }
-        : {}),
-      check: (rules, seed, log, deals) =>
-        checkOnecardTable(
-          spec,
-          rules as Rules,
-          seed,
-          log as never,
-          deals as never,
-          {
-            of: (round) => fair.deck.requestsOf(round),
-            deviceOf: (seat) => fair.deviceOf(seat),
-          },
-          flipCount,
-          // 그만둔 게임은 덱을 열지 않는다(끝까지 치지 않은 판, 결과 없음).
-          { retired: endsWithRetire(log) },
-        ) as never,
-      viewOf: (state, seat) =>
-        spec.refreshView(spec.viewOf(state as State, seat)),
-      realAction: (action) => realOnecardAction(action),
-      byClock: (action) => kit.hostAction?.(action as ActionT) === true,
-      annotate: (view, action) =>
-        kit.annotateBotAction
-          ? kit.annotateBotAction(view as View, action as ActionT)
-          : action,
-    };
-  }
-
-  /** 화투 판 다시 계산하기: 진짜 패로 돌리며 방장이 더미를 엔진대로만 열었는지도 본다 */
-  private cardReplay(complete = true): FairReplayGame {
-    const kit = this.kit;
-    const table = kit.cardTable as NonNullable<typeof kit.cardTable>;
-    if ("kind" in table && table.kind === "onecard")
-      return this.onecardReplay(table, complete);
-    const spec = table as Exclude<typeof table, { kind: "onecard" }>;
-    // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
-    const fair = this.fair as HwatuGuestSeat<Rules, State, any, ActionT, Event>;
-    return {
-      check: (rules, seed, log, deals) =>
-        checkHwatuReplay(
-          spec,
-          rules as Rules,
-          seed,
-          log as never,
-          deals as never,
-          {
-            of: (round) => fair.coordinator.requestsOf(round),
-            deviceOf: (seat) => fair.deviceOf(seat),
-          },
-        ) as never,
-      viewOf: (state, seat) =>
-        spec.refreshView(spec.viewOf(state as State, seat)),
-      ...(STANDING_KEYS[kit.id]
-        ? {
-            standing: pickStanding(STANDING_KEYS[kit.id] ?? []),
-            // 시작할 때 점수는 패와 상관없다(엔진이 시드로 섞은 패로 만든다).
-            initial: (rules: unknown, seed: number) =>
-              spec.createMatch(rules as Rules, seed, undefined as never).state,
-          }
-        : {}),
-      // 방장이 실은 쓴 시간(응답 창)도 떼고 견준다.
-      realAction: (action) => {
-        const bare = realHwatuAction(action) as ActionT;
-        return kit.timing ? (kit.timing.strip(bare) ?? bare) : bare;
-      },
-      // 방장이 실은 쓴 시간(`spent`)만 뗀다(내가 보낸 연 자리는 그대로 둔다).
-      sentForm: (action) => {
-        if (!kit.timing || typeof action !== "object" || action === null)
-          return action;
-        const { spent: _, ...rest } = action as { spent?: unknown };
-        return rest;
-      },
-      byClock: (action) =>
-        (kit.timing ? kit.timing.strip(action as ActionT) === null : false) ||
-        kit.hostAction?.(action as ActionT) === true,
-      annotate: (view, action) =>
-        kit.annotateBotAction
-          ? kit.annotateBotAction(view as View, action as ActionT)
-          : action,
-    };
-  }
-
   /** 마지막 턴에 판 전체를 진짜 카드로 다시 계산한다 */
   private async verifyRound(deal: number, log: FairLogged[]): Promise<void> {
     // 새로고침한 참가자는 손패 카드를 다 알기 전까지 화면 전달을 미룬다. 그 사이 끝난 판, 첫 화면보다 앞 판,
@@ -1091,7 +944,7 @@ export class GuestRoom<
     // 게임 끝 검증이 그때까지 받은 것으로 기록 전체를 다시 본다
     if (!this.match) return;
     if (
-      this.kit.cardTable &&
+      this.kit.fairTable?.seeded &&
       this.firstRound !== null &&
       (deal < this.firstRound || (this.resumedFair && deal === this.firstRound))
     )
@@ -1182,15 +1035,16 @@ export class GuestRoom<
           return;
         }
         this.fairSeed = checked.seed;
-        // 화투: 시드가 정해지면 첫 판 섞기에 낀다(방장은 모두가 나눠 받은 뒤에 대국을 만든다).
-        if (this.kit.cardTable) this.ensureFair();
+        // 판을 시드로 정하는 판(화투 셋·원카드): 시드가 정해지면 첫 판 섞기에 낀다(방장은 모두가 나눠 받은 뒤에 대국을 만든다).
+        if (this.kit.fairTable?.seeded) this.ensureFair();
         break;
       }
       case "fpHistory": {
         if (from !== this.hostId || !Array.isArray(message.items)) return;
         const fair = this.ensureFair();
         if (fair) fair.history(message.items);
-        else if (this.kit.cardTable) this.cardEarly.history = message.items;
+        else if (this.kit.fairTable?.seeded)
+          this.seedEarly.history = message.items;
         break;
       }
       case "fpRelay": {
@@ -1308,8 +1162,8 @@ export class GuestRoom<
           typeof message.mine === "number" ? message.mine : undefined,
         );
         const fair = this.ensureFair();
-        if (!fair && this.kit.cardTable && this.lobby?.fair) {
-          this.cardEarly.snapshots.push({
+        if (!fair && this.kit.fairTable?.seeded && this.lobby?.fair) {
+          this.seedEarly.snapshots.push({
             view: message.view,
             events: message.events,
             resync: message.resync === true,
@@ -1429,7 +1283,7 @@ export class GuestRoom<
     this.audited = false;
     this.auditTask = null;
     this.fair = null;
-    this.cardEarly = { snapshots: [], history: null };
+    this.seedEarly = { snapshots: [], history: null };
     this.fairSeed = null;
     this.ownCommits = [];
     this.pendingArchive = null;
@@ -1464,32 +1318,16 @@ export class GuestRoom<
   /** 멘탈 포커 판 끝: 다 열린 판까지 기록 전체를 다시 계산한다 */
   private async verifyFairEnd(log: FairLogged[]): Promise<AuditResult> {
     if (this.startProblem) return { ok: false, reason: this.startProblem };
-    // 화투: 게임이 시작하자마자 끝나면(한 판짜리 첫 판 총통) 게임 끝 기록이 첫 화면보다 먼저 올 수 있다
-    // (첫 화면은 보일 카드를 다 연 뒤에 넘긴다). 대국이 없으면 검증할 수 없으니 첫 화면을 기다린다.
-    if (isCardSeat(this.fair)) await this.whenMatch();
-    // 화투: 마지막 판 카드가 다 열리기 전에 게임 끝 기록이 올 수 있다(판 끝에 열쇠를 공개한다).
-    const view = this.match?.current() as
-      | { roundNumber?: number; retired?: boolean }
-      | undefined;
-    // 원카드는 한 게임이 한 판(판 번호 1)이라 화면에 판 번호가 없다.
-    const round =
-      typeof view?.roundNumber === "number"
-        ? view.roundNumber
-        : this.fair instanceof OnecardGuestSeat
-          ? 1
-          : null;
-    if (isCardSeat(this.fair) && round !== null) {
-      // 그만둔 게임: 마지막 판이 판 끝까지 가지 않았으면 열리지 않으니 바로 앞 판(끝낸 판)이 열린 뒤에 본다.
-      // 판 끝까지 간 판(정산 직후 그만둠)은 판 끝 열쇠가 다 닿아 열린 뒤에 본다. 열리지 않은 끝낸 판은 게임 끝
-      // 검증이 잡는다(`unopenedRoundProblem`).
-      if (!view?.retired || this.hostRounds.finished.has(round))
-        await this.fair.whenOpened(round);
-      else if (round > 1) await this.fair.whenOpened(round - 1);
-    }
-    // 마이티·하트도 마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다. 열쇠를 공개한 판이 다 열리길 기다린다
-    // (화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다, `whenRevealedOpened`).
-    if (this.fair && !isCardSeat(this.fair))
-      await this.fair.whenRevealedOpened();
+    const fairTable = this.kit.fairTable;
+    // 판을 시드로 정하는 판(화투): 게임이 시작하자마자 끝나면(한 판짜리 첫 판 총통) 게임 끝 기록이 첫 화면보다 먼저
+    // 올 수 있다(첫 화면은 보일 카드를 다 연 뒤에 넘긴다). 대국이 없으면 검증할 수 없으니 첫 화면을 기다린다.
+    if (this.fair && fairTable?.seeded) await this.whenMatch();
+    // 마지막 판 카드가 다 열리기 전에 게임 끝 기록이 올 수 있다(판 끝에 열쇠를 공개한다). 다 열리길 기다린다.
+    if (this.fair && fairTable)
+      await fairTable.whenEndOpened(this.fair, {
+        view: this.match?.current(),
+        finished: this.hostRounds.finished,
+      });
     const input = this.fairInput(log);
     if (!input) return { ok: false, reason: "검증할 정보가 없어요." };
     // 끝까지 하지 못한 판(그만두기 등)은 열쇠가 다 모이지 않아 그 앞까지만 본다(verifyFairLog).
@@ -1757,14 +1595,4 @@ function watchVisibility(onChange: (hidden: boolean) => void): () => void {
     document.removeEventListener("freeze", frozen);
     document.removeEventListener("resume", listener);
   };
-}
-
-/** 바닥·더미가 있는 카드 게임(화투 셋·원카드)의 멘탈 포커 좌석인가 */
-// biome-ignore lint/suspicious/noExplicitAny: 게임마다 상태 모양이 다르다
-type AnyHwatuSeat = HwatuGuestSeat<any, any, any, any, any>;
-// biome-ignore lint/suspicious/noExplicitAny: 게임마다 상태 모양이 다르다
-type AnyOnecardSeat = OnecardGuestSeat<any, any, any, any, any>;
-
-function isCardSeat(fair: unknown): fair is AnyHwatuSeat | AnyOnecardSeat {
-  return fair instanceof HwatuGuestSeat || fair instanceof OnecardGuestSeat;
 }

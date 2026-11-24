@@ -54,7 +54,7 @@ export const onecardRoom: RoomGame<
   botSeatLabel: "친구를 기다리는 중",
   footnote:
     "서버 없이 기기끼리 바로 이어요. 연결 문제를 고치려고 연결에 걸린 시간을 서버에 보내요(카드·이름·채팅은 보내지 않아요).",
-  fair: onecardKit.cardTable !== undefined,
+  fair: onecardKit.loadFairTable !== undefined,
   // 원카드는 한 판짜리 게임이다.
   roundOf: () => 1,
 };

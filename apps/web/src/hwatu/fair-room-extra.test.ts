@@ -8,7 +8,7 @@ import {
 import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
-import { minhwatuKit } from "@/minhwatu/kit";
+import { minhwatuRoomKit } from "@/minhwatu/fair-table";
 import { closeWhenDone } from "@/net/close-when-done";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -41,7 +41,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
       store,
       tab,
     } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: RULES,
       guests: 1,
       bot: minhwatuIntermediateBot,
@@ -72,7 +72,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
       current = new HostRoom({
         transport: net.join(`host${k + 1}`),
         ...hwatuHostOptions({
-          kit: minhwatuKit,
+          kit: minhwatuRoomKit,
           rules: RULES,
           bot: minhwatuIntermediateBot,
           botLevel: 1,

@@ -70,7 +70,7 @@ export interface OnecardTableSpec<
   Action,
   Event,
 > extends OnecardFairSpec<Rules, State, Action, Event> {
-  /** `GameKit.cardTable`에서 화투 모양과 가른다 */
+  /** 화투 카드 표 약속(`HwatuFairSpec`)과 가른다 */
   readonly kind: "onecard";
   /** 자리별 처음 손패 장 수 */
   handSizes(rules: Rules): number[];

@@ -8,7 +8,7 @@ import {
 import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
-import { minhwatuKit } from "@/minhwatu/kit";
+import { minhwatuRoomKit } from "@/minhwatu/fair-table";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 
@@ -17,7 +17,7 @@ import { playHwatu, setupHwatu, until } from "./fair-room-fixture";
 describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
   it("한 판짜리 게임도 마지막 판 카드가 열린 뒤에 게임 끝 검증을 통과한다", async () => {
     const { host, guests, incidents, audits, verified } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 1 },
       guests: 2,
       bot: minhwatuIntermediateBot,

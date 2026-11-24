@@ -3,7 +3,7 @@ import { minhwatuIntermediateBot } from "@game/minhwatu-ai";
 import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
-import { minhwatuKit } from "@/minhwatu/kit";
+import { minhwatuRoomKit } from "@/minhwatu/fair-table";
 import { GuestRoom } from "@/net/guest-room";
 import type { IncidentNotice } from "@/net/host-room";
 import { HostRoom } from "@/net/host-room";
@@ -44,7 +44,7 @@ const keysOf = (device: { snapshotAll(): unknown } | undefined) =>
 describe("화투 암호화방: 한 판 더", () => {
   it("민화투: 새 시드·새 열쇠로 첫 판을 다시 함께 섞고, 앞 게임 메시지는 새 게임에 섞이지 않는다", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 2,
       bot: minhwatuIntermediateBot,
@@ -86,7 +86,7 @@ describe("화투 암호화방: 한 판 더", () => {
 
   it("앞 게임에서 끝낸 판 번호를 새 게임에 가져가지 않는다: 새 게임 첫 판 도중에 그만둬도 검증을 통과한다", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 1,
       bot: minhwatuIntermediateBot,

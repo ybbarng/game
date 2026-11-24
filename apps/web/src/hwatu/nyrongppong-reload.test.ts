@@ -25,6 +25,7 @@ import { closeWhenDone } from "@/net/close-when-done";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { reloadTab } from "@/net/reload-tab";
+import { nyrongppongRoomKit } from "@/nyrongppong/fair-table";
 import { nyrongppongKit } from "@/nyrongppong/kit";
 import { ONLINE_CALL_SECONDS, onlineRules } from "@/nyrongppong/settings";
 import type { ArchiveSource } from "@/review/recorder";
@@ -76,7 +77,7 @@ async function nyrongppongReloadScenario(): Promise<void> {
     rounds: 1,
   });
   const options = {
-    kit: nyrongppongKit,
+    kit: nyrongppongRoomKit,
     rules,
     bot: nyrongppongIntermediateBot,
     botLevel: 1,
@@ -147,7 +148,7 @@ async function nyrongppongReloadScenario(): Promise<void> {
   net.disconnect("g0");
   old.leave();
   const fresh = new GuestRoom({
-    kit: nyrongppongKit,
+    kit: nyrongppongRoomKit,
     transport: net.join("g0-reloaded"),
     name: "손님0",
     token: old.token,
