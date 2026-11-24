@@ -42,6 +42,7 @@ import { endBoxRect, handStepFor, hwatuLayout } from "@/hwatu/table-layout";
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import {
   NYRONGPPONG_DEAL_PATTERN,
@@ -296,11 +297,7 @@ export function NyrongppongGame({
         : [],
   });
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   useEffect(() => {
     const ppong = events.find(

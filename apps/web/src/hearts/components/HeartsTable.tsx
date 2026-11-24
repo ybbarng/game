@@ -8,7 +8,6 @@ import {
 } from "@game/hearts-engine";
 import type { Card } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
-
 import { ChatBox } from "@/components/ChatBox";
 import {
   collectTo,
@@ -42,6 +41,7 @@ import {
 } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 
 import { canActHearts, HEARTS_DEAL_PATTERN, useHearts } from "../store";
@@ -129,11 +129,7 @@ export function HeartsTable({
     setSelected(null);
   }, [phaseKey]);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   if (!view)
     return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;

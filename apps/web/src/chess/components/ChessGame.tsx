@@ -18,7 +18,6 @@ import {
   timeControlOf,
 } from "@game/chess-engine";
 import { useEffect, useRef, useState } from "react";
-
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
@@ -33,6 +32,7 @@ import {
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { subj } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
@@ -203,11 +203,7 @@ export function ChessGame({
   const { hint, showHint, thinking, ask } = useHint<Move>(played);
   const list = useRef<HTMLParagraphElement>(null);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 수가 오가면 고른 기물을 놓고, 기보 줄을 끝으로 민다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 한다

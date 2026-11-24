@@ -17,7 +17,6 @@ import {
   timeControlOf,
 } from "@game/janggi-engine";
 import { useEffect, useMemo, useState } from "react";
-
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
@@ -33,6 +32,7 @@ import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { piecesInDanger } from "../danger";
 import { planText } from "../plan-text";
@@ -184,11 +184,7 @@ export function JanggiGame({
   /** 힌트로 고수가 쉬기를 골랐다 */
   const hintPass = hinted === "pass";
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 수가 오가면 고른 기물을 놓는다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 푼다

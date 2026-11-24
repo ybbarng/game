@@ -14,7 +14,6 @@ import {
   unplayableReason,
 } from "@game/mighty-engine";
 import { useEffect, useRef, useState } from "react";
-
 import { effectFor } from "@/game/effects";
 import { mightyResultBanner } from "@/game/result-banner";
 import { botName, useCardTheme, useSettings } from "@/game/settings";
@@ -39,6 +38,7 @@ import {
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
@@ -213,11 +213,7 @@ export function GameTable({
     setLeadChoice(null);
   }, [phaseKey]);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   if (!view)
     return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;

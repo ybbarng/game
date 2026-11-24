@@ -13,7 +13,6 @@ import {
   type YutView,
 } from "@game/yut-engine";
 import { useEffect, useState } from "react";
-
 import { ChatBox } from "@/components/ChatBox";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
@@ -25,6 +24,7 @@ import {
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 
 import { outcomeFor } from "../kit";
@@ -143,11 +143,7 @@ export function YutGame({
   const [hover, setHover] = useState<number | null>(null);
   const [armed, setArmed] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 2200);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   const decision = view?.decision ?? null;
   const scene = view ? sceneOf(view.phase, tossing) : "throw";

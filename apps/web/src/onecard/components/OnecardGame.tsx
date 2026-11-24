@@ -64,6 +64,7 @@ import {
 } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 
 import { fanFlipId, onecardDealPattern, planFx } from "../card-fx";
@@ -493,11 +494,7 @@ export function OnecardGame({
   // 나눠 준 뒤 손패가 손패 가운데에서 펼쳐진다(하트·마이티와 같다)
   const spread = useHandSpread(dealing !== null);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   const handKey = view?.hand.join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: 손패가 바뀔 때만 푼다

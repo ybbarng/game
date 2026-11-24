@@ -9,7 +9,6 @@ import {
   timeControlOf,
 } from "@game/baseball-engine";
 import { useEffect, useState } from "react";
-
 import { BoardSeat } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
@@ -22,6 +21,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { mySecret, randomSecret, type SecretBook } from "../secret";
 import { baseballSession } from "../session";
@@ -183,11 +183,7 @@ export function BaseballGame({
   const [memo, setMemo] = useState<DigitMemo>({});
   const calls = usePitchCalls(view, host?.seat ?? 0);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 2200);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 판이 바뀌거나 비밀 정하기가 끝나면 넣던 수(패드 key)와 메모를 비운다.
   // 상대 차례에도 다음에 물을 수를 미리 넣어 둘 수 있게, 묻기 차례가 바뀌어도 비우지 않는다.

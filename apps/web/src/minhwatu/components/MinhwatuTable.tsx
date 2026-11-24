@@ -58,6 +58,7 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { subj, wa } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
 import { MINHWATU_LEVELS } from "../settings";
@@ -344,11 +345,7 @@ export function MinhwatuTable({
       ),
   });
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 차례가 바뀌면 고른 카드를 놓는다.
   const turnKey = `${view?.roundNumber}-${view?.hand.length}-${view?.phase}`;

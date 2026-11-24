@@ -14,7 +14,6 @@ import {
 } from "@game/baduk-engine";
 import { createRng } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
-
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
@@ -29,6 +28,7 @@ import {
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { countText } from "../kit";
 import { BADUK_LEVELS, useBadukSettings } from "../settings";
@@ -130,11 +130,7 @@ export function BadukGame({
   // 힌트: 컴퓨터가 고른 자리(쉬기면 "pass"). 수가 오가면 지운다.
   const { hint, showHint, thinking, ask } = useHint<number | "pass">(played);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 수가 오가면 겨눈 자리를 푼다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 푼다

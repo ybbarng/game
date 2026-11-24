@@ -9,8 +9,7 @@ import {
   stoneOfSeat,
   timeControlOf,
 } from "@game/omok-engine";
-import { useEffect, useState } from "react";
-
+import { useState } from "react";
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
@@ -24,6 +23,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { OMOK_LEVELS, useOmokSettings, VARIANT_INFO } from "../settings";
 import { useOmok } from "../store";
@@ -106,11 +106,7 @@ export function OmokGame({
   // 힌트: 고수가 이 판에서 고르는 자리(수가 오가면 저절로 지운다, 공통 useHint)
   const { hint, showHint, thinking, ask } = useHint<number>(played);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   if (!view || !host) return null;
   const me = host.seat;

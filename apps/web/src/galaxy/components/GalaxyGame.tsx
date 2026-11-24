@@ -27,6 +27,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { myRequestCard } from "../chain";
@@ -437,11 +438,7 @@ export function GalaxyGame({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 2200);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   const decision = view?.decision ?? null;
   const ready = !playing && decision !== null;
