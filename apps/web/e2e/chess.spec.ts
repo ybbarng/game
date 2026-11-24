@@ -116,7 +116,7 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });
-  await expect(page.getByTitle("기보")).toContainText("1. ");
+  await expect(page.locator("[data-move-list]")).toContainText("1. ");
 
   // 새로고침해도 이어서 둔다.
   await page.reload();
@@ -437,11 +437,11 @@ test(
     await page.getByRole("button", { name: /♞ 체스 · 혼자/ }).click();
     await page.getByRole("button", { name: "처음" }).click();
     await expect(pieces(page)).toHaveCount(32);
-    await expect(page.getByTitle("기보")).toHaveText(
+    await expect(page.locator("[data-move-list]")).toHaveText(
       "기보: 아직 둔 수가 없어요.",
     );
     await page.getByRole("button", { name: "한 수 앞으로" }).click();
-    await expect(page.getByTitle("기보")).toContainText("1. ");
+    await expect(page.locator("[data-move-list]")).toContainText("1. ");
     await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: info.outputPath("chess-review.png") });
   },
@@ -646,7 +646,7 @@ test("체스: 기물을 끌어 갈 칸에 놓으면 옮기고, 못 가는 칸에
   await expect(page.locator('[data-square="e4"][data-piece="wP"]')).toHaveCount(
     1,
   );
-  await expect(page.getByTitle("기보")).toContainText("1. e4");
+  await expect(page.locator("[data-move-list]")).toContainText("1. e4");
 });
 
 test(
@@ -774,7 +774,7 @@ test(
     await watchFrames(page);
     // 컴퓨터가 답할 때까지(기보에 흑의 첫 수가 적힐 때까지) 잰다. 잠깐 지나가는 「생각하는 중」은 기다리지 않는다
     // (계산이 아주 빠르면 놓친다). 느린 CPU라 넉넉히 기다린다.
-    await expect(page.getByTitle("기보")).toHaveText(/1\. \S+ \S+/, {
+    await expect(page.locator("[data-move-list]")).toHaveText(/1\. \S+ \S+/, {
       timeout: 30_000,
     });
     const { maxGap, span } = await stopFrames(page);

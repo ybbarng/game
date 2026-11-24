@@ -181,7 +181,10 @@ export function ChessReplay({
         {state.roundNumber}판 · {state.played.length}수 · {index}/{last}
         {resultText ? ` · ${resultText}` : ""}
       </p>
-      <p className="w-full max-w-xl rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs">
+      <p
+        data-move-list
+        className="w-full max-w-xl rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs"
+      >
         {state.played.length === 0
           ? "기보: 아직 둔 수가 없어요."
           : moveListText(state.played, state.played[0]?.side === "w")}

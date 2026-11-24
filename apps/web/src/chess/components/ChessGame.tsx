@@ -399,6 +399,7 @@ export function ChessGame({
           )}
           <p
             ref={list}
+            data-move-list
             className="w-full overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs"
           >
             {view.played.length === 0
