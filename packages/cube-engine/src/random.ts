@@ -1,9 +1,4 @@
-import {
-  createRng,
-  nextInt,
-  type RngState,
-  shuffleInPlace,
-} from "@game/mighty-engine";
+import { createRng, nextInt, type RngState, shuffleInPlace } from "@game/core";
 import { type PuzzleState, permParity, type Vec3 } from "@game/puzzle-core";
 import { AXES } from "./move";
 import {

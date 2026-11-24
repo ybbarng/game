@@ -233,6 +233,9 @@ importers:
       '@game/chess-engine':
         specifier: workspace:*
         version: link:../../packages/chess-engine
+      '@game/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@game/cube-ai':
         specifier: workspace:*
         version: link:../../packages/cube-ai
@@ -396,9 +399,9 @@ importers:
 
   packages/baduk-engine:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
 
   packages/baseball-ai:
     dependencies:
@@ -411,9 +414,9 @@ importers:
 
   packages/baseball-engine:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
 
   packages/chess-ai:
     dependencies:
@@ -426,9 +429,11 @@ importers:
 
   packages/chess-engine:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
+
+  packages/core: {}
 
   packages/cube-ai:
     dependencies:
@@ -454,9 +459,9 @@ importers:
 
   packages/cube-engine:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
       '@game/puzzle-core':
         specifier: workspace:*
         version: link:../puzzle-core
@@ -475,12 +480,12 @@ importers:
 
   packages/cube-scramble:
     dependencies:
+      '@game/core':
+        specifier: workspace:*
+        version: link:../core
       '@game/cube-solver':
         specifier: workspace:*
         version: link:../cube-solver
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
     devDependencies:
       '@game/cube-engine':
         specifier: workspace:*
@@ -488,7 +493,11 @@ importers:
 
   packages/cube-solver: {}
 
-  packages/engine: {}
+  packages/engine:
+    dependencies:
+      '@game/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/fair-play:
     dependencies:
@@ -527,6 +536,9 @@ importers:
 
   packages/galaxy-engine:
     dependencies:
+      '@game/core':
+        specifier: workspace:*
+        version: link:../core
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
@@ -572,9 +584,9 @@ importers:
 
   packages/hwatu:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
 
   packages/janggi-ai:
     dependencies:
@@ -587,9 +599,9 @@ importers:
 
   packages/janggi-engine:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
 
   packages/minhwatu-ai:
     dependencies:
@@ -605,6 +617,9 @@ importers:
 
   packages/minhwatu-engine:
     dependencies:
+      '@game/core':
+        specifier: workspace:*
+        version: link:../core
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
@@ -626,12 +641,12 @@ importers:
 
   packages/nyrongppong-engine:
     dependencies:
+      '@game/core':
+        specifier: workspace:*
+        version: link:../core
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
 
   packages/omok-ai:
     dependencies:
@@ -644,9 +659,9 @@ importers:
 
   packages/omok-engine:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
 
   packages/onecard-ai:
     dependencies:
@@ -683,9 +698,9 @@ importers:
 
   packages/stardraw-core:
     dependencies:
-      '@game/mighty-engine':
+      '@game/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
       '@noble/curves':
         specifier: 2.4.0
         version: 2.4.0
@@ -707,6 +722,9 @@ importers:
 
   packages/yut-engine:
     dependencies:
+      '@game/core':
+        specifier: workspace:*
+        version: link:../core
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine

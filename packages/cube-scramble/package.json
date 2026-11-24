@@ -12,8 +12,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@game/cube-solver": "workspace:*",
-    "@game/mighty-engine": "workspace:*"
+    "@game/core": "workspace:*",
+    "@game/cube-solver": "workspace:*"
   },
   "devDependencies": {
     "@game/cube-engine": "workspace:*"

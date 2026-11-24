@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 const files: Record<string, string> = import.meta.glob(
   [
     "./**/*.{ts,tsx}",
-    "../../../packages/{engine,*-engine,hwatu,fair-play,ai,*-ai}/src/**/*.ts",
+    "../../../packages/{core,engine,*-engine,hwatu,fair-play,ai,*-ai}/src/**/*.ts",
     "../../../packages/stardraw-{core,cli}/src/**/*.ts",
     "../../stardraw-server/src/**/*.ts",
     "!./**/*.test.{ts,tsx}",
@@ -34,7 +34,7 @@ const files: Record<string, string> = import.meta.glob(
     "!../../../packages/stardraw-core/src/testing.ts", // 시험 도우미
     "!../../stardraw-server/src/testing.ts", // 시험 도우미
     "!../../../packages/stardraw-core/src/*.fixtures.ts", // 시험 자료
-    "!../../../packages/engine/src/josa.ts", // 조사 도우미 자신(「${word}(으)로」)
+    "!../../../packages/core/src/josa.ts", // 조사 도우미 자신(「${word}(으)로」)
   ],
   { query: "?raw", import: "default", eager: true },
 );

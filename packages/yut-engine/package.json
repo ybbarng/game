@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@game/core": "workspace:*",
     "@game/mighty-engine": "workspace:*"
   }
 }

@@ -1,4 +1,4 @@
-import { createRng, shuffleInPlace } from "@game/mighty-engine";
+import { createRng, shuffleInPlace } from "@game/core";
 
 import { cardOf, HWATU_DECK, type HwatuCard, type Month } from "./cards";
 

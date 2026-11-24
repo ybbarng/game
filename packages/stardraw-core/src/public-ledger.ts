@@ -1,4 +1,4 @@
-import { obj } from "@game/mighty-engine/josa";
+import { obj } from "@game/core/josa";
 import {
   earlySealPath,
   GENESIS_ANCHOR_BRANCH,

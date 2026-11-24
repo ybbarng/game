@@ -1,4 +1,4 @@
-import type { PlayerClock } from "@game/mighty-engine";
+import type { PlayerClock } from "@game/core";
 import type { Move, Piece, Position, Promotion, Side } from "./board";
 import type { ChessRules } from "./rules";
 

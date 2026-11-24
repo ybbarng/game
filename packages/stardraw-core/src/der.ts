@@ -1,4 +1,4 @@
-import { subj } from "@game/mighty-engine/josa";
+import { subj } from "@game/core/josa";
 import { concat } from "./bytes";
 
 /**

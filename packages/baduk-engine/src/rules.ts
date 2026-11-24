@@ -2,7 +2,7 @@ import {
   decodeTimePreset,
   encodeTimePreset,
   type TimePreset,
-} from "@game/mighty-engine";
+} from "@game/core";
 
 export const PLAYER_COUNT = 2;
 

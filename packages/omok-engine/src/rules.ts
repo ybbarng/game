@@ -2,7 +2,7 @@ import {
   decodeTimePreset,
   encodeTimePreset,
   type TimePreset,
-} from "@game/mighty-engine";
+} from "@game/core";
 
 /** 판 한 변의 줄 수 */
 export const SIZE = 15;

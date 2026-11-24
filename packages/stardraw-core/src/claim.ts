@@ -1,4 +1,4 @@
-import { topic } from "@game/mighty-engine/josa";
+import { topic } from "@game/core/josa";
 import {
   ByteReader,
   ByteWriter,
