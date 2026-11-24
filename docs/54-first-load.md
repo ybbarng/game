@@ -67,9 +67,27 @@ node scripts/bundle-size.mjs --compare before.json  # 고친 뒤 견주기
 - **복기(/review)가 열 게임의 다시 보기와 카드 게임 표 묶음을 모두 실었다** → 게임 하나 보기(`review/ArchiveView.tsx`)를 목록에서 고를 때 불러오고, 그 안에서도 게임마다 따로 부른다. 갈래는 가벼운 이름 목록 `CARD_REPLAY_GAMES`로 고르고 어긋남은 `replay-tables.test.ts`가 본다.
 - **모든 게임의 공통 도구(난수·개인 시간·조사)가 마이티 엔진에 있었다** → `packages/core`(`@game/core`). 마이티 엔진은 다시 내보내 옛 경로를 잠시 살린다. 판 게임·화투·윷·은하·큐브 엔진과 stardraw-core는 core를 부른다. ②의 sideEffects로 묶음 크기는 이미 거의 같아져, 이 단계는 구조 정리다.
 
-## 4. 남은 것(지도 `platform-shared-pieces` next)
+### 온라인 방 묶음에서 멘탈 포커 빼기 (2026-11-25)
 
-- **온라인 방 묶음의 멘탈 포커 기기·libsodium**: 「다함께」 → 「방 만들기」까지 더 받는 JS가 오목 239KB인데 그 가운데 libsodium 183KB와 fair-play 기기·증명(device·shuffle-proof·sra·ristretto) 12KB가 멘탈 포커를 쓰지 않는 판 게임에도 실린다. `net/session.ts`의 `openTransport`가 모든 게임에서 `prepareGroup("r255")`을 기다리고, 방 코드(`host-room`·`guest-room`·`p2p-transport`·`protocol`)가 `realClock` 등을 `@game/fair-play` index에서 부른다. 멘탈 포커를 쓰는 방(킷에 `loadFairTable`이 있음)에서만 군을 불러 준비하고 시계는 `@game/fair-play/clock`에서 부르면 판 게임 방에서 빠진다. 화투·원카드 판은 2026-11-25에 방 묶음에서 뺐다(docs/13 13절 「화투·원카드도」).
+「다함께」 → 「방 만들기」로 방을 만들 때까지 첫 로딩 뒤에 더 받는 JS(gzip, `?net=local`이라 WebRTC 코드는 들지 않는다)가 오목 239KB였고, 그 가운데 libsodium 183KB와 fair-play 기기·증명(device·shuffle-proof·sra·ristretto) 12KB가 멘탈 포커를 쓰지 않는 판 게임에도 실렸다.
+
+- **`net/session.ts`의 `openTransport`가 모든 게임에서 `prepareGroup("r255")`을 기다렸다** → 멘탈 포커 판이 있는 방(킷에 `loadFairTable`, 방 화면이 `withFairTable`로 채운 `fairTable`)에서만 군을 준비한다(`openTransport`의 `mentalPoker`). 군 준비는 작은 진입점 `@game/fair-play/group`을 그때 동적으로 불러 한다. 준비한 군은 `device.ts`의 같은 표에 남아 판의 기기가 그대로 쓴다.
+- **방 코드(`host-room`·`guest-room`·`p2p-transport`)가 `realClock`을 `@game/fair-play` index에서 불렀다** → `@game/fair-play/clock`. 모든 방이 싣는 코드는 index에서 형만 부른다. 점검: `net/session.test.ts`(판 게임 방은 군을 준비하지 않음, 방 코드 파일의 index 값 import 없음).
+- **마이티 첫 로딩에도 기기·증명 코드가 실렸다**: `MightyApp`이 `endOnlineSession`을 쓰려고 `net/session.ts`를 정적으로 불러, 그 파일의 `prepareGroup` 정적 import가 마이티 주소 첫 로딩에 기기·증명을 끌어왔다. 위 고침으로 함께 빠졌다(마이티 첫 로딩 316.1→304.9KB, 방 만들 때 그만큼 더 받아 합은 같다).
+- 진단 값 `beforeMs`는 문서의 뜻(「들어가기를 누른 뒤 기록을 시작하기 전까지」)대로 들어가기를 누른 시각부터 잰다. 2026-11-25 화투·원카드 판을 따로 불러오면서(docs/13 13절) 판 불러오기 시간이 빠져 있던 것도 다시 든다. 판 게임은 WebRTC 코드 받기만 든다.
+
+| 방 묶음(KB, gzip) | 전 | 후 |
+|---|---:|---:|
+| 오목 | 238.5 | 43.5 |
+| 윷놀이 | 238.1 | 43.5 |
+| 숫자야구 | 238.1 | 43.5 |
+| 고스톱 | 228.6 | 228.8 |
+| 마이티 | 233.5 | 245.1 |
+| 원카드 | 248.7(docs/13 13절) | 248.8 |
+
+주소별 첫 로딩(`scripts/bundle-size.mjs`)은 마이티 316.1→304.9KB, 나머지(오목·바둑·윷·고스톱·숫자야구·하트·원카드)는 그대로다. 잰 방법: 빌드한 `out/`을 띄워 주소를 열고 네트워크가 멈춘 뒤 「다함께」·이름·「방 만들기」를 눌러 링크 칸이 뜰 때까지 새로 받은 `.js`를 파일마다 gzip해 더했다.
+
+## 4. 남은 것(지도 `platform-shared-pieces` next)
 
 - **/profile 탭별 통계**: 탭 화면과 `KIT_STATS`가 게임 키트(`@/chess/kit` 등)를 불러 컴퓨터(chess-ai·baduk-ai·janggi-ai…)까지 실린다. 탭마다 모듈(통계 화면 + 기록 정의)로 나눠 고른 탭만 불러야 한다. 지금 363KB로 가장 덜 줄었다.
 - **카드 게임 배우기**: 마이티·하트·화투 셋·원카드·윷·숫자야구·은하 App은 아직 튜토리얼(LessonPlayer와 단원 자료)을 정적으로 싣는다. 판 게임처럼 `<게임>Learn.tsx`로.

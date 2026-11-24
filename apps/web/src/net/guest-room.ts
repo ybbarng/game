@@ -1,11 +1,6 @@
 import { createRng } from "@game/core";
-import {
-  type Clock,
-  type FairLogged,
-  type Incident,
-  type PartySnapshot,
-  realClock,
-} from "@game/fair-play";
+import type { FairLogged, Incident, PartySnapshot } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 import type {
   Action,
   GameEvent,

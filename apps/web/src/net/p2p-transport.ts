@@ -1,4 +1,4 @@
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 import { selfId } from "@trystero-p2p/core";
 
 import { type DiagContext, diag, startDiag } from "./diag";
