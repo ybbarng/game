@@ -133,7 +133,7 @@ final class NativeMeasure {
         var p = cube.profile
         if p.emblemTier == nil {
           p.emblemTier = "challenger"
-          p.emblem = NativeCubeWindow.emblem("challenger")
+          p.emblem = EmblemArt.stillData("challenger")
         }
         let v = ProfileMenuView(profile: p) {}
         let w = NSWindow(contentRect: v.frame, styleMask: [.borderless], backing: .buffered, defer: false)

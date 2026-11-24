@@ -10,16 +10,11 @@ import CubieNativeC
 final class NativeSettingsWindow: NativeSheetWindow {
   static let size = SheetSize.settings
   let page: SettingsPageView
-  /// 막대가 생기면 내용 폭만큼 다시 배치한다(`ContentScrollView`)
-  private let scroll = ContentScrollView()
+  private let scroll: ContentScrollView
 
   init(store: KeyValueStore, onChange: @escaping () -> Void, openWeb: @escaping () -> Void) {
     page = SettingsPageView(store: store)
-    scroll.drawsBackground = true
-    scroll.backgroundColor = NUI.color(NUI.Hex.neutral900)
-    scroll.hasVerticalScroller = true
-    scroll.autohidesScrollers = true
-    scroll.documentView = page
+    scroll = Self.pageScroll(page)
     super.init(title: "Cubie 키 배치·색", size: Self.size, content: scroll)
     page.onChange = onChange
     page.openWeb = openWeb
@@ -38,7 +33,7 @@ final class SettingsPageView: FlippedView {
   var onChange: (() -> Void)?
   var openWeb: (() -> Void)?
 
-  private let back = Chip(SettingsSheet.back, look: Chip.Look(text: NUI.white(0.7), size: 14, padX: 4))
+  private let back = NUI.backChip(SettingsSheet.back)
   private let title = NUI.label(SettingsSheet.title, size: 20, weight: .bold, mono: false)
   private let keymapTitle = NUI.label(SettingsSheet.keymapTitle, size: 18, weight: .semibold, mono: false)
   private let keysMap = Chip(SettingsSheet.keysMapLink, look: Chip.Look(text: NUI.color(NUI.Hex.sky300), size: 14, padX: 0))
@@ -79,7 +74,6 @@ final class SettingsPageView: FlippedView {
     editor = KeymapEditorView(store: store)
     super.init(frame: NSRect(origin: .zero, size: NativeSettingsWindow.size.initial))
     fill = NUI.color(NUI.Hex.neutral900)
-    back.action = { NUI.openSite("/cube") }
     keysMap.action = { NUI.openSite("/cube/keys") }
     keysLearn.action = { NUI.openSite("/cube/intro?part=keys") }
     for (id, label) in SettingsSheet.presets {

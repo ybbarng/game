@@ -120,7 +120,7 @@ enum NativeWindowShot {
     let rows = TierInfo.ids.enumerated().reversed().map { i, id in
       ProfileMenuView(
         profile: Profile(
-          name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[i])", emblem: NativeCubeWindow.emblem(id)),
+          name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[i])", emblem: EmblemArt.stillData(id)),
         onPick: {})
     }
     let w = rows.map(\.frame.width).max() ?? 240
@@ -153,7 +153,7 @@ enum NativeWindowShot {
         let id = TierInfo.ids[t]
         let v = ProfileMenuView(
           profile: Profile(
-            name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[t]) · \(yaw)", emblem: NativeCubeWindow.emblem(id),
+            name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[t]) · \(yaw)", emblem: EmblemArt.stillData(id),
             emblemTier: id),
           onPick: {})
         v.toolTip = String(yaw)

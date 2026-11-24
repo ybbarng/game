@@ -561,13 +561,7 @@ final class NativeCubeWindow: FloatingWindow {
     let tier = book.tier(n)
     profile = Profile(
       name: name ?? Profile.placeholder.name, tierText: Profile.tierText(n: n, tierName: tier?.name),
-      emblem: tier.flatMap { Self.emblem($0.id) }, emblemTier: tier?.id)
-  }
-
-  /// 티어 엠블럼 그림(앱에 묶은 PNG, `Resources/Emblems/<티어>.png`)
-  static func emblem(_ id: String) -> Data? {
-    guard let url = Bundle.main.url(forResource: id, withExtension: "png", subdirectory: "Emblems") else { return nil }
-    return try? Data(contentsOf: url)
+      emblem: tier.flatMap { EmblemArt.stillData($0.id) }, emblemTier: tier?.id)
   }
 
   // MARK: 떠 있을 때(docs/47 15-5)

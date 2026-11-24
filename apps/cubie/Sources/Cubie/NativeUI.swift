@@ -97,15 +97,63 @@ enum NUI {
   /// 한 줄 글의 폭(글 칸의 좌우 여백 2pt씩 포함)
   static func width(_ l: NSTextField) -> CGFloat { ceil(l.attributedStringValue.size().width) + 5 }
 
-  /// 티어 엠블럼(앱에 묶은 PNG, `Resources/Emblems`). `big`이면 64pt용
-  static func emblem(_ id: String, big: Bool = false) -> NSImage? {
-    guard let url = Bundle.main.url(forResource: id, withExtension: "png", subdirectory: big ? "Emblems/big" : "Emblems")
-    else { return nil }
-    return NSImage(contentsOf: url)
-  }
-
   /// 사이트 다른 화면을 기본 브라우저로(창 안에서 사이트로 가지 않는다)
   static func openSite(_ path: String) { NSWorkspace.shared.open(Config.site(path)) }
+
+  /// 설정 창·티어표 맨 위 「← 큐브」(사이트 큐브 첫 화면을 기본 브라우저로)
+  static func backChip(_ title: String) -> Chip {
+    let c = Chip(title, look: Chip.Look(text: white(0.7), size: 14, padX: 4))
+    c.action = { openSite("/cube") }
+    return c
+  }
+}
+
+/// 큐브 크기 단추 줄(기록 창·티어표): 크기마다 칩 하나, 고른 크기는 눌린 꼴. 글·꼴·놓는 법만 창마다 다르다
+@MainActor
+final class SizeChips {
+  let sizes: [Int]
+  let chips: [Chip]
+  private let look: (Bool) -> Chip.Look
+
+  init(
+    _ sizes: [Int], label: (Int) -> String, look: @escaping (_ on: Bool) -> Chip.Look,
+    onPick: @escaping (Int) -> Void
+  ) {
+    self.sizes = sizes
+    self.look = look
+    chips = sizes.map { s in Chip(label(s), look: look(false)) { onPick(s) } }
+  }
+
+  func add(to view: NSView) {
+    for c in chips { view.addSubview(c) }
+  }
+
+  /// 크기 `n`을 고른 꼴로
+  func select(_ n: Int) {
+    for (s, c) in zip(sizes, chips) {
+      c.pressed = s == n
+      c.look = look(s == n)
+    }
+  }
+
+  /// 한 줄에 같은 폭으로 나눠 놓는다(티어표)
+  func layoutEven(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, gap: CGFloat) {
+    let n = CGFloat(chips.count)
+    let w = (width - gap * (n - 1)) / n
+    for (i, c) in chips.enumerated() {
+      c.frame = NSRect(x: x + CGFloat(i) * (w + gap), y: y, width: w, height: height)
+    }
+  }
+
+  /// 글 폭대로 이어 놓는다(기록 창)
+  func layoutFlow(x: CGFloat, y: CGFloat, height: CGFloat, gap: CGFloat) {
+    var x = x
+    for c in chips {
+      let f = c.fit
+      c.frame = NSRect(x: x, y: y, width: f.width, height: height)
+      x += f.width + gap
+    }
+  }
 }
 
 /// 위가 0인 보기(사이트처럼 위에서 아래로 쌓는다). 바탕·테두리는 층 속성 대신 직접 그린다: 층 바탕 위에 놓인 글 칸은
@@ -368,6 +416,18 @@ class NativeSheetWindow: NSObject, NSWindowDelegate {
     // Tab 차례를 칸이 바뀔 때마다 다시 셈한다(칩·티어 칸을 창이 새로 만든다)
     window.autorecalculatesKeyViewLoop = true
     window.center()
+  }
+
+  /// 한 쪽짜리 창(설정·티어표)의 스크롤 보기: 어두운 바탕, 세로 막대(필요할 때만). 막대가 생기면 내용 폭만큼 다시
+  /// 배치한다(`ContentScrollView`)
+  static func pageScroll(_ page: NSView) -> ContentScrollView {
+    let s = ContentScrollView()
+    s.drawsBackground = true
+    s.backgroundColor = NUI.color(NUI.Hex.neutral900)
+    s.hasVerticalScroller = true
+    s.autohidesScrollers = true
+    s.documentView = page
+    return s
   }
 
   func windowWillClose(_ notification: Notification) { onClose?() }

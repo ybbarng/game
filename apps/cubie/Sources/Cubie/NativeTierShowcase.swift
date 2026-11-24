@@ -25,6 +25,21 @@ enum EmblemArt {
   /// 그림 만들기 줄(큰 칸 각도 그림·사다리 띠, 하나씩 차례로). 흔드는 길(주 스레드)은 여기서 만든 그림을 꺼내기만 한다
   nonisolated static let work = DispatchQueue(label: "kr.byb.cubie.emblem-frames", qos: .userInitiated)
 
+  /// 정지 그림(사이트 3D 엠블럼을 정면에서 찍은 PNG, `Resources/Emblems` 32pt·`Emblems/big` 64pt). 메뉴 프로필 칸·기록 창
+  /// 티어 칸·티어표 줄과 「내 티어」 상자가 쓴다
+  nonisolated static func still(_ id: String, big: Bool = false) -> URL? {
+    Bundle.main.url(forResource: id, withExtension: "png", subdirectory: big ? "Emblems/big" : "Emblems")
+  }
+
+  nonisolated static func stillImage(_ id: String, big: Bool = false) -> NSImage? {
+    still(id, big: big).flatMap(NSImage.init(contentsOf:))
+  }
+
+  /// 정지 그림 파일 그대로(메뉴 프로필 칸 `Profile.emblem`)
+  nonisolated static func stillData(_ id: String) -> Data? {
+    still(id).flatMap { try? Data(contentsOf: $0) }
+  }
+
   nonisolated static func swayFrame(_ id: String, _ i: Int) -> URL? {
     Bundle.main.url(
       forResource: String(format: "%02d", i), withExtension: "webp", subdirectory: "Emblems/sway/\(id)")
