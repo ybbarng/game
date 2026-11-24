@@ -6,6 +6,10 @@ import {
   type FairVerifyInput,
   finishedRoundOf,
   type HostRounds,
+  pickStanding,
+  STANDING_KEYS,
+  STANDING_MISMATCH,
+  standingProblem,
   unopenedRoundProblem,
   verifyFairLog,
 } from "./fair-verify";
@@ -158,6 +162,75 @@ describe("방장 원본 화면의 판 끝 신호(finishedRoundOf)", () => {
       finishedRoundOf("onecard", { phase: "over" }),
       finishedRoundOf("onecard", { phase: "over", retired: true }),
     ]).toEqual([null, 1, null]);
+  });
+});
+
+describe("그만둔 끝 화면의 쌓인 값(standingProblem)", () => {
+  /** 상태가 곧 화면인 작은 게임: 누적 점수 `totals`만 쌓인다 */
+  const toy: FairReplayGame = {
+    check: () => ({ ok: true, states: [], upTo: 0 }),
+    viewOf: (state) => state,
+    realAction: (a) => a,
+    standing: pickStanding(["totals"]),
+    initial: () => ({ totals: [0, 0], hand: ["H3"] }),
+  };
+  const base = { game: toy, rules: null, seed: 1, seat: 1 };
+
+  it("끝 화면의 쌓인 값이 확인한 마지막 상태와 같으면 문제없다(이번 판 칸은 달라도)", () => {
+    expect(
+      standingProblem({
+        ...base,
+        verified: { totals: [12, -12], hand: [] },
+        finalView: { totals: [12, -12], hand: ["?_3"] },
+      }),
+    ).toBeNull();
+  });
+
+  it("끝 화면의 쌓인 값이 확인한 마지막 상태와 다르면 짚는다", () => {
+    expect(
+      standingProblem({
+        ...base,
+        verified: { totals: [12, -12] },
+        finalView: { totals: [62, -12] },
+      }),
+    ).toBe(STANDING_MISMATCH);
+  });
+
+  it("다시 계산한 상태가 없으면(첫 판도 안 열림) 게임 첫 상태와 견준다", () => {
+    expect([
+      standingProblem({
+        ...base,
+        verified: undefined,
+        finalView: { totals: [0, 0] },
+      }),
+      standingProblem({
+        ...base,
+        verified: undefined,
+        finalView: { totals: [30, -30] },
+      }),
+    ]).toEqual([null, STANDING_MISMATCH]);
+  });
+
+  it("쌓인 값이 없는 게임(원카드)은 보지 않는다", () => {
+    const { standing: _, ...plain } = toy;
+    expect(
+      standingProblem({
+        ...base,
+        game: plain,
+        verified: undefined,
+        finalView: { totals: [30, -30] },
+      }),
+    ).toBeNull();
+  });
+
+  it("게임마다 쌓인 칸: 판 하나의 칸(마이티 result·history)은 넣지 않는다", () => {
+    expect(STANDING_KEYS).toEqual({
+      mighty: ["money", "records"],
+      hearts: ["scores", "history"],
+      minhwatu: ["totals", "history"],
+      gostop: ["scores", "history"],
+      nyrongppong: ["totals"],
+    });
   });
 });
 

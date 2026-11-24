@@ -16,7 +16,11 @@ import {
   realHwatuAction,
   realOnecardAction,
 } from "@game/fair-play";
-import { type HeartsRules, viewOf as heartsViewOf } from "@game/hearts-engine";
+import {
+  type HeartsRules,
+  createMatch as heartsCreateMatch,
+  viewOf as heartsViewOf,
+} from "@game/hearts-engine";
 import {
   type Action,
   createRng,
@@ -39,6 +43,8 @@ import {
   endsWithRetire,
   type FairReplayGame,
   finishedRoundOf,
+  pickStanding,
+  STANDING_KEYS,
   verifyFairLog,
 } from "./fair-verify";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
@@ -923,8 +929,12 @@ export class GuestRoom<
     finished: new Set<number>(),
   };
 
+  /** 방장이 보낸 마지막 원본 화면(그만둔 게임이면 끝 화면, `standingProblem`) */
+  private lastHostView: unknown = undefined;
+
   /** 받은 원본 화면(자리 표 그대로)의 판 번호와 판 끝을 센다. 카드가 다 열리길 기다리지 않는다 */
   private noteHostRound(view: unknown): void {
+    this.lastHostView = view;
     const round = (view as { roundNumber?: unknown } | null)?.roundNumber;
     if (
       typeof round === "number" &&
@@ -981,6 +991,9 @@ export class GuestRoom<
             ? this.firstRound + 1
             : this.firstRound,
       hostRounds: this.hostRounds,
+      ...(this.lastHostView !== undefined
+        ? { finalView: this.lastHostView }
+        : {}),
     };
   }
 
@@ -1064,6 +1077,14 @@ export class GuestRoom<
         ) as never,
       viewOf: (state, seat) =>
         spec.refreshView(spec.viewOf(state as State, seat)),
+      ...(STANDING_KEYS[kit.id]
+        ? {
+            standing: pickStanding(STANDING_KEYS[kit.id] ?? []),
+            // 시작할 때 점수는 패와 상관없다(엔진이 시드로 섞은 패로 만든다).
+            initial: (rules: unknown, seed: number) =>
+              spec.createMatch(rules as Rules, seed, undefined as never).state,
+          }
+        : {}),
       // 방장이 실은 쓴 시간(응답 창)도 떼고 견준다.
       realAction: (action) => {
         const bare = realHwatuAction(action) as ActionT;
@@ -1098,6 +1119,9 @@ export class GuestRoom<
           deals as never,
         ),
       viewOf: (state, seat) => heartsViewOf(state as never, seat),
+      standing: pickStanding(STANDING_KEYS.hearts ?? []),
+      initial: (rules, seed) =>
+        heartsCreateMatch({ rules: rules as HeartsRules, seed }).state,
       realAction: (action, cards) =>
         realHeartsAction(action as never, cards as never),
       annotate: (view, action) =>

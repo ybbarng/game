@@ -10,9 +10,10 @@ import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import { minhwatuKit } from "@/minhwatu/kit";
+import { STANDING_MISMATCH } from "@/net/fair-verify";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
-import { neverOpens } from "@/net/unopened-round-fixture";
+import { forgeHostViews, neverOpens } from "@/net/unopened-round-fixture";
 
 import {
   type AnyGuest,
@@ -93,6 +94,76 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
         reason: "1판은 끝났는데 카드가 다 열리지 않아 다시 계산하지 못했어요.",
       },
     ]);
+  });
+
+  it("첫 판을 끝내고 둘째 판 도중에 그만두면 참가자 게임 끝 검증은 통과한다(끝 화면 점수 = 첫 판까지 점수)", async () => {
+    const { host, guests, incidents, audits } = await setupHwatu({
+      kit: minhwatuKit,
+      rules: { ...STANDARD_RULES, rounds: 3 },
+      guests: 1,
+      bot: minhwatuIntermediateBot,
+      botLevel: 1,
+      HostRoom: HostRoom as never,
+      GuestRoom: GuestRoom as never,
+    });
+    await host.start();
+    const view = () => host.match?.current() as MinhwatuView | undefined;
+    const steps = () => host.match?.actionLog().length ?? 0;
+    let secondFrom: number | null = null;
+    await playHwatu({
+      host,
+      guests,
+      bot: minhwatuBeginnerBot,
+      incidents,
+      done: () => {
+        if (view()?.roundNumber !== 2) return false;
+        secondFrom ??= steps();
+        return steps() >= secondFrom + 3;
+      },
+    });
+    expect(view()?.totals.some((t) => t !== 0)).toBe(true);
+    host.abandon();
+    await until(() => audits.length === 1, "게임 끝 검증");
+    expect(audits).toEqual([{ ok: true }]);
+    expect(incidents).toEqual([]);
+  });
+
+  it("고친 방장 기기가 판 끝 화면을 보내지 않고 그만둔 끝 화면의 점수를 부풀리면, 참가자 게임 끝 검증이 짚는다", async () => {
+    const { host, guests, incidents, audits, clock } = await setupHwatu({
+      kit: minhwatuKit,
+      rules: { ...STANDARD_RULES, rounds: 2 },
+      guests: 1,
+      bot: minhwatuIntermediateBot,
+      botLevel: 1,
+      HostRoom: HostRoom as never,
+      GuestRoom: GuestRoom as never,
+    });
+    await host.start();
+    await until(() => guests.every((g) => g.fair !== null), "참가자 진행");
+    neverOpens(guests[0] as AnyGuest, 1);
+    // 판 끝 화면은 보내지 않고(참가자는 판이 끝난 줄 모른다), 그만둔 끝 화면에서 방장 점수를 부풀린다.
+    forgeHostViews(host, (v) => {
+      if (v.phase === "roundEnd") return null;
+      if (v.retired !== true) return v;
+      const totals = [...(v.totals as number[])];
+      totals[0] = (totals[0] ?? 0) + 50;
+      return { ...v, totals };
+    });
+    const view = () => host.match?.current() as MinhwatuView | undefined;
+    await playHwatu({
+      host,
+      guests,
+      bot: minhwatuBeginnerBot,
+      incidents,
+      done: () => view()?.phase === "roundEnd",
+    });
+    host.abandon();
+    await until(() => {
+      if (audits.length === 1) return true;
+      clock.advance(1_000);
+      return false;
+    }, "게임 끝 검증");
+    expect(audits).toEqual([{ ok: false, reason: STANDING_MISMATCH }]);
   });
 
   it("그만한 첫 판에서도 낸다고 한 카드와 열쇠로 연 카드가 다르면 그 자리를 짚고, 끝내도 그 알림은 남는다", async () => {

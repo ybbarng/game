@@ -7,6 +7,7 @@ import {
 import {
   type Action,
   type Card,
+  createMatch,
   createRng,
   type MatchState,
   type PlayerView,
@@ -49,10 +50,71 @@ export interface FairReplayGame {
   ): string | null;
   /** 기록을 끝까지 본 뒤 한 번(`GameKit.verifyUnsignedDone`) */
   unsignedDone?(): string | null;
+  /**
+   * 화면에서 판을 넘어 쌓이고 기록·내 기록에 남는 값(누적 점수·판별 결과)만 뽑는다. 그만둔 게임의 끝 화면이
+   * 이 기기가 다시 계산한 마지막 상태와 같은지 본다(`standingProblem`). 없으면(원카드: 한 게임이 한 판이라 쌓이는
+   * 값이 없다) 보지 않는다
+   */
+  standing?(view: unknown): unknown;
+  /** 패 없이 만든 게임 첫 상태(첫 판도 열리지 않았을 때 견줄 쌓인 값. 시작할 때 점수는 패와 상관없다) */
+  initial?(rules: unknown, seed: number): unknown;
+}
+
+/** 화면에서 이 칸들만 뽑는다(`FairReplayGame.standing`) */
+export function pickStanding(keys: readonly string[]) {
+  return (view: unknown): Record<string, unknown> => {
+    const v = (view ?? {}) as Record<string, unknown>;
+    return Object.fromEntries(keys.map((k) => [k, v[k] ?? null]));
+  };
+}
+
+/**
+ * 게임마다 판을 넘어 쌓이는 화면 칸. 판 하나의 칸(마이티 `result`·`history`는 이번 판 것)은 넣지 않는다
+ * - 마이티: 돈, 자리별 전적 / 하트: 누적 점수, 판별 점수 / 민화투: 누적 점수, 판별 결과 / 고스톱: 누적 점수,
+ *   판별 정산 / 나이롱뽕: 누적 점수
+ */
+export const STANDING_KEYS: Readonly<Record<string, readonly string[]>> = {
+  mighty: ["money", "records"],
+  hearts: ["scores", "history"],
+  minhwatu: ["totals", "history"],
+  gostop: ["scores", "history"],
+  nyrongppong: ["totals"],
+};
+
+/** 그만둔 게임 끝 화면의 쌓인 값이 확인한 판까지와 다를 때 */
+export const STANDING_MISMATCH =
+  "그만둔 게임 끝 화면의 점수가 확인한 판까지의 점수와 달라요.";
+
+/**
+ * 그만둔 게임(다시 계산이 끝까지 치지 않은 마지막 판에서 멈춤)의 끝 화면에 실린 쌓인 값이, 이 기기가 다시
+ * 계산한 마지막 상태(마지막 끝난 판까지, 첫 판도 안 열렸으면 게임 첫 상태)와 같은지 본다. 끝까지 치지 않은 판은
+ * 결과가 없으니 쌓인 값을 바꿀 수 없다. 방장 기기를 고쳐 판 끝 화면을 보내지 않고 점수를 부풀려도 여기서 걸린다.
+ * 다르면 까닭(끝 화면을 만든 방장 탓)
+ */
+export function standingProblem(input: {
+  game: FairReplayGame;
+  rules: unknown;
+  seed: number;
+  seat: number;
+  /** 다시 계산한 마지막 상태(없으면 게임 첫 상태로 본다) */
+  verified: unknown;
+  /** 방장이 보낸 마지막 원본 화면(그만둔 끝 화면) */
+  finalView: unknown;
+}): string | null {
+  const { game } = input;
+  if (!game.standing) return null;
+  const base = input.verified ?? game.initial?.(input.rules, input.seed);
+  if (base === undefined) return null;
+  const expected = JSON.stringify(game.standing(game.viewOf(base, input.seat)));
+  const shown = JSON.stringify(game.standing(input.finalView));
+  return expected === shown ? null : STANDING_MISMATCH;
 }
 
 /** 마이티 */
 export const MIGHTY_REPLAY: FairReplayGame = {
+  standing: pickStanding(STANDING_KEYS.mighty ?? []),
+  initial: (rules, seed) =>
+    createMatch({ rules: rules as RuleSet, seed }).state,
   check: (rules, seed, log, deals) =>
     checkReplay(
       rules as RuleSet,
@@ -96,6 +158,8 @@ export interface FairVerifyInput {
    * 가장 큰 판만 센다
    */
   hostRounds?: HostRounds;
+  /** 방장이 보낸 마지막 원본 화면. 그만둔 게임이면 끝 화면의 쌓인 값을 견준다(`standingProblem`) */
+  finalView?: unknown;
 }
 
 /**
@@ -169,6 +233,13 @@ function roundOfView(view: string): number | null {
   }
 }
 
+/** 패를 모르는 첫 판. 다시 계산은 판 차례대로 돌다가 이 판에서 멈춘다 */
+function firstUnopened(deals: ReadonlyMap<number, unknown>): number {
+  let round = 1;
+  while (deals.has(round)) round++;
+  return round;
+}
+
 /** 받은 화면(JSON)들에서 가장 큰 판 번호(원본 화면을 따로 세지 않은 호출용) */
 function lastRoundOf(seen: readonly string[]): number | null {
   let last: number | null = null;
@@ -201,9 +272,7 @@ export function unopenedRoundProblem(input: {
   rounds: HostRounds;
   watchedFrom: number;
 }): string | null {
-  // 다시 계산은 판 차례대로 돌다가 패를 모르는 첫 판에서 멈춘다.
-  let stopped = 1;
-  while (input.deals.has(stopped)) stopped++;
+  const stopped = firstUnopened(input.deals);
   if (stopped < input.watchedFrom) return null;
   const problem = `${stopped}판은 끝났는데 카드가 다 열리지 않아 다시 계산하지 못했어요.`;
   if (input.rounds.finished.has(stopped)) return problem;
@@ -250,6 +319,23 @@ export async function verifyFairLog(
       watchedFrom: input.watchedFrom ?? 1,
     });
     if (problem) return { ok: false, seat: null, reason: problem };
+    // 그만둔 게임 끝 화면의 쌓인 값(점수·순위)은 다시 계산한 마지막 상태 그대로여야 한다. 이 기기가 처음부터
+    // 지켜보지 않은 판에서 멈췄으면(새로고침 앞 판) 견줄 상태가 없어 보지 않는다.
+    if (
+      endsWithRetire(log) &&
+      input.finalView !== undefined &&
+      firstUnopened(deals) >= (input.watchedFrom ?? 1)
+    ) {
+      const standing = standingProblem({
+        game,
+        rules,
+        seed,
+        seat,
+        verified: states.at(-1),
+        finalView: input.finalView,
+      });
+      if (standing) return { ok: false, seat: 0, reason: standing };
+    }
   }
 
   // 사람이 보낸 것이 아닌 기록(방장 시계·방장 기기가 넣은 것)은 게임이 따로 본다(지어낸 청구, 뺀 발표 등)
