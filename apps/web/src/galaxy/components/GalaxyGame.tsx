@@ -18,11 +18,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
+import { SAFE_PY2_PX3 } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -874,27 +877,25 @@ export function GalaxyGame({
       data-table-mode={mode}
       className={cn(
         "relative isolate flex min-h-dvh flex-col items-center gap-2 overflow-x-clip px-3 py-2 text-white",
+        SAFE_PY2_PX3,
         GALAXY_BG,
         mission && "pt-16",
       )}
     >
       {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full items-center gap-2 text-sm">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
-          ← 은하 한 바퀴
-        </button>
-        <span className="ml-auto truncate text-white/60">
-          {lengthName}
-          {limit
-            ? ` · ${Math.min(view.round, limit)}/${limit}차례`
-            : ` · ${view.round}차례째`}
-          {online ? "" : ` · 컴퓨터 ${levelName}`}
-        </span>
-      </header>
+      <GameHeader
+        exitLabel="← 은하 한 바퀴"
+        onExit={onExit}
+        info={`${lengthName}${limit ? ` · ${Math.min(view.round, limit)}/${limit}차례` : ` · ${view.round}차례째`}${online ? "" : ` · 컴퓨터 ${levelName}`}`}
+        settings={
+          <BoardSettingsButton
+            useStore={useGalaxySettings}
+            levels={GALAXY_LEVELS}
+            solo={!online && !mission}
+            tone="bg-slate-950/95"
+          />
+        }
+      />
 
       {online && (invalid || reconnecting || hostLeft) && (
         <div className="w-full max-w-xl">
@@ -918,7 +919,7 @@ export function GalaxyGame({
               type="button"
               data-abandon
               onClick={() => hostRoom.abandon()}
-              className="rounded-lg bg-white px-2 py-0.5 font-semibold text-black"
+              className="min-h-11 rounded-lg bg-white px-3 py-1 font-semibold text-black"
             >
               기다리지 않고 끝내기
             </button>

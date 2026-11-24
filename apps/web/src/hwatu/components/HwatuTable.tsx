@@ -9,7 +9,10 @@ import {
   FlightScope,
   HWATU_CARD,
 } from "@/components/card-fx";
+import { BAR_BUTTON } from "@/components/GameSettingsMenu";
+import { HIT_AREA } from "@/components/hit-area";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
+import { SAFE_STAGE } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -67,7 +70,7 @@ export function HwatuStage({
       {mission && <MissionOverlay mission={mission} top={8} />}
       <div
         ref={stageRef}
-        className="relative h-dvh w-full"
+        className={cn("relative h-dvh w-full", SAFE_STAGE)}
         style={
           inset > 0
             ? { marginTop: inset, height: `calc(100dvh - ${inset}px)` }
@@ -95,6 +98,7 @@ export function HwatuHud({
   info,
   online,
   mySeat,
+  settings,
 }: {
   rect: Rect;
   /** 나가기 단추 글(「← 민화투」) */
@@ -103,6 +107,8 @@ export function HwatuHud({
   info: ReactNode;
   online: boolean;
   mySeat: number;
+  /** 오른쪽 끝 「설정」 단추(공통 `BoardSettingsButton`) */
+  settings?: ReactNode;
 }) {
   const chatOpen = useChat((s) => s.open);
   const setChatOpen = useChat((s) => s.setOpen);
@@ -110,13 +116,14 @@ export function HwatuHud({
   return (
     <>
       <header
-        className="absolute flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-xl bg-black/30 px-3 text-sm"
+        // 단추의 넓힌 누르는 자리(44px)가 잘리지 않게 넘침을 자르지 않는다. 긴 판 정보는 줄임표로 줄인다
+        className="absolute flex items-center gap-2 whitespace-nowrap rounded-xl bg-black/30 px-3 text-sm"
         style={at(rect)}
       >
         <button
           type="button"
           onClick={onExit}
-          className="shrink-0 text-white/70 hover:text-white"
+          className={cn(HIT_AREA, "shrink-0 text-white/70 hover:text-white")}
         >
           {title}
         </button>
@@ -127,7 +134,7 @@ export function HwatuHud({
           <button
             type="button"
             onClick={() => setChatOpen(!chatOpen)}
-            className="relative shrink-0 rounded-lg bg-white/10 px-1.5 py-0.5 text-xs hover:bg-white/20"
+            className={BAR_BUTTON}
           >
             채팅
             {chatUnread > 0 && (
@@ -137,6 +144,7 @@ export function HwatuHud({
             )}
           </button>
         )}
+        {settings}
       </header>
       {online && chatOpen && (
         <div

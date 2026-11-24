@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { track } from "@/stats/track";
 
 import { lessonStates } from "@/tutorial/progress";
+import { SAFE_P4 } from "../safe-area";
 import { GlossarySheet } from "./GlossarySheet";
 import type { TutorialKit } from "./kit";
 
@@ -34,7 +35,11 @@ export function TutorialHome<View, Event, Scenario, Action>({
 
   return (
     <main
-      className={cn("flex min-h-dvh justify-center p-4", tutorial.background)}
+      className={cn(
+        "flex min-h-dvh justify-center p-4",
+        SAFE_P4,
+        tutorial.background,
+      )}
     >
       <div className="flex w-full max-w-md flex-col gap-4 py-4">
         <div className="flex items-center justify-between">

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { SAFE_PY3_PX4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
 
 /**
@@ -57,8 +58,9 @@ export function BoardTable({
   // 세로·가로 모두에서 판(그리고 세로에서는 자리판) 너비
   const width = cn(
     "w-full",
-    "[--bt-w:min(calc(100vw-2rem),40rem,calc((100dvh-var(--bt-reserve)-var(--bt-top))*var(--bt-aspect)))]",
-    "landscape:[--bt-w:min(calc((100dvh-1.5rem-var(--bt-top))*var(--bt-aspect)),calc(100vw-22rem))]",
+    // 휴대폰 안전 영역(노치·홈 막대)만큼 판을 줄인다(틀은 SAFE_PY3_PX4로 그만큼 띄운다)
+    "[--bt-w:min(calc(100vw-2rem-env(safe-area-inset-left)-env(safe-area-inset-right)),40rem,calc((100dvh-var(--bt-reserve)-var(--bt-top)-env(safe-area-inset-top)-env(safe-area-inset-bottom))*var(--bt-aspect)))]",
+    "landscape:[--bt-w:min(calc((100dvh-1.5rem-var(--bt-top)-env(safe-area-inset-top)-env(safe-area-inset-bottom))*var(--bt-aspect)),calc(100vw-22rem-env(safe-area-inset-left)-env(safe-area-inset-right)))]",
   );
   /** 세로에서 판과 같은 너비로 줄을 맞추는 칸 */
   const row = "w-(--bt-w) landscape:w-full";
@@ -70,6 +72,7 @@ export function BoardTable({
       className={cn(
         width,
         "relative flex min-h-dvh flex-col items-center gap-2 bg-[#1c1917] px-4 py-3 text-white",
+        SAFE_PY3_PX4,
         "landscape:flex-row landscape:items-center landscape:justify-center landscape:gap-6",
         mission && "pt-16",
       )}

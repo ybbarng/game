@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { BackToGames } from "@/components/BackToGames";
 import { MadeWith } from "@/components/brand/MadeWith";
-
+import { SAFE_P4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
 import { loadLearn as loadKeyLearn } from "../keys/storage";
 import { loadLearn } from "../learn/progress";
@@ -132,7 +132,8 @@ export function CubeHome() {
   return (
     <main
       data-game="cube"
-      className="flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white"
+      // 홈 화면에 추가해 열면 상태 막대 밑까지 깔리니 안전 영역만큼 띄운다
+      className={`flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white ${SAFE_P4}`}
     >
       <div className="flex w-full max-w-sm flex-col gap-4">
         <BackToGames />

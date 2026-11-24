@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { Chip } from "@/components/options/Chip";
+import { Section, SubScreen } from "@/components/options/SubScreen";
 import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
-import { cn } from "@/lib/cn";
 import { seedFromUrl } from "@/lib/url-seed";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
@@ -31,85 +32,13 @@ import { gostopTutorial } from "./gostop-tutorial";
 /** 고스톱 화면들의 배경(초록 담요) */
 const BG = "bg-[radial-gradient(ellipse_at_center,#166534_0%,#0a3622_80%)]";
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs",
-        active
-          ? "border-amber-300 bg-white text-black"
-          : "border-white/15 bg-white/5",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-/** 옵션·규칙 화면의 틀: 제목과 "처음으로" */
-function SubScreen({
-  title,
-  onBack,
-  children,
-}: {
-  title: string;
-  onBack: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <main className={cn("flex min-h-dvh justify-center p-4 text-white", BG)}>
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">{title}</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
-        </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/40 p-5 shadow-2xl backdrop-blur">
-          {children}
-        </div>
-      </div>
-    </main>
-  );
-}
-
 /** 고스톱 옵션: 인원·판 수·국진·컴퓨터. 다함께 고스톱도 여기서 고른 규칙을 쓴다 */
 function GostopOptions({ onBack }: { onBack: () => void }) {
   const s = useGostopSettings();
   const gukjin = GUKJIN_INFO.find((g) => g.value === s.gukjin);
   const level = GOSTOP_LEVELS.find((l) => l.value === s.level);
   return (
-    <SubScreen title="고스톱 옵션" onBack={onBack}>
+    <SubScreen title="고스톱 옵션" onBack={onBack} bg={BG}>
       <Section title="인원">
         <div className="flex flex-wrap gap-1.5">
           {PLAYER_OPTIONS.map((p) => (
@@ -229,7 +158,7 @@ function GostopRulesScreen({ onBack }: { onBack: () => void }) {
     ],
   ];
   return (
-    <SubScreen title="고스톱은?" onBack={onBack}>
+    <SubScreen title="고스톱은?" onBack={onBack} bg={BG}>
       <dl className="flex flex-col gap-3 text-sm">
         {items.map(([term, meaning]) => (
           <div key={term}>

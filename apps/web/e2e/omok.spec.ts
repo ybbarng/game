@@ -157,6 +157,46 @@ test("오목: 게임 목록에서 들어가 입문 컴퓨터와 한 판을 끝�
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
 });
 
+test(
+  "오목: 판 화면 「설정」에서 효과음을 끄고 새 게임 단계를 고르며, Esc로 닫으면 「설정」 단추로 초점이 돌아간다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await page.goto("/omok");
+    await startSolo(page, "입문");
+    const open = page.getByRole("button", { name: "설정", exact: true });
+    await open.click();
+    const menu = page.getByRole("dialog", { name: "설정" });
+    await expect(menu).toBeVisible();
+    await page.screenshot({ path: info.outputPath("omok-settings.png") });
+
+    await menu.getByRole("button", { name: "끄기" }).click();
+    await expect(menu.getByRole("button", { name: "끄기" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(menu.getByRole("slider", { name: "효과음 크기" })).toHaveCount(
+      0,
+    );
+    await menu.getByRole("button", { name: "고수", exact: true }).click();
+
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(open).toBeFocused();
+
+    // 다시 열어도 고른 것이 남아 있다(공통 효과음 설정·오목 단계 설정)
+    await open.click();
+    await expect(menu.getByRole("button", { name: "끄기" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(
+      menu.getByRole("button", { name: "고수", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+  },
+);
+
 test("오목: 두던 게임은 새로고침해도 이어 둔다", {
   tag: "@only-desktop",
 }, async ({ page }) => {

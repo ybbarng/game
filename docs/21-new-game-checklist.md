@@ -82,6 +82,12 @@
 - [ ] `opengraph-image.tsx`: 공유 그림. 공통 `gameShareImage`(게임 아이콘 + 영문 이름)를 쓴다
 - [ ] `globals.css`에 `data-game` 배경을 넣는다(넘쳐 보이는 바탕색)
 - [ ] `games/registry.ts`에 한 줄을 더한다: 이름, 영문 이름, 한 줄 설명, 인원, 주소
+- [ ] 공통 화면 조각(2026-11-24, 게임마다 따로 만들지 않는다)
+  - 옵션·규칙 화면: `components/options`의 `SubScreen`(틀·「처음으로」, 게임마다 다른 건 바탕 `bg`·판 색 `panelClassName`), `Section`, 칩 `Chip`·`Chips`(누르는 자리 높이 44px, `aria-pressed`, 고른 색만 `activeClassName`), 효과음 `SoundSetting`
+  - 판 화면 「설정」: 모든 게임에 둔다. 판 게임은 머리줄 `GameHeader`(왼쪽 「← 게임」, 오른쪽 `BoardSettingsButton`), 둘러앉은 카드 판은 위 막대 단추(`BAR_BUTTON`)로 `GameSettingsMenu`를 연다. 효과음 켜기·크기는 늘, 해당하는 것만 켠다: 진행 속도(`speed`), 카드·무늬(`cards`), 혼자 하기 컴퓨터 단계(`levels`, 새 게임부터), 그 게임만의 줄(`extra`·`footer`), 혼자 하기 도중 게임 전체 끝내기 「그만하기」(`onQuit`, 「정말 그만할까요?」로 한 번 더 묻는다)
+  - 판 위에 뜨는 상자(설정·점수판·규칙 편집·용어 사전)는 공통 `Dialog`: `role="dialog"`·`aria-modal`·이름, 처음 초점, Esc 닫기, Tab 가두기, 닫으면 연 단추로 초점, 겹침 순서 800(판·알림 위, 온라인 나가기 확인 900 아래). 고치던 것을 잃는 상자는 `closeOnOutside={false}`
+  - 누르는 자리는 44px 이상: 겉모습을 바꾸지 않을 단추는 `HIT_AREA`(보이지 않는 44px 칸, 부모가 `overflow-hidden`이면 잘린다), 글자 뒤로 단추는 `BACK_BUTTON`. 위험한 단추(기권)와 나가기는 붙여 두지 않는다
+  - 휴대폰 안전 영역(노치·홈 막대): 화면 틀은 `components/safe-area.ts`의 여백(`SAFE_P4`·`SAFE_PY3_PX4`), 절대 좌표 카드 무대는 `SAFE_STAGE`(투명 테두리). 무대 기준 좌표를 `getBoundingClientRect`로 잴 때는 `clientLeft`·`clientTop`을 더한다
 - [ ] 시작 화면
   - 위쪽: `BackToGames`, 이어하기, **배우기** 단추와 진행(n/m)
   - 고르는 것: 규칙 종류, 판 수, 컴퓨터 단계
@@ -153,6 +159,7 @@
 - [ ] `<게임>/study.ts`: 장면에서 시작하는 판, 내 수 판정, 상대 응수, 해설(장면에서 만든다)
 - [ ] 단위 시험(`study.test.ts`): 모든 문제를 엔진으로 다시 둔다. 정답이 맞고, 다른 수로는 같은 결과가 안 나온다
 - [ ] 화면: 목록은 `StudyHome`, 문제는 공통 틀 `PuzzleScreen`·`usePuzzleRun`(components/study). 배우기 첫 화면의 "수 배우기" 칸으로 들어간다
+- [ ] 목록은 배우는 차례로 둔다: 앞 묶음·단원에서 배운 말만 뒤 묶음이 쓴다. 차례는 한 곳(체스 `chess/study-order.ts`)에 두고, 용어 순서 시험이 규칙 배우기부터 그 차례대로 이어 읽는다(체스 `study-order.test.ts`)
 - [ ] 문제·수순 화면의 수 소리는 규칙의 `sounds`(놓기·잡기 `Cue`, 예: 바둑 `stone`·`badukCapture`)로 넘긴다. 안 넘기면 장기 기물 소리(`piece`·`capture`)가 난다
 - [ ] 진행 기록 `createStudyProgress("<게임>-study")`, 첫 그리기 뒤에 rehydrate한다
 - [ ] 화면 시험: 틀린 답 → 다시 하기 → 맞는 답

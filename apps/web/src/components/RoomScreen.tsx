@@ -10,6 +10,7 @@ import {
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";
 import { FairLine, RoomKindPicker } from "@/components/FairLine";
+import { HIT_AREA } from "@/components/hit-area";
 import { InviteLink } from "@/components/InviteLink";
 import {
   NameForm,
@@ -20,6 +21,7 @@ import {
   usePlayerNameField,
 } from "@/components/online-room";
 import { ActionButton } from "@/components/panels/common";
+import { SAFE_P4 } from "@/components/safe-area";
 import { workerBotOption } from "@/game/bot-runner";
 import type { MatchHost, Snapshot } from "@/game/host";
 import type { GameKit, KitBot } from "@/game/kit";
@@ -566,6 +568,7 @@ export function RoomScreen<
       {...(game.theme.dataGame ? { "data-game": game.theme.dataGame } : {})}
       className={cn(
         "flex min-h-dvh items-center justify-center p-4 text-white",
+        SAFE_P4,
         game.theme.background,
       )}
     >
@@ -643,7 +646,7 @@ export function RoomScreen<
                   key={s.seat}
                   data-lobby-seat={s.seat}
                   className={cn(
-                    "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
+                    "flex min-h-11 items-center justify-between rounded-lg px-3 py-2 text-sm",
                     s.kind === "bot" ? "bg-white/5 opacity-60" : "bg-white/10",
                   )}
                 >
@@ -665,7 +668,10 @@ export function RoomScreen<
                       <button
                         type="button"
                         onClick={() => session.host?.kick(s.seat)}
-                        className="rounded bg-white/10 px-1.5 py-0.5 hover:bg-red-500/60"
+                        className={cn(
+                          HIT_AREA,
+                          "rounded bg-white/10 px-1.5 py-0.5 hover:bg-red-500/60",
+                        )}
                       >
                         내보내기
                       </button>

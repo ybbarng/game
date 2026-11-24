@@ -13,6 +13,7 @@ import {
 import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
 import { useEffect, useState } from "react";
 import { FairBar } from "@/components/FairBar";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
@@ -59,9 +60,8 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { gostopDealCounts, gostopMoves } from "../card-fx";
-import { GOSTOP_LEVELS } from "../settings";
+import { GOSTOP_LEVELS, useGostopSettings } from "../settings";
 import { useGostop } from "../store";
 
 /** 이름 고르기: 온라인은 방 이름, 혼자 하기는 나·컴퓨터 이름 */
@@ -496,6 +496,19 @@ export function GostopTable({
         onExit={onExit}
         online={online}
         mySeat={me}
+        settings={
+          <BoardSettingsButton
+            useStore={useGostopSettings}
+            levels={GOSTOP_LEVELS}
+            solo={!online && !mission}
+            tone="bg-[#0a3622]/95"
+            onQuit={
+              !online && !mission && view.phase !== "gameOver"
+                ? () => submit({ type: "retire" })
+                : undefined
+            }
+          />
+        }
         info={
           <>
             {n === 2 ? "맞고" : "3명"} · {view.roundNumber}/{view.rules.rounds}

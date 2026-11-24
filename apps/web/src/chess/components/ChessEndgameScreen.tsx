@@ -3,6 +3,7 @@
 import { kingOf, type Move, squareAt } from "@game/chess-engine";
 import { useRef, useState } from "react";
 
+import { BACK_BUTTON } from "@/components/hit-area";
 import { PuzzleScreen, usePuzzleRun } from "@/components/study/PuzzleScreen";
 import type { ReviewRun } from "@/components/study/review-run";
 import { RichText } from "@/components/tutorial/RichText";
@@ -100,11 +101,7 @@ function EndgameLesson({
       className="flex min-h-dvh flex-col items-center gap-3 break-keep bg-[#1c1917] px-4 py-3 text-white wrap-anywhere"
     >
       <header className="flex w-full max-w-xl items-center gap-2 text-sm">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
+        <button type="button" onClick={onExit} className={BACK_BUTTON}>
           ← 목록
         </button>
         <span className="ml-auto font-semibold">

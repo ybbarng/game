@@ -14,6 +14,7 @@ import {
 } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
 import { FairBar } from "@/components/FairBar";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
@@ -60,9 +61,8 @@ import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { subj, wa } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
-import { MINHWATU_LEVELS } from "../settings";
+import { MINHWATU_LEVELS, useMinhwatuSettings } from "../settings";
 import { useMinhwatu } from "../store";
 
 /** 민화투 화면 바탕 */
@@ -592,6 +592,19 @@ export function MinhwatuTable({
         onExit={onExit}
         online={online}
         mySeat={me}
+        settings={
+          <BoardSettingsButton
+            useStore={useMinhwatuSettings}
+            levels={MINHWATU_LEVELS}
+            solo={!online && !mission}
+            tone="bg-[#0a3622]/95"
+            onQuit={
+              !over && !online && !mission
+                ? () => submit({ type: "retire" })
+                : undefined
+            }
+          />
+        }
         info={
           <>
             {online ? "친구와" : `컴퓨터(${levelName})`} · {view.roundNumber}/
@@ -763,27 +776,19 @@ export function MinhwatuTable({
               내기
             </button>
           )}
+          {/* 그만하기는 다른 게임처럼 위쪽 막대 「설정」 메뉴 맨 아래에 둔다 */}
           {!over && !online && !mission && (
-            <>
-              <button
-                type="button"
-                disabled={!canUndo}
-                onClick={() => {
-                  setSelected(null);
-                  undo();
-                }}
-                className={HWATU_SECONDARY}
-              >
-                무르기
-              </button>
-              <button
-                type="button"
-                onClick={() => submit({ type: "retire" })}
-                className={HWATU_SECONDARY}
-              >
-                그만하기
-              </button>
-            </>
+            <button
+              type="button"
+              disabled={!canUndo}
+              onClick={() => {
+                setSelected(null);
+                undo();
+              }}
+              className={HWATU_SECONDARY}
+            >
+              무르기
+            </button>
           )}
         </div>
       )}

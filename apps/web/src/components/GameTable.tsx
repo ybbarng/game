@@ -51,6 +51,7 @@ import {
   spreadDelay,
 } from "./card-fx";
 import { FairOverlays, FairStatus } from "./FairOverlays";
+import { BAR_BUTTON } from "./GameSettingsMenu";
 import { useHandControls } from "./hand-controls";
 import { ConnectionNotices, InvalidBanner } from "./OnlineAlerts";
 import { OpenHand } from "./OpenHand";
@@ -70,6 +71,7 @@ import { Scoreboard } from "./Scoreboard";
 import { SeatPlate } from "./SeatPlate";
 import { SettingsMenu } from "./SettingsMenu";
 import { SuitText } from "./SuitText";
+import { SAFE_STAGE } from "./safe-area";
 import { Term, TermProvider } from "./TermHint";
 import { MissionOverlay, type MissionProps } from "./tutorial/MissionOverlay";
 
@@ -221,7 +223,13 @@ export function GameTable({
   useAutoClear(notice, clearNotice);
 
   if (!view)
-    return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;
+    return (
+      <div
+        ref={stage.ref}
+        className={cn("h-dvh w-full", SAFE_STAGE)}
+        style={insetStyle}
+      />
+    );
 
   const { rules } = view;
   const n = rules.playerCount;
@@ -502,6 +510,7 @@ export function GameTable({
         ref={stage.ref}
         className={cn(
           "relative h-dvh w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,#166534_0%,#0a3622_75%)]",
+          SAFE_STAGE,
           fade.className,
         )}
         style={{ ...insetStyle, ...fade.style }}
@@ -512,7 +521,8 @@ export function GameTable({
             {/* HUD */}
             <div
               className={cn(
-                "absolute flex items-center gap-x-2 overflow-hidden whitespace-nowrap rounded-xl bg-black/35 px-3 text-sm",
+                // 단추의 넓힌 누르는 자리(44px)가 잘리지 않게 넘침을 자르지 않는다. 긴 글은 각 칸이 줄임표로 줄인다
+                "absolute flex items-center gap-x-2 whitespace-nowrap rounded-xl bg-black/35 px-3 text-sm",
                 // 세로 화면은 좁아 주공·프렌드를 둘째 줄로 내린다.
                 compactHud && "flex-wrap content-center gap-y-0.5",
               )}
@@ -582,7 +592,7 @@ export function GameTable({
                 <button
                   type="button"
                   onClick={() => setChatOpen(!chatOpen)}
-                  className="relative shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+                  className={BAR_BUTTON}
                 >
                   채팅
                   {chatUnread > 0 && (
@@ -595,22 +605,18 @@ export function GameTable({
               <button
                 type="button"
                 onClick={() => setShowSettings(true)}
-                className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+                className={BAR_BUTTON}
               >
                 설정
               </button>
               <button
                 type="button"
                 onClick={() => setShowScoreboard(true)}
-                className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+                className={BAR_BUTTON}
               >
                 점수판
               </button>
-              <button
-                type="button"
-                onClick={onExit}
-                className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
-              >
+              <button type="button" onClick={onExit} className={BAR_BUTTON}>
                 나가기
               </button>
             </div>
@@ -1081,7 +1087,15 @@ export function GameTable({
               </div>
             )}
             {showSettings && (
-              <SettingsMenu onClose={() => setShowSettings(false)} />
+              <SettingsMenu
+                onClose={() => setShowSettings(false)}
+                // 혼자 하기 도중에만 게임 전체를 끝낼 수 있다(온라인은 방장 끝내기·투표, 미션·다시 보기는 없음)
+                onQuit={
+                  network || mission || openHands || view.phase === "gameOver"
+                    ? undefined
+                    : () => submit({ type: "retire" })
+                }
+              />
             )}
             {showScoreboard && (
               <Scoreboard

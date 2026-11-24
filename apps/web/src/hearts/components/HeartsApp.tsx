@@ -5,12 +5,16 @@ import {
   type HeartsRules,
   WINDOWS_RULE_CODE,
 } from "@game/hearts-engine";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { HIT_AREA } from "@/components/hit-area";
+import { Chips } from "@/components/options/Chip";
+import { Section, SubScreen } from "@/components/options/SubScreen";
 import { ActionButton } from "@/components/panels/common";
 import { RoomScreen } from "@/components/RoomScreen";
 import { SuitStylePicker } from "@/components/SuitStylePicker";
 import { SuitText } from "@/components/SuitText";
+import { SAFE_P4 } from "@/components/safe-area";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -41,8 +45,9 @@ type Screen =
   | { kind: "tutorial" }
   | { kind: "lesson"; lessonId: string };
 
-const BG =
-  "flex min-h-dvh justify-center bg-[radial-gradient(ellipse_at_center,#7f1d1d_0%,#3b0a0a_80%)] p-4";
+const HEARTS_BG =
+  "bg-[radial-gradient(ellipse_at_center,#7f1d1d_0%,#3b0a0a_80%)]";
+const BG = cn("flex min-h-dvh justify-center p-4", SAFE_P4, HEARTS_BG);
 
 /** 하트(/hearts) */
 export function HeartsApp() {
@@ -188,47 +193,6 @@ export function HeartsApp() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-const chip = (on: boolean) =>
-  cn(
-    "rounded-full border px-3 py-1 text-xs",
-    on ? "border-amber-300 bg-white text-black" : "border-white/15 bg-white/5",
-  );
-
-function Choice<T extends string | number | boolean>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: readonly { value: T; label: string }[];
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((o) => (
-        <button
-          key={String(o.value)}
-          type="button"
-          aria-pressed={o.value === value}
-          onClick={() => onChange(o.value)}
-          className={chip(o.value === value)}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** 하트 옵션: 컴퓨터 실력과 규칙 */
 function HeartsOptions({ onBack }: { onBack: () => void }) {
   const ruleCode = useHeartsSettings((s) => s.ruleCode);
@@ -244,108 +208,94 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
   ] as const;
 
   return (
-    <main className={BG}>
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">하트 옵션</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
+    <SubScreen title="하트 옵션" onBack={onBack} bg={HEARTS_BG}>
+      <Section title="컴퓨터 실력">
+        <Chips value={level} options={HEARTS_LEVELS} onChange={setLevel} />
+        <p className="text-xs opacity-60">
+          {HEARTS_LEVELS.find((l) => l.value === level)?.description}
+        </p>
+      </Section>
+      <Section title="무늬 표기">
+        <SuitStylePicker detail />
+      </Section>
+      <Section title="규칙">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs opacity-70">{ruleCode}</span>
+          {ruleCode !== WINDOWS_RULE_CODE && (
+            <button
+              type="button"
+              onClick={() => setRuleCode(WINDOWS_RULE_CODE)}
+              className="rounded bg-white/10 px-2 py-0.5 text-xs"
+            >
+              윈도우 하트로 되돌리기
+            </button>
+          )}
         </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/40 p-5 shadow-2xl backdrop-blur">
-          <Section title="컴퓨터 실력">
-            <Choice value={level} options={HEARTS_LEVELS} onChange={setLevel} />
-            <p className="text-xs opacity-60">
-              {HEARTS_LEVELS.find((l) => l.value === level)?.description}
-            </p>
-          </Section>
-          <Section title="무늬 표기">
-            <SuitStylePicker detail />
-          </Section>
-          <Section title="규칙">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs opacity-70">{ruleCode}</span>
-              {ruleCode !== WINDOWS_RULE_CODE && (
-                <button
-                  type="button"
-                  onClick={() => setRuleCode(WINDOWS_RULE_CODE)}
-                  className="rounded bg-white/10 px-2 py-0.5 text-xs"
-                >
-                  윈도우 하트로 되돌리기
-                </button>
-              )}
-            </div>
-            <span className="text-xs opacity-70">카드 넘기기</span>
-            <Choice
-              value={rules.passing}
-              options={[
-                { value: "cycle", label: "왼·오른·맞은편·안 넘김" },
-                { value: "left", label: "늘 왼쪽" },
-                { value: "none", label: "안 넘김" },
-              ]}
-              onChange={(passing) => update({ passing })}
-            />
-            <span className="text-xs opacity-70">
-              <SuitText text="문 슛(하트 13장과 ♠Q 독차지)" />
-            </span>
-            <Choice
-              value={rules.moon}
-              options={[
-                { value: "others", label: "다른 사람 +26" },
-                { value: "self", label: "내 점수 −26" },
-                { value: "off", label: "없음" },
-              ]}
-              onChange={(moon) => update({ moon })}
-            />
-            <span className="text-xs opacity-70">
-              하트 깨기(하트가 나오기 전에는 선일 때 하트를 못 낸다)
-            </span>
-            <Choice
-              value={rules.heartsBreak}
-              options={onOff}
-              onChange={(heartsBreak) => update({ heartsBreak })}
-            />
-            <span className="text-xs opacity-70">
-              <SuitText text="♠Q가 나와도 하트가 깨져요." />
-            </span>
-            <Choice
-              value={rules.queenBreaksHearts}
-              options={onOff}
-              onChange={(queenBreaksHearts) => update({ queenBreaksHearts })}
-            />
-            <span className="text-xs opacity-70">
-              <SuitText text="첫 턴에 하트·♠Q를 낼 수 있어요." />
-            </span>
-            <Choice
-              value={rules.firstTrickPoints}
-              options={onOff}
-              onChange={(firstTrickPoints) => update({ firstTrickPoints })}
-            />
-            <span className="text-xs opacity-70">
-              <SuitText text="◆J를 먹은 사람 −10점" />
-            </span>
-            <Choice
-              value={rules.jackOfDiamonds}
-              options={onOff}
-              onChange={(jackOfDiamonds) => update({ jackOfDiamonds })}
-            />
-            <span className="text-xs opacity-70">게임이 끝나는 점수</span>
-            <Choice
-              value={rules.endScore}
-              options={[50, 100, 150].map((v) => ({
-                value: v,
-                label: `${v}점`,
-              }))}
-              onChange={(endScore) => update({ endScore })}
-            />
-          </Section>
-        </div>
-      </div>
-    </main>
+        <span className="text-xs opacity-70">카드 넘기기</span>
+        <Chips
+          value={rules.passing}
+          options={[
+            { value: "cycle", label: "왼·오른·맞은편·안 넘김" },
+            { value: "left", label: "늘 왼쪽" },
+            { value: "none", label: "안 넘김" },
+          ]}
+          onChange={(passing) => update({ passing })}
+        />
+        <span className="text-xs opacity-70">
+          <SuitText text="문 슛(하트 13장과 ♠Q 독차지)" />
+        </span>
+        <Chips
+          value={rules.moon}
+          options={[
+            { value: "others", label: "다른 사람 +26" },
+            { value: "self", label: "내 점수 −26" },
+            { value: "off", label: "없음" },
+          ]}
+          onChange={(moon) => update({ moon })}
+        />
+        <span className="text-xs opacity-70">
+          하트 깨기(하트가 나오기 전에는 선일 때 하트를 못 낸다)
+        </span>
+        <Chips
+          value={rules.heartsBreak}
+          options={onOff}
+          onChange={(heartsBreak) => update({ heartsBreak })}
+        />
+        <span className="text-xs opacity-70">
+          <SuitText text="♠Q가 나와도 하트가 깨져요." />
+        </span>
+        <Chips
+          value={rules.queenBreaksHearts}
+          options={onOff}
+          onChange={(queenBreaksHearts) => update({ queenBreaksHearts })}
+        />
+        <span className="text-xs opacity-70">
+          <SuitText text="첫 턴에 하트·♠Q를 낼 수 있어요." />
+        </span>
+        <Chips
+          value={rules.firstTrickPoints}
+          options={onOff}
+          onChange={(firstTrickPoints) => update({ firstTrickPoints })}
+        />
+        <span className="text-xs opacity-70">
+          <SuitText text="◆J를 먹은 사람 −10점" />
+        </span>
+        <Chips
+          value={rules.jackOfDiamonds}
+          options={onOff}
+          onChange={(jackOfDiamonds) => update({ jackOfDiamonds })}
+        />
+        <span className="text-xs opacity-70">게임이 끝나는 점수</span>
+        <Chips
+          value={rules.endScore}
+          options={[50, 100, 150].map((v) => ({
+            value: v,
+            label: `${v}점`,
+          }))}
+          onChange={(endScore) => update({ endScore })}
+        />
+      </Section>
+    </SubScreen>
   );
 }
 
@@ -395,7 +345,7 @@ function HeartsRulesScreen({ onBack }: { onBack: () => void }) {
           <button
             type="button"
             onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
+            className={cn(HIT_AREA, "rounded-lg bg-white/10 px-3 py-1 text-sm")}
           >
             처음으로
           </button>

@@ -14,6 +14,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { cardHeight, cardWidth, HWATU_SHAPE } from "@/components/card-fx";
 import { FairBar } from "@/components/FairBar";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
@@ -44,14 +45,13 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import {
   NYRONGPPONG_DEAL_PATTERN,
   NYRONGPPONG_STEP_MS,
   nyrongppongDealMs,
   nyrongppongMoves,
 } from "../card-fx";
-import { NYRONGPPONG_LEVELS } from "../settings";
+import { NYRONGPPONG_LEVELS, useNyrongppongSettings } from "../settings";
 import { useNyrongppong } from "../store";
 
 /** 나이롱뽕 화면 배경(화투 확인 화면과 같은 짙은 녹색 담요) */
@@ -475,6 +475,19 @@ export function NyrongppongGame({
         onExit={onExit}
         online={online}
         mySeat={me}
+        settings={
+          <BoardSettingsButton
+            useStore={useNyrongppongSettings}
+            levels={NYRONGPPONG_LEVELS}
+            solo={!online && !mission}
+            tone="bg-[#0a3622]/95"
+            onQuit={
+              !online && !mission && view.phase !== "gameOver"
+                ? () => submit({ type: "retire" })
+                : undefined
+            }
+          />
+        }
         info={
           <>
             {view.roundNumber}/{view.rules.rounds}판

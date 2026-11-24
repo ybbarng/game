@@ -104,7 +104,10 @@ export function useHandControls<C extends string = Card>() {
         g.held ?? s.selected ?? (s.playable?.has(g.card) ? g.card : null);
       g.held = held;
       if (held !== s.selected) s.setSelected(held);
-      const top = s.stage?.getBoundingClientRect().top ?? 0;
+      // 무대의 안전 영역 테두리(SAFE_STAGE)만큼 안쪽이 손패 자리의 기준이다
+      const top = s.stage
+        ? s.stage.getBoundingClientRect().top + s.stage.clientTop
+        : 0;
       // 손패 위쪽 끝보다 카드 반 장 넘게 올라가면 낼 준비
       const up = e.clientY - top < s.handTop - s.cardHeight * 0.5;
       setDragArmed(up && held !== null);

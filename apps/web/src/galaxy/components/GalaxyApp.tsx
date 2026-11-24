@@ -9,6 +9,11 @@ import {
 } from "@game/galaxy-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { Chip as BaseChip } from "@/components/options/Chip";
+import {
+  SubScreen as BaseSubScreen,
+  Section,
+} from "@/components/options/SubScreen";
 import { RoomScreen } from "@/components/RoomScreen";
 import {
   TimePresetPicker,
@@ -17,7 +22,6 @@ import {
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
-import { cn } from "@/lib/cn";
 import { obj } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
@@ -42,77 +46,33 @@ import { GalaxyStarQuiz } from "./GalaxyStarQuiz";
 import { galaxyTutorial } from "./galaxy-tutorial";
 import { GalaxySources } from "./Sources";
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
+/** 은하 칩: 공통 칩에 고른 색만 별빛(옅은 호박색)으로 */
+function Chip(props: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs transition",
-        active
-          ? "border-amber-200 bg-amber-100 text-slate-950"
-          : "border-white/15 bg-white/5 hover:bg-white/10",
-      )}
-    >
-      {children}
-    </button>
+    <BaseChip
+      {...props}
+      activeClassName="border-amber-200 bg-amber-100 text-slate-950"
+    />
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function SubScreen({
-  title,
-  onBack,
-  children,
-}: {
+/** 은하 옵션 틀: 공통 틀에 바탕과 판 색만 은하 것으로 */
+function SubScreen(props: {
   title: string;
   onBack: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <main
-      data-game="galaxy"
-      className={cn("flex min-h-dvh justify-center p-4 text-white", GALAXY_BG)}
-    >
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">{title}</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
-        </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-2xl backdrop-blur">
-          {children}
-        </div>
-      </div>
-    </main>
+    <BaseSubScreen
+      {...props}
+      bg={GALAXY_BG}
+      game="galaxy"
+      panelClassName="bg-slate-950/50"
+    />
   );
 }
 

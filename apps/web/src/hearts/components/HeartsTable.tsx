@@ -17,6 +17,7 @@ import {
   spreadDelay,
 } from "@/components/card-fx";
 import { FairOverlays, FairStatus } from "@/components/FairOverlays";
+import { BAR_BUTTON, GameSettingsMenu } from "@/components/GameSettingsMenu";
 import { useHandControls } from "@/components/hand-controls";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
@@ -27,6 +28,7 @@ import { PANEL_BUTTONS, RoundEndButtons } from "@/components/RoundEndButtons";
 import { useRelayoutFade } from "@/components/relayout";
 import { SeatPlate } from "@/components/SeatPlate";
 import { SuitText } from "@/components/SuitText";
+import { SAFE_STAGE } from "@/components/safe-area";
 import {
   MissionOverlay,
   type MissionProps,
@@ -47,9 +49,10 @@ import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 import { useFairBar } from "@/net/fair-bar";
 
+import { HEARTS_LEVELS } from "../bots";
+import { useHeartsSettings } from "../settings";
 import { canActHearts, HEARTS_DEAL_PATTERN, useHearts } from "../store";
 import { directionLabel, sortHearts } from "../terms";
-import { HeartsSettingsMenu } from "./HeartsSettingsMenu";
 import { ScoreSheet } from "./ScoreSheet";
 
 function tilt(card: Card): number {
@@ -115,6 +118,8 @@ export function HeartsTable({
   const submit = useHearts((s) => s.submit);
   const clearNotice = useHearts((s) => s.clearNotice);
   const botNames = useSettings((s) => s.botNames);
+  const level = useHeartsSettings((s) => s.level);
+  const setLevel = useHeartsSettings((s) => s.setLevel);
   const chatOpen = useChat((s) => s.open);
   const setChatOpen = useChat((s) => s.setOpen);
   const chatUnread = useChat((s) => s.unread);
@@ -138,7 +143,13 @@ export function HeartsTable({
   useAutoClear(notice, clearNotice);
 
   if (!view)
-    return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;
+    return (
+      <div
+        ref={stage.ref}
+        className={cn("h-dvh w-full", SAFE_STAGE)}
+        style={insetStyle}
+      />
+    );
 
   const me = view.seat;
   const offsetOf = (seat: number) => (seat - me + 4) % 4;
@@ -337,6 +348,7 @@ export function HeartsTable({
       ref={stage.ref}
       className={cn(
         "relative h-dvh w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,#7f1d1d_0%,#3b0a0a_80%)]",
+        SAFE_STAGE,
         fade.className,
       )}
       style={{ ...insetStyle, ...fade.style }}
@@ -346,7 +358,7 @@ export function HeartsTable({
         <>
           {/* HUD */}
           <div
-            className="absolute flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-xl bg-black/35 px-3 text-sm"
+            className="absolute flex items-center gap-2 whitespace-nowrap rounded-xl bg-black/35 px-3 text-sm"
             style={{
               left: layout.hud.x,
               top: layout.hud.y,
@@ -384,7 +396,7 @@ export function HeartsTable({
               <button
                 type="button"
                 onClick={() => setChatOpen(!chatOpen)}
-                className="relative shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+                className={BAR_BUTTON}
               >
                 채팅
                 {chatUnread > 0 && (
@@ -397,22 +409,18 @@ export function HeartsTable({
             <button
               type="button"
               onClick={() => setShowSettings(true)}
-              className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+              className={BAR_BUTTON}
             >
               설정
             </button>
             <button
               type="button"
               onClick={() => setShowScores(true)}
-              className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
+              className={BAR_BUTTON}
             >
               점수판
             </button>
-            <button
-              type="button"
-              onClick={onExit}
-              className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
-            >
+            <button type="button" onClick={onExit} className={BAR_BUTTON}>
               나가기
             </button>
           </div>
@@ -764,7 +772,21 @@ export function HeartsTable({
           />
 
           {showSettings && (
-            <HeartsSettingsMenu onClose={() => setShowSettings(false)} />
+            <GameSettingsMenu
+              onClose={() => setShowSettings(false)}
+              speed
+              cards
+              levels={{
+                options: HEARTS_LEVELS,
+                value: level,
+                onChange: setLevel,
+              }}
+              onQuit={
+                network || mission || openHands || view.phase === "gameOver"
+                  ? undefined
+                  : () => submit({ type: "retire" })
+              }
+            />
           )}
           {showScores && (
             <ScoreSheet

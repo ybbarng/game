@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { Chip } from "@/components/options/Chip";
+import { Section, SubScreen } from "@/components/options/SubScreen";
 import { RoomScreen } from "@/components/RoomScreen";
 import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
@@ -12,7 +14,6 @@ import {
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
-import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { ENDGAME_SETS } from "../endgame";
 import { chessOnline } from "../online";
@@ -28,6 +29,7 @@ import {
   useChessSettings,
 } from "../settings";
 import { type ChessSaved, clearChess, loadChess, useChess } from "../store";
+import { CHESS_STUDY_ORDER } from "../study-order";
 import { CHESS_LESSONS } from "../tutorial";
 import { PieceIcon } from "./ChessBoard";
 import { ChessEndgameScreen } from "./ChessEndgameScreen";
@@ -68,87 +70,12 @@ export function useChessHydration(): void {
   }, []);
 }
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs",
-        active
-          ? "border-amber-300 bg-white text-black"
-          : "border-white/15 bg-white/5",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-/** 옵션·규칙 화면의 틀: 제목과 "처음으로" */
-function SubScreen({
-  title,
-  onBack,
-  children,
-}: {
-  title: string;
-  onBack: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <main
-      data-game="chess"
-      className={cn("flex min-h-dvh justify-center p-4 text-white", BG)}
-    >
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">{title}</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
-        </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/40 p-5 shadow-2xl backdrop-blur">
-          {children}
-        </div>
-      </div>
-    </main>
-  );
-}
-
 /** 체스 옵션: 개인 시간·판 수·컴퓨터·내 색·칸 이름. 다함께 체스도 여기서 고른 판 수와 시간을 쓴다 */
 function ChessOptions({ onBack }: { onBack: () => void }) {
   const s = useChessSettings();
   const level = CHESS_LEVELS.find((l) => l.value === s.level);
   return (
-    <SubScreen title="체스 옵션" onBack={onBack}>
+    <SubScreen title="체스 옵션" onBack={onBack} bg={BG} game="chess">
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
@@ -287,7 +214,7 @@ function ChessRulesScreen({ onBack }: { onBack: () => void }) {
     ],
   ];
   return (
-    <SubScreen title="체스는?" onBack={onBack}>
+    <SubScreen title="체스는?" onBack={onBack} bg={BG} game="chess">
       <dl className="flex flex-col gap-3 text-sm">
         {items.map(([term, meaning]) => (
           <div key={term}>
@@ -401,7 +328,7 @@ const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
   puzzleIds: s.puzzles.map((p) => p.id),
 }));
 
-/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩 하나·룩 둘·킹과 폰) */
+/** 수 배우기 목록에 보일 기본 엔드게임 연습 묶음(퀸·룩 하나·룩 둘·폰을 퀸으로 만들기) */
 const ENDGAME_STUDY_SETS = ENDGAME_SETS.map((s) => ({
   id: s.id,
   title: s.title,
@@ -417,6 +344,16 @@ const OPENING_SET = {
   puzzleIds: CHESS_OPENING_SET.lines.map((l) => l.id),
   labels: CHESS_OPENING_SET.lines.map((l) => l.name),
 };
+
+/** 배우는 차례(`CHESS_STUDY_ORDER`)대로 늘어놓은 수 배우기 목록 */
+const ORDERED_STUDY_SETS = (() => {
+  const all = [OPENING_SET, ...STUDY_SETS, ...ENDGAME_STUDY_SETS];
+  return CHESS_STUDY_ORDER.map((id) => {
+    const set = all.find((s) => s.id === id);
+    if (!set) throw new Error(`수 배우기 목록에 없는 묶음: ${id}`);
+    return set;
+  });
+})();
 
 /** 목록에서 고른 것이 수순이면 수순 화면, 엔드게임 연습이면 연습 화면, 아니면 문제 화면 */
 const studyScreen = (id: string, review?: Review): Screen =>
@@ -514,7 +451,7 @@ export function ChessApp() {
       <StudyHome
         title="체스 수 배우기"
         background={BG}
-        sets={[OPENING_SET, ...STUDY_SETS, ...ENDGAME_STUDY_SETS]}
+        sets={ORDERED_STUDY_SETS}
         progress={useChessStudyProgress}
         onOpen={(id, review) => setScreen(studyScreen(id, review))}
         onBack={() => setScreen({ kind: "tutorial" })}

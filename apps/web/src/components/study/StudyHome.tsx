@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { SAFE_P4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
 import { copula } from "@/lib/josa";
 import { nextPuzzle, type StudyProgressStore } from "@/study/progress";
@@ -57,6 +57,7 @@ export function StudyHome({
     <main
       className={cn(
         "flex min-h-dvh justify-center break-keep p-4 text-white wrap-anywhere",
+        SAFE_P4,
         background,
       )}
     >
