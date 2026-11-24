@@ -24,7 +24,6 @@ import {
   isBonusThrow,
   sideCount,
   sideOf,
-  type ThrowValue,
   usesGesture,
   type YutRules,
 } from "./rules";
@@ -655,25 +654,4 @@ export function replay(
     state = result.state;
   }
   return { ok: true, state };
-}
-
-/** 이 편이 낸 말 수 */
-export function finishedCount(
-  state: Pick<YutState, "pieces">,
-  side: number,
-): number {
-  return state.pieces.filter((p) => p.side === side && p.point === DONE).length;
-}
-
-/** 결과 값 목록을 사람이 읽는 글로(예: "윷, 걸") */
-export function pendingText(values: readonly ThrowValue[]): string {
-  const names: Record<string, string> = {
-    "-1": "빽도",
-    "1": "도",
-    "2": "개",
-    "3": "걸",
-    "4": "윷",
-    "5": "모",
-  };
-  return values.map((v) => names[String(v)]).join(", ");
 }

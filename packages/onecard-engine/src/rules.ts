@@ -109,13 +109,8 @@ export const O1_ONECARD_RULES: OnecardRules = {
   shoutBoth: true,
 };
 
+/** 처음 받는 카드 수 고르기(옵션 화면) */
 export const HAND_SIZE_OPTIONS = [7, 5] as const;
-export const BANKRUPT_OPTIONS = [20, 15, 24, 0] as const;
-export const CATCH_PENALTY_OPTIONS = [1, 2] as const;
-export const FALSE_SHOUT_OPTIONS = [1, 2, 0] as const;
-export const SELF_WINDOW_OPTIONS = [1000, 0, 2000] as const;
-export const CATCH_WINDOW_OPTIONS = [3000, 2000, 5000] as const;
-export const FINISH_OPTIONS = ["attack", "special", "none"] as const;
 
 /**
  * 사람 반응 하한(ms, o2). 이보다 짧은 반응 시간은 보고 누른 것이 아니라 예측으로 보고 이 값으로 늘려 인정한다

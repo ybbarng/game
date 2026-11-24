@@ -32,7 +32,7 @@ import {
 } from "./chain";
 import { buildTimeline, EMPTY_TIMELINE, type Timeline } from "./fx";
 import { GALAXY_FX } from "./fx-timing";
-import { galaxyKit, myRank } from "./kit";
+import { galaxyKit } from "./kit";
 import { rememberMet } from "./met-stars";
 import { scriptedDiceStep } from "./practice";
 import { galaxyCuesFor } from "./sound";
@@ -545,8 +545,3 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     },
   };
 });
-
-/** 판 끝 순위 문구에 쓰는 내 순위(끝나지 않았으면 null) */
-export function myStanding(view: GalaxyView) {
-  return myRank(view.result, view.mySeat);
-}

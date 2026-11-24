@@ -97,11 +97,6 @@ export function redealOwners(
   return owners;
 }
 
-/** 이번 판에서 다시 나눌 때 섞을 자리: 바닥 카드와 죽은 사람 패(엔진 순서대로) */
-export function poolOf(state: MatchState, dead: number): Card[] {
-  return [...state.round.deck, ...(state.round.hands[dead] ?? [])];
-}
-
 /** 손에 든 자리 표를 진짜 카드로 바꾼다. 상태는 새로 만든다 */
 export function revealInHand(
   state: MatchState,

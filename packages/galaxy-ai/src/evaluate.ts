@@ -134,20 +134,6 @@ export function worth(
   );
 }
 
-/** 이 칸을 공짜로 얻으면 늘어나는 기대 자산(별 값 포함). 이만큼까지 내도 본전이다 */
-export function worthGain(
-  b: Board,
-  seat: number,
-  square: number,
-  rate: readonly number[],
-  turns: number,
-): number {
-  return (
-    worth(withOwner(b, square, seat), seat, rate, turns) -
-    worth(b, seat, rate, turns)
-  );
-}
-
 /** 남이 가진 별 가운데 지금 이용료가 가장 큰 값(제철 포함) */
 export function maxOpponentRent(b: Board, seat: number): number {
   let max = 0;
@@ -174,9 +160,4 @@ export function rentAhead(b: Board, seat: number, position: number): number {
 /** 10 단위로 내림(0 아래는 0) */
 export function floor10(value: number): number {
   return value <= 0 ? 0 : Math.floor(value / 10) * 10;
-}
-
-/** 10 단위로 올림 */
-export function ceil10(value: number): number {
-  return value <= 0 ? 0 : Math.ceil(value / 10) * 10;
 }

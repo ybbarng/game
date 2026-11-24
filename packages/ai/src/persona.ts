@@ -51,8 +51,6 @@ export const CAREFUL: Persona = {
   whim: 0.05,
 };
 
-export const PERSONAS: readonly Persona[] = [STEADY, BOLD, CAREFUL];
-
 /**
  * 자리마다 성향을 정한다. 컴퓨터 하나가 모든 자리를 맡으므로 자리 번호로 고른다.
  * 0번(보통 사람 자리)부터 보통·공격형·신중형·공격형·보통… 순서로 돌아간다.

@@ -50,17 +50,6 @@ export type BookRule =
   | "jokerSuicide"
   | "jokerCallOdds";
 
-export const BOOK_RULES: readonly BookRule[] = [
-  "mightyAttack",
-  "secureFirst",
-  "kirudaAceFriend",
-  "countKiruda",
-  "voidSuit",
-  "kirudaCut",
-  "jokerSuicide",
-  "jokerCallOdds",
-];
-
 export interface RuleBotOptions {
   name?: string;
   /** 쓰는 정석 */
@@ -563,9 +552,6 @@ export function createRuleBot(options: RuleBotOptions = {}): Bot {
     },
   };
 }
-
-/** 정석 없이 실수도 없는 규칙 봇(예전 1단계). 세기 비교의 기준 */
-export const plainRuleBot: Bot = createRuleBot({ name: "plain" });
 
 /**
  * 쓰는 정석. `secureFirst`는 재 보니 오히려 약해져서(판당 −0.05) 뺐다.

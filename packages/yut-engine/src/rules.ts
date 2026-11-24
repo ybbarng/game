@@ -110,18 +110,8 @@ export function sideOf(rules: YutRules, seat: number): number {
   return rules.mode === "team" ? seat % 2 : seat;
 }
 
-/** 이 편에 속한 자리들 */
-export function seatsOfSide(rules: YutRules, side: number): number[] {
-  const seats: number[] = [];
-  for (let s = 0; s < rules.players; s++)
-    if (sideOf(rules, s) === side) seats.push(s);
-  return seats;
-}
-
 /** 던지기 결과(칸 수). -1은 빽도 */
 export type ThrowValue = -1 | 1 | 2 | 3 | 4 | 5;
-
-export const THROW_VALUES: readonly ThrowValue[] = [1, 2, 3, 4, 5, -1];
 
 export function throwName(value: ThrowValue): string {
   switch (value) {
