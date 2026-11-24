@@ -185,19 +185,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         return nil
       }
-      // 기록·티어표 창은 Esc로 닫는다(설정 창은 웹 화면의 Esc를 그대로 둔다)
-      if let w = event.window, let kind = self.webWindows.first(where: { $0.value === w })?.key,
-        kind != .settings
-      {
-        w.close()
-        return nil
-      }
-      // 네이티브 창은 셋 다 Esc로 닫는다(설정 창은 키 기다리는 중이 아닐 때만, `NativeSettingsWindow`가 먼저 먹는다)
-      if let w = event.window, self.sheets.values.contains(where: { $0.window === w }) {
-        w.close()
-        return nil
-      }
-      return event
+      // 기록·티어표 창은 Esc로 닫는다(사이트 설정 창은 웹 화면의 Esc를 그대로 둔다). 네이티브 창은 셋 다 닫는다(설정 창의
+      // 키 지정 중에는 편집기 감시가 먼저 먹는다). 글 칸에 쓰는 중이면 Esc는 글 칸 몫이다(`EscClose`)
+      guard let w = event.window else { return event }
+      let kind: EscClose.Window =
+        if let site = self.webWindows.first(where: { $0.value === w })?.key {
+          .site(settings: site == .settings)
+        } else if self.sheets.values.contains(where: { $0.window === w }) {
+          .native
+        } else {
+          .other
+        }
+      let editing = (w.firstResponder as? NSText)?.isEditable == true
+      guard EscClose.closes(kind, editingText: editing) else { return event }
+      w.close()
+      return nil
     }
 
     if Config.debug { listenDebug() }
@@ -770,6 +772,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     appMenu.addItem(quit)
     appItem.submenu = appMenu
     main.addItem(appItem)
+    // 편집: 글 칸(키 배치 가져오기 등)에서 잘라내기·복사·붙여넣기·전체 선택. 표준 동작을 응답 사슬에 보낸다(target nil).
+    // 되돌리기 ⌘Z는 두지 않는다(큐브 되돌리기 키라 큐브 창에 가야 한다)
+    let editItem = NSMenuItem()
+    let editMenu = NSMenu(title: "편집")
+    for (title, action, key) in [
+      ("잘라내기", #selector(NSText.cut(_:)), "x"), ("복사", #selector(NSText.copy(_:)), "c"),
+      ("붙여넣기", #selector(NSText.paste(_:)), "v"), ("전체 선택", #selector(NSText.selectAll(_:)), "a"),
+    ] {
+      editMenu.addItem(NSMenuItem(title: title, action: action, keyEquivalent: key))
+    }
+    editItem.submenu = editMenu
+    main.addItem(editItem)
     let windowItem = NSMenuItem()
     let windowMenu = NSMenu(title: "창")
     let close = NSMenuItem(title: "닫기", action: #selector(menuCloseWindow), keyEquivalent: "w")
