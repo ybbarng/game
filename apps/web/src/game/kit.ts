@@ -3,6 +3,7 @@ import type { RngState } from "@game/mighty-engine";
 
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
 import type { ClaimRaceSpec } from "@/net/claim-race";
+import type { KitFairTable } from "@/net/fair-table";
 import type { AchievementSpec, KitResult } from "@/stats/outcome";
 
 /** 컴퓨터 플레이어. 자기 자리에서 보이는 정보만 받는다(마이티·하트 공통 모양) */
@@ -242,6 +243,15 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
     /** 원카드: 판 도중 뽑기와 다시 섞기 사슬(`kind: "onecard"`, fair-play `OnecardHostTable`) */
     // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
     | OnecardTableSpec<Rules, State, any, Action, Event>;
+  /**
+   * 마이티·하트처럼 판마다 함께 섞어 나눈 패로 끝까지 치는 카드 게임의 멘탈 포커 판을 불러온다(`net/fair-table.ts`).
+   * 판 코드는 무거워 혼자 하기 묶음에 싣지 않고, 온라인 방을 열 때 `withFairTable`이 불러 `fairTable`을 채운다
+   */
+  loadFairTable?(): Promise<
+    KitFairTable<Rules, State, View, Action, Event, Extra>
+  >;
+  /** 불러온 멘탈 포커 판(`withFairTable`이 채운다). 암호화방의 HostRoom·GuestRoom이 이것으로 판을 만든다 */
+  fairTable?: KitFairTable<Rules, State, View, Action, Event, Extra>;
   /**
    * 실시간 청구(공정한 동시 판정 1층, docs/43). 있으면 온라인 방이 청구를 모두에게 직접 보내고(`ClaimHub`),
    * 방장이 묶음으로 판정해 발표하며, 참가자가 같은 함수로 다시 계산해 맞춰 본다. 없으면 그 게임은 영향이 없다

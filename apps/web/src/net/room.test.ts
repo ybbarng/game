@@ -5,6 +5,7 @@ import { heuristicBot, intermediateBot } from "@game/mighty-ai";
 import { encodeRuleString, presetRules } from "@game/mighty-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { tokenProof } from "./fairness";
 import { type AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
@@ -34,6 +35,7 @@ async function until(condition: () => boolean, tries = 200): Promise<void> {
 async function setup() {
   const net = new MemoryNetwork();
   const host = new HostRoom({
+    kit: mightyRoomKit,
     transport: net.join("host"),
     clock,
     hostName: "방장",
@@ -45,6 +47,7 @@ async function setup() {
     botLevel: 1,
   });
   const a = new GuestRoom({
+    kit: mightyRoomKit,
     transport: net.join("a"),
     clock,
     name: "철수",
@@ -53,6 +56,7 @@ async function setup() {
   // 두 사람이 동시에 들어오면 앉는 순서가 그때그때 달라진다. 앞사람이 앉은 뒤에 들어온다.
   await until(() => a.seat !== null);
   const b = new GuestRoom({
+    kit: mightyRoomKit,
     transport: net.join("b"),
     clock,
     name: "영희",
@@ -137,8 +141,13 @@ describe("온라인 방", () => {
       store,
       clock,
     };
-    const host = new HostRoom({ transport: net.join("host"), ...options });
+    const host = new HostRoom({
+      kit: mightyRoomKit,
+      transport: net.join("host"),
+      ...options,
+    });
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -162,6 +171,7 @@ describe("온라인 방", () => {
     await flush();
     const restore = store.load();
     const fresh = new HostRoom({
+      kit: mightyRoomKit,
       transport: net.join("host-reloaded"),
       ...options,
       ...(restore ? { restore } : {}),
@@ -193,8 +203,13 @@ describe("온라인 방", () => {
       store,
       clock,
     };
-    const host = new HostRoom({ transport: net.join("host"), ...options });
+    const host = new HostRoom({
+      kit: mightyRoomKit,
+      transport: net.join("host"),
+      ...options,
+    });
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -228,6 +243,7 @@ describe("온라인 방", () => {
       },
     };
     const fresh = new HostRoom({
+      kit: mightyRoomKit,
       transport,
       ...options,
       ...(restore ? { restore } : {}),
@@ -313,13 +329,16 @@ describe("온라인 방", () => {
   it("다시 연결되지 않으면 정한 시간 뒤 방장이 나간 것으로 본다", async () => {
     const net = new MemoryNetwork();
     const host = new HostRoom({
+      kit: mightyRoomKit,
       transport: net.join("host"),
       clock,
       hostName: "방장",
       rules,
       revealTimeoutMs: 500,
+      bot: heuristicBot,
     });
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -374,6 +393,7 @@ describe("온라인 방", () => {
     expect(host.match?.current().roundNumber).toBeGreaterThan(1);
 
     const back = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a2"),
       clock,
       name: "철수",
@@ -528,6 +548,7 @@ describe("대기실 관리", () => {
     expect(lobbyAfterKick).toBe(0);
 
     const again = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a2"),
       clock,
       name: "철수",
@@ -583,11 +604,13 @@ describe("채팅", () => {
 describe("방장 확인(서명)", () => {
   async function hostWithLink(net: MemoryNetwork) {
     const host = new HostRoom({
+      kit: mightyRoomKit,
       transport: net.join("host"),
       clock,
       hostName: "방장",
       rules,
       revealTimeoutMs: 500,
+      bot: heuristicBot,
     });
     return { host, fingerprint: await host.fingerprint() };
   }
@@ -597,6 +620,7 @@ describe("방장 확인(서명)", () => {
     net.dtls = true;
     const { host, fingerprint } = await hostWithLink(net);
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -616,6 +640,7 @@ describe("방장 확인(서명)", () => {
     // 메시지는 릴레이가 그대로 전달하므로 방장 서명 자체는 진짜다.
     net.intercept("a", "host");
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -654,6 +679,7 @@ describe("방장 확인(서명)", () => {
         evil.send({ t: "welcome", seat: 1, token: "가짜" }, from);
     });
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -674,12 +700,15 @@ describe("방장 확인(서명)", () => {
     net.disconnect("host");
     // 가짜 방장도 HostRoom을 그대로 돌린다(자기 열쇠로 서명한다).
     const fake = new HostRoom({
+      kit: mightyRoomKit,
       transport: net.join("fake"),
       clock,
       hostName: "가짜 방장",
       rules,
+      bot: heuristicBot,
     });
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",

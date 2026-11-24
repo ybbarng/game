@@ -38,6 +38,7 @@ import {
   reportIncident,
   useFairBar,
 } from "@/net/fair-bar";
+import { withFairTable } from "@/net/fair-table";
 import { type AuditResult, GuestRoom, OTHER_GAME_ROOM } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import {
@@ -368,6 +369,9 @@ export function RoomScreen<
     setPlayerName(trimmed);
     setPhase("connecting");
     try {
+      // 마이티·하트의 멘탈 포커 판은 따로 불러온다. 연결을 열기 전에 불러 두어, 연결과 방 만들기 사이에
+      // 기다림이 끼지 않게 한다(방은 판을 바로 꺼내 쓴다).
+      const roomKit = await withFairTable(kit);
       const transport = await openTransport(roomCode, {
         role: isHost ? "host" : "guest",
         game: gameId,
@@ -377,7 +381,7 @@ export function RoomScreen<
         const hostRules = game.hostRules ? game.hostRules(rules) : rules;
         const ruleName = game.ruleName?.(hostRules);
         const host = new HostRoom<Rules, State, View, ActionT, Event, Extra>({
-          kit,
+          kit: roomKit,
           transport,
           hostName: resume?.restore.saved.hostName ?? trimmed,
           rules: hostRules,
@@ -425,7 +429,7 @@ export function RoomScreen<
       } else {
         const saved = loadSeatToken(roomCode);
         const guest = new GuestRoom<Rules, State, View, ActionT, Event, Extra>({
-          kit,
+          kit: roomKit,
           transport,
           name: trimmed,
           token: saved?.token ?? null,

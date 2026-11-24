@@ -8,6 +8,7 @@ import {
   presetRules,
 } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
+import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { mightyKit } from "@/game/mighty-kit";
 import type { GameArchive } from "@/review/archive";
 import type { ArchiveSource } from "@/review/recorder";
@@ -60,6 +61,7 @@ describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
     net.disconnect("g0");
     old.leave();
     const fresh = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("g0-reloaded"),
       name: "손님0",
       token,
@@ -107,6 +109,7 @@ describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
     net.reconnect("g0");
     (guests[0] as GuestRoom).leave();
     const back = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("g0-back"),
       name: "손님0",
       token: (guests[0] as GuestRoom).token,

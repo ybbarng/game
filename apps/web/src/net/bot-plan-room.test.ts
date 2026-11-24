@@ -78,7 +78,7 @@ async function botRoom(options: {
   }
   const hostFingerprint = await host.fingerprint();
   const a = new GuestRoom({
-    ...(options.guestKit ? { kit: options.guestKit } : {}),
+    kit: options.guestKit ?? mightyKit,
     transport: net.join("a"),
     clock,
     name: "철수",

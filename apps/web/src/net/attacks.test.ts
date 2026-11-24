@@ -5,6 +5,7 @@ import { heuristicBot, intermediateBot } from "@game/mighty-ai";
 import { type Action, presetRules } from "@game/mighty-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { type AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import type { HostMessage } from "./protocol";
@@ -35,14 +36,17 @@ async function until(condition: () => boolean): Promise<void> {
 async function room() {
   const net = new MemoryNetwork();
   const host = new HostRoom({
+    kit: mightyRoomKit,
     transport: net.join("host"),
     clock,
     hostName: "방장",
     rules,
     revealTimeoutMs: 300,
+    bot: heuristicBot,
   });
   const fingerprint = await host.fingerprint();
   const a = new GuestRoom({
+    kit: mightyRoomKit,
     transport: net.join("a"),
     clock,
     name: "철수",
@@ -146,6 +150,7 @@ describe("컴퓨터 자리", () => {
   async function botRoom() {
     const net = new MemoryNetwork();
     const host = new HostRoom({
+      kit: mightyRoomKit,
       transport: net.join("host"),
       clock,
       hostName: "방장",
@@ -157,6 +162,7 @@ describe("컴퓨터 자리", () => {
     // 연결 알림을 놓치지 않게 지문을 먼저 받아 두고 들어간다.
     const hostFingerprint = await host.fingerprint();
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a"),
       clock,
       name: "철수",
@@ -235,6 +241,7 @@ describe("참가자가 고친 경우", () => {
     // 철수가 새로고침: 같은 토큰으로 새 연결
     a.transport.leave();
     const a2 = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("a2"),
       clock,
       name: "철수",

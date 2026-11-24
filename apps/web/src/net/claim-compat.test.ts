@@ -3,6 +3,7 @@ import { heuristicBot } from "@game/mighty-ai";
 import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
+import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import { MemoryNetwork, type Transport } from "./transport";
@@ -86,16 +87,19 @@ describe("옛 방 코드가 청구 메시지를 무시한다", () => {
     const clock = new ManualClock();
     const net = new MemoryNetwork();
     const host = new HostRoom({
+      kit: mightyRoomKit,
       transport: net.join("host"),
       clock,
       hostName: "방장",
       rules,
       revealTimeoutMs: 500,
       standInDelayMs: 10,
+      bot: heuristicBot,
     });
     expect(host.claims).toBe(null);
     const aTransport = net.join("a");
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: aTransport,
       clock,
       name: "철수",
@@ -103,6 +107,7 @@ describe("옛 방 코드가 청구 메시지를 무시한다", () => {
     });
     await until(() => a.seat !== null);
     const b = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("b"),
       clock,
       name: "영희",
