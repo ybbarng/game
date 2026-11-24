@@ -310,7 +310,7 @@ function BadukHome({
           <h1 className="mt-2 font-black text-4xl tracking-wide">바둑</h1>
         </>
       }
-      tagline="돌을 번갈아 놓아 더 넓게 차지하라"
+      tagline="돌을 번갈아 놓아 더 넓게 차지해요."
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "⚫",

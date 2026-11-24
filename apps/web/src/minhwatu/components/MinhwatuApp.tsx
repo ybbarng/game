@@ -291,7 +291,7 @@ function MinhwatuHome({
           <h1 className="mt-3 font-black text-4xl tracking-wide">민화투</h1>
         </>
       }
-      tagline="같은 달끼리 짝 맞춰 가져와 카드 점수를 모아라"
+      tagline="같은 달끼리 짝 맞춰 가져와 카드 점수를 모아요."
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "🎴",

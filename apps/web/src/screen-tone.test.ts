@@ -12,6 +12,8 @@ import { sentenceProblem, sentencesOf } from "@/study/tone";
 const files: Record<string, string> = import.meta.glob(
   [
     "./{baduk,baseball,chess,galaxy,game,gostop,hearts,hwatu,janggi,minhwatu,nyrongppong,omok,onecard,yut,review,stats,components}/**/*.{ts,tsx}",
+    // 게임 목록 한 줄 소개(해요체 문장, 2026-11-24 사용자)
+    "./games/registry.ts",
     // 온라인 방 안내와 판 끝 검증 실패 사유(검증 알림 「공정성 확인 실패: …」에 그대로 들어간다)
     "./net/**/*.ts",
     // 없는 주소 화면(별 따기와 함께 쓴다)

@@ -328,7 +328,7 @@ function NyrongppongHome({
           <h1 className="mt-2 font-black text-4xl tracking-wide">나이롱뽕</h1>
         </>
       }
-      tagline="남이 버린 카드와 같은 달 두 장이면 뽕! 손에 남은 숫자를 가장 작게"
+      tagline="남이 버린 카드와 같은 달 두 장이면 뽕! 손에 남은 숫자를 가장 작게 줄여요."
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "🎴",

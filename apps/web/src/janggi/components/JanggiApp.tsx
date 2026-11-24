@@ -338,7 +338,7 @@ function JanggiHome({
           <h1 className="mt-2 font-black text-4xl tracking-wide">장기</h1>
         </>
       }
-      tagline="기물 열여섯 개로 상대 궁을 피할 곳 없이 몰아라"
+      tagline="기물 열여섯 개로 상대 궁을 피할 곳 없이 몰아요."
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "楚",
