@@ -215,6 +215,7 @@ function Choice<T extends string | number | boolean>({
         <button
           key={String(o.value)}
           type="button"
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={chip(o.value === value)}
         >

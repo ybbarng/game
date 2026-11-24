@@ -84,6 +84,7 @@ export function FaceComparison() {
           <button
             key={f.id}
             type="button"
+            aria-pressed={f.id === fontId}
             onClick={() => setFontId(f.id)}
             className={chip(f.id === fontId)}
           >
@@ -95,6 +96,7 @@ export function FaceComparison() {
           <button
             key={s.id}
             type="button"
+            aria-pressed={s.id === sizeId}
             onClick={() => setSizeId(s.id)}
             className={chip(s.id === sizeId)}
           >
@@ -104,6 +106,7 @@ export function FaceComparison() {
         <span className="mr-1 ml-4 text-xs opacity-70">색</span>
         <button
           type="button"
+          aria-pressed={!fourColor}
           onClick={() => setFourColor(false)}
           className={chip(!fourColor)}
         >
@@ -111,6 +114,7 @@ export function FaceComparison() {
         </button>
         <button
           type="button"
+          aria-pressed={fourColor}
           onClick={() => setFourColor(true)}
           className={chip(fourColor)}
         >
