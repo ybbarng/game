@@ -9,7 +9,7 @@ import {
 import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
-import { minhwatuKit } from "@/minhwatu/kit";
+import { minhwatuRoomKit } from "@/minhwatu/fair-table";
 import { STANDING_MISMATCH } from "@/net/fair-verify";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -25,7 +25,7 @@ import {
 describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
   it("첫 판 카드를 다 열기 전에 방장이 끝내도 참가자 게임 끝 검증은 통과한다(끝까지 치지 않은 판은 결과 없음)", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 2,
       bot: minhwatuIntermediateBot,
@@ -60,7 +60,7 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
 
   it("첫 판을 끝까지 쳐 정산한 직후 다음 판 전에 그만두면, 그 판 패가 열리지 않은 참가자는 게임 끝 검증에서 그 판을 짚는다", async () => {
     const { host, guests, incidents, audits, clock } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 1,
       bot: minhwatuIntermediateBot,
@@ -98,7 +98,7 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
 
   it("첫 판을 끝내고 둘째 판 도중에 그만두면 참가자 게임 끝 검증은 통과한다(끝 화면 점수 = 첫 판까지 점수)", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 3 },
       guests: 1,
       bot: minhwatuIntermediateBot,
@@ -130,7 +130,7 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
 
   it("고친 방장 기기가 판 끝 화면을 보내지 않고 그만둔 끝 화면의 점수를 부풀리면, 참가자 게임 끝 검증이 짚는다", async () => {
     const { host, guests, incidents, audits, clock } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 1,
       bot: minhwatuIntermediateBot,
@@ -168,7 +168,7 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
 
   it("그만한 첫 판에서도 낸다고 한 카드와 열쇠로 연 카드가 다르면 그 자리를 짚고, 끝내도 그 알림은 남는다", async () => {
     const { host, guests, incidents } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 1,
       bot: minhwatuIntermediateBot,

@@ -14,7 +14,7 @@ import {
 import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
-import { minhwatuKit } from "@/minhwatu/kit";
+import { minhwatuRoomKit } from "@/minhwatu/fair-table";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 
@@ -29,7 +29,7 @@ const RULES = { ...STANDARD_RULES, rounds: 2 };
 
 const setup = (guests: number, hostStore = false) =>
   setupHwatu({
-    kit: minhwatuKit,
+    kit: minhwatuRoomKit,
     rules: RULES,
     guests,
     bot: minhwatuIntermediateBot,

@@ -29,7 +29,6 @@ import { hwatuReviewDeals } from "@/hwatu/fair";
 import { obj } from "@/lib/josa";
 import { anyRound } from "@/stats/achievements";
 import type { RoundRecord } from "@/stats/records";
-import { gostopFair } from "./fair";
 
 export type GostopKit = GameKit<
   GostopRules,
@@ -169,7 +168,7 @@ export const gostopKit: GostopKit = {
   step,
   viewOf,
   replay: (rules, seed, log, preset) => replay(rules, seed, log, preset),
-  cardTable: gostopFair,
+  loadFairTable: () => import("./fair-table").then((m) => m.gostopFairTable),
   pendingSeats,
   playerCount: (rules) => rules.players,
   encodeRules: encodeGostopRules,

@@ -21,7 +21,7 @@
   - 찾아 쓰기
   - 바뀔 때 고칠 범위
   - 대안
-- [ ] 숨길 정보가 있는지 본다. 남의 패나 섞은 더미가 있으면 멘탈 포커(`packages/fair-play`)를 쓴다. 판 게임처럼 숨길 것이 없으면 쓰지 않는다(docs/18 3-2).
+- [ ] 숨길 정보가 있는지 본다. 남의 패나 섞은 더미가 있으면 멘탈 포커(`packages/fair-play`)를 쓴다. 판은 `<게임>/fair-table.ts`에 두고 킷에는 불러오는 함수 `loadFairTable`만 둔다(혼자 하기·판 게임 방 묶음에 싣지 않게, docs/13 13절). 바닥·더미가 있는 화투 모양은 `hwatuFairTable(약속)`, 판 도중 뽑기가 있는 원카드 모양은 `onecardFairTableOf(약속)`으로 감싼다. 판 게임처럼 숨길 것이 없으면 쓰지 않는다(docs/18 3-2).
 - [ ] 처음에 정해 숨기는 값(숫자야구 비밀 수)은 **약속 후 공개**로 한다(docs/34 3절): 엔진에는 약속(SHA-256 + 소금)만, 답은 비밀 가진 기기가 자동으로 내고, 판 끝 공개에서 약속과 모든 답을 다시 계산한다. 컴퓨터는 사람이 정한 비밀을 모르니 `botCanAct`로 답하기를 막는다
 
 ## 2. 엔진 `packages/<게임>-engine` (순수 함수)
@@ -215,7 +215,7 @@
 
 새 구성요소(2026-11-04, 원카드 o2): 같은 판을 두고 반응 속도로 겨루는 게임은 `KitClaims.race`(공통 판정 2층, docs/43 7-2)를 채운다(본인 판별·하한·공정 창·보냄 지연). 청구에 `rtMs`를 싣고, 방장 발표의 `race.rt`와 순서를 참가자가 `net/claim-race.ts`의 같은 식으로 맞춰 본다. 혼자 하기에서 누름을 모으려면 엔진이 모으는 시계를 `GameKit.timers`로 내놓는다.
 
-새 구성요소(2026-11-04, 원카드 온라인): 실시간 청구는 `GameKit.claims`(공정한 동시 판정 1층, docs/43 7-1) — 화면은 `room.claims.claim(body, {seen})`, 방장 발표는 엔진 행동으로 기록에 남아 판 끝 다시 계산이 판정까지 다시 한다. 방장 기기가 넣은 행동(창 시간 끝·다시 섞기·청구 묶음)은 `GameKit.hostAction`으로 판 끝 검증의 "내 행동"·"컴퓨터 수" 맞춰 보기에서 뺀다. 기억을 쓰는 컴퓨터는 `KitBot.observe`로 판 끝 검증 때 같은 사건을 듣는다. 판 도중 뽑기·다시 섞기가 있는 카드 게임의 멘탈 포커는 `GameKit.cardTable`에 `kind: "onecard"` 모양(fair-play `OnecardTableSpec`)으로 넣는다.
+새 구성요소(2026-11-04, 원카드 온라인): 실시간 청구는 `GameKit.claims`(공정한 동시 판정 1층, docs/43 7-1) — 화면은 `room.claims.claim(body, {seen})`, 방장 발표는 엔진 행동으로 기록에 남아 판 끝 다시 계산이 판정까지 다시 한다. 방장 기기가 넣은 행동(창 시간 끝·다시 섞기·청구 묶음)은 `GameKit.hostAction`으로 판 끝 검증의 "내 행동"·"컴퓨터 수" 맞춰 보기에서 뺀다. 기억을 쓰는 컴퓨터는 `KitBot.observe`로 판 끝 검증 때 같은 사건을 듣는다. 판 도중 뽑기·다시 섞기가 있는 카드 게임의 멘탈 포커는 카드 표 약속을 `kind: "onecard"` 모양(fair-play `OnecardTableSpec`, `<게임>/fair.ts`)으로 쓰고, 판(`onecard/fair-table.ts`의 `onecardFairTableOf`)으로 감싸 `GameKit.loadFairTable`로 따로 불러온다(2026-11-25, docs/13 13절. 예전에는 `GameKit.cardTable`).
 새 구성요소(2026-11-04, 은하 한 바퀴 배우기): 주사위 게임 미션은 굴림 눈을 장면에 적어 두고 `LocalMatch`의 `step`을 바꿔 그 눈으로 굴린다(`galaxy/practice.ts` `scriptedDiceStep`, 엔진 `stepWithDice`). 배우기 첫 화면의 단원 아래 칸(`TutorialHome` `extra`)에 아이콘(`icon`)을 줄 수 있다.
 새 구성요소(2026-11-05, 은하 한 바퀴 별 칸): 실제 별을 칸·카드 크기로 그릴 때는 `components/star/StarGlyph`(진한 색 원반·이글거리는 쌀알 무늬·숨 쉬는 빛무리, 크기는 등급, 움직임 줄이기면 멈춤)를 쓴다. 값 계산은 `components/star/star-look.ts`(docs/48 15-2).
 새 구성요소(2026-11-05, 은하 한 바퀴 둘러앉기): 짧은 그림 반응(박수·놀람·아쉬움)은 `net/chat.ts`의 `useChat().react(보낸 자리, 받는 자리, 종류)`로 보낸다. 방에서는 채팅 줄에 보이지 않는 머리를 붙여 오가고(방 메시지는 그대로), 받은 반응은 `reactions`에 쌓여 채팅 목록에는 보이지 않는다. 같은 사람은 3초에 한 번. 혼자 하기는 이 기기에만 띄운다(docs/48 15-8).

@@ -5,7 +5,7 @@ import { minhwatuIntermediateBot } from "@game/minhwatu-ai";
 import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
-import { minhwatuKit } from "@/minhwatu/kit";
+import { minhwatuRoomKit } from "@/minhwatu/fair-table";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 
@@ -17,7 +17,7 @@ const phase = (host: AnyHost) =>
 describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
   it("끊긴 사람을 기다리다 투표가 열리고, 방장이 끝내기를 고르면 모두의 게임이 끝난다", async () => {
     const { net, clock, host, guests } = await setupHwatu({
-      kit: minhwatuKit,
+      kit: minhwatuRoomKit,
       rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 2,
       bot: minhwatuIntermediateBot,

@@ -74,6 +74,7 @@ export const mightyFairTable: KitFairTable<
     return {
       table,
       presetDeal: () => table.presetDeal(),
+      begin: (events) => table.begin(events),
       maskView: (view) => ({
         ...view,
         hand: [],
@@ -83,8 +84,10 @@ export const mightyFairTable: KitFairTable<
     };
   },
   guest: ({ sendTo: _, ...options }) => new FairGuestSeat(options),
-  replay: MIGHTY_REPLAY,
+  replay: () => MIGHTY_REPLAY,
   finishedRound: (view) => finishedRoundOf("mighty", view),
+  // 열쇠를 공개한 판이 다 열리길 기다린다(화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다).
+  whenEndOpened: (seat) => (seat as FairGuestSeat).whenRevealedOpened(),
 };
 
 /** 멘탈 포커 판을 채운 마이티 킷(시험이 방을 바로 만들 때. 화면은 `withFairTable`로 불러 채운다) */

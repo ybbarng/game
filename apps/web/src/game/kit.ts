@@ -1,4 +1,3 @@
-import type { HwatuFairSpec, OnecardTableSpec } from "@game/fair-play";
 import type { RngState } from "@game/mighty-engine";
 
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
@@ -235,17 +234,9 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   hostAction?(action: Action): boolean;
   /**
-   * 화투처럼 바닥·더미가 있는 카드 게임의 멘탈 포커(fair-play `HwatuFairSpec`). 있으면 암호화방에서
-   * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom)
-   */
-  cardTable?: // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다(손패·결정·판 번호만 쓴다)
-    | HwatuFairSpec<Rules, State, any, Action, Event>
-    /** 원카드: 판 도중 뽑기와 다시 섞기 사슬(`kind: "onecard"`, fair-play `OnecardHostTable`) */
-    // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
-    | OnecardTableSpec<Rules, State, any, Action, Event>;
-  /**
-   * 마이티·하트처럼 판마다 함께 섞어 나눈 패로 끝까지 치는 카드 게임의 멘탈 포커 판을 불러온다(`net/fair-table.ts`).
-   * 판 코드는 무거워 혼자 하기 묶음에 싣지 않고, 온라인 방을 열 때 `withFairTable`이 불러 `fairTable`을 채운다
+   * 카드 게임(마이티·하트·화투 셋·원카드)의 멘탈 포커 판을 불러온다(`net/fair-table.ts`). 있으면 암호화방에서
+   * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom). 판 코드는 무거워 혼자 하기 묶음에 싣지 않고,
+   * 온라인 방을 열 때 `withFairTable`이 불러 `fairTable`을 채운다
    */
   loadFairTable?(): Promise<
     KitFairTable<Rules, State, View, Action, Event, Extra>

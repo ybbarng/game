@@ -18,6 +18,7 @@ describe("민화투 카드 표 약속", () => {
       for (const seed of [1, 2, 3]) {
         const sim = simulateCardTable({
           kit: minhwatuKit,
+          spec: minhwatuFair,
           rules: { ...STANDARD_RULES, players, rounds: 2 },
           seed,
           bot: minhwatuBeginnerBot,
@@ -31,6 +32,7 @@ describe("민화투 카드 표 약속", () => {
   it("낸 카드와 뒤집은 더미만 모두에게 연다", () => {
     simulateCardTable({
       kit: minhwatuKit,
+      spec: minhwatuFair,
       rules: { ...STANDARD_RULES, rounds: 1 },
       seed: 1,
       bot: minhwatuBeginnerBot,

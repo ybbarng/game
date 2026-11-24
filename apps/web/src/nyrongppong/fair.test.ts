@@ -29,6 +29,7 @@ describe("나이롱뽕 카드 표 약속", () => {
       for (const seed of [1, 2, 3]) {
         const sim = simulateCardTable({
           kit: nyrongppongKit,
+          spec: nyrongppongFair,
           rules: rulesOf(players, rounds),
           seed,
           bot: nyrongppongBeginnerBot,
@@ -44,6 +45,7 @@ describe("나이롱뽕 카드 표 약속", () => {
     let discards = 0;
     simulateCardTable({
       kit: nyrongppongKit,
+      spec: nyrongppongFair,
       rules: rulesOf(3, 1),
       seed: 4,
       bot: nyrongppongBeginnerBot,
@@ -73,6 +75,7 @@ describe("나이롱뽕 카드 표 약속", () => {
   it("판이 끝나는 걸음 전에 모든 카드를 연다(남은 손패 합이 점수다)", () => {
     const sim = simulateCardTable({
       kit: nyrongppongKit,
+      spec: nyrongppongFair,
       rules: rulesOf(2, 1),
       seed: 5,
       bot: nyrongppongBeginnerBot,

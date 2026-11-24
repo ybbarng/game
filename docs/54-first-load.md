@@ -69,6 +69,8 @@ node scripts/bundle-size.mjs --compare before.json  # 고친 뒤 견주기
 
 ## 4. 남은 것(지도 `platform-shared-pieces` next)
 
+- **온라인 방 묶음의 멘탈 포커 기기·libsodium**: 「다함께」 → 「방 만들기」까지 더 받는 JS가 오목 239KB인데 그 가운데 libsodium 183KB와 fair-play 기기·증명(device·shuffle-proof·sra·ristretto) 12KB가 멘탈 포커를 쓰지 않는 판 게임에도 실린다. `net/session.ts`의 `openTransport`가 모든 게임에서 `prepareGroup("r255")`을 기다리고, 방 코드(`host-room`·`guest-room`·`p2p-transport`·`protocol`)가 `realClock` 등을 `@game/fair-play` index에서 부른다. 멘탈 포커를 쓰는 방(킷에 `loadFairTable`이 있음)에서만 군을 불러 준비하고 시계는 `@game/fair-play/clock`에서 부르면 판 게임 방에서 빠진다. 화투·원카드 판은 2026-11-25에 방 묶음에서 뺐다(docs/13 13절 「화투·원카드도」).
+
 - **/profile 탭별 통계**: 탭 화면과 `KIT_STATS`가 게임 키트(`@/chess/kit` 등)를 불러 컴퓨터(chess-ai·baduk-ai·janggi-ai…)까지 실린다. 탭마다 모듈(통계 화면 + 기록 정의)로 나눠 고른 탭만 불러야 한다. 지금 363KB로 가장 덜 줄었다.
 - **카드 게임 배우기**: 마이티·하트·화투 셋·원카드·윷·숫자야구·은하 App은 아직 튜토리얼(LessonPlayer와 단원 자료)을 정적으로 싣는다. 판 게임처럼 `<게임>Learn.tsx`로.
 - **소리 짜기 갈래 나누기**: `game/sound/render.ts`(약 1,900줄)를 합성 기본(`synth`)과 영역별(마이티·화투·판 게임·큐브·별 따기)로 나누면 첫 소리 때 받는 양도 줄고 읽기 쉬워진다. 첫 화면 묶음에서는 이미 빠졌다.

@@ -28,7 +28,6 @@ import type { Commentary, GameKit, Verdict } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";
 import { obj } from "@/lib/josa";
 
-import { minhwatuFair } from "./fair";
 import { minhwatuStats } from "./stats";
 
 export type MinhwatuKit = GameKit<
@@ -107,7 +106,7 @@ export const minhwatuKit: MinhwatuKit = {
   step,
   viewOf,
   replay: (rules, seed, log, preset) => replay(rules, seed, log, preset),
-  cardTable: minhwatuFair,
+  loadFairTable: () => import("./fair-table").then((m) => m.minhwatuFairTable),
   pendingSeats,
   playerCount: (rules) => rules.players,
   encodeRules: encodeMinhwatuRules,

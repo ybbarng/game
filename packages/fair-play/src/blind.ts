@@ -11,6 +11,7 @@ import {
   type StepResult,
   step,
 } from "@game/mighty-engine";
+import { isToken, slotOfToken, tokenOf } from "./slot-token";
 
 /*
  * 방장 엔진이 남의 패를 모른 채 진행하기.
@@ -27,22 +28,8 @@ import {
  * - 마지막 턴: 모두 남은 열쇠를 공개해 판 전체를 진짜 카드로 다시 계산한다(audit.ts).
  */
 
-const PREFIX = "?_";
-
-export function tokenOf(slot: number): Card {
-  return `${PREFIX}${slot}` as Card;
-}
-
-/** 자리 표면 그 자리 번호, 진짜 카드면 null */
-export function slotOfToken(card: string): number | null {
-  if (!card.startsWith(PREFIX)) return null;
-  const slot = Number(card.slice(PREFIX.length));
-  return Number.isInteger(slot) && slot >= 0 ? slot : null;
-}
-
-export function isToken(card: string): boolean {
-  return slotOfToken(card) !== null;
-}
+// 자리 표 만들기·읽기는 slot-token.ts(여기서 다시 내보낸다)
+export { isToken, slotOfToken, tokenOf };
 
 /**
  * 판을 시작할 때 자리 표로 나누는 방법. 누구나 같은 값을 계산한다(방장이 자리를 더 가져가지 못하게).

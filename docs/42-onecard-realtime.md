@@ -535,7 +535,7 @@ IP 제한은 여기서 쓸 곳이 없다. 부정의 주체가 이미 방에 들�
 
 ### 16-2. 암호화방(멘탈 포커)
 
-방장도 남의 패를 모른다. 엔진 멘탈 포커 판 `createFairMatch`(자리 표 `?_N`)를 fair-play `OnecardHostTable`·`OnecardGuestSeat`(`onecard-host.ts`, `OnecardDeck` 위)에 잇는다. 연결 코드는 `onecard/fair.ts`(`OnecardTableSpec`, `GameKit.cardTable`의 `kind: "onecard"`). 방 코드는 화투 테이블과 같은 자리에 붙인다.
+방장도 남의 패를 모른다. 엔진 멘탈 포커 판 `createFairMatch`(자리 표 `?_N`)를 fair-play `OnecardHostTable`·`OnecardGuestSeat`(`onecard-host.ts`, `OnecardDeck` 위)에 잇는다. 연결 코드는 `onecard/fair.ts`(`OnecardTableSpec`, `kind: "onecard"`). 방 코드는 화투 테이블과 같은 자리에 붙인다(2026-11-25부터 판은 `onecard/fair-table.ts`가 만들고 킷의 `loadFairTable`로 따로 불러온다, docs/13 13절. 예전에는 `GameKit.cardTable`).
 
 - 판 시작: 처음 덱을 함께 섞고 손패는 받는 기기만, 처음 펼칠 카드는 모두에게 연다(`onecardLayout`: 자리 순서 손패 → 펼칠 카드 → 더미).
 - **처음 카드가 특수면**: 일반 엔진은 더미 밑으로 보내지만, 그러면 열린 카드가 더미 자리 순서 사이에 끼어 `OnecardDeck`의 더미와 엔진 더미가 어긋난다. 멘탈 포커 판은 **버린 더미 밑**으로 보내고(이미 열린 카드라 다시 섞기에 들어갈 수 있다) 더미 맨 위 자리를 모두에게 열어 다시 편다. 참가자는 앞서 열린 카드가 특수일 때만 그 공개 열기를 받는다. 판 끝 `checkOnecardTable`이 다시 편 횟수만큼의 공개 열기를 엔진과 맞춰 본 뒤 나머지를 `checkOnecardReplay`로 본다(시험: 엔진 더미 = 레이아웃 더미에서 다시 편 만큼 뺀 것).

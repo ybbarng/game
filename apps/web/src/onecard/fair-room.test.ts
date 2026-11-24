@@ -20,7 +20,8 @@ import { HostRoom } from "@/net/host-room";
 
 import { onecardBotFor, toKitBot } from "./bots";
 import { onecardFair } from "./fair";
-import { onecardKit } from "./kit";
+import { onecardFairTableOf } from "./fair-table";
+import { type OnecardKit, onecardKit } from "./kit";
 
 /**
  * 원카드 암호화방(멘탈 포커): 방장도 남의 패를 모른다. 짧은 덱(특수 카드 없는 14장: 손패 5·5, 펼칠 카드 1, 더미 3)으로
@@ -46,9 +47,9 @@ const SHORT = [
   "D10",
 ] as const;
 
-const shortKit = {
+const shortKit: OnecardKit = {
   ...onecardKit,
-  cardTable: { ...onecardFair, deckCards: SHORT },
+  fairTable: onecardFairTableOf({ ...onecardFair, deckCards: SHORT }),
 };
 
 const rules = {

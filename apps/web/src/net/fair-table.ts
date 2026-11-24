@@ -8,17 +8,22 @@ import type {
   PartySnapshot,
 } from "@game/fair-play";
 
-import type { GameKit, KitLoggedAction, StepOutcome } from "@/game/kit";
+import type {
+  GameKit,
+  KitLoggedAction,
+  StepOutcome,
+  VerifyContext,
+} from "@/game/kit";
 import type { BusyCoordinator } from "./fair-bar";
 import type { FairReplayGame } from "./fair-verify";
 
 /**
- * 판마다 함께 섞어 나눈 패로 끝까지 치는 카드 게임(마이티·하트)의 멘탈 포커 판. 게임마다 fair-play의 판
- * (마이티 `FairHostTable`·`FairGuestSeat`, 하트 `HeartsHostTable`·`HeartsGuestSeat`)을 만들어 온라인 방에 넘긴다.
- * 방(HostRoom·GuestRoom)은 이것만 알고 어떤 게임인지는 모른다. 바닥·더미가 있는 화투 셋·원카드는 `GameKit.cardTable`.
+ * 카드 게임의 멘탈 포커 판. 게임마다 fair-play의 판(마이티 `FairHostTable`·`FairGuestSeat`, 하트
+ * `HeartsHostTable`·`HeartsGuestSeat`, 화투 셋 `HwatuHostTable`·`HwatuGuestSeat`, 원카드 `OnecardHostTable`·
+ * `OnecardGuestSeat`)을 만들어 온라인 방에 넘긴다. 방(HostRoom·GuestRoom)은 이것만 알고 어떤 게임인지는 모른다.
  *
- * 판 코드는 멘탈 포커 전체를 끌어와 무겁다. 혼자 하기 묶음에 싣지 않도록 킷에는 불러오는 함수(`loadFairTable`)만
- * 두고, 온라인 방을 열 때 `withFairTable`로 불러 `fairTable`을 채운 킷을 방에 넘긴다
+ * 판 코드는 멘탈 포커 전체를 끌어와 무겁다. 혼자 하기 묶음과 판 게임 방 묶음에 싣지 않도록 킷에는 불러오는
+ * 함수(`loadFairTable`)만 두고, 온라인 방을 열 때 `withFairTable`로 불러 `fairTable`을 채운 킷을 방에 넘긴다
  */
 export interface KitFairTable<Rules, State, View, Action, Event, Extra> {
   /** 방장: 판을 만든다. 대국(LocalMatch)은 방이 이 판으로 만든다 */
@@ -27,13 +32,41 @@ export interface KitFairTable<Rules, State, View, Action, Event, Extra> {
   ): KitFairHost<State, View, Action, Event, Extra>;
   /** 참가자: 내 자리 진행을 만든다 */
   guest(context: FairGuestContext<Rules, View, Event>): KitFairSeat;
-  /** 판 끝 다시 계산하기(진짜 카드로 돌리기, 화면 만들기, 기록 속 행동 바꾸기) */
-  readonly replay: FairReplayGame;
+  /**
+   * 판을 시드로 정하는가(화투 셋·원카드: 판마다의 선·손패 장수를 시드로 계산한다). 그러면 방장은 시드를 먼저
+   * 공개해 모두 첫 판 섞기에 끼게 하고, 첫 판을 나눈 뒤에(`presetDeal`이 비동기) 대국을 만든다. 참가자는 시드를
+   * 확인한 뒤에 자리를 만들고(`seed`, 그 전에 온 화면·걸음별 사건은 모아 두었다가 넘긴다), 게임 끝 기록이 첫
+   * 화면보다 먼저 오면 첫 화면을 기다리며, 판 중간 검증은 이 기기가 처음부터 지켜본 판만 한다.
+   * 아니면(마이티·하트) 시드는 덱을 정하지 않아 대국을 만든 뒤에 공개하고, 참가자는 대기실만 알면 자리를 만든다
+   */
+  readonly seeded?: boolean;
+  /** 판 끝 다시 계산하기(진짜 카드로 돌리기, 화면 만들기, 기록 속 행동 바꾸기). 검증할 때마다 만든다 */
+  replay(
+    context: FairReplayContext<Rules, State, View, Action, Event, Extra>,
+  ): FairReplayGame;
   /**
    * 방장이 보낸 원본 화면이 판 끝(정산)까지 간 판이면 그 판 번호, 아니면 null(`finishedRoundOf`).
    * 게임 끝 검증이 끝낸 판이 다 열렸는지 볼 때 쓴다
    */
   finishedRound(view: unknown): number | null;
+  /**
+   * 게임 끝 기록이 왔다: 끝낸 판의 카드가 다 열릴 때까지 기다린다(마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다).
+   * `view`는 지금 내 화면, `finished`는 방장 원본 화면에서 본 판 끝(`HostRounds.finished`)
+   */
+  whenEndOpened(
+    seat: KitFairSeat,
+    end: { view: unknown; finished: ReadonlySet<number> },
+  ): Promise<unknown>;
+}
+
+/** 판 끝 다시 계산을 만들 때 방이 주는 것 */
+export interface FairReplayContext<Rules, State, View, Action, Event, Extra> {
+  /** 이 방의 킷(컴퓨터 행동 다듬기, 개인 시간, 방장이 넣은 행동 가리기) */
+  kit: GameKit<Rules, State, View, Action, Event, Extra>;
+  /** 내 자리 진행(더미 요청 기록) */
+  seat: KitFairSeat;
+  /** 사람이 보낸 것이 아닌 기록을 볼 때 주는 것(`kit.verifyUnsigned`) */
+  verifyContext: VerifyContext;
 }
 
 /** 방장이 판을 만들 때 방이 주는 것 */
@@ -61,12 +94,19 @@ export interface FairHostContext<Rules, State, Action> {
 /** 킷이 만든 방장 판과, 그 판으로 대국을 만들 때 게임마다 다른 것 */
 export interface KitFairHost<State, View, Action, Event, Extra> {
   readonly table: KitHostTable<State, View, Action, Event>;
-  /** 첫 판 패(자리 표). 대국을 만들 때 넣는다 */
-  presetDeal(): Extra;
+  /**
+   * 첫 판 패(자리 표). 대국을 만들 때 넣는다. 시드로 판을 정하는 판(`seeded`)은 첫 판을 함께 섞어 나눈 뒤에야
+   * 나와 비동기다(나누다 멈추면 null). 새로고침한 방장이 이어 갈 때는 부르지 않는다
+   */
+  presetDeal(): Extra | Promise<Extra | null>;
+  /** 대국을 만든 뒤 첫 사건으로 첫 판을 시작한다 */
+  begin(events: readonly Event[]): void;
   /** 카드를 아직 못 열었을 때 보낼 화면(손패와 결정을 숨긴다, 자리 표로 결정하지 않게) */
   maskView(view: View): View;
   /** 행동할 자리(없으면 엔진대로). 하트 첫 선처럼 엔진이 모르는 자리를 알려 준다 */
   pendingSeats?(state: State): number[];
+  /** 참가자가 판을 나눠 받았다고 알렸다(화투 셋). 알리지 않는 게임은 없다 */
+  ready?(message: FairControl | FairWire, from: number): void;
 }
 
 /** 다 연 판 하나의 실제 패. 방은 자리 표 → 카드(`cards`)만 본다(복기·판 끝 검증) */
@@ -90,8 +130,6 @@ export interface KitHostTable<State, View, Action, Event> {
   ): Promise<{ ok: true; action: Action } | { ok: false; error: string }>;
   viewFor(seat: number, view: View): View | null;
   after(state: State, events: readonly Event[]): void;
-  /** 대국을 만든 뒤 첫 사건으로 첫 판을 시작한다 */
-  begin(events: readonly Event[]): void;
   snapshot(): unknown;
   resume(saved: unknown): void;
   receive(message: FairWire, from: number): void;
@@ -102,6 +140,8 @@ export interface KitHostTable<State, View, Action, Event> {
 /** 참가자가 자리 진행을 만들 때 방이 주는 것 */
 export interface FairGuestContext<Rules, View, Event> {
   rules: Rules;
+  /** 시작할 때 함께 정한 시드. 시드로 판을 정하는 판(`seeded`)에만 준다 */
+  seed?: number;
   seat: number;
   guestSeats: readonly number[];
   group: GroupName;
@@ -130,8 +170,29 @@ export interface KitFairSeat {
   snapshot(view: unknown, events: unknown[], resync?: boolean): void;
   /** 내가 보낼 행동을 자리 표로 바꾼다(못 바꾸면 null) */
   outgoing(action: unknown): unknown;
-  /** 열쇠를 공개한 판이 모두 열릴 때까지 기다린다 */
-  whenRevealedOpened(): Promise<unknown>;
+  /** 시드가 공개됐다: 첫 판 섞기에 낀다(시드로 판을 정하는 판). 없으면 할 일이 없다 */
+  start?(): void;
+}
+
+/**
+ * 판마다 열쇠를 판 끝에 공개하는 게임(화투 셋·원카드)의 `whenEndOpened`: 내 화면의 마지막 판 카드가 다 열릴 때까지
+ * 기다린다. 그만둔 게임에서 마지막 판이 판 끝까지 가지 않았으면 열리지 않으니 바로 앞 판(끝낸 판)이 열린 뒤에 본다.
+ * 판 끝까지 간 판(정산 직후 그만둠)은 판 끝 열쇠가 다 닿아 열린 뒤에 본다. 열리지 않은 끝낸 판은 게임 끝 검증이
+ * 잡는다(`unopenedRoundProblem`). 화면에 판 번호가 없으면 `noRound`판으로 본다(원카드는 한 게임이 한 판이라 1)
+ */
+export async function whenEndRoundOpened(
+  seat: { whenOpened(round: number): Promise<boolean> },
+  end: { view: unknown; finished: ReadonlySet<number> },
+  noRound: number | null,
+): Promise<void> {
+  const view = end.view as
+    | { roundNumber?: number; retired?: boolean }
+    | undefined;
+  const round =
+    typeof view?.roundNumber === "number" ? view.roundNumber : noRound;
+  if (round === null) return;
+  if (!view?.retired || end.finished.has(round)) await seat.whenOpened(round);
+  else if (round > 1) await seat.whenOpened(round - 1);
 }
 
 /** 암호화방을 열려는데 킷의 멘탈 포커 판을 불러오지 않았다(`withFairTable`을 거치지 않은 킷) */

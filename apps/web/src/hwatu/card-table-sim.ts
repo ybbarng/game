@@ -1,5 +1,5 @@
 /**
- * 화투 카드 표 약속(`HwatuFairSpec`, `kit.cardTable`)을 암호 없이 따라가며 판을 두는 시험 도구.
+ * 화투 카드 표 약속(`HwatuFairSpec`, `<게임>/fair.ts`)을 암호 없이 따라가며 판을 두는 시험 도구.
  *
  * 멘탈 포커 방에서 카드가 움직이는 진행(섞기·열쇠·더미 요청)은 fair-play `HwatuHostTable`·`HwatuGuestSeat`가
  * 함께 돌리고, 게임은 약속만 넘긴다. 공통 진행은 진짜 암호로 공통 시험이 본다(`hwatu/fair-room-*.test.ts`,
@@ -145,8 +145,8 @@ export function simulateCardTable(options: {
   bot: KitBot<any, any>;
   /** 섞기 시드(없으면 `seed`). 판마다 판 번호·다시 섞은 횟수를 더해 섞는다 */
   deckSeed?: number;
-  /** 약속을 바꿔 보는 시험용(없으면 `kit.cardTable`) */
-  spec?: AnySpec;
+  /** 카드 표 약속(`<게임>/fair.ts`, 시험이 바꿔 볼 수도 있다) */
+  spec: AnySpec;
   /** 걸음마다 부른다 */
   check?: (step: SimStep) => void;
   /** 참이면 그 걸음에서 멈춘다(게임 끝 확인은 끝난 판까지만) */
@@ -154,7 +154,7 @@ export function simulateCardTable(options: {
   maxSteps?: number;
 }): SimResult {
   const { kit, rules, seed } = options;
-  const spec = (options.spec ?? kit.cardTable) as AnySpec;
+  const spec = options.spec;
   if (!spec || "kind" in spec) fail("화투 카드 표 약속이 아니다");
   const players = spec.players(rules);
   const seats = Array.from({ length: players }, (_, s) => s);

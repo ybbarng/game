@@ -1,17 +1,14 @@
 import { cardOf, HWATU_DECK, type PresetDeal } from "@game/hwatu";
 import type { Card } from "@game/mighty-engine";
 
-import { slotOfToken, tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
-import {
-  type BusyReason,
-  type Incident,
-  reportShuffleTamper,
-} from "./coordinator";
+import type { BusyReason, Incident } from "./coordinator";
 import { FairDevice, type FairWire, type GroupName } from "./device";
 import type { FairControl } from "./messages";
 import { nothingOpened } from "./nothing-opened";
 import type { PartySnapshot } from "./protocol";
+import { slotOfToken, swapTokens, tokenOf } from "./slot-token";
+import { reportShuffleTamper } from "./tamper";
 
 /*
  * 화투 멘탈 포커(docs/27 3절). 마이티·하트와 같은 섞기·열쇠(device.ts)에 48장 덱을 얹는다.
@@ -154,25 +151,8 @@ export function realHwatuAction<Action>(action: Action): Action {
   return rest as Action;
 }
 
-/** 값 안의 자리 표를 아는 카드로 바꾼다. 모르는 자리 표 수도 센다 */
-export function swapTokens<T>(
-  value: T,
-  cards: ReadonlyMap<number, Card>,
-): { value: T; missing: number } {
-  let missing = 0;
-  const text = JSON.stringify(value).replace(
-    /"\?_(\d+)"/g,
-    (whole, slot: string) => {
-      const card = cards.get(Number(slot));
-      if (card === undefined) {
-        missing++;
-        return whole;
-      }
-      return JSON.stringify(card);
-    },
-  );
-  return { value: JSON.parse(text) as T, missing };
-}
+// 값 안의 자리 표를 아는 카드로 바꾸기는 slot-token.ts(여기서 다시 내보낸다)
+export { swapTokens };
 
 /** 같은 달 넉 장이 있는 달 */
 function fourMonth(cards: readonly string[]): number | null {

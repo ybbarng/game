@@ -96,7 +96,7 @@ export function standingProblem(input: {
 }
 
 export interface FairVerifyInput {
-  /** 어떤 게임인가(마이티·하트는 `KitFairTable.replay`, 화투 셋·원카드는 `cardTable`로 만든 것) */
+  /** 어떤 게임인가(킷의 멘탈 포커 판이 만든 것, `KitFairTable.replay`) */
   game: FairReplayGame;
   rules: unknown;
   seed: number;

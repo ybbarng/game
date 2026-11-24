@@ -7,11 +7,11 @@ import { setupHwatu, until } from "@/hwatu/fair-room-fixture";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 
-import { gostopKit } from "./kit";
+import { gostopRoomKit } from "./fair-table";
 
 const setup = (rules: typeof GOSTOP3_RULES, guests: number) =>
   setupHwatu({
-    kit: gostopKit,
+    kit: gostopRoomKit,
     rules,
     guests,
     bot: gostopIntermediateBot,
