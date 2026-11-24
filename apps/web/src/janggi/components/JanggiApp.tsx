@@ -1,21 +1,18 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { RoomScreen } from "@/components/LazyRoomScreen";
 import { Chip } from "@/components/options/Chip";
 import { Section, SubScreen } from "@/components/options/SubScreen";
-import { reviewRunFor } from "@/components/study/review-run";
-import { StudyHome } from "@/components/study/StudyHome";
+import { ScreenLoading } from "@/components/ScreenLoading";
 import {
   TimePresetPicker,
   timePresetLabel,
 } from "@/components/TimePresetPicker";
-import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
-import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
-import { useJanggiStudyProgress } from "@/study/progress";
 import { useJanggiTutorialProgress } from "@/tutorial/progress";
 import { janggiOnline } from "../online";
 import { PIECE_GLYPH_CREDIT } from "../piece-glyphs";
@@ -29,11 +26,14 @@ import {
   useJanggiSettings,
 } from "../settings";
 import { clearJanggi, type JanggiSaved, loadJanggi, useJanggi } from "../store";
-import { ORDERED_JANGGI_SETS } from "../study-order";
 import { JANGGI_LESSONS } from "../tutorial";
 import { JanggiGame } from "./JanggiGame";
-import { JanggiPuzzleScreen } from "./JanggiPuzzleScreen";
-import { janggiTutorial } from "./janggi-tutorial";
+
+/** 배우기·수 배우기 화면은 「배우기」를 눌렀을 때 불러온다(문제 자료를 첫 화면 묶음에서 뺀다) */
+const JanggiLearn = dynamic(
+  () => import("./JanggiLearn").then((m) => m.JanggiLearn),
+  { loading: () => <ScreenLoading /> },
+);
 
 /** 장기 화면들의 배경(대국 화면의 짙은 색과 이어진다) */
 const BG = "bg-[radial-gradient(ellipse_at_center,#44403c_0%,#1c1917_80%)]";
@@ -320,7 +320,7 @@ function JanggiHome({
   );
 }
 
-type Screen =
+export type Screen =
   | { kind: "start" }
   | {
       kind: "online";
@@ -340,13 +340,14 @@ type Screen =
 /** 「오늘 복습」으로 연 문제의 복습 줄(없으면 보통으로 연 문제) */
 type Review = readonly string[] | undefined;
 
-/** 수 배우기 목록에 보일 문제 묶음(배우는 차례 `JANGGI_STUDY_ORDER`대로) */
-const STUDY_SETS = ORDERED_JANGGI_SETS.map((s) => ({
-  id: s.id,
-  title: s.title,
-  summary: s.summary,
-  puzzleIds: s.puzzles.map((p) => p.id),
-}));
+/** 배우기 묶음(JanggiLearn)이 그리는 화면 */
+const LEARN_KINDS = ["tutorial", "lesson", "study", "puzzle"] as const;
+export type LearnScreen = Extract<
+  Screen,
+  { kind: (typeof LEARN_KINDS)[number] }
+>;
+const isLearn = (s: Screen): s is LearnScreen =>
+  (LEARN_KINDS as readonly string[]).includes(s.kind);
 
 /** 장기(/janggi): 첫 화면, 옵션, 규칙, 배우기, 다함께 장기 방, 대국 화면 */
 export function JanggiApp() {
@@ -396,16 +397,6 @@ export function JanggiApp() {
       pick: s.pick,
     });
   };
-  // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
-  const reviewOf = (queue: Review, current: string) =>
-    reviewRunFor({
-      queue,
-      current,
-      progress: useJanggiStudyProgress,
-      open: (puzzleId, q) => setScreen({ kind: "puzzle", puzzleId, review: q }),
-      done: () => setScreen({ kind: "study", reviewDone: true }),
-    });
-
   if (screen.kind === "online")
     return (
       <RoomScreen
@@ -419,51 +410,9 @@ export function JanggiApp() {
     );
   if (screen.kind === "playing")
     return <JanggiGame onExit={backToStart} onRestart={startSolo} />;
-  if (screen.kind === "tutorial")
+  if (isLearn(screen))
     return (
-      <TutorialHome
-        tutorial={janggiTutorial}
-        onBack={backToStart}
-        onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
-        extra={{
-          title: "수 배우기",
-          detail: `외통·상대 기물 얻기 문제와 끝내기 연습 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
-          onClick: () => setScreen({ kind: "study" }),
-        }}
-      />
-    );
-  if (screen.kind === "study")
-    return (
-      <StudyHome
-        title="장기 수 배우기"
-        background={BG}
-        sets={STUDY_SETS}
-        progress={useJanggiStudyProgress}
-        onOpen={(puzzleId, review) =>
-          setScreen({ kind: "puzzle", puzzleId, review })
-        }
-        onBack={() => setScreen({ kind: "tutorial" })}
-        reviewDone={screen.reviewDone ?? false}
-      />
-    );
-  if (screen.kind === "puzzle")
-    return (
-      <JanggiPuzzleScreen
-        key={screen.puzzleId}
-        puzzleId={screen.puzzleId}
-        onExit={() => setScreen({ kind: "study" })}
-        onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
-        review={reviewOf(screen.review, screen.puzzleId)}
-      />
-    );
-  if (screen.kind === "lesson")
-    return (
-      <LessonPlayer
-        key={screen.lessonId}
-        tutorial={janggiTutorial}
-        lessonId={screen.lessonId}
-        onExit={() => setScreen({ kind: "tutorial" })}
-      />
+      <JanggiLearn screen={screen} setScreen={setScreen} onBack={backToStart} />
     );
   if (screen.kind === "options")
     return <JanggiOptions onBack={() => setScreen({ kind: "start" })} />;
