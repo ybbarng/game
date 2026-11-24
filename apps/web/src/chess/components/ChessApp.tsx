@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { Chip } from "@/components/options/Chip";
+import { Section, SubScreen } from "@/components/options/SubScreen";
 import { RoomScreen } from "@/components/RoomScreen";
 import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
@@ -12,7 +14,6 @@ import {
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
-import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { ENDGAME_SETS } from "../endgame";
 import { chessOnline } from "../online";
@@ -68,87 +69,12 @@ export function useChessHydration(): void {
   }, []);
 }
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs",
-        active
-          ? "border-amber-300 bg-white text-black"
-          : "border-white/15 bg-white/5",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-/** 옵션·규칙 화면의 틀: 제목과 "처음으로" */
-function SubScreen({
-  title,
-  onBack,
-  children,
-}: {
-  title: string;
-  onBack: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <main
-      data-game="chess"
-      className={cn("flex min-h-dvh justify-center p-4 text-white", BG)}
-    >
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">{title}</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
-        </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/40 p-5 shadow-2xl backdrop-blur">
-          {children}
-        </div>
-      </div>
-    </main>
-  );
-}
-
 /** 체스 옵션: 개인 시간·판 수·컴퓨터·내 색·칸 이름. 다함께 체스도 여기서 고른 판 수와 시간을 쓴다 */
 function ChessOptions({ onBack }: { onBack: () => void }) {
   const s = useChessSettings();
   const level = CHESS_LEVELS.find((l) => l.value === s.level);
   return (
-    <SubScreen title="체스 옵션" onBack={onBack}>
+    <SubScreen title="체스 옵션" onBack={onBack} bg={BG} game="chess">
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
@@ -287,7 +213,7 @@ function ChessRulesScreen({ onBack }: { onBack: () => void }) {
     ],
   ];
   return (
-    <SubScreen title="체스는?" onBack={onBack}>
+    <SubScreen title="체스는?" onBack={onBack} bg={BG} game="chess">
       <dl className="flex flex-col gap-3 text-sm">
         {items.map(([term, meaning]) => (
           <div key={term}>

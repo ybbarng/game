@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { Chip } from "@/components/options/Chip";
+import { Section, SubScreen } from "@/components/options/SubScreen";
 import { RoomScreen } from "@/components/RoomScreen";
 import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
@@ -12,7 +14,6 @@ import {
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
-import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useOmokTutorialProgress } from "@/tutorial/progress";
 import { omokOnline } from "../online";
@@ -58,85 +59,13 @@ const STONE = {
   white: "radial-gradient(circle at 36% 32%, #ffffff, #f1f0ec 55%, #b9b6ae)",
 };
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs",
-        active
-          ? "border-amber-300 bg-white text-black"
-          : "border-white/15 bg-white/5",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-/** 옵션·규칙 화면의 틀: 제목과 "처음으로" */
-function SubScreen({
-  title,
-  onBack,
-  children,
-}: {
-  title: string;
-  onBack: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <main className={cn("flex min-h-dvh justify-center p-4 text-white", BG)}>
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">{title}</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
-        </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/40 p-5 shadow-2xl backdrop-blur">
-          {children}
-        </div>
-      </div>
-    </main>
-  );
-}
-
 /** 오목 옵션: 규칙·판 수·컴퓨터·내 돌·금지 표시. 다함께 오목도 여기서 고른 규칙과 판 수를 쓴다 */
 function OmokOptions({ onBack }: { onBack: () => void }) {
   const s = useOmokSettings();
   const variant = VARIANT_INFO.find((v) => v.value === s.variant);
   const level = OMOK_LEVELS.find((l) => l.value === s.level);
   return (
-    <SubScreen title="오목 옵션" onBack={onBack}>
+    <SubScreen title="오목 옵션" onBack={onBack} bg={BG}>
       <Section title="규칙">
         <div className="flex flex-wrap gap-1.5">
           {VARIANT_INFO.map((v) => (
@@ -241,7 +170,7 @@ function OmokRulesScreen({ onBack }: { onBack: () => void }) {
     ],
   ];
   return (
-    <SubScreen title="오목은?" onBack={onBack}>
+    <SubScreen title="오목은?" onBack={onBack} bg={BG}>
       <dl className="flex flex-col gap-3 text-sm">
         {items.map(([term, meaning]) => (
           <div key={term}>

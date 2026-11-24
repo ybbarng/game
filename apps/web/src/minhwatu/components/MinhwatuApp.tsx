@@ -3,12 +3,13 @@
 import { YAK_DESCRIPTIONS, YAK_NAMES } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { Chip } from "@/components/options/Chip";
+import { Section, SubScreen } from "@/components/options/SubScreen";
 import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
-import { cn } from "@/lib/cn";
 import { ro, topic } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
@@ -34,90 +35,17 @@ import { MINHWATU_LESSONS } from "../tutorial";
 import { MINHWATU_BG, MinhwatuTable } from "./MinhwatuTable";
 import { minhwatuTutorial } from "./minhwatu-tutorial";
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs",
-        active
-          ? "border-amber-300 bg-white text-black"
-          : "border-white/15 bg-white/5",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-semibold text-sm">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-/** 옵션·규칙 화면의 틀: 제목과 "처음으로" */
-function SubScreen({
-  title,
-  onBack,
-  children,
-}: {
-  title: string;
-  onBack: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <main
-      data-game="minhwatu"
-      className={cn(
-        "flex min-h-dvh justify-center p-4 text-white",
-        MINHWATU_BG,
-      )}
-    >
-      <div className="flex w-full max-w-md flex-col gap-5 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-black text-2xl">{title}</h1>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm"
-          >
-            처음으로
-          </button>
-        </div>
-        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/40 p-5 shadow-2xl backdrop-blur">
-          {children}
-        </div>
-      </div>
-    </main>
-  );
-}
-
 /** 민화투 옵션: 인원·판 수·약 점수·초단·사오동·컴퓨터. 다함께 민화투도 여기서 고른 규칙을 쓴다 */
 function MinhwatuOptions({ onBack }: { onBack: () => void }) {
   const s = useMinhwatuSettings();
   const level = MINHWATU_LEVELS.find((l) => l.value === s.level);
   return (
-    <SubScreen title="민화투 옵션" onBack={onBack}>
+    <SubScreen
+      title="민화투 옵션"
+      onBack={onBack}
+      bg={MINHWATU_BG}
+      game="minhwatu"
+    >
       <Section title="인원">
         <div className="flex flex-wrap gap-1.5">
           {PLAYER_OPTIONS.map((p) => (
@@ -237,7 +165,12 @@ function MinhwatuRulesScreen({ onBack }: { onBack: () => void }) {
     ],
   ];
   return (
-    <SubScreen title="민화투는?" onBack={onBack}>
+    <SubScreen
+      title="민화투는?"
+      onBack={onBack}
+      bg={MINHWATU_BG}
+      game="minhwatu"
+    >
       <dl className="flex flex-col gap-3 text-sm">
         {items.map(([term, meaning]) => (
           <div key={term}>
