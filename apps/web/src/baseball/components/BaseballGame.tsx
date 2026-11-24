@@ -388,7 +388,7 @@ export function BaseballGame({
       extra={
         view.commits[opp] &&
         !roundOver && (
-          <span className="min-w-0 truncate text-white/50 text-xs">
+          <span className="min-w-0 truncate text-white/75 text-xs">
             상대 수는 잠겨 있어요 🔒
           </span>
         )
@@ -650,7 +650,7 @@ function PadArea({
             </button>
           }
         />
-        <p className="text-center text-white/50 text-xs">
+        <p className="text-center text-white/75 text-xs">
           비밀 수는 이 기기에만 남고, 상대에게는 잠긴 약속만 가요.
         </p>
       </>

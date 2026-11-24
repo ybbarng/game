@@ -207,7 +207,7 @@ export function ProfilePage() {
             >
               지난 게임 복기 →
             </a>
-            <span className="hidden text-white/50 text-xs sm:inline">
+            <span className="hidden text-white/75 text-xs sm:inline">
               {total > 0
                 ? `${new Date(book.since).toLocaleDateString("ko-KR")}부터`
                 : ""}
@@ -233,7 +233,7 @@ export function ProfilePage() {
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
-              <div className="text-white/50 text-xs">
+              <div className="text-white/75 text-xs">
                 다음 레벨까지 {ROUNDS_PER_LEVEL - (total % ROUNDS_PER_LEVEL)}판
               </div>
             </div>
@@ -502,7 +502,7 @@ function MightyStats({ book }: { book: StatsBook }) {
 
       <Card title="번 돈 흐름(최근 100판)">
         <TrendLine values={s.moneyLine} unit="" label="쌓인 돈" />
-        <p className="text-white/50 text-xs">
+        <p className="text-white/75 text-xs">
           가장 크게 잃은 판 {signed(s.worstRound)} · 가장 긴 연승 {s.bestStreak}
           판 ·{" "}
           {s.streak >= 0 ? `지금 ${s.streak}연승` : `지금 ${-s.streak}연패`}

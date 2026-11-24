@@ -138,7 +138,7 @@ function MyConstellations({ view }: { view: GalaxyView }) {
     }))
     .filter((r) => r.owned.length > 0);
   if (rows.length === 0)
-    return <p className="text-white/50 text-xs">아직 가진 별이 없어요.</p>;
+    return <p className="text-white/75 text-xs">아직 가진 별이 없어요.</p>;
   return (
     <ul className="flex flex-col gap-1 text-sm">
       {rows.map(({ g, owned }) => {
@@ -216,7 +216,7 @@ function SquareInfo({
               : "주인 없는 별"}
           </p>
           {rents && (
-            <p className="text-white/45 text-xs">
+            <p className="text-white/75 text-xs">
               1단 {money(rents.single)} · 별 둘 {money(rents.pair)} · 완성{" "}
               {money(rents.complete)} · 2단 {money(rents.level2)} · 3단{" "}
               {money(rents.level3)} · 큰 정거장 {money(rents.grand)}
@@ -244,7 +244,7 @@ function Standings({
   if (rows.length === 0) return null;
   return (
     <table data-standings className="w-full text-sm">
-      <thead className="text-white/50 text-xs">
+      <thead className="text-white/75 text-xs">
         <tr>
           <th className="text-left font-normal">순위</th>
           <th className="text-left font-normal">우주인</th>
@@ -262,7 +262,7 @@ function Standings({
             <td className="flex items-center gap-1">
               <ShipToken seat={r.seat} size={11} />
               {name(r.seat)}
-              {r.out && <span className="text-white/40 text-xs">(중단)</span>}
+              {r.out && <span className="text-white/75 text-xs">(중단)</span>}
             </td>
             <td className="text-right tabular-nums">{money(r.cash)}</td>
             <td className="text-right font-bold tabular-nums">

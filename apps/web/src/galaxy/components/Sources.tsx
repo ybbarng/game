@@ -78,7 +78,7 @@ export function GalaxySources() {
           >
             라이선스 전문
           </a>
-          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-snug text-white/50">
+          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-snug text-white/75">
             {D3_LICENSE}
           </pre>
         </li>

@@ -406,7 +406,7 @@ function HeartsRulesScreen({ onBack }: { onBack: () => void }) {
             </div>
           ))}
         </dl>
-        <p className="text-center text-xs opacity-50">
+        <p className="text-center text-white/75 text-xs">
           친구와 할 때의 공정성은{" "}
           <a href="/security" className="underline">
             어떻게 지켜지나요?

@@ -37,7 +37,7 @@ export function ChatBox({
         className="flex h-32 flex-col gap-1 overflow-y-auto rounded-xl bg-black/30 p-2 text-sm"
       >
         {messages.length === 0 ? (
-          <p className="m-auto text-xs opacity-50">{emptyText}</p>
+          <p className="m-auto text-white/75 text-xs">{emptyText}</p>
         ) : (
           messages.map((m) =>
             m.seat < 0 ? (

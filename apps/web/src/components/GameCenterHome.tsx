@@ -62,7 +62,7 @@ export function GameCenterHome() {
                 <span className="break-keep text-sm text-white/70">
                   {game.tagline}
                 </span>
-                <span className="text-white/50 text-xs">{game.players}</span>
+                <span className="text-white/75 text-xs">{game.players}</span>
               </span>
             </a>
           ))}
@@ -84,7 +84,7 @@ export function GameCenterHome() {
           ))}
         </section>
 
-        <footer className="text-center text-[11px] text-white/40">
+        <footer className="text-center text-white/75 text-xs">
           <MadeWith />
         </footer>
       </div>

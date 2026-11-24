@@ -225,7 +225,7 @@ function StarBody({
               <ShipToken seat={owner} size={11} />
               <span className="font-semibold">{name(owner)}의 별</span>
               {view.mortgaged[square] && (
-                <span className="text-white/50 text-xs">· 맡김</span>
+                <span className="text-white/75 text-xs">· 맡김</span>
               )}
               <span className="ml-auto">
                 지금 이용료{" "}

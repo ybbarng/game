@@ -109,7 +109,7 @@ export function RoomBackLink({
 /** 대기실 맨 아래 연결 안내 글(작은 글이라 바탕과 대비를 넉넉히) */
 export function RoomFootnote({ children }: { children: ReactNode }) {
   return (
-    <p className="text-center text-white/70 text-xs leading-relaxed">
+    <p className="text-center text-white/75 text-xs leading-relaxed">
       {children}
     </p>
   );

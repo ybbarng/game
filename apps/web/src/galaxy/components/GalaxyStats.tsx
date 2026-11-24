@@ -89,7 +89,7 @@ export function GalaxyStats({ book }: { book: StatsBook }) {
           낸 이용료 {money(s.rentPaid)} · 받은 이용료 {money(s.rentReceived)}
         </p>
       </Card>
-      {old ? <p className="text-white/50 text-xs">{old}</p> : null}
+      {old ? <p className="text-white/75 text-xs">{old}</p> : null}
     </>
   );
 }

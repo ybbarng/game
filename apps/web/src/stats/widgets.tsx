@@ -131,7 +131,7 @@ export function RateColumns({
             className="flex-1 text-center text-[11px] text-white/70"
           >
             {item.label}
-            <div className="text-[10px] text-white/45">{item.n}판</div>
+            <div className="text-[10px] text-white/75">{item.n}판</div>
           </div>
         ))}
       </div>
@@ -328,7 +328,7 @@ export function Counts({
           <dd className="shrink-0 text-right tabular-nums">
             <b className="text-white">{item.value.toLocaleString()}</b>
             {item.sub && (
-              <span className="ml-1 text-white/50 text-xs">{item.sub}</span>
+              <span className="ml-1 text-white/75 text-xs">{item.sub}</span>
             )}
           </dd>
         </div>

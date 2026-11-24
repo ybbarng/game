@@ -342,7 +342,7 @@ export function GuessLog({
         )}
       </h2>
       {entries.length === 0 ? (
-        <p className="px-1 py-2 text-white/40 text-xs">{empty}</p>
+        <p className="px-1 py-2 text-white/75 text-xs">{empty}</p>
       ) : (
         <ol
           ref={list}
@@ -398,7 +398,7 @@ const LogRow = memo(function LogRow({
         wrong && "bg-rose-900/60 ring-1 ring-rose-400",
       )}
     >
-      <span className="w-8 shrink-0 whitespace-nowrap text-right font-mono text-[10px] text-white/45 tabular-nums">
+      <span className="w-8 shrink-0 whitespace-nowrap text-right font-mono text-[10px] text-white/75 tabular-nums">
         {inning}회
       </span>
       <NumberBoxes
@@ -408,7 +408,7 @@ const LogRow = memo(function LogRow({
         tone={strikes === digits ? "hit" : "lit"}
       />
       {strikes === null || balls === null ? (
-        <span className="truncate text-white/50 text-xs">답 기다리는 중…</span>
+        <span className="truncate text-white/75 text-xs">답 기다리는 중…</span>
       ) : (
         <ScoreLights strikes={strikes} balls={balls} digits={digits} />
       )}
