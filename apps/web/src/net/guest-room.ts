@@ -923,11 +923,18 @@ export class GuestRoom<
   /** 새로고침 전에 남긴 멘탈 포커 진행에서 되살렸다(판 중간에 다시 들어왔다) */
   private resumedFair = false;
 
-  /** 방장이 보낸 원본 화면에서 본 판(`HostRounds`, 게임 끝 검증이 끝난 판을 가린다) */
-  private readonly hostRounds = {
-    last: null as number | null,
-    finished: new Set<number>(),
-  };
+  /**
+   * 방장이 보낸 원본 화면에서 본 판(`HostRounds`, 게임 끝 검증이 끝난 판을 가린다). 게임마다 새로 둔다
+   * (한 판 더 `beginRematch`: 앞 게임의 끝낸 판 번호가 남으면 새 게임의 같은 번호 판을 끝낸 판으로 본다)
+   */
+  private hostRounds = GuestRoom.freshHostRounds();
+
+  private static freshHostRounds(): {
+    last: number | null;
+    finished: Set<number>;
+  } {
+    return { last: null, finished: new Set() };
+  }
 
   /** 방장이 보낸 마지막 원본 화면(그만둔 게임이면 끝 화면, `standingProblem`) */
   private lastHostView: unknown = undefined;
@@ -1490,6 +1497,10 @@ export class GuestRoom<
     this.mineQueue.length = 0;
     this.firstRound = null;
     this.resumedFair = false;
+    // 판 번호·판 끝·끝 화면도 게임 단위다. 앞 게임 검증(`auditTask`)은 위에서 끝났고, 바꿔 넣으므로 그 검증이
+    // 받은 값은 앞 게임 것 그대로다.
+    this.hostRounds = GuestRoom.freshHostRounds();
+    this.lastHostView = undefined;
     this.restoredSent = [];
     this.ownFair.length = 0;
     this.ownFairSeen.clear();

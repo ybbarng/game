@@ -66,4 +66,26 @@ describe("마이티 암호화방: 한 판 더", () => {
     expect(later[0]?.seed).not.toBe(firstArchive?.seed);
     expect(archives.slice(0, firstCount).at(-1)).toEqual(firstArchive);
   });
+
+  it("앞 게임에서 끝낸 판 번호를 새 게임에 가져가지 않는다: 새 게임 첫 판 도중에 그만둬도 검증을 통과한다", async () => {
+    const { host, guests, incidents } = await setup(rules, 2);
+    const audits: AuditResult[] = [];
+    for (const g of guests) g.on("audit", (r) => audits.push(r));
+    await host.start();
+    await until(() => guests.every((g) => g.match !== null));
+    // 앞 게임은 첫 판을 끝까지 쳤다(참가자 기기는 「1판 끝」을 보았다).
+    expect(await playRounds(host, guests, 1, incidents, hostBidsTop)).toBe(1);
+    host.abandon();
+    await until(() => audits.length === 2);
+    expect(audits).toEqual([{ ok: true }, { ok: true }]);
+    await settleDevices(host, guests);
+
+    await host.rematch();
+    await until(() => guests.every((g) => g.match !== null && g.gameNo === 2));
+    expect(host.match?.current().roundNumber).toBe(1);
+    host.abandon();
+    await until(() => audits.length === 4);
+    expect(audits.slice(2)).toEqual([{ ok: true }, { ok: true }]);
+    expect(incidents).toEqual([]);
+  });
 });
