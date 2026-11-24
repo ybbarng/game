@@ -119,4 +119,4 @@ node apps/cubie/scripts/readme-shots.mjs           # --hero: 움직이는 그림
 
 - ad-hoc 서명이고 공증이 없어서, 받은 사람은 README 「설치」의 첫 실행 풀기를 한 번 해야 한다. 이 과정을 없애려면 Apple Developer ID로 서명하고 공증(notarytool)을 받아야 한다.
 - 같은 이름의 앱(iOS 큐브 앱 Cubie Solver, 옛 큐브 프로그램 Jaap's Cubie)이 있다.
-- 지원 판은 macOS 15 이상이다. 14로 낮추려면 `Package.swift`의 `platforms`와 `Resources/Info.plist`의 `LSMinimumSystemVersion`(release.sh가 appcast의 최소 판으로도 쓴다)만 바꾸면 컴파일된다. 13까지 낮추려면 macOS 14부터 있는 `NSApp.activate()` 세 곳(`AppDelegate.swift` 두 곳, `Updater.swift` 한 곳)을 `#available`로 나눠 13에서는 `activate(ignoringOtherApps:)`를 부른다. Sparkle 2.10.1은 macOS 12부터 돈다. 어느 쪽이든 그 판의 맥에서 투명 창·포커스 돌려주기·웹 화면이 도는지 확인한 뒤 낮춘다(2026-11-09, 복사본을 13으로 낮춰 컴파일해 본 결과).
+- 지원 판은 macOS 15 이상이다. 14로 낮추려면 `Package.swift`의 `platforms`와 `Resources/Info.plist`의 `LSMinimumSystemVersion`(release.sh가 appcast의 최소 판으로도 쓴다)만 바꾸면 컴파일된다. 13까지 낮추려면 macOS 14부터 있는 `NSApp.activate()` 세 곳(`AppDelegate.swift`·`SheetWindows.swift`·`Updater.swift` 한 곳씩)을 `#available`로 나눠 13에서는 `activate(ignoringOtherApps:)`를 부른다. Sparkle 2.10.1은 macOS 12부터 돈다. 어느 쪽이든 그 판의 맥에서 투명 창·포커스 돌려주기·웹 화면이 도는지 확인한 뒤 낮춘다(2026-11-09, 복사본을 13으로 낮춰 컴파일해 본 결과).

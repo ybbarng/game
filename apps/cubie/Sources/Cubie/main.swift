@@ -14,7 +14,7 @@ let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
 // Dock 아이콘 없이(Info.plist LSUIElement와 같다. 실행 파일만 바로 띄워도 그렇게). 보통 창(기록·티어표·설정)이 열린
-// 동안만 `.regular`로 Dock·⌘Tab에 나온다(`AppDelegate.updatePresence`, docs/52 5-18)
+// 동안만 `.regular`로 Dock·⌘Tab에 나온다(`SheetWindows.updatePresence`, docs/52 5-18)
 // 메모리 재기(`Config.measure`)는 앞으로 나올 수조차 없게 한다(사용자 포커스를 빼앗지 않는다)
 app.setActivationPolicy(Config.measure ? .prohibited : .accessory)
 app.run()

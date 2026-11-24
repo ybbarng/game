@@ -564,7 +564,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 동작 줄이기(떠 있을 때 움직임 없음·축하 줄임·섞기 연출 바로·거울 바로) | `prefers-reduced-motion` | 시스템 설정(`accessibilityDisplayShouldReduceMotion`) | 옮김 |
 | Esc: 표 닫기 → 연습 끝내기 → 이전 앱 | 앱 | 앱(같은 코드) | 옮김 |
 | 자리·모니터·크기·끌어 옮기기·핀치·손잡이·빈 곳 누르기 넘기기 | `CubeWindow` | `FloatingWindow`(웹과 함께 씀), 누르는 자리는 `CubeGeometry.hitRects` | 옮김 |
-| 메뉴 전체(`MenuLayout`)·⌃⌥⌘C·업데이트 | `AppDelegate` | 같은 코드(`CubeSurface`만 봄) | 옮김 |
+| 메뉴 전체(`MenuLayout`)·⌃⌥⌘C·업데이트 | `AppDelegate` | 같은 코드(`AppDelegate+Menu`) | 옮김 |
 | 큐브 위 오른쪽 클릭 메뉴(오른쪽 단추·두 손가락 클릭·Control + 클릭) | `CubieWebView.willOpenMenu`(`WKWebView`가 띄움) | `FloatingWindow.handleDrag` → `NativeCubeWindow.contextMenu`(같은 `buildMenu(forWindow: true)`, 판단은 `WindowGesture.opensMenu`) | 옮김(2026-11-16. 0.2.0~0.3.0에서 빠져 있었다: 웹 뷰가 저절로 해 주던 일이라 기능 표에 줄이 없었다) |
 | 키 출처(공정함 확인) | `KeySource`·`key` 메시지 | 앱이 판에 바로 모음 | 옮김 |
 | 기록 옮기기(웹 저장소 → 앱 저장소, 한 번, 지우지 않음) | — | `WebStorageMigration` | 옮김 |
@@ -573,7 +573,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 짜임
 
 - **스위치**: 기본이 네이티브 화면이다. 되돌림 스위치 `CUBIE_WEB=1`(예전 웹 큐브 창)은 2026-11-25 지웠다(5-20, 마지막 판은 git 태그 `cubie-web-fallback-last`). 앱 저장소를 읽지 않아 켜면 옛 WebKit 기록이 보이고 맞춘 판이 네이티브 기록에 들어가지 않아 되돌림 구실을 못 했다.
-- **앱 껍데기**: `AppDelegate`(메뉴·단축키·말풍선·단축키 표·업데이트·사이트 창)는 `CubeSurface` 약속만 본다. 창 다루기(자리 기억·끌기·핀치·빈 곳 넘기기)는 두 화면이 `FloatingWindow`를 함께 쓴다.
+- **앱 껍데기**: `AppDelegate`(단축키·말풍선·단축키 표·업데이트), 메뉴는 `AppDelegate+Menu`, 보통 창·Dock 노출·앱 메뉴는 `SheetWindows`, 재기 모드 연결은 `MeasureWiring`(2026-11-25 나눔, 5-20. 그 전에는 웹·네이티브 두 화면이 `CubeSurface` 약속을 따랐다). 창 다루기(자리 기억·끌기·핀치·빈 곳 넘기기)는 `FloatingWindow`.
 - **네이티브 화면**(`NativeCubeWindow`): 포커스 시계·기록 책·힌트 제한·떠 있을 때 움직임·축하·소리·프로필. 계산은 모두 코어 C ABI(`native/cubie-native/src/ffi_game.rs`·`ffi_records.rs`, 머리 파일 `cubie_native.h`).
 - **코어 이식**(`native/cube-core`, 브랜치 `cubie-core-human`을 합침): 한 판 세션 `session.rs`(이정표 `progress.rs`, 흐름 콤보 `combo.rs`), 사람 해법 `human.rs`(`solve_cfop`·`solve_advanced2`), 힌트 고르기 `hint.rs`, 키캡 `keys/route.rs`, 공식 연습 진행기 `practice.rs`. 공통 시험 자료 `fixtures/session.json`(13판·467차례), `hint.json`(124), `keycaps.json`(2,019수), `practice.json`(1,329) 모두 어긋남 0. CI `rust` 작업의 조건에 새 기준 파일(`packages/cube-ai/`, `solve-session.ts`, `flow/combo.ts`, `practice/`, `keys/move-keys·reach.ts`, `mini/practice.ts`, `algs/store.ts`)을 더했다.
 - **저장**: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글. 앱이 여는 사이트 창(지금은 설정 창의 「모든 설정…」 하나)에는 문서 시작 때 그 글을 넣고(`WebStoreSync`), 그 창을 닫으면 사이트에서 바뀐 `cube.*` 키(앱이 쓰는 `cube.mini.*` 빼고)만 읽어 온다(5-19).
@@ -1053,6 +1053,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 사용자에게 보이는 동작은 바꾸지 않는 정리다.
 
 - **웹 되돌림 스위치 둘을 지웠다**: `CUBIE_WEB=1`(웹 큐브 창 `CubeWindow`·다리 `Bridge`·웹 재기 `Measure`)은 앱 저장소를 읽지 않아 켜면 옛 WebKit 기록이 보이고 맞춘 판이 네이티브 기록에 들어가지 않아 되돌림 구실을 못 했다. `CUBIE_WEB_WINDOWS=1`(기록·티어표·설정 사이트 창)은 「모든 설정…」 사이트 창 말고 쓰는 곳이 없었다. 지우기 전 마지막 커밋에 로컬 git 태그 `cubie-web-fallback-last`를 두었다(옛 앱으로 견줄 때 그 태그를 빌드한다). 단축키 표는 늘 앱이 그리고(`KeysPanel`의 웹 갈래 지움), 앱이 여는 사이트 창은 「모든 설정…」 하나다(Esc는 그 창에서 웹 화면 몫, `EscClose.siteSettings`). `PageFreshness`는 사이트 창의 캐시 정책(`load`)만 남겼다(실패 때 저장본·빌드 커밋 비교는 웹 큐브 창만 썼다). `measure-memory.sh`는 네이티브가 기본이고 `--url`·`--web`·`--query`·`--inject`·`--web-windows`를 지웠다(`--native`는 받아만 둔다).
+- **AppDelegate 나누기**(926줄 → 353줄): 메뉴 만들기와 고른 일 → `AppDelegate+Menu.swift`, 보통 창 열기·앞으로·자리 기억·Dock 노출·앱 메뉴와 「모든 설정…」 사이트 창 → `SheetWindows`, 저장소 동기화(넣을 글·넣는 스크립트·읽는 스크립트·닫을 때 합치기) → `CubieCore/WebStoreSync`(시험 `WebStoreSyncTests`), 재기 모드 연결 → `MeasureWiring`. 큐브 창은 `NativeCubeWindow`를 바로 두고 `CubeSurface` 약속은 지웠다(`CubeState`·`CubeCommand`만 남김).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

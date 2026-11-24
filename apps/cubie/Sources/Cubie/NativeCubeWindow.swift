@@ -5,9 +5,9 @@ import CubieNativeC
 /// 네이티브 큐브 화면(기본, docs/52 5-6): 웹 미니 모드(`apps/web/src/cube/mini/MiniCubeApp.tsx`)가 하던 일을 앱이 한다.
 /// - 그리기: `CACubeView`(Core Animation 3D), 큐브 상태·키 해석·섞기·판정·티어: Rust 코어(C ABI)
 /// - 시간(포커스 있을 때만)·기록(사이트와 같은 JSON 꼴, `MiniBook`)·힌트 제한·떠 있을 때 움직임·축하·소리
-/// - 기록 창·티어표·설정은 사이트 창(앱 안 보통 창)이 그대로 맡고, 앱 저장소의 글을 그 창에 넣어 준다(`AppDelegate`)
+/// - 기록 창·티어표·설정은 앱이 그린 보통 창(`SheetWindows`)이 이 창의 저장소·기록 책을 함께 읽는다
 @MainActor
-final class NativeCubeWindow: FloatingWindow, CubeSurface {
+final class NativeCubeWindow: FloatingWindow {
   private(set) var cube: CACubeView
   let store: KeyValueStore
   let book: MiniBook
@@ -108,7 +108,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   /// 맞추는 중(섞은 뒤 아직 맞추지 않은 판·공식 연습)
   var solving: Bool { state.practice != nil || (cubie_game_solving(cube.game) && !cube.solved) }
 
-  /// 큐브 위 오른쪽 클릭 메뉴(앱이 메뉴 막대 메뉴와 같은 길로 만든다, `AppDelegate.buildMenu(forWindow: true)`)
+  /// 큐브 위 오른쪽 클릭 메뉴(앱이 메뉴 막대 메뉴와 같은 길로 만든다, `AppDelegate+Menu` `buildMenu(forWindow: true)`)
   override func contextMenu() -> NSMenu? { menuProvider?() }
 
   /// 앱 저장소의 설정·키 배치를 읽는다(설정 창을 닫은 뒤에도)
@@ -169,7 +169,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     onState?()
   }
 
-  // MARK: CubeSurface
+  // MARK: 앱이 시키는 일
 
   func send(_ command: CubeCommand) {
     switch command {
