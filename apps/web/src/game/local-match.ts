@@ -1,4 +1,5 @@
-import { type Clock, realClock } from "@game/fair-play";
+// 시계만 쓰므로 멘탈 포커 전체(index) 대신 시계 파일만 부른다(모든 게임 저장소가 이 파일을 싣는다)
+import { type Clock, realClock } from "@game/fair-play/clock";
 import {
   type Action,
   createRng,

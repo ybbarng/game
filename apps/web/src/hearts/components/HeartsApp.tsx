@@ -8,10 +8,10 @@ import {
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { HIT_AREA } from "@/components/hit-area";
+import { RoomScreen } from "@/components/LazyRoomScreen";
 import { Chips } from "@/components/options/Chip";
 import { Section, SubScreen } from "@/components/options/SubScreen";
 import { ActionButton } from "@/components/panels/common";
-import { RoomScreen } from "@/components/RoomScreen";
 import { SuitStylePicker } from "@/components/SuitStylePicker";
 import { SuitText } from "@/components/SuitText";
 import { SAFE_P4 } from "@/components/safe-area";

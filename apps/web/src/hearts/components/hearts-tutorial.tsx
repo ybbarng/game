@@ -8,8 +8,8 @@ import {
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 import { DEFAULT_BOT_NAMES } from "@/game/bot-names";
-import { browserPace } from "@/game/bots";
 import { LocalMatch } from "@/game/local-match";
+import { browserPace } from "@/game/pace";
 import { useFairBar } from "@/net/fair-bar";
 import { useHeartsTutorialProgress } from "@/tutorial/progress";
 

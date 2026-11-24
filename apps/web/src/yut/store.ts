@@ -11,9 +11,9 @@ import {
 } from "@game/yut-engine";
 import { create } from "zustand";
 import { workerBotOption } from "@/game/bot-runner";
-import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { browserPace } from "@/game/pace";
 import { savedMatchSlot } from "@/game/saved-slot";
 import { paced } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";

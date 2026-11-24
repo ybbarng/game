@@ -17,12 +17,13 @@ import {
 import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
 import { workerBotOption } from "./bot-runner";
-import { botFor, browserPace } from "./bots";
+import { botFor } from "./bots";
 import { cuesFor, type DealTiming } from "./cues";
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
 import { LocalMatch, type SavedMatch } from "./local-match";
 import { mightyKit } from "./mighty-kit";
 import { MightyLocalMatch } from "./mighty-local-match";
+import { browserPace } from "./pace";
 import { saveGame } from "./persistence";
 import { useSettings } from "./settings";
 import { play as playCue } from "./sound";

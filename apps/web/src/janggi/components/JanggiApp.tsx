@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/LazyRoomScreen";
 import { Chip } from "@/components/options/Chip";
 import { Section, SubScreen } from "@/components/options/SubScreen";
-import { RoomScreen } from "@/components/RoomScreen";
 import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
 import {

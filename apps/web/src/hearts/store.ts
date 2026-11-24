@@ -10,10 +10,10 @@ import {
 import type { Card } from "@game/mighty-engine";
 import { create } from "zustand";
 import { workerBotOption } from "@/game/bot-runner";
-import { browserPace } from "@/game/bots";
 import type { DealTiming } from "@/game/cues";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { browserPace } from "@/game/pace";
 import { savedMatchSlot } from "@/game/saved-slot";
 import { useSettings } from "@/game/settings";
 import { play as playCue } from "@/game/sound";
