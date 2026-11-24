@@ -116,8 +116,11 @@ export type Action =
   | { type: "resign" }
   /** 차례인 사람이 시간을 다 썼다(방장 시계가 낸다, `spent`는 이번 결정에 쓴 시간) */
   | { type: "timeout"; spent: number }
-  /** 게임을 중간에 끝낸다(끊긴 사람을 더 기다리지 않을 때) */
-  | { type: "retire" };
+  /**
+   * 게임을 중간에 끝낸다(끊긴 사람을 더 기다리지 않을 때). 기다리던 사람이 하나뿐이면 그 편이 진다.
+   * `noForfeit`이면(혼자 하기 「그만하기」) 아무도 지지 않고 결과 없이 끝낸다
+   */
+  | { type: "retire"; noForfeit?: true };
 
 export type GameEvent =
   | { type: "gameStarted"; turn: number }

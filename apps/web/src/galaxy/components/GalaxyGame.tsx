@@ -40,7 +40,7 @@ import { eventLine, eventSeat } from "../events";
 import { money, seatLabel, squareName, subject } from "../format";
 import { shownCash } from "../fx";
 import { GALAXY_FX } from "../fx-timing";
-import { metSquares, outcomeOf } from "../kit";
+import { galaxyKit, metSquares, outcomeOf } from "../kit";
 import { DECISION_MS } from "../online";
 import { botReactions } from "../reactions";
 import { galaxySession } from "../session";
@@ -595,10 +595,12 @@ export function GalaxyGame({
     }
 
   const ended = events.find((e) => e.type === "gameEnded");
-  const outcome = gameOver ? outcomeOf(view.result, me) : null;
+  // 결과(순위) 없이 그만둔 게임은 승패·비김을 보이지 않는다.
+  const outcome =
+    gameOver && view.result !== null ? outcomeOf(view.result, me) : null;
   const mine = view.result?.standings.find((s) => s.seat === me);
   const banner: Banner | null =
-    ended?.type === "gameEnded" && !playing && !mission
+    ended?.type === "gameEnded" && !playing && !mission && outcome !== null
       ? {
           won: outcome === "win",
           draw: outcome === "draw",
@@ -893,6 +895,11 @@ export function GalaxyGame({
             levels={GALAXY_LEVELS}
             solo={!online && !mission}
             tone="bg-slate-950/95"
+            onQuit={
+              !gameOver && !online && !mission
+                ? () => submit(galaxyKit.quitAction ?? galaxyKit.retireAction)
+                : undefined
+            }
           />
         }
       />

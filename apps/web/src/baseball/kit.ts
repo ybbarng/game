@@ -256,6 +256,7 @@ export const baseballKit: BaseballKit = {
   // 끊긴 사람 대신 둘 때, 사람이 정한 비밀은 모르니 답하기·공개는 그 사람을 기다린다.
   botCanAct: botKnowsSecret,
   retireAction: { type: "retire" },
+  quitAction: { type: "retire", noForfeit: true },
   stats: baseballStats,
   // 숨긴 패가 없다. 비밀은 판 끝 공개 행동으로 기록에 들어 있다.
   review: {

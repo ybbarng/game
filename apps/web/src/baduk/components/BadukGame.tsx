@@ -33,7 +33,7 @@ import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
-import { countText } from "../kit";
+import { badukKit, countText } from "../kit";
 import { BADUK_LEVELS, useBadukSettings } from "../settings";
 import { useBaduk } from "../store";
 import { BadukBoard } from "./BadukBoard";
@@ -171,6 +171,7 @@ export function BadukGame({
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
+  else if (view.retired) status = "게임을 끝냈어요.";
   else if (result?.seat === me)
     status =
       result.kind === "score"
@@ -203,7 +204,11 @@ export function BadukGame({
       ? { won: ended.result.seat === me, detail: detailOf(ended.result) }
       : null;
   const outcome: Outcome | null =
-    result === null ? null : result.seat === me ? "win" : "loss";
+    result === null || view.retired
+      ? null
+      : result.seat === me
+        ? "win"
+        : "loss";
 
   // 판 끝 세기 결과나 "세어 보기"를 누르면 자리 주인을 판에 보인다.
   // 상대가 쉬어 내가 쉬면 판이 끝나는 때도 미리 세어 보인다(죽은 돌을 남긴 채 쉬어 지는 일을 막는다).
@@ -260,6 +265,11 @@ export function BadukGame({
               useStore={useBadukSettings}
               levels={BADUK_LEVELS}
               solo={!online && !mission}
+              onQuit={
+                !gameOver && !online && !mission
+                  ? () => submit(badukKit.quitAction ?? badukKit.retireAction)
+                  : undefined
+              }
             />
           }
         />

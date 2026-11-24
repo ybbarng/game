@@ -28,6 +28,7 @@ import {
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useAutoClear } from "@/lib/use-auto-clear";
+import { omokKit } from "../kit";
 import { OMOK_LEVELS, useOmokSettings, VARIANT_INFO } from "../settings";
 import { useOmok } from "../store";
 import { OmokBoard } from "./OmokBoard";
@@ -138,6 +139,7 @@ export function OmokGame({
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
+  else if (view.retired) status = "게임을 끝냈어요.";
   else if (result?.kind === "draw") status = "비겼어요.";
   else if (result?.seat === me)
     status =
@@ -176,7 +178,7 @@ export function OmokGame({
         }
       : null;
   const outcome =
-    result === null
+    result === null || view.retired
       ? null
       : result.kind === "draw"
         ? "draw"
@@ -204,6 +206,11 @@ export function OmokGame({
               useStore={useOmokSettings}
               levels={OMOK_LEVELS}
               solo={!online && !mission}
+              onQuit={
+                !gameOver && !online && !mission
+                  ? () => submit(omokKit.quitAction ?? omokKit.retireAction)
+                  : undefined
+              }
             />
           }
         />
