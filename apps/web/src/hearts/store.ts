@@ -1,4 +1,4 @@
-import { type BusyReason, realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play";
 import {
   type Action,
   type CompletedTrick,
@@ -9,7 +9,6 @@ import {
 } from "@game/hearts-engine";
 import type { Card } from "@game/mighty-engine";
 import { create } from "zustand";
-import type { EndVoteState, IncidentState } from "@/components/FairOverlays";
 import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { DealTiming } from "@/game/cues";
@@ -18,6 +17,7 @@ import { LocalMatch, type SavedMatch } from "@/game/local-match";
 import { useSettings } from "@/game/settings";
 import { play as playCue } from "@/game/sound";
 import { dealPlan, prefersReducedMotion, SHUFFLE_MS } from "@/game/timing";
+import { useFairBar } from "@/net/fair-bar";
 import {
   ArchiveRecorder,
   type ArchiveTarget,
@@ -119,17 +119,6 @@ interface HeartsStore {
   reconnecting: boolean;
   offlineSeats: number[];
   invalid: string | null;
-  /** 멘탈 포커: 부정을 찾아 판을 멈췄다(GameStore와 같다) */
-  incident: IncidentState | null;
-  /** 멘탈 포커: 내 카드를 아직 다 열지 못한 까닭 */
-  shuffling: BusyReason | null;
-  shuffleStartedAt: number | null;
-  setShuffling(reason: BusyReason | null): void;
-  fair: boolean;
-  endGame: (() => void) | null;
-  /** 멘탈 포커: 끝내기 투표(GameStore와 같다) */
-  endVote: EndVoteState | null;
-  voteEnd: ((end: boolean) => void) | null;
   network: boolean;
   newGame(options: { rules: HeartsRules; seed?: number }): void;
   resume(saved: HeartsSaved): void;
@@ -206,7 +195,7 @@ export const useHearts = create<HeartsStore>((set, get) => {
     let dealTiming: DealTiming | null = null;
     if (dealt && !prefersReducedMotion()) {
       // 멘탈 포커로 실제로 섞는 동안 섞는 연출을 보였으면 최소 시간에서 남은 만큼만 더 섞는다.
-      const since = get().shuffleStartedAt;
+      const since = useFairBar.getState().shuffleStartedAt;
       const shuffleMs =
         since === null
           ? SHUFFLE_MS
@@ -235,8 +224,8 @@ export const useHearts = create<HeartsStore>((set, get) => {
           startDelay: 0,
           shuffleMs,
         },
-        shuffleStartedAt: null,
       });
+      useFairBar.setState({ shuffleStartedAt: null });
       wait(
         dealPlan(dealt.handSize, 4, HEARTS_DEAL_PATTERN).duration -
           SHUFFLE_MS +
@@ -319,10 +308,8 @@ export const useHearts = create<HeartsStore>((set, get) => {
       seatNames: options.seatNames,
       network: options.network ?? false,
       invalid: null,
-      incident: null,
-      shuffling: null,
-      shuffleStartedAt: null,
     });
+    useFairBar.getState().clearRound();
     const persist = () => {
       if (options.save && host instanceof LocalMatch)
         saveHearts((host as HeartsLocalMatch).save());
@@ -406,21 +393,6 @@ export const useHearts = create<HeartsStore>((set, get) => {
     reconnecting: false,
     offlineSeats: [],
     invalid: null,
-    incident: null,
-    shuffling: null,
-    shuffleStartedAt: null,
-    setShuffling(reason) {
-      const { shuffling, shuffleStartedAt } = get();
-      const starting = reason === "deal" && shuffling !== "deal";
-      set({
-        shuffling: reason,
-        shuffleStartedAt: starting ? Date.now() : shuffleStartedAt,
-      });
-    },
-    fair: false,
-    endGame: null,
-    endVote: null,
-    voteEnd: null,
     network: false,
 
     newGame(options) {
@@ -432,7 +404,7 @@ export const useHearts = create<HeartsStore>((set, get) => {
         stats: { game: "hearts", mode: "solo", key: `solo:${seed}` },
         archive: soloArchive("hearts", `solo:${seed}`),
       });
-      set({ fair: false, endGame: null, endVote: null, voteEnd: null });
+      useFairBar.getState().reset();
     },
 
     resume(saved) {
@@ -442,6 +414,7 @@ export const useHearts = create<HeartsStore>((set, get) => {
         stats: { game: "hearts", mode: "solo", key: `solo:${saved.seed}` },
         archive: soloArchive("hearts", `solo:${saved.seed}`),
       });
+      useFairBar.getState().reset();
     },
 
     attachOnline(host, seatNames, options) {
@@ -456,7 +429,7 @@ export const useHearts = create<HeartsStore>((set, get) => {
 
     attachReplay(host, seatNames) {
       attach(host, { save: false, seatNames });
-      set({ fair: false, endGame: null, endVote: null, voteEnd: null });
+      useFairBar.getState().reset();
     },
 
     setSeatNames(seatNames) {
@@ -498,10 +471,8 @@ export const useHearts = create<HeartsStore>((set, get) => {
         busy: false,
         network: false,
         invalid: null,
-        incident: null,
-        shuffling: null,
-        shuffleStartedAt: null,
       });
+      useFairBar.getState().reset();
     },
   };
 });

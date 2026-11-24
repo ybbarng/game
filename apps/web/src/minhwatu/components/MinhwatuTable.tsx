@@ -13,6 +13,7 @@ import {
   yaksOf,
 } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
+import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -46,7 +47,6 @@ import {
   HwatuStage,
   HwatuVerifyLines,
 } from "@/hwatu/components/HwatuTable";
-import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
 import {
   endBoxRect,
@@ -726,7 +726,7 @@ export function MinhwatuTable({
           invalid={invalid}
           onExit={onExit}
         >
-          <HwatuFairBar me={me} over={gameOver} />
+          <FairBar me={me} over={gameOver} />
         </HwatuOnlineNotes>
       )}
 

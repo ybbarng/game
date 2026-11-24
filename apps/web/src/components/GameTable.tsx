@@ -40,6 +40,7 @@ import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
+import { useFairBar } from "@/net/fair-bar";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
 import {
@@ -156,12 +157,12 @@ export function GameTable({
   const botNames = useSettings((s) => s.botNames);
   const network = useGame((s) => s.network);
   const invalid = useGame((s) => s.invalid);
-  const incident = useGame((s) => s.incident);
-  const shuffling = useGame((s) => s.shuffling);
-  const fair = useGame((s) => s.fair);
-  const endGame = useGame((s) => s.endGame);
-  const endVote = useGame((s) => s.endVote);
-  const voteEnd = useGame((s) => s.voteEnd);
+  const incident = useFairBar((s) => s.incident);
+  const shuffling = useFairBar((s) => s.shuffling);
+  const fair = useFairBar((s) => s.fair);
+  const endGame = useFairBar((s) => s.endGame);
+  const endVote = useFairBar((s) => s.endVote);
+  const voteEnd = useFairBar((s) => s.voteEnd);
   const chatMessages = useChat((s) => s.messages);
   const chatUnread = useChat((s) => s.unread);
   const chatOpen = useChat((s) => s.open);

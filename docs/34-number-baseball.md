@@ -99,7 +99,7 @@
 - `packages/baseball-engine`: `rules.ts`(규칙·문자열), `numbers.ts`(판정·후보·약속·컴퓨터 비밀), `sha256.ts`, `state.ts`, `match.ts`(`createMatch`·`step`·`viewOf`·`pendingSeats`·`replay`·`clockTurn`), `scenario.ts`(튜토리얼 장면)
 - `packages/baseball-ai`: `bots.ts`(세 단계, `botKnowsSecret`), `simulate.ts`, `bots.strength.ts`
 - `apps/web/src/baseball/`: `kit.ts`(GameKit·통계·해설), `secret.ts`(내 비밀·자동 답), `store.ts`, `settings.ts`, `session.ts`, `online.ts`, `tutorial.ts`, `progress.ts`, `icon-art.tsx`, `components/`
-- 온라인 화면은 공통 `BoardOnlineScreen`을 그대로 쓴다. 비밀은 방 화면이 아니라 게임 저장소가 다루고, 자동 답도 저장소가 화면을 받을 때 낸다. 그래서 대기실·초대·채팅·재연결·검증·기록은 오목과 같다.
+- 온라인 화면은 공통 `RoomScreen`(판 게임 설정 `boardRoom`)을 그대로 쓴다. 비밀은 방 화면이 아니라 게임 저장소가 다루고, 자동 답도 저장소가 화면을 받을 때 낸다. 그래서 대기실·초대·채팅·재연결·검증·기록은 오목과 같다.
 - 공통 모듈(GameKit·LocalMatch·HostRoom·GuestRoom)은 고치지 않았다. 이미 있는 `botCanAct`(대신 두기 제한)·`offTurn`(상대 차례 기권)·`timing`으로 충분했다.
 - 효과음: 판정 순간에 낸다. 스트라이크는 `strike`(공이 미트에 꽂히는 "팡"), 볼만이면 `ball`(미트로 부드럽게 받는 "퍽"), 아웃은 `pass`, 다 맞히면 `homerun`(방망이 "딱"과 관중 함성) 뒤에 판 끝 공통 `win`·`lose`·`roundEnd`. `/sounds`에 숫자야구 묶음, 크기는 `TRIM_DB`로 맞춰 `e2e/sounds.spec.ts`를 지난다.
 

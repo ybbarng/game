@@ -8,6 +8,7 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { ActionButton } from "@/components/panels/common";
+import { RoomScreen } from "@/components/RoomScreen";
 import { SuitStylePicker } from "@/components/SuitStylePicker";
 import { SuitText } from "@/components/SuitText";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
@@ -18,11 +19,11 @@ import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useHeartsTutorialProgress } from "@/tutorial/progress";
 
 import { HEARTS_LEVELS } from "../bots";
+import { heartsRoom } from "../online";
 import { endHeartsSession } from "../session";
 import { heartsRules, useHeartsSettings } from "../settings";
 import { clearHearts, type HeartsSaved, loadHearts, useHearts } from "../store";
 import { HEARTS_LESSONS } from "../tutorial";
-import { HeartsOnlineScreen } from "./HeartsOnlineScreen";
 import { HeartsTable } from "./HeartsTable";
 import { heartsTutorial } from "./hearts-tutorial";
 
@@ -53,7 +54,6 @@ export function HeartsApp() {
       hostLeft: false,
       reconnecting: false,
       offlineSeats: [],
-      endVote: null,
     });
   }
   // 화면마다 브라우저 기록에 남겨 뒤로가기가 바로 전 화면으로 간다(game/screen-history)
@@ -88,7 +88,8 @@ export function HeartsApp() {
 
   if (screen.kind === "online")
     return (
-      <HeartsOnlineScreen
+      <RoomScreen
+        game={heartsRoom}
         rules={rules}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}

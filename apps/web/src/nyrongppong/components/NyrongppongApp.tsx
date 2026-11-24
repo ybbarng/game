@@ -13,6 +13,7 @@ import {
 } from "@game/nyrongppong-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -20,6 +21,7 @@ import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { nyrongppongRoom } from "../online";
 import { useNyrongppongTutorialProgress } from "../progress";
 import { endNyrongppongSession } from "../session";
 import {
@@ -36,7 +38,6 @@ import {
 } from "../store";
 import { NYRONGPPONG_LESSONS } from "../tutorial";
 import { NYRONGPPONG_BG, NyrongppongGame } from "./NyrongppongGame";
-import { NyrongppongOnlineScreen } from "./NyrongppongOnlineScreen";
 import { nyrongppongTutorial } from "./nyrongppong-tutorial";
 
 function Chip({
@@ -410,7 +411,8 @@ export function NyrongppongApp() {
 
   if (screen.kind === "online")
     return (
-      <NyrongppongOnlineScreen
+      <RoomScreen
+        game={nyrongppongRoom}
         rules={rules}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}

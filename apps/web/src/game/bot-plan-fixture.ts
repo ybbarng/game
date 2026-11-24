@@ -96,7 +96,7 @@ export const CARD_CASES: PlanCase[] = [
   { kit: onecardKit, rules: STANDARD_ONECARD_RULES, levels: [1] },
 ];
 
-/** 판 게임(온라인 방은 중수 하나, `BoardOnlineScreen`) */
+/** 판 게임(온라인 방은 중수 하나, `RoomScreen`의 `boardRoom`) */
 export const BOARD_CASES: PlanCase[] = [
   { kit: chessKit, rules: CHESS_RULES, levels: [1], steps: 40 },
   { kit: janggiKit, rules: JANGGI_RULES, levels: [1], steps: 30 },

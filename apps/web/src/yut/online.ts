@@ -7,7 +7,7 @@ import type {
   YutView,
 } from "@game/yut-engine";
 
-import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
+import { boardRoom } from "@/components/board-room";
 
 import { yutKit } from "./kit";
 import { yutSession } from "./session";
@@ -36,13 +36,13 @@ export function yutRulesSummary(rules: YutRules): string {
  * 판 게임 공통 화면을 그대로 쓴다: 던지기 사슬 씨앗은 방 화면이 아니라 저장소(`store.ts`)가 이 기기에만 두고,
  * 약속·공개는 저장소가 화면을 받을 때 자동으로 낸다. 빈자리는 컴퓨터가 맡는다
  */
-export const yutOnline: BoardOnlineGame<
+export const yutOnline = boardRoom<
   YutRules,
   YutState,
   YutView,
   Action,
   GameEvent
-> = {
+>({
   kit: yutKit,
   name: "윷놀이",
   shareTitle: "윷놀이 한 판 하자",
@@ -54,4 +54,4 @@ export const yutOnline: BoardOnlineGame<
   },
   rulesNote: () =>
     "던지기 결과는 던진 사람의 몸짓과 모두의 기기가 함께 정해 방장도 고를 수 없어요.",
-};
+});

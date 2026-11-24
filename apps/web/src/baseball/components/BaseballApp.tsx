@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import {
   TimePresetPicker,
   timePresetLabel,
@@ -399,7 +399,7 @@ export function BaseballApp() {
 
   if (screen.kind === "online")
     return (
-      <BoardOnlineScreen
+      <RoomScreen
         game={baseballOnline}
         rules={rulesFromSettings(settings, true)}
         roomFromUrl={screen.room}

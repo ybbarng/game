@@ -6,23 +6,9 @@ import { useId } from "react";
 
 import { prefersReducedMotion } from "@/game/timing";
 import type { Point, Size } from "@/layout/compute-layout";
+import type { EndVoteState, IncidentState } from "@/net/fair-bar";
 
 import { PLAYING_CARD, ShuffleLoop } from "./card-fx";
-
-/** 끊긴 사람을 오래 기다려 연 끝내기 투표. `voters`는 표를 낼 수 있는 자리(연결된 사람) */
-export interface EndVoteState {
-  votes: { seat: number; end: boolean }[];
-  voters: number[];
-}
-
-/** 부정 감지(내 기기가 찾았거나, 판을 진행하는 방장이 알렸다) */
-export interface IncidentState {
-  seat: number | null;
-  reason: string;
-  own: boolean;
-  /** 부정은 확실하지만 누가 했는지 확인하는 중 */
-  pending?: boolean;
-}
 
 /**
  * 멘탈 포커 판의 화면 위 표시. 마이티와 하트가 함께 쓴다.

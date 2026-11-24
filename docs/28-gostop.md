@@ -121,7 +121,7 @@
   - `scenario.ts`: 튜토리얼 장면 `createGostopScenario`
   - `names.ts`: 화면·복기 글
 - `packages/gostop-ai`: 세 단계 봇, 카드 값(`knowledge.ts`), 고수의 고·스톱(`search.ts`), 세기 비교.
-- `apps/web/src/gostop/`: `gostopKit`, 설정, 저장소, 소리, 화면(`GostopApp`·`GostopTable`·`GostopOnlineScreen`·`GostopReplay`·`GostopStats`·아이콘), 튜토리얼.
+- `apps/web/src/gostop/`: `gostopKit`, 설정, 저장소, 소리, 화면(`GostopApp`·`GostopTable`·공통 `RoomScreen`(설정은 `gostop/online.ts`)·`GostopReplay`·`GostopStats`·아이콘), 튜토리얼.
 - 온라인은 `HostRoom`·`GuestRoom`을 그대로 쓴다. 3명 방은 빈자리에 중수 컴퓨터가 앉는다.
   - **암호화방(멘탈 포커, 기본, 2026-10-29)**: 방장도 더미와 남의 손패를 모른다(docs/27 3절). 낸 카드·뒤집은 카드는 그 순간 모두에게 연다. 흔들기·폭탄은 그 달 석 장, 총통은 처음 받은 넉 장을 열어 보인다(판을 시작하기 전에). 낼 수 있는 카드·흔들기·폭탄은 참가자 기기가 자기 손패로 다시 계산한다(`gostop/fair.ts`). 끊긴 사람은 컴퓨터가 대신하지 않고 기다리거나 끝내기 투표를 한다.
   - 일반방: 방장 기기가 시드로 섞는다. 끊긴 사람은 30초 뒤 컴퓨터가 대신 낸다.

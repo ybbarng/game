@@ -44,6 +44,7 @@ import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
+import { useFairBar } from "@/net/fair-bar";
 
 import { canActHearts, HEARTS_DEAL_PATTERN, useHearts } from "../store";
 import { directionLabel, sortHearts } from "../terms";
@@ -101,12 +102,12 @@ export function HeartsTable({
   const reconnecting = useHearts((s) => s.reconnecting);
   const offlineSeats = useHearts((s) => s.offlineSeats);
   const invalid = useHearts((s) => s.invalid);
-  const incident = useHearts((s) => s.incident);
-  const shuffling = useHearts((s) => s.shuffling);
-  const fair = useHearts((s) => s.fair);
-  const endGame = useHearts((s) => s.endGame);
-  const endVote = useHearts((s) => s.endVote);
-  const voteEnd = useHearts((s) => s.voteEnd);
+  const incident = useFairBar((s) => s.incident);
+  const shuffling = useFairBar((s) => s.shuffling);
+  const fair = useFairBar((s) => s.fair);
+  const endGame = useFairBar((s) => s.endGame);
+  const endVote = useFairBar((s) => s.endVote);
+  const voteEnd = useFairBar((s) => s.voteEnd);
   const submit = useHearts((s) => s.submit);
   const clearNotice = useHearts((s) => s.clearNotice);
   const botNames = useSettings((s) => s.botNames);

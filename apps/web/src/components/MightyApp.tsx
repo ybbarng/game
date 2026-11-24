@@ -12,8 +12,9 @@ import { endOnlineSession } from "@/net/session";
 
 import { AboutScreen } from "./AboutScreen";
 import { GameTable } from "./GameTable";
-import { OnlineScreen } from "./OnlineScreen";
+import { mightyRoom } from "./mighty-room";
 import { OptionsScreen } from "./OptionsScreen";
+import { RoomScreen } from "./RoomScreen";
 import { Splash } from "./Splash";
 import { StartScreen } from "./StartScreen";
 import { LessonPlayer } from "./tutorial/LessonPlayer";
@@ -44,7 +45,6 @@ export function MightyApp() {
       hostLeft: false,
       reconnecting: false,
       offlineSeats: [],
-      endVote: null,
     });
   }
   // 화면마다 브라우저 기록에 남겨 뒤로가기가 바로 전 화면으로 간다(game/screen-history)
@@ -86,7 +86,8 @@ export function MightyApp() {
 
   if (screen.kind === "online") {
     return (
-      <OnlineScreen
+      <RoomScreen
+        game={mightyRoom}
         rules={screen.rules}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}

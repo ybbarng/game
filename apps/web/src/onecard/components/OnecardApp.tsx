@@ -8,6 +8,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useOnecardTutorialProgress } from "@/tutorial/progress";
 
+import { onecardRoom } from "../online";
 import { endOnecardSession } from "../session";
 import {
   ONECARD_LEVELS,
@@ -31,7 +33,6 @@ import {
 import { ONECARD_LESSONS } from "../tutorial/lessons";
 import { OnecardCardView } from "./OnecardCard";
 import { ONECARD_BG, OnecardGame } from "./OnecardGame";
-import { OnecardOnlineScreen } from "./OnecardOnlineScreen";
 import { onecardTutorial } from "./onecard-tutorial";
 
 function Chip({
@@ -356,7 +357,8 @@ export function OnecardApp() {
 
   if (screen.kind === "online")
     return (
-      <OnecardOnlineScreen
+      <RoomScreen
+        game={onecardRoom}
         rules={rulesOf(useOnecardSettings.getState())}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}

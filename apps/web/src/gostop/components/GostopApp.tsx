@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -9,6 +10,7 @@ import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { gostopRoom } from "../online";
 import { useGostopTutorialProgress } from "../progress";
 import { endGostopSession } from "../session";
 import {
@@ -22,7 +24,6 @@ import {
 } from "../settings";
 import { clearGostop, type GostopSaved, loadGostop, useGostop } from "../store";
 import { GOSTOP_LESSONS } from "../tutorial";
-import { GostopOnlineScreen } from "./GostopOnlineScreen";
 import { GostopTable } from "./GostopTable";
 import { gostopTutorial } from "./gostop-tutorial";
 
@@ -377,7 +378,8 @@ export function GostopApp() {
 
   if (screen.kind === "online")
     return (
-      <GostopOnlineScreen
+      <RoomScreen
+        game={gostopRoom}
         rules={gostopRulesOf({ players, rounds, gukjin })}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}

@@ -102,7 +102,8 @@
   - 둘러앉은 판(마이티·하트·원카드·화투)은 공통 배치(`computeLayout`·`hwatuLayout`, 무대 크기 `useStageSize`)와 자리 판(`SeatPlate`·`SeatPlateFrame`), 판 끝 남의 패(`OpenHand`)를 쓴다: 가운데 넓은 판, 남은 둘레 자리 판(손패 뒷면 부채), 아래 내 자리·손패·단추, 위 막대(docs/05 4.11)
   - 힌트(혼자 하기, 넣는 게임만)는 공통 `HintButton`·`useHint`(components)를 쓴다. 혼자 하기·미션 아님·내 차례일 때만 보이고 수가 오가면 지운다. 고수 수 고르기와 판 위 표시(출발 점선·도착 초록 고리 #059669)는 게임이 맡는다
 - [ ] 온라인 화면
-  - 판 게임은 공통 `BoardOnlineScreen`을 쓴다. 게임마다 다른 것(킷, 이름, 공유 제목, 세션, 저장소, 컴퓨터, 규칙 요약)만 `<게임>/online.ts`의 `BoardOnlineGame` 설정 객체로 넘긴다. 아래 항목은 이 화면이 모두 맡는다
+  - 모든 게임의 온라인 대기실은 공통 `RoomScreen`(components/RoomScreen.tsx)을 쓴다(2026-11-24). 게임마다 다른 것은 `<게임>/online.ts`의 `RoomGame` 설정 객체로 넘긴다: 킷, 이름, 공유 제목, 세션, 저장소, 대국 붙이기(`attach`), 컴퓨터와 단계, 규칙 요약(꼬리표)·설명 문장, 「친구가 들어와야 시작」(`needsFriend`), 대신 두기 시간(`standInMs`), 빈자리 글, 맨 아래 연결 안내 글. 판 게임은 `boardRoom(...)`(components/board-room.ts)으로 판 게임 기본값(친구가 들어와야 시작, 1분 대신 두기, 시간 규칙을 요약 앞에)을 채우고, 둘러앉은 카드 게임은 `TABLE_ROOM`(components/card-room.ts)을 펼친다. 멘탈 포커를 쓰는 카드 게임은 `fair: true`로 방 종류 고르기·대기실 암호화방 줄·「이 방은 어떻게 지켜지나요?」 링크·섞는 중과 부정 알림·끝내기 투표가 함께 붙는다. 아래 항목은 이 화면이 모두 맡는다
+  - 멘탈 포커 판의 화면 상태(섞는 중·부정 알림·끝내기 투표·끊긴 자리)는 게임마다 두지 않고 `net/fair-bar.ts`의 `useFairBar` 하나에 둔다. 방을 떠나면(`endRoomSession`) 저절로 지운다. 화투 셋·원카드는 판 위쪽에 `FairBar`(components)를, 마이티·하트는 판 위에 `FairOverlays`를 그린다
   - 방장은 `HostRoom`, 참가자는 `GuestRoom`
   - 초대 링크(`?room=`)로 들어온다. 방장이 새로고침하면 `hostedRoom(<id>)`로 다시 연다
   - 끊긴 사람 대신 컴퓨터가 둔다(`standInDelayMs`)
@@ -213,6 +214,6 @@
 - 엔진 자료가 크면 기본 하나만 묶고 나머지는 `loadSky`처럼 쓸 때 불러온다. 루트 layout이 부르는 설정 저장소는 엔진 값을 가져오지 않는 파일에 둔다(`galaxy/settings-store.ts`, 엔진 package.json `sideEffects: false`).
 - `KitTimer.later(state)`: 시간 창이 끝난 순간의 상태로 넣을 자리·행동을 정한다(컴퓨터가 대신 정하기처럼). 온라인 방 결정 시계(은하 한 바퀴 `galaxy/online.ts`)가 쓴다. 대신 정한 행동은 꼬리표를 달고 `timing.strip`이 null을 돌려 판 끝 검증의 「내가 보낸 것」에서 뺀다.
 - `GameKit.verifyUnsigned({before, seat, action, index, context})`: 사람이 보낸 것이 아닌 기록(`timing.strip`이 null)이 규칙대로인지 참가자 판 끝 다시 계산이 확인한다. 방장이 넣는 꼬리표 행동이 있는 게임은 반드시 채운다(꼬리표만 달면 내 행동·컴퓨터 수 대조를 건너뛰므로).
-- `BoardOnlineScreen`: 참가자 기기가 받은 규칙 문자열을 읽지 못하면 방에 들어가지 않고 오류를 보인다.
+- `RoomScreen`(예전 `BoardOnlineScreen`): 참가자 기기가 받은 규칙 문자열을 읽지 못하면 방에 들어가지 않고 오류를 보인다.
 
-공통 정리: 오목·장기·체스·바둑·숫자야구의 온라인 화면은 공통 `BoardOnlineScreen` 하나로 묶었다(2026-10-29). 화투 세 게임의 온라인 화면도 거의 같은 코드라, 멘탈 포커로 옮긴 뒤 같은 식으로 묶을 수 있다.
+공통 정리: 오목·장기·체스·바둑·숫자야구의 온라인 화면은 공통 `BoardOnlineScreen` 하나로 묶었다(2026-10-29). 2026-11-24에 카드 게임 여섯(마이티·하트·고스톱·민화투·나이롱뽕·원카드)까지 공통 `RoomScreen` 하나로 묶었다. 그러면서 다른 게임 방 오류·읽지 못하는 규칙 오류·채팅의 내 글 색이 모든 게임에 같게 들어갔다.

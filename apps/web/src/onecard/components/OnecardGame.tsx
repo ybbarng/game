@@ -35,6 +35,7 @@ import {
   useCardFlights,
   useHandSpread,
 } from "@/components/card-fx";
+import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
@@ -53,7 +54,6 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { useStimulusShown } from "@/game/stimulus-shown";
 import { prefersReducedMotion } from "@/game/timing";
-import { HwatuFairBar, useHwatuFair } from "@/hwatu/fair-bar";
 import {
   computeLayout,
   FAN_PEEK,
@@ -68,6 +68,7 @@ import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
+import { useFairBar } from "@/net/fair-bar";
 
 import { fanFlipId, onecardDealPattern, planFx } from "../card-fx";
 import { isRedSuit, SUIT_NAMES, SUIT_SYMBOLS } from "../cards";
@@ -468,7 +469,7 @@ export function OnecardGame({
     shoutEvents,
     dealing,
   } = useOnecard();
-  const fairShuffling = useHwatuFair((s) => s.shuffling);
+  const fairShuffling = useFairBar((s) => s.shuffling);
   const submit = useOnecard((s) => s.submit);
   const shout = useOnecard((s) => s.shout);
   const resign = useOnecard((s) => s.resign);
@@ -1202,7 +1203,7 @@ export function OnecardGame({
                 top: layout.hud.y + layout.hud.h + 6,
               }}
             >
-              <HwatuFairBar me={me} over={over} />
+              <FairBar me={me} over={over} />
             </div>
           )}
 

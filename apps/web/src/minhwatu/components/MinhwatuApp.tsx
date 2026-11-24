@@ -3,6 +3,7 @@
 import { YAK_DESCRIPTIONS, YAK_NAMES } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -11,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { ro, topic } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { minhwatuRoom } from "../online";
 import { useMinhwatuTutorialProgress } from "../progress";
 import { describeRules } from "../rules-text";
 import { endMinhwatuSession } from "../session";
@@ -29,7 +31,6 @@ import {
   useMinhwatu,
 } from "../store";
 import { MINHWATU_LESSONS } from "../tutorial";
-import { MinhwatuOnlineScreen } from "./MinhwatuOnlineScreen";
 import { MINHWATU_BG, MinhwatuTable } from "./MinhwatuTable";
 import { minhwatuTutorial } from "./minhwatu-tutorial";
 
@@ -375,7 +376,8 @@ export function MinhwatuApp() {
 
   if (screen.kind === "online")
     return (
-      <MinhwatuOnlineScreen
+      <RoomScreen
+        game={minhwatuRoom}
         rules={rulesOf(settings)}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}

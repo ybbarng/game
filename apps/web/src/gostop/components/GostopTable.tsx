@@ -12,6 +12,7 @@ import {
 } from "@game/gostop-engine";
 import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
 import { useEffect, useState } from "react";
+import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -46,7 +47,6 @@ import {
   HwatuStage,
   HwatuVerifyLines,
 } from "@/hwatu/components/HwatuTable";
-import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
 import {
   endBoxRect,
@@ -651,7 +651,7 @@ export function GostopTable({
           invalid={invalid}
           onExit={onExit}
         >
-          <HwatuFairBar me={me} over={view.phase === "gameOver"} />
+          <FairBar me={me} over={view.phase === "gameOver"} />
         </HwatuOnlineNotes>
       )}
 
