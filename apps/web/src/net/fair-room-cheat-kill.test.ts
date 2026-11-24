@@ -38,8 +38,8 @@ describe("멘탈 포커 온라인 대전", () => {
       await host.start();
       await until(() => guests.every((g) => g.match !== null));
       patchLiar();
-      // 사람 주공은 0번 참가자가 가진 카드를 부른다. 주공이 사람이도록 방장은
-      // 공약을 가장 높게 건다(컴퓨터 주공이면 판을 다시 기다려야 해 시간이 운에 달렸다).
+      // 사람 주공은 0번 참가자가 가진 카드를 부른다. 주공이 사람이도록 방장은 공약을 가장 높게 건다.
+      // 판의 패는 시험 난수원으로 정해져(fair-room-fixture) 첫 판에서 죽이기 물음이 온다.
       const victim = guests[0] as GuestRoom;
       const killer: Cheat = (view, key) => {
         if (view.decision?.kind === "election" && key !== "g0") {
@@ -52,10 +52,8 @@ describe("멘탈 포커 온라인 대전", () => {
           .hand.find((c) => !view.killFailed.includes(c));
         return card ? { type: "kill", card } : null;
       };
-      for (let round = 1; round <= 12 && !lied; round++)
-        await playRounds(host, guests, round, incidents, killer);
+      await playRounds(host, guests, 1, incidents, killer);
       expect(lied).toBe(true);
-      await playRounds(host, guests, 99, incidents);
       await until(() => incidents.length > 0);
       const own = incidents.filter((i) => i.own);
       expect(own[0]?.seat).toBe(guests[0]?.seat);
