@@ -19,7 +19,7 @@ import {
   viewOf,
 } from "@game/chess-engine";
 import { adviseWith } from "@/game/bot-runner";
-import { obj, ro, subj, topic } from "@/lib/josa";
+import { obj, ro, subj, topic, wa } from "@/lib/josa";
 
 import { chessAdvisor } from "./advisor";
 import type { ChessPuzzle } from "./puzzles";
@@ -132,14 +132,74 @@ export function explainMate(pos: Position, move: Move): string[] {
       else guarded.set(who, [...(guarded.get(who) ?? []), squareName(to)]);
     }
   if (blocked.length > 0)
-    lines.push(
-      `킹 둘레 ${topic(blocked.join("·"))} 흑 자기 기물이 막고 있어요.`,
-    );
+    lines.push(`킹 둘레 ${topic(blocked.join("·"))} 흑 기물이 막고 있어요.`);
   for (const [who, squares] of guarded)
     lines.push(`킹이 피할 ${topic(squares.join("·"))} ${subj(who)} 노려요.`);
   lines.push(...covered);
+  lines.push(...pinnedDefenders(board, king));
   lines.push("막거나 잡을 수도 없어 체크메이트예요.");
   return lines;
+}
+
+/**
+ * 메이트 판에서 체크를 막거나 체크한 기물을 잡을 수 있는 자리인데, 킹과 한 줄에 묶여 움직이지 못하는 흑 기물.
+ * 메이트 판이라 그런 수는 모두 둘 수 없는 수다(킹이 잡히게 되는 수). 체크가 둘이면 막아도 소용없어 보지 않는다
+ */
+function pinnedDefenders(board: Board, king: number): string[] {
+  const checkers = board.flatMap((c, i) =>
+    c.startsWith("w") && attacksFrom(board, i).includes(king) ? [i] : [],
+  );
+  if (checkers.length !== 1) return [];
+  const checker = checkers[0] as number;
+  const [kx, ky] = [king & 7, king >> 3];
+  const [cx, cy] = [checker & 7, checker >> 3];
+  const dx = Math.sign(cx - kx);
+  const dy = Math.sign(cy - ky);
+  const line =
+    (cx - kx) * dy === (cy - ky) * dx &&
+    "QRB".includes((board[checker] as string)[1] as string);
+  const between: number[] = [];
+  if (line)
+    for (let x = kx + dx, y = ky + dy; x !== cx || y !== cy; x += dx, y += dy)
+      between.push(y * 8 + x);
+  const out: string[] = [];
+  board.forEach((cell, at) => {
+    if (!cell.startsWith("b") || cell === "bK") return;
+    const hits = attacksFrom(board, at);
+    const block =
+      cell === "bP"
+        ? between.find((t) => t === at + 8 && board[t] === "")
+        : between.find((t) => hits.includes(t));
+    const take = hits.includes(checker);
+    if (block === undefined && !take) return;
+    // 킹에서 이 기물 쪽으로 가며 이 기물 너머 처음 만나는 기물이 묶는 백 기물
+    const [px, py] = [at & 7, at >> 3];
+    const sx = Math.sign(px - kx);
+    const sy = Math.sign(py - ky);
+    if ((px - kx) * sy !== (py - ky) * sx) return;
+    let pinner = -1;
+    for (
+      let x = px + sx, y = py + sy;
+      x >= 0 && x < 8 && y >= 0 && y < 8;
+      x += sx, y += sy
+    ) {
+      const c = board[y * 8 + x] ?? "";
+      if (c === "") continue;
+      if (c.startsWith("w") && attacksFrom(board, y * 8 + x).includes(at))
+        pinner = y * 8 + x;
+      break;
+    }
+    if (pinner < 0) return;
+    const name = (i: number) =>
+      `${KIND_NAMES[(board[i] as string)[1] as Kind]}(${squareName(i)})`;
+    const can = take
+      ? `체크한 ${obj(name(checker))} 잡을 수 있지만`
+      : `${squareName(block as number)}에서 체크를 막을 수 있지만`;
+    out.push(
+      `흑 ${topic(name(at))} ${can}, ${wa(name(pinner))} 킹 사이에 묶여 움직이면 킹이 잡혀요.`,
+    );
+  });
+  return out;
 }
 
 /** 뒷줄 메이트인가: 메이트 뒤 흑 킹이 8번째 가로줄에 있고, 룩·퀸이 8번째 가로줄에서 체크하며, 킹 앞 7번째 가로줄 칸은 모두 흑 기물이 막았다 */
