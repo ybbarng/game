@@ -210,6 +210,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in
       self?.pushStoreToWebWindows()
       (self?.sheets[.records] as? NativeRecordsWindow)?.reload()
+      // 티어표 창도 지금 보는 크기로 다시 그린다(내 티어·다음 판 목표·지난 티어가 바뀐다)
+      (self?.sheets[.tiers] as? NativeTiersWindow)?.reload()
       // 맞추는 동안 미룬 새 판 알림(큐브에 그대로 있을 때만)
       if self?.cube.focused == true { self?.showUpdateNoticeIfDue() }
     }

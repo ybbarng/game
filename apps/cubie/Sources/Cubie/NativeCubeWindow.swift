@@ -196,6 +196,8 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     applySettings()
     refreshProfile()
     onReady?()
+    // 앱이 `onReady`에서 말풍선을 숨긴다. 공식 연습 중이면 줄이 그대로여도 다시 그린다
+    if state.practice != nil { practiceChanged(force: true) }
   }
 
   func takeKeys() { panel.makeFirstResponder(cube) }
