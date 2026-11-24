@@ -25,6 +25,12 @@ export interface ToneRun {
    * 걸음 번호로 고르면 두 편이 번갈아 두는 게임에서 짝수 n이 한 편의 수만 고르므로, 자리마다 따로 센다
    */
   every?: number;
+  /**
+   * 이 걸음부터 해설을 본다(앞 걸음은 두기만 한다). 기본 0. 해설 계산이 무거운 대국 하나를 파일 여럿이 걸음 구간으로
+   * 나눠 동시에 돌 때 쓴다(한 파일 안의 시험은 차례로 돈다). 자리마다 센 수는 0걸음부터 세므로, 구간을 이어 붙이면
+   * 나누지 않고 둔 대국과 같은 수의 해설을 본다. 컴퓨터가 둔 자리·해설이 나온 자리도 이 구간 안에서 본다
+   */
+  from?: number;
 }
 
 export interface Collected {
@@ -47,7 +53,9 @@ export function collectCommentary(kit: AnyKit, run: ToneRun): Collected {
   const count = new Map<number, number>();
   let state = kit.createMatch(run.rules, run.seed).state;
   const every = run.every ?? 1;
+  const from = run.from ?? 0;
   for (let i = 0; i < run.steps; i++) {
+    const seen = i >= from;
     let next: { seat: number; action: unknown } | null =
       kit.autoAction?.(state, run.seed + i) ?? null;
     if (!next) {
@@ -68,7 +76,7 @@ export function collectCommentary(kit: AnyKit, run: ToneRun): Collected {
           typeof run.level === "function" ? run.level(seat) : run.level;
         const bot = kit.botFor?.(level);
         if (!bot) throw new Error("컴퓨터가 없는 게임");
-        moved.add(seat);
+        if (seen) moved.add(seat);
         next = {
           seat,
           action: bot.decide(view, { seed: run.seed * 7919 + i }),
@@ -79,14 +87,15 @@ export function collectCommentary(kit: AnyKit, run: ToneRun): Collected {
     if (!result.ok) throw new Error(`${i}걸음: ${result.error}`);
     const nth = count.get(next.seat) ?? 0;
     count.set(next.seat, nth + 1);
-    if (nth % every === 0) {
+    if (seen && nth % every === 0) {
       const said = commentaryLines(
         kit.review.explain(state, next, result.state, i, name),
       );
       if (said.length > 0) explained.add(next.seat);
       lines.push(...said);
     }
-    lines.push(...(kit.review.stepNotes?.(result.events, name) ?? []));
+    if (seen)
+      lines.push(...(kit.review.stepNotes?.(result.events, name) ?? []));
     state = result.state;
     if (kit.isOver(kit.viewOf(state, 0))) break;
   }
