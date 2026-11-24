@@ -3,53 +3,33 @@ import Testing
 
 @testable import CubieCore
 
+/// 메뉴 프로필 칸: 저장된 이름 읽기·새 이름 짓기·티어 글
 struct ProfileTests {
-  /// 1×1 투명 PNG(웹 `canvas.toDataURL("image/png")`과 같은 꼴)
-  private let png =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
-
-  @Test func 웹이_보낸_프로필을_읽는다() {
-    let p = Profile.from(message: [
-      "type": "profile", "name": "익명 큐버 #4821", "photo": NSNull(), "signedIn": false, "n": 3,
-      "tier": "gold", "tierText": "3×3 골드 II", "emblem": png,
-    ])
-    #expect(p?.name == "익명 큐버 #4821")
-    #expect(p?.tierText == "3×3 골드 II")
-    #expect(p?.emblem?.prefix(4) == Data([0x89, 0x50, 0x4E, 0x47]))
-    #expect(p?.photo == nil)
-    #expect(p?.signedIn == false)
+  @Test func 저장된_이름을_읽는다() {
+    #expect(Profile.storedName(#"{"version":1,"name":"큐브왕"}"#) == "큐브왕")
   }
 
-  @Test func 티어가_없으면_엠블럼_없이_글만() {
-    let p = Profile.from(message: [
-      "type": "profile", "name": "익명 큐버 #1000", "tier": NSNull(), "tierText": "3×3 5판 뒤에", "emblem": NSNull(),
-    ])
-    #expect(p?.tierText == "3×3 5판 뒤에")
-    #expect(p?.emblem == nil)
+  @Test func 저장이_없거나_이름이_비거나_모양이_틀리면_새로_짓는다() {
+    #expect(Profile.storedName(nil) == nil)
+    #expect(Profile.storedName(#"{"version":1,"name":"   "}"#) == nil)
+    #expect(Profile.storedName(#"{"version":1,"name":3}"#) == nil)
+    #expect(Profile.storedName("not json") == nil)
   }
 
-  @Test func 이름이_없거나_비면_버린다() {
-    #expect(Profile.from(message: ["type": "profile"]) == nil)
-    #expect(Profile.from(message: ["type": "profile", "name": "  "]) == nil)
-    #expect(Profile.from(message: ["type": "profile", "name": 3]) == nil)
+  @Test func 새_이름은_네_자리_번호와_사이트와_같은_저장_글() {
+    let made = Profile.madeName(0)
+    #expect(made.name == "익명 큐버 #1000")
+    #expect(made.stored == #"{"version":1,"name":"익명 큐버 #1000"}"#)
+    #expect(Profile.madeName(8999).name == "익명 큐버 #9999")
+    #expect(Profile.storedName(made.stored) == made.name)
   }
 
-  @Test func 모르는_칸과_모양이_틀린_칸은_버린다() {
-    let p = Profile.from(message: [
-      "name": "익명 큐버 #2000", "signedIn": "yes", "tierText": 5, "emblem": "https://example.com/a.png",
-      "future": ["x": 1],
-    ])
-    #expect(p == Profile(name: "익명 큐버 #2000"))
+  @Test func 티어_글은_크기와_티어_이름_없으면_5판_뒤에() {
+    #expect(Profile.tierText(n: 3, tierName: "골드 II") == "3×3 골드 II")
+    #expect(Profile.tierText(n: 7, tierName: nil) == "7×7 5판 뒤에")
   }
 
-  @Test func 그림은_base64_data_URL만() {
-    #expect(Profile.dataURL(png) != nil)
-    #expect(Profile.dataURL("data:image/svg+xml;utf8,<svg/>") == nil)
-    #expect(Profile.dataURL("data:text/plain;base64,aGk=") == nil)
-    #expect(Profile.dataURL("data:image/png;base64,@@@") == nil)
-  }
-
-  @Test func 웹이_알려_주기_전에는_번호_없는_익명_이름() {
+  @Test func 읽기_전에는_번호_없는_익명_이름() {
     #expect(Profile.placeholder.name == "익명 큐버")
     #expect(Profile.placeholder.emblem == nil)
   }

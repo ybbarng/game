@@ -167,49 +167,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   // MARK: 앱 안 키 감시
 
-  /// 앱 창으로 가는 키를 화면보다 먼저 본다. 먹었으면 nil
+  /// 앱 창으로 가는 키를 화면보다 먼저 본다(갈 곳은 `KeyRoute`). 먹었으면 nil
   private func keyDown(_ event: NSEvent) -> NSEvent? {
-    let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    // 새 판 말풍선이 떠 있으면: Enter는 설치(Sparkle 창), Esc는 닫기만, 다른 키는 닫고 그대로 큐브에(docs/47 15-12)
-    if updateNoticeUp, event.window === cube.panel, !event.isARepeat {
-      let plain = mods.subtracting([.function, .numericPad, .capsLock]).isEmpty
-      if plain, event.keyCode == 36 || event.keyCode == 76 {
-        installFromNotice()
-        return nil
-      }
-      hideUpdateNotice()
-      if plain, event.keyCode == 53 { return nil }
+    let w = event.window
+    let context = KeyRoute.Context(
+      toCube: w === cube.panel, cubeIsKey: cube.panel.isKeyWindow, window: w.map(sheets.escKind),
+      editingText: (w?.firstResponder as? NSText)?.isEditable == true,
+      noticeUp: updateNoticeUp, keysShown: keys.isShown, practicing: cube.state.practice != nil)
+    let mods = KeyRoute.Mods(rawValue: event.modifierFlags.intersection(.deviceIndependentFlagsMask).rawValue)
+    let d = KeyRoute.route(keyCode: event.keyCode, mods: mods, isRepeat: event.isARepeat, context)
+    if d.dismissNotice { hideUpdateNotice() }
+    switch d.action {
+    case .pass(let keyOrigin):
+      if keyOrigin { cube.keyArriving(event) }
+      return event
+    case .swallow: break
+    case .installUpdate: installFromNotice()
+    case .toggleKeys: toggleKeys()
+    case .hideKeys: hideKeys()
+    case .stopPractice: cube.send(.practice(stage: nil, see: false))
+    case .returnFocus: returnFocus()
+    case .closeWindow: w?.close()
     }
-    // F1(맥북은 fn+F1): 「단축키 보기」. 큐브 옆 표를 켜고 끈다. 맥북에서 fn 없이 누르면 밝기 키라 앱에 오지 않는다
-    if event.keyCode == UInt16(Config.shortcutsKeyCode), event.window === cube.panel,
-      mods.subtracting([.function, .numericPad]).isEmpty
-    {
-      if !event.isARepeat { toggleKeys() }
-      return nil
-    }
-    let isEsc = event.keyCode == 53 && mods.subtracting([.function, .numericPad]).isEmpty
-    // 큐브 창으로 가는 키: 화면에 닿기 직전에 출처를 알린다
-    if !isEsc, event.window === cube.panel {
-      cube.keyArriving(event)
-    }
-    guard isEsc else { return event }
-    if cube.panel.isKeyWindow {
-      // 단축키 표가 떠 있으면 Esc는 표 닫기. 공식 연습 중이면 연습 끝내기(맞추기로 돌아가기). 한 번 더 누르면 이전 앱으로
-      if keys.isShown {
-        hideKeys()
-      } else if cube.state.practice != nil {
-        cube.send(.practice(stage: nil, see: false))
-      } else {
-        returnFocus()
-      }
-      return nil
-    }
-    // 기록·티어표·설정 창은 Esc로 닫는다(설정 창의 키 지정 중에는 편집기 감시가 먼저 먹는다). 「모든 설정…」 사이트 창은
-    // 웹 화면의 Esc를 그대로 둔다. 글 칸에 쓰는 중이면 Esc는 글 칸 몫이다(`EscClose`)
-    guard let w = event.window else { return event }
-    let editing = (w.firstResponder as? NSText)?.isEditable == true
-    guard EscClose.closes(sheets.escKind(w), editingText: editing) else { return event }
-    w.close()
     return nil
   }
 

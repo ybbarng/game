@@ -343,16 +343,10 @@ final class NativeCubeWindow: FloatingWindow {
 
   /// 다 맞춘 판: 기록에 남기고 축하(이 판 전의 최고보다 빠르면 금색)
   private func finish(_ partial: [String: Any]) {
-    var r = partial
     let n = cube.n
-    r["at"] = Int(Date().timeIntervalSince1970 * 1000)
-    r["n"] = n
-    r["mode"] = "solo"
-    r["inspection"] = false
-    if !inputs.isEmpty { r["inputs"] = inputs }
-    let rank = ["hardware": 0, "unknown": 1, "synthetic": 2]
-    if let o = origins.max(by: { (rank[$0] ?? 1) < (rank[$1] ?? 1) }) { r["keyOrigin"] = o }
-    if hintGate.used > 0 { r["hints"] = hintGate.used }
+    let r = SolveRecord.compose(
+      partial: partial, n: n, atMs: Int(Date().timeIntervalSince1970 * 1000), inputs: inputs, origins: origins,
+      hints: hintGate.used)
     let before = book.best(n)
     let ms = Timeable(record: r).result ?? 0
     book.add(r)
@@ -387,36 +381,9 @@ final class NativeCubeWindow: FloatingWindow {
     onHint?(out)
   }
 
-  /// 코어 힌트 → 갈래와 말풍선 줄(사이트 `hintBubbleLines`: 단계·상황, 쥐는 법과 그 키, 공식, 공식의 키).
-  /// 키 칸은 코어가 낱말 꼴(「꼴:글」을 0x1f로 이음)로 주고, 수 표기(move)와 키(key, 키캡 상자)를 갈라 그린다(docs/47 4-4)
+  /// 코어 힌트 → 갈래와 말풍선 줄(`BubbleLines.hint`)
   static func hintLines(game: OpaquePointer) -> (kind: String, lines: [[String: Any]]) {
-    let lines = NativeCore.string { cubie_game_hint(game, $0, $1) }.components(separatedBy: "\n")
-    let field = { (i: Int) in i < lines.count ? lines[i] : "" }
-    let (stage, name, before, alg, keys, beforeKeys) = (field(1), field(2), field(3), field(4), field(6), field(7))
-    var out: [[String: Any]] = [["text": name.isEmpty ? stage : "\(stage) · \(name)", "style": "title"]]
-    if !before.isEmpty {
-      var spans: [[String: Any]] = [["style": "move", "text": before], ["style": "plain", "text": " 뒤"]]
-      if !beforeKeys.isEmpty { spans += [["style": "plain", "text": "  "]] + Self.spans(beforeKeys) }
-      out.append(["text": Self.spansText(spans), "style": "note", "spans": spans])
-    }
-    out.append(["text": alg, "style": "alg"])
-    if !keys.isEmpty {
-      let spans = Self.spans(keys)
-      out.append(["text": Self.spansText(spans), "style": "keys", "spans": spans])
-    }
-    return (field(0).isEmpty ? "none" : field(0), out)
-  }
-
-  /// 「꼴:글」을 0x1f로 이은 낱말들 → 말풍선 낱말
-  static func spans(_ raw: String) -> [[String: Any]] {
-    raw.split(separator: "\u{1f}").map { sp -> [String: Any] in
-      let p = sp.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
-      return ["style": p[0], "text": p.count > 1 ? p[1] : ""]
-    }
-  }
-
-  static func spansText(_ spans: [[String: Any]]) -> String {
-    spans.map { $0["text"] as? String ?? "" }.joined()
+    BubbleLines.hint(NativeCore.string { cubie_game_hint(game, $0, $1) })
   }
 
   /// 짧은 알림 한 줄(1.5초)
@@ -549,27 +516,12 @@ final class NativeCubeWindow: FloatingWindow {
     }
     if ev & 4 != 0 { sound.play(.invalid) }
     if ev & 8 != 0 { savePractice() }
-    let again = keymap.scrambleKey.map { Self.keyLabel($0.code) } ?? "Enter"
+    let again = keymap.scrambleKey.map { BubbleLines.keyLabel($0.code) } ?? "Enter"
     let text = again.withCString { a in NativeCore.string { cubie_game_practice_lines(cube.game, a, $0, $1) } }
     let lines = text.split(separator: "\n").map(String.init)
     guard force || lines != practiceLines else { return }
     practiceLines = lines
-    onHint?(lines.map(Self.bubbleLine))
-  }
-
-  /// 「꼴\t글[\t낱말들]」 → 말풍선 줄
-  static func bubbleLine(_ raw: String) -> [String: Any] {
-    let f = raw.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
-    var line: [String: Any] = ["style": f.first ?? "plain", "text": f.count > 1 ? f[1] : ""]
-    if f.count > 2 { line["spans"] = spans(f[2]) }
-    return line
-  }
-
-  /// 키 이름(사이트 `codeLabel`의 줄인 꼴)
-  static func keyLabel(_ code: String) -> String {
-    if code.hasPrefix("Key") { return String(code.dropFirst(3)) }
-    if code.hasPrefix("Digit") { return String(code.dropFirst(5)) }
-    return code
+    onHint?(lines.map(BubbleLines.line))
   }
 
   // MARK: 거울(사이트 `mirror.ts`, docs/47 15-14)
@@ -585,10 +537,10 @@ final class NativeCubeWindow: FloatingWindow {
       }
       return
     }
-    let fits = min(host.bounds.width, host.bounds.height) >= CGFloat(10 * cube.n)
-    let solving = state.practice != nil || (cubie_game_solving(cube.game) && !cube.solved)
-    let want = state.mirror && fits && focused && solving && idle.showing == nil
-    cube.setMirror(want)
+    cube.setMirror(
+      MirrorRule.shows(
+        on: state.mirror, width: host.bounds.width, height: host.bounds.height, n: cube.n, focused: focused,
+        solving: solving, idleShowing: idle.showing != nil))
   }
 
   override func windowDidResize(_ notification: Notification) {
@@ -598,25 +550,17 @@ final class NativeCubeWindow: FloatingWindow {
 
   // MARK: 프로필(docs/47 15-20)
 
-  static let profileKey = "cube.mini.profile.v1"
-
   private func refreshProfile() {
-    var name: String?
-    if let text = store.string(Self.profileKey), let data = text.data(using: .utf8),
-      let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-      let s = d["name"] as? String, !s.trimmingCharacters(in: .whitespaces).isEmpty
-    {
-      name = s
-    }
+    var name = Profile.storedName(store.string(Profile.storeKey))
     if name == nil {
-      let made = "익명 큐버 #\(1000 + Int.random(in: 0..<9000))"
-      if !Config.measure { store.set(#"{"version":1,"name":"\#(made)"}"#, for: Self.profileKey) }
-      name = made
+      let made = Profile.madeName(Int.random(in: 0..<9000))
+      if !Config.measure { store.set(made.stored, for: Profile.storeKey) }
+      name = made.name
     }
     let n = state.n
     let tier = book.tier(n)
     profile = Profile(
-      name: name ?? "익명 큐버", tierText: "\(n)×\(n) \(tier?.name ?? "5판 뒤에")",
+      name: name ?? Profile.placeholder.name, tierText: Profile.tierText(n: n, tierName: tier?.name),
       emblem: tier.flatMap { Self.emblem($0.id) }, emblemTier: tier?.id)
   }
 
