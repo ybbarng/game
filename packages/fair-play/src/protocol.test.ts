@@ -132,15 +132,18 @@ describe("게임이 쓰는 군(r255)", () => {
       if (audit.ok) expect(new Set(audit.cards).size).toBe(53);
     });
 
-    it("섞을 때 카드를 바꿔치기하면(같은 카드 둘) 판 끝 확인과 공개 순간에 들킨다", async () => {
+    it("섞을 때 카드를 바꿔치기하면(같은 카드 둘) 판 끝 확인에서 들킨다", async () => {
       // 2번이 섞으면서 한 자리를 다른 자리 값으로 덮는다(예: 조커를 하나 더 만들기).
+      // 판 도중 공개되는 순간 잡는 것은 renege.test.ts 「같은 카드가 두 번 나오면」이 본다.
       const { parties, deal } = await table((seat, deck) =>
         seat === 2
           ? deck.map((c, i) => (i === 1 ? (deck[0] as bigint) : c))
           : deck,
       );
-      const audit = finalAudit(deal, parties);
-      expect(audit.ok).toBe(false);
+      expect(finalAudit(deal, parties)).toEqual({
+        ok: false,
+        reason: "같은 카드가 두 번 있어요(섞기 조작).",
+      });
     });
   });
 
