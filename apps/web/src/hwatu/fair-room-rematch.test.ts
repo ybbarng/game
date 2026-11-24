@@ -83,4 +83,37 @@ describe("화투 암호화방: 한 판 더", () => {
     expect(audits.slice(2)).toEqual([{ ok: true }, { ok: true }]);
     expect(incidents).toEqual([]);
   });
+
+  it("앞 게임에서 끝낸 판 번호를 새 게임에 가져가지 않는다: 새 게임 첫 판 도중에 그만둬도 검증을 통과한다", async () => {
+    const { host, guests, incidents, audits } = await setupHwatu({
+      kit: minhwatuKit,
+      rules: { ...STANDARD_RULES, rounds: 2 },
+      guests: 1,
+      bot: minhwatuIntermediateBot,
+      botLevel: 1,
+      HostRoom: HostRoom as never,
+      GuestRoom: GuestRoom as never,
+    });
+    await host.start();
+    await until(() => guests.every((g) => g.match !== null), "첫 화면");
+    // 앞 게임은 첫 판을 끝까지 쳤다(이 기기는 「1판 끝」을 보았다).
+    await playToSecondRound(host, guests, incidents);
+    host.abandon();
+    await until(() => audits.length === 1, "첫 게임 검증");
+    expect(audits).toEqual([{ ok: true }]);
+
+    await host.rematch();
+    await until(
+      () => guests.every((g) => g.gameNo === 2 && g.match !== null),
+      "새 게임 첫 화면",
+    );
+    // 새 게임은 첫 판을 끝내지 않았다. 앞 게임의 「1판 끝」이 남아 있으면 끝낸 판을 숨긴 것으로 본다.
+    expect(
+      (host.match?.current() as MinhwatuView | undefined)?.roundNumber,
+    ).toBe(1);
+    host.abandon();
+    await until(() => audits.length === 2, "새 게임 검증");
+    expect(audits[1]).toEqual({ ok: true });
+    expect(incidents).toEqual([]);
+  });
 });

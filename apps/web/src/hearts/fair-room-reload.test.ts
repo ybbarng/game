@@ -67,8 +67,10 @@ describe("하트 멘탈 포커 온라인 대전: 새로고침·끊김·부정", 
     expect(audits.filter((a) => !a.ok)).toEqual([]);
   });
 
-  it("카드를 넘기는 중에 끊긴 사람을 기다리다 방장이 끝내기를 고르면 모두의 게임이 끝난다", async () => {
+  it("카드를 넘기는 중에 끊긴 사람을 기다리다 방장이 끝내기를 고르면 모두의 게임이 끝나고, 남은 사람의 게임 끝 검증은 통과한다(첫 판은 결과 없음)", async () => {
     const { net, host, guests, clock } = await setup(3, undefined, 50);
+    const audits: AuditResult[] = [];
+    for (const g of guests.slice(1)) g.on("audit", (r) => audits.push(r));
     await host.start();
     await until(() => guests.every((g) => g.match !== null));
     const seat0 = guests[0]?.seat ?? -1;
@@ -85,6 +87,8 @@ describe("하트 멘탈 포커 온라인 대전: 새로고침·끊김·부정", 
     await until(() =>
       guests.slice(1).every((g) => phase(g.match) === "gameOver"),
     );
+    await until(() => audits.length === 2);
+    expect(audits).toEqual([{ ok: true }, { ok: true }]);
   });
 
   it("넘기는 카드에 잠글 때와 다른 열쇠를 주면 받은 사람이 열쇠 증명으로 그 자리를 짚는다", async () => {

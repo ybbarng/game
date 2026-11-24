@@ -6,6 +6,7 @@ import { type Clock, realClock } from "./clock";
 import { type Incident, reportShuffleTamper } from "./coordinator";
 import type { FairDevice } from "./device";
 import type { FairControl } from "./messages";
+import { nothingOpened } from "./nothing-opened";
 import { CARD_CODES, COLOR_JOKER, DECK } from "./protocol";
 
 /*
@@ -763,8 +764,13 @@ export interface OnecardLogged<Action = unknown> {
   bot?: true;
 }
 
+/** 끝까지 친 게임인데 처음 덱을 몰라 다시 계산하지 못했다(방장이 판 끝에 덱을 열지 않았다) */
+export const FIRST_DECK_MISSING =
+  "판 끝인데 처음 덱을 몰라 다시 계산하지 못했어요.";
+
 export type OnecardReplayCheck<State> =
-  | { ok: true; state: State; states: State[]; upTo: number }
+  /** 처음 덱도 모르면 `state`는 null(`nothingOpened`, 그만둔 게임) */
+  | { ok: true; state: State | null; states: State[]; upTo: number }
   | { ok: false; index: number; seat: number; reason: string };
 
 /**
@@ -795,7 +801,9 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
   const complete = options.complete === true;
   const first = deals.get(1);
   if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
+    return complete
+      ? { ok: false, index: -1, seat: 0, reason: FIRST_DECK_MISSING }
+      : nothingOpened();
   let state = spec.createMatch(rules, seed, first.preset).state;
   const states = [state];
   let used = 0;

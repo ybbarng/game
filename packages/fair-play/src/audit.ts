@@ -11,6 +11,7 @@ import {
 import { obj } from "@game/mighty-engine/josa";
 
 import { cardText, slotOfToken } from "./blind";
+import { nothingOpened } from "./nothing-opened";
 
 /*
  * 진짜 카드로 다시 계산하기. 마지막 턴에 모두 열쇠를 공개하면 그 판의 실제 패를 안다.
@@ -40,7 +41,8 @@ export interface FairLogged {
 export type ReplayCheck =
   | {
       ok: true;
-      state: MatchState;
+      /** 다시 계산한 마지막 상태. 첫 판 패도 모르면(첫 판 도중에 그만둠) null */
+      state: MatchState | null;
       /** 걸음마다의 상태(첫 상태 포함). 화면 비교에 쓴다 */
       states: MatchState[];
       /** 다시 계산한 기록 수. 아직 패를 모르는 판에 들어서면 거기서 멈춘다 */
@@ -86,7 +88,8 @@ function decisive(events: readonly GameEvent[]): string {
 }
 
 /**
- * `deals`는 판 번호(1부터) → 실제 패. 아직 모르는 판(앞으로 나눌 판)은 비워 둔다.
+ * `deals`는 판 번호(1부터) → 실제 패. 아직 모르는 판(앞으로 나눌 판, 끝까지 치지 않은 판)은 비워 둔다.
+ * 첫 판도 다른 판과 같다: 패를 모르면 처음에서 멈춘다(`nothingOpened`).
  * `observed`가 있으면 자리 표로 진행할 때 나온 사건과 걸음마다 맞춰 본다.
  */
 export function checkReplay(
@@ -97,8 +100,7 @@ export function checkReplay(
   observed?: readonly (readonly GameEvent[])[],
 ): ReplayCheck {
   const first = deals.get(1);
-  if (!first)
-    return { ok: false, index: -1, seat: 0, reason: "첫 판 패가 없어요." };
+  if (!first) return nothingOpened();
   let state = createMatch({ rules, seed, presetDeal: first.deal }).state;
   const states = [state];
   /** 바로 앞 걸음이 진짜 카드로는 성공한 죽이기였다(죽었어야 할 자리와 불린 카드) */
