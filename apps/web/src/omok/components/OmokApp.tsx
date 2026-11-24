@@ -12,6 +12,7 @@ import {
   timePresetLabel,
 } from "@/components/TimePresetPicker";
 import { useScreenHistory } from "@/game/screen-history";
+import { soloStarter } from "@/game/solo-start";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useOmokTutorialProgress } from "@/tutorial/progress";
 import { omokOnline } from "../online";
@@ -332,18 +333,14 @@ export function OmokApp() {
 
   const backToStart = () => setScreen({ kind: "start" });
   /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
-  const startSolo = () => {
-    const s = useOmokSettings.getState();
-    useOmok.getState().newGame({
-      rules: {
-        variant: s.variant,
-        winsToFinish: s.winsToFinish,
-        ...(s.time !== "none" ? { time: s.time } : {}),
-      },
-      level: s.level,
-      pick: s.pick,
-    });
-  };
+  const startSolo = soloStarter(useOmok, useOmokSettings, (s) => ({
+    rules: {
+      variant: s.variant,
+      winsToFinish: s.winsToFinish,
+      ...(s.time !== "none" ? { time: s.time } : {}),
+    },
+    pick: s.pick,
+  }));
   if (screen.kind === "online")
     return (
       <RoomScreen
@@ -356,7 +353,7 @@ export function OmokApp() {
       />
     );
   if (screen.kind === "playing")
-    return <OmokGame onExit={backToStart} onRestart={startSolo} />;
+    return <OmokGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (isLearn(screen))
     return (
       <OmokLearn screen={screen} setScreen={setScreen} onBack={backToStart} />

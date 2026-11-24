@@ -12,6 +12,7 @@ import {
   timePresetLabel,
 } from "@/components/TimePresetPicker";
 import { useScreenHistory } from "@/game/screen-history";
+import { soloStarter } from "@/game/solo-start";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { chessOnline } from "../online";
 import { useChessTutorialProgress } from "../progress";
@@ -355,17 +356,13 @@ export function ChessApp() {
 
   const backToStart = () => setScreen({ kind: "start" });
   /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
-  const startSolo = () => {
-    const s = useChessSettings.getState();
-    useChess.getState().newGame({
-      rules: {
-        winsToFinish: s.winsToFinish,
-        ...(s.time !== "none" ? { time: s.time } : {}),
-      },
-      level: s.level,
-      pick: s.pick,
-    });
-  };
+  const startSolo = soloStarter(useChess, useChessSettings, (s) => ({
+    rules: {
+      winsToFinish: s.winsToFinish,
+      ...(s.time !== "none" ? { time: s.time } : {}),
+    },
+    pick: s.pick,
+  }));
   if (screen.kind === "online")
     return (
       <RoomScreen
@@ -378,7 +375,7 @@ export function ChessApp() {
       />
     );
   if (screen.kind === "playing")
-    return <ChessGame onExit={backToStart} onRestart={startSolo} />;
+    return <ChessGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (isLearn(screen))
     return (
       <ChessLearn screen={screen} setScreen={setScreen} onBack={backToStart} />

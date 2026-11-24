@@ -12,6 +12,7 @@ import {
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
+import { soloStarter } from "@/game/solo-start";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { baseballOnline } from "../online";
@@ -326,14 +327,9 @@ export function BaseballApp() {
    * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
    * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
    */
-  const startSolo = (seed?: number) => {
-    const s = useBaseballSettings.getState();
-    useBaseball.getState().newGame({
-      rules: rulesFromSettings(s),
-      level: s.level,
-      ...(seed !== undefined ? { seed } : {}),
-    });
-  };
+  const startSolo = soloStarter(useBaseball, useBaseballSettings, (s) => ({
+    rules: rulesFromSettings(s),
+  }));
 
   if (screen.kind === "online")
     return (
