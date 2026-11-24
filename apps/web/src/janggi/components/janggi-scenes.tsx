@@ -272,7 +272,7 @@ export function ContinueButton({
     });
     useJanggi
       .getState()
-      .startPractice(state, useJanggiSettings.getState().level);
+      .startPractice(state, { level: useJanggiSettings.getState().level });
     setOpen(true);
   };
   return (
