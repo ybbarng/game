@@ -7,6 +7,7 @@ import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import { minhwatuKit } from "@/minhwatu/kit";
+import { closeWhenDone } from "@/net/close-when-done";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { reloadTab } from "@/net/reload-tab";
@@ -82,6 +83,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
         ...(restore ? { restore } : {}),
       } as never) as AnyHost;
       current.onIncident((n) => incidents.push(n));
+      closeWhenDone(current);
       await until(
         () => current.lobby().seats.every((s) => s.connected),
         "참가자 다시 연결",

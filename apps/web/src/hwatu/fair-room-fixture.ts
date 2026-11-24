@@ -4,6 +4,7 @@ import { ManualClock, prepareGroup } from "@game/fair-play";
 import { isHiddenId } from "@game/hwatu";
 import { expect } from "vitest";
 import type { GameKit, KitBot } from "@/game/kit";
+import { closeWhenDone } from "@/net/close-when-done";
 import type { AuditResult, FairSaved, GuestRoom } from "@/net/guest-room";
 import type { HostRoom, IncidentNotice } from "@/net/host-room";
 import { type HostStore, memoryHostStore } from "@/net/host-store";
@@ -118,6 +119,10 @@ export async function setupHwatu(options: {
   for (const g of guests) g.on("audit", (r) => audits.push(r));
   const verified: number[] = [];
   for (const g of guests) g.on("roundVerified", (r) => verified.push(r));
+  // 시험이 끝나면 방을 닫는다. 닫지 않으면 기기들이 남은 섞기 증명을 계속 계산해 같은 파일의 다음 시험 처음
+  // 0.5~1초를 차지했다(2026-11-24 재 보니 fair-room-extra의 둘째·셋째 시험 처음이 앞 시험의 증명 확인이었다).
+  // 시험 중에 새로 연 방장·참가자도 `closeWhenDone`으로 닫는다
+  closeWhenDone(host, guests);
   return { net, clock, host, guests, incidents, audits, verified, store, tab };
 }
 

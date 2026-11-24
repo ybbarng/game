@@ -21,8 +21,10 @@ import {
 } from "@game/nyrongppong-engine";
 import { describe, expect, it } from "vitest";
 
+import { closeWhenDone } from "@/net/close-when-done";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { reloadTab } from "@/net/reload-tab";
 import { nyrongppongKit } from "@/nyrongppong/kit";
 import { ONLINE_CALL_SECONDS, onlineRules } from "@/nyrongppong/settings";
 import type { ArchiveSource } from "@/review/recorder";
@@ -79,7 +81,7 @@ async function nyrongppongReloadScenario(): Promise<void> {
     bot: nyrongppongIntermediateBot,
     botLevel: 1,
   };
-  const { net, clock, host, guests, incidents, audits, store } =
+  const { net, clock, host, guests, incidents, audits, store, tab } =
     await setupHwatu({
       ...options,
       guests: 1,
@@ -195,13 +197,18 @@ async function nyrongppongReloadScenario(): Promise<void> {
   const mineBefore = (current.match?.actionLog() ?? []).filter(
     (e) => e.seat === fresh.seat,
   ).length;
-  const restore = store?.load();
+  // 옛 탭은 사라진다: 더 남기지 못하고 계산도 멈춘다(reload-tab.ts). 연결만 끊고 살려 두면 옛 방장 기기가
+  // 증명 계산을 이어 가며 같은 저장소에 남긴다
+  if (!store || !tab) throw new Error("방장 저장소가 없다");
+  tab.reload(current);
+  const restore = store.load();
   current = new HostRoom({
     transport: net.join("host1"),
-    ...hwatuHostOptions({ ...options, clock, ...(store ? { store } : {}) }),
+    ...hwatuHostOptions({ ...options, clock, store: reloadTab(store).store }),
     ...(restore ? { restore } : {}),
   } as never) as AnyHost;
   current.onIncident((n) => incidents.push(n));
+  closeWhenDone(current);
   await until(
     () => current.lobby().seats.every((s) => s.connected),
     "참가자 다시 연결",
