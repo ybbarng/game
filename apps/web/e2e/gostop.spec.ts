@@ -262,7 +262,7 @@ test(
 );
 
 test(
-  "고스톱: 방장이 방을 만들고 친구가 링크로 들어와 맞고 한 판을 치고, 판 끝 검증을 통과한다",
+  "고스톱: 방장이 방을 만들고 친구가 링크로 들어와 맞고 한 판을 치고, 같은 방에서 한 판 더 친다(두 게임 모두 판 끝 검증)",
   { tag: "@only-desktop" },
   async ({ context }, info) => {
     // 데스크톱에서만 돌린다
@@ -290,38 +290,61 @@ test(
     // 참가자 화면에는 상대 손패가 뒷면으로만 보인다.
     await expect(guest.getByRole("img", { name: /뒷면 10장/ })).toBeVisible();
 
-    // 차례인 쪽이 친다. 두 화면 모두 판 끝이 될 때까지.
-    for (let i = 0; i < 200; i++) {
-      let who: Page | null = null;
-      await expect
-        .poll(
-          async () => {
-            for (const p of [host, guest]) {
-              const what = await actionable(p);
-              if (what && what !== "done") {
-                who = p;
-                return true;
+    /** 차례인 쪽이 친다. 두 화면 모두 판 끝이 될 때까지 */
+    const playToEnd = async () => {
+      for (let i = 0; i < 200; i++) {
+        let who: Page | null = null;
+        await expect
+          .poll(
+            async () => {
+              for (const p of [host, guest]) {
+                const what = await actionable(p);
+                if (what && what !== "done") {
+                  who = p;
+                  return true;
+                }
               }
-            }
-            return (
-              (await actionable(host)) === "done" &&
-              (await actionable(guest)) === "done"
-            );
-          },
-          { timeout: 30_000, intervals: POLL },
-        )
-        .toBe(true);
-      if (!who) break;
-      await actOnce(who);
-    }
-    await expect(guest.locator("[data-outcome]")).toBeVisible();
+              return (
+                (await actionable(host)) === "done" &&
+                (await actionable(guest)) === "done"
+              );
+            },
+            { timeout: 30_000, intervals: POLL },
+          )
+          .toBe(true);
+        if (!who) break;
+        await actOnce(who);
+      }
+      await expect(guest.locator("[data-outcome]")).toBeVisible();
+    };
+    const verified = guest.getByText(/\[검증\] 나 — 문제없음/);
+    await playToEnd();
     await guest.screenshot({ path: info.outputPath("gostop-online.png") });
 
-    // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
+    // 게임이 끝나면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
+    await expect(verified).toHaveCount(1, { timeout: 10_000 });
+    // 한 판 더: 방장만 고르고, 참가자는 기다린다. 누르면 두 기기 모두 새 게임(새로 섞어 나눈 패)으로 넘어간다.
+    await expect(guest.locator("[data-rematch-wait]")).toHaveText(
+      "방장이 고르는 중",
+    );
+    await expect(guest.getByRole("button", { name: "한 판 더" })).toHaveCount(
+      0,
+    );
+    await host.getByRole("button", { name: "한 판 더" }).click();
+    for (const p of [host, guest]) {
+      // 새 비밀 값을 모으고 다시 함께 섞는 동안 기다린다.
+      await expect(p.locator("[data-outcome]")).toBeHidden({ timeout: 20_000 });
+      await expect(hand(p).first()).toBeVisible();
+    }
+    await expect(guest.getByRole("img", { name: /뒷면 10장/ })).toBeVisible();
+    await playToEnd();
+    // 새 게임도 처음부터 따로 검증한다.
+    await expect(verified).toHaveCount(2, { timeout: 10_000 });
+    await guest.screenshot({ path: info.outputPath("gostop-rematch.png") });
+
+    // 방장이 나가면 참가자는 더 기다리지 않는다.
     await leaveOnline(host, "← 고스톱");
-    await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(guest.locator("[data-rematch-wait]")).toHaveCount(0);
     expect(errors).toEqual([]);
   },
 );

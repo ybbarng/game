@@ -43,6 +43,7 @@ import {
   type ChatMessage,
   type Commitment,
   type FairMessage,
+  fairGameOf,
   type GuestMessage,
   type HostMessage,
   type IncidentReport,
@@ -50,6 +51,8 @@ import {
   isHostMessage,
   type LobbyState,
   type Reveal,
+  tagFair,
+  untagFair,
 } from "./protocol";
 import {
   ArrivalBook,
@@ -248,6 +251,8 @@ export interface GuestRoomOptions<
   fairStore?: {
     load(): FairSaved | null;
     save(saved: FairSaved): void;
+    /** 한 판 더: 앞 게임 열쇠를 지운다(새 게임에 다시 쓰지 않는다. 지우지 않으면 새 게임이 앞 열쇠를 되살린다) */
+    clear(): void;
   };
 }
 
@@ -288,6 +293,8 @@ export interface GuestEvents<
   roundVerified: (deal: number) => void;
   /** 복기용 기록이 늘었다(판 검증·게임 끝 검증을 통과했을 때) */
   archive: (source: ArchiveSource) => void;
+  /** 한 판 더: 앞 게임 검증을 마치고 상태를 지웠다. 다음 첫 화면이 `gameNo`번째 게임이다 */
+  rematch: (gameNo: number) => void;
 }
 
 /** 방장만 보내는 메시지. 방장이 돌아오는 사이 환영 확인 전에 오면 모아 둔다(`holdUntilWelcome`) */
@@ -300,6 +307,7 @@ const HELD_UNTIL_WELCOME: ReadonlySet<string> = new Set([
   "chat",
   "rejected",
   "audit",
+  "rematch",
 ]);
 
 /**
@@ -316,7 +324,16 @@ export class GuestRoom<
 > {
   readonly transport: Transport;
   readonly kit: GameKit<Rules, State, View, ActionT, Event, Extra>;
-  readonly secret: string;
+  /** 이 게임 시드에 넣는 내 비밀 값(한 판 더마다 새로 뽑는다) */
+  secret: string;
+  /** 이 방에서 몇 번째 게임인가(한 판 더마다 1씩) */
+  gameNo = 1;
+  /** 한 판 더: 앞 게임 검증을 마치고 상태를 지우는 중. 그동안 온 방장 메시지는 이것을 기다린 뒤 처리한다 */
+  private rematching: Promise<void> | null = null;
+  /** 판 끝 기록 검증(끝날 때 풀린다). 한 판 더는 이것을 기다린 뒤에 앞 게임 상태를 지운다 */
+  private auditTask: Promise<void> | null = null;
+  /** 내가 아직 시작하지 않은 다음 게임의 멘탈 포커 메시지(다른 참가자가 먼저 시작했다). 시작하면 넣는다 */
+  private readonly futureFair: { message: FairMessage; from: number }[] = [];
   seat: number | null = null;
   token: string | null;
   lobby: LobbyState | null = null;
@@ -340,7 +357,7 @@ export class GuestRoom<
   private reconnectTimer: (() => void) | null = null;
   private readonly clock: Clock;
   /** 받은 화면이 닿은 시각(`match.seen`과 같은 차례). 판 끝에 방장이 적은 시간을 내 시계로 맞춰 본다 */
-  private readonly arrivals: ArrivalBook;
+  private arrivals: ArrivalBook;
   /** 화면 가려짐 듣기를 끈다 */
   private readonly unwatchVisibility: () => void;
   /** 지금 보이는 상대들. 방장이 끊긴 사이 새로 보인 상대도 기억해 끊김을 안 뒤 들어가 본다 */
@@ -419,6 +436,7 @@ export class GuestRoom<
     incident: new Set(),
     roundVerified: new Set(),
     archive: new Set(),
+    rematch: new Set(),
   };
   /** 멘탈 포커 진행(이 방이 멘탈 포커일 때, 첫 화면을 받으면 만든다) */
   fair:
@@ -430,7 +448,7 @@ export class GuestRoom<
     | OnecardGuestSeat<any, any, any, any, any>
     | null = null;
   /** 화투: 시드를 확인하기 전에 온 화면·걸음별 사건(멘탈 포커 진행은 시드가 있어야 만든다) */
-  private readonly cardEarly: {
+  private cardEarly: {
     snapshots: { view: View; events: Event[]; resync: boolean }[];
     history: unknown[] | null;
   } = { snapshots: [], history: null };
@@ -669,7 +687,16 @@ export class GuestRoom<
     return seat ? seat.seat : null;
   }
 
-  private onFair(message: FairMessage, from: number): void {
+  private onFair(tagged: FairMessage, from: number): void {
+    // 한 판 더: 앞 게임 메시지는 버리고, 내가 아직 시작하지 않은 다음 게임 것은 시작할 때까지 둔다.
+    const g = fairGameOf(tagged);
+    if (g < this.gameNo) return;
+    if (g > this.gameNo) {
+      if (this.futureFair.length < 2000)
+        this.futureFair.push({ message: tagged, from });
+      return;
+    }
+    const message = untagFair(tagged);
     if (!this.fair) {
       this.fairEarly.push({ message, from });
       return;
@@ -698,6 +725,9 @@ export class GuestRoom<
     if (this.kit.cardTable && this.fairSeed === null) return null;
     const saved = this.fairStore?.load() ?? null;
     this.resumedFair = saved !== null;
+    // 만든 때의 게임 번호. 한 판 더 뒤 앞 게임 진행이 늦게 보내거나 알리는 것은 버린다.
+    const gen = this.gameNo;
+    const live = () => gen === this.gameNo;
     const common = {
       seat,
       guestSeats: lobby.seats
@@ -705,12 +735,26 @@ export class GuestRoom<
         .map((s) => s.seat),
       group: lobby.fair.group,
       broadcast: (message: FairMessage) => {
-        this.rememberOwn(message, null);
-        this.transport.send(message);
+        if (!live()) return;
+        const tagged = tagFair(message, gen);
+        this.rememberOwn(tagged, null);
+        this.transport.send(tagged);
       },
-      onIncident: (incident: Incident) => this.raiseIncident(incident),
+      onIncident: (incident: Incident) => {
+        if (live()) this.raiseIncident(incident);
+      },
       clock: this.clock,
       ...(saved ? { restore: saved.snapshots } : {}),
+    };
+    const deliver = (view: unknown, events: unknown) => {
+      if (live())
+        this.deliver({
+          view: view as unknown as View,
+          events: events as unknown as Event[],
+        });
+    };
+    const verify = (deal: number, log: unknown) => {
+      if (live()) void this.verifyRound(deal, log as FairLogged[]);
     };
     const spec = this.kit.cardTable;
     const fair =
@@ -720,13 +764,8 @@ export class GuestRoom<
             spec,
             rules: rules.rules,
             seed: this.fairSeed as number,
-            onSnapshot: (view, events) =>
-              this.deliver({
-                view: view as unknown as View,
-                events: events as unknown as Event[],
-              }),
-            onVerify: (round, log) =>
-              void this.verifyRound(round, log as unknown as FairLogged[]),
+            onSnapshot: deliver,
+            onVerify: verify,
           })
         : spec
           ? new HwatuGuestSeat({
@@ -734,13 +773,8 @@ export class GuestRoom<
               spec: spec as Exclude<typeof spec, { kind: "onecard" }>,
               rules: rules.rules,
               seed: this.fairSeed as number,
-              onSnapshot: (view, events) =>
-                this.deliver({
-                  view: view as unknown as View,
-                  events: events as unknown as Event[],
-                }),
-              onVerify: (round, log) =>
-                void this.verifyRound(round, log as unknown as FairLogged[]),
+              onSnapshot: deliver,
+              onVerify: verify,
             })
           : this.kit.id === "hearts"
             ? new HeartsGuestSeat({
@@ -748,27 +782,20 @@ export class GuestRoom<
                 rules: rules.rules as unknown as HeartsRules,
                 // 넘긴 카드 열쇠는 받는 기기에게만 직접 보낸다(방장을 거치지 않는다).
                 sendTo: (message, device) => {
-                  if (device === 0) this.rememberOwn(message, 0);
+                  if (!live()) return;
+                  const tagged = tagFair(message as FairMessage, gen);
+                  if (device === 0) this.rememberOwn(tagged, 0);
                   const peer = this.peerOfDevice(device);
-                  if (peer) this.transport.send(message, peer);
+                  if (peer) this.transport.send(tagged, peer);
                 },
-                onSnapshot: (view, events) =>
-                  this.deliver({
-                    view: view as unknown as View,
-                    events: events as unknown as Event[],
-                  }),
-                onVerify: (deal, log) =>
-                  void this.verifyRound(deal, log as unknown as FairLogged[]),
+                onSnapshot: deliver,
+                onVerify: verify,
               })
             : new FairGuestSeat({
                 ...common,
                 rules: rules.rules as unknown as RuleSet,
-                onSnapshot: (view, events) =>
-                  this.deliver({
-                    view: view as unknown as View,
-                    events: events as unknown as Event[],
-                  }),
-                onVerify: (deal, log) => void this.verifyRound(deal, log),
+                onSnapshot: deliver,
+                onVerify: verify,
               });
     this.fair = fair;
     this.restoredSent = saved?.sent ?? [];
@@ -1060,7 +1087,10 @@ export class GuestRoom<
       });
       return;
     }
+    const gen = this.gameNo;
     const verdict = await verifyFairLog({ ...input, inFlight: true });
+    // 계산하는 사이 한 판 더로 새 게임이 시작했으면 앞 게임 결과로 새 게임을 건드리지 않는다.
+    if (gen !== this.gameNo) return;
     if (verdict.ok) {
       for (const l of this.listeners.roundVerified) l(deal);
       this.emitArchive(input.rules, input.seed, log);
@@ -1099,6 +1129,8 @@ export class GuestRoom<
   ): Promise<void> {
     if (this.kicked) return;
     if (this.holdUntilWelcome(message, from)) return;
+    // 한 판 더: 앞 게임 상태를 지우는 동안 온 메시지는 다 지운 뒤에 받은 차례대로 처리한다.
+    if (this.rematching) await this.rematching;
     if (isFairMessage(message)) {
       const seat = this.seatOfPeer(from);
       if (seat !== null) this.onFair(message, seat);
@@ -1167,6 +1199,14 @@ export class GuestRoom<
         const restarted = this.lastHostId !== null && this.lastHostId !== from;
         this.hostId = from;
         this.lastHostId = from;
+        // 새로고침해 다시 들어왔는데 방은 한 판 더로 뒤 게임을 하고 있다(기록 열쇠·멘탈 포커 꼬리표가 그 게임 것).
+        if (
+          typeof message.gameNo === "number" &&
+          message.gameNo > this.gameNo &&
+          this.match === null &&
+          this.rematching === null
+        )
+          this.gameNo = message.gameNo;
         if (restarted || reconnected) {
           // 방장이 새로고침했거나 잠깐 끊겼다: 끊긴 동안 보낸 것은 방장에게 가지 못했다(새로고침이면 그 전 것도 없다).
           // 내가 보낸 멘탈 포커 메시지를 다시 보내고(방장은 같은 것을 한 번만 받는다),
@@ -1292,29 +1332,22 @@ export class GuestRoom<
         // 판이 끝났다: 청구 통로를 닫는다. 방장도 기록을 공개하기 전에 닫아 발표 전 묶음을 버렸으므로, 그 묶음의 청구로
         // 빠뜨림 이의를 내지 않고 뒤늦은 발표도 받지 않는다(모두 같은 결론, docs/42 16-3).
         this.claims?.close();
-        const result = this.fair
-          ? await this.verifyFairEnd(message.log as unknown as FairLogged[])
-          : await this.verify(
-              message.reveals,
-              message.log,
-              message.commitments,
-            );
-        for (const l of this.listeners.audit) l(result);
-        if (result.ok && this.pendingArchive)
-          for (const l of this.listeners.archive) l(this.pendingArchive);
-        // 방장을 거치지 않고 모두에게 결과를 알린다.
-        if (this.seat !== null)
-          this.transport.send({
-            t: "auditReport",
-            seat: this.seat,
-            name: this.name,
-            ok: result.ok,
-            ...(result.ok
-              ? result.unchecked
-                ? { unchecked: result.unchecked }
-                : {}
-              : { reason: result.reason }),
-          } satisfies AuditReport);
+        // 한 판 더는 이 검증(복기 기록 알림까지)이 끝난 뒤에 앞 게임 상태를 지운다.
+        const task = this.finishAudit(message);
+        this.auditTask = task;
+        await task;
+        break;
+      }
+      case "rematch": {
+        if (from !== this.hostId || typeof message.gameNo !== "number") return;
+        if (message.gameNo <= this.gameNo) return;
+        const task = this.beginRematch(message.gameNo);
+        this.rematching = task;
+        try {
+          await task;
+        } finally {
+          if (this.rematching === task) this.rematching = null;
+        }
         break;
       }
       case "auditReport": {
@@ -1326,6 +1359,88 @@ export class GuestRoom<
         break;
       }
     }
+  }
+
+  /** 판 끝 기록을 검증하고 결과를 알린다(통과하면 복기용 기록도) */
+  private async finishAudit(
+    message: Extract<HostMessage<View, Event, ActionT>, { t: "audit" }>,
+  ): Promise<void> {
+    const result = this.fair
+      ? await this.verifyFairEnd(message.log as unknown as FairLogged[])
+      : await this.verify(message.reveals, message.log, message.commitments);
+    for (const l of this.listeners.audit) l(result);
+    if (result.ok && this.pendingArchive)
+      for (const l of this.listeners.archive) l(this.pendingArchive);
+    // 방장을 거치지 않고 모두에게 결과를 알린다.
+    if (this.seat !== null)
+      this.transport.send({
+        t: "auditReport",
+        seat: this.seat,
+        name: this.name,
+        ok: result.ok,
+        ...(result.ok
+          ? result.unchecked
+            ? { unchecked: result.unchecked }
+            : {}
+          : { reason: result.reason }),
+      } satisfies AuditReport);
+  }
+
+  /**
+   * 한 판 더(방장 `HostRoom.rematch`). 앞 게임 판 끝 기록의 검증과 복기 기록 알림이 끝난 뒤에 앞 게임 상태를
+   * 모두 지운다: 시드 약속·비밀 값, 멘탈 포커 열쇠(탭에 남긴 것까지)·보낸 메시지, 받은 화면·보낸 행동, 청구 기억.
+   * 새 비밀 값을 뽑아 그 약속만 방장에게 보낸다. 새 게임도 처음 시작과 같은 길로 확인한다
+   */
+  private async beginRematch(gameNo: number): Promise<void> {
+    await this.auditTask;
+    // 게임을 했는데 방장이 판 끝 기록을 공개하지 않고 다음 게임으로 넘어가려 한다(나간 것과 같다, 모의 침투 A2).
+    if (this.match && !this.audited) {
+      this.audited = true;
+      const result: AuditResult = {
+        ok: false,
+        reason: "방장이 판 끝 기록을 공개하지 않고 새 게임을 시작했어요.",
+      };
+      for (const l of this.listeners.audit) l(result);
+    }
+    this.gameNo = gameNo;
+    this.secret = newSecret();
+    this.commitHash = commit(this.secret);
+    this.commitments = [];
+    this.startedCommitments = [];
+    this.startProblem = null;
+    this.everDisconnected = false;
+    this.resolvedClaims.length = 0;
+    this.claimGaps.length = 0;
+    this.resumedClaims = false;
+    this.audited = false;
+    this.auditTask = null;
+    this.fair = null;
+    this.cardEarly = { snapshots: [], history: null };
+    this.fairSeed = null;
+    this.ownCommits = [];
+    this.pendingArchive = null;
+    this.fairEarly.length = 0;
+    this.match = null;
+    this.mineQueue.length = 0;
+    this.firstRound = null;
+    this.resumedFair = false;
+    this.restoredSent = [];
+    this.ownFair.length = 0;
+    this.ownFairSeen.clear();
+    this.checkLost = false;
+    this.arrivals = new ArrivalBook(this.clock);
+    this.claims?.reopen();
+    this.fairStore?.clear();
+    // 새로고침에 대비해 남긴 비밀 값도 새 것으로(자리 토큰은 그대로).
+    if (this.seat !== null && this.token !== null)
+      for (const l of this.listeners.seat) l(this.seat, this.token);
+    for (const l of this.listeners.rematch) l(gameNo);
+    const hash = await this.commitHash;
+    if (this.hostId)
+      this.send({ t: "recommit", gameNo, commit: hash }, this.hostId);
+    // 먼저 새 게임을 시작한 다른 참가자의 멘탈 포커 메시지
+    for (const { message, from } of this.futureFair.splice(0))
+      this.onFair(message, from);
   }
 
   /** 멘탈 포커 판 끝: 다 열린 판까지 기록 전체를 다시 계산한다 */

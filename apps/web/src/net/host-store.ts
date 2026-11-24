@@ -28,6 +28,8 @@ export interface HostSaved {
   }[];
   kickedTokens: string[];
   commitments: Commitment[];
+  /** 이 방에서 몇 번째 게임인가(한 판 더). 첫 게임이면 없다 */
+  gameNo?: number;
   match: {
     seed: number;
     resume: ResumeState<unknown, unknown>;

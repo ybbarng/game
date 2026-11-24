@@ -40,7 +40,13 @@ export function ResultBanner({
   const [current, setCurrent] = useState<{ banner: Banner; key: number }>();
   if (banner && shownFor !== seq) {
     setShownFor(seq);
-    setCurrent({ banner, key: seq });
+    // 띄울 때마다 새 열쇠(같은 장면 번호의 새 게임이 앞 게임 띠를 이어 받지 않고 처음부터 머문다)
+    setCurrent({ banner, key: (current?.key ?? 0) + 1 });
+  } else if (!banner && shownFor !== null) {
+    // 결과가 없는 장면(새 판·새 게임)을 지나면 같은 장면 번호라도 다음 결과를 띄운다.
+    // 같은 대국 화면에서 새 게임을 시작하면(혼자 하기 「다시 하기」, 온라인 「한 판 더」) 다시 1판째라
+    // 장면 번호만 보면 새 게임 결과가 뜨지 않았다. 떠 있는 띠는 정해진 시간 동안 그대로 둔다.
+    setShownFor(null);
   }
   const key = current?.key;
   useEffect(() => {

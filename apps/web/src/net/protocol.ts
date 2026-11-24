@@ -45,6 +45,32 @@ export interface LobbyState {
    * 과반이 끝내기를 고르거나 방장이 고르면 게임을 끝낸다
    */
   endVote?: { votes: { seat: number; end: boolean }[] };
+  /** 이 방에서 몇 번째 게임인가(한 판 더). 첫 게임이면 없다 */
+  gameNo?: number;
+}
+
+/**
+ * 멘탈 포커 메시지가 속한 게임(한 판 더). 첫 게임 메시지는 꼬리표가 없다. 앞 게임에서 늦게 닿은 메시지
+ * (뒤따라 보낸 섞기 증명 등)를 새 게임 진행에 넣지 않으려고 붙인다
+ */
+export function fairGameOf(message: FairMessage): number {
+  const g = (message as { g?: unknown }).g;
+  return typeof g === "number" ? g : 1;
+}
+
+/** 멘탈 포커 메시지에 게임 꼬리표를 붙인다(첫 게임은 그대로) */
+export function tagFair(message: FairMessage, gameNo: number): FairMessage {
+  if (gameNo <= 1) return message;
+  const tagged: FairMessage & { g?: number } = { ...message };
+  tagged.g = gameNo;
+  return tagged;
+}
+
+/** 게임 꼬리표를 뗀다(멘탈 포커 진행에는 원래 메시지만 넣는다) */
+export function untagFair(message: FairMessage): FairMessage {
+  if (!("g" in message)) return message;
+  const { g: _, ...bare } = message as FairMessage & { g?: number };
+  return bare as FairMessage;
 }
 
 /**
@@ -128,6 +154,8 @@ export type GuestMessage<A = Action> =
   | { t: "chat"; text: string }
   /** 끝내기 투표의 표(`LobbyState.endVote`) */
   | { t: "vote"; end: boolean }
+  /** 한 판 더: 앞 게임 검증을 마친 참가자가 새 게임 비밀 값의 약속(해시)을 낸다 */
+  | { t: "recommit"; gameNo: number; commit: string }
   | AuditReport
   | IncidentReport
   | { t: "leave" };
@@ -140,6 +168,8 @@ export type HostMessage<V = PlayerView, E = GameEvent, A = Action> =
       token: string;
       /** 방장 서명: 공개 열쇠와 서명(identity.ts). 초대 링크의 지문과 맞아야 방장으로 믿는다 */
       proof?: { key: string; sig: string };
+      /** 이 방에서 지금 몇 번째 게임인가(한 판 더). 첫 게임이면 없다 */
+      gameNo?: number;
     }
   | { t: "full" }
   /** 방장이 대기실에서 내보냈다. 같은 방에는 다시 들어올 수 없다 */
@@ -174,6 +204,11 @@ export type HostMessage<V = PlayerView, E = GameEvent, A = Action> =
   | { t: "fpRelay"; items: { from: number; message: FairMessage }[] }
   /** 다시 연결된 참가자에게 걸음별 사건을 다시 보낸다(자리 주인을 되살린다) */
   | { t: "fpHistory"; items: { events: GameEvent[]; pub: FairPublicView }[] }
+  /**
+   * 한 판 더: 같은 방·같은 규칙으로 `gameNo`번째 게임을 시작한다. 앞 게임 판 끝 기록(`audit`)은 이미 보냈다.
+   * 참가자는 그 검증을 마친 뒤 앞 게임 상태를 지우고 새 비밀 값의 약속을 낸다(`recommit`)
+   */
+  | { t: "rematch"; gameNo: number }
   | AuditReport
   | IncidentReport;
 
