@@ -139,6 +139,8 @@ export function BadukBoard({
     <svg
       ref={svg}
       viewBox={`0 0 ${view} ${view}`}
+      // 겨눈 자리(화면 시험이 처음 누른 뒤 겨눴는지 본다)
+      data-aim={aim !== null && canPlay ? aim : undefined}
       role="img"
       aria-label={canPlay ? "바둑판, 내 차례" : "바둑판"}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: 판은 키보드로 겨누고 둔다

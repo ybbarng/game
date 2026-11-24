@@ -42,9 +42,8 @@ async function placeAt(page: Page, name: string, touch: boolean) {
   const py = box.y + (y + PAD) * unit;
   if (touch) {
     await page.touchscreen.tap(px, py);
-    // 처음 누르면 겨누기만 한다: 상태 줄에 자리, 확정 단추 「여기 두기」가 뜬다(다시 눌러도 둔다)
-    await expect(page.getByRole("status")).toContainText(`내 차례 · ${name}`);
-    await expect(page.getByRole("button", { name: "여기 두기" })).toBeVisible();
+    // 처음 누르면 겨누기만 한다(다시 누르거나 대국 화면의 「여기 두기」로 둔다)
+    await expect(board(page)).toHaveAttribute("data-aim", String(y * SIZE + x));
     await page.touchscreen.tap(px, py);
   } else await page.mouse.click(px, py);
 }
@@ -115,7 +114,17 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await expect(stones(page)).toHaveCount(2);
   await expect(page.getByRole("status")).toContainText("내 차례");
 
-  await playOne(page, touch);
+  // 키보드로 겨누면 상태 줄에 자리가 보이고, 확정 단추 「여기 두기」로 둔다.
+  // 처음 화살표는 가운데(E5)를 겨누고, 왼쪽·아래로 넷씩 가면 구석 A1이다(입문 컴퓨터가 두 수 만에 두지 않는 자리).
+  await board(page).focus();
+  for (const key of [
+    "ArrowDown",
+    ...Array(4).fill("ArrowLeft"),
+    ...Array(4).fill("ArrowDown"),
+  ])
+    await page.keyboard.press(key);
+  await expect(page.getByRole("status")).toHaveText("내 차례 · A1");
+  await page.getByRole("button", { name: "여기 두기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });

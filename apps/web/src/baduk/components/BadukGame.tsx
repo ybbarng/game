@@ -312,19 +312,23 @@ export function BadukGame({
             )}
             {view.phase === "play" && (
               <>
-                {aim !== null && myTurn && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const at = aim;
-                      setAim(null);
-                      submit({ type: "place", at });
-                    }}
-                    className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-                  >
-                    여기 두기
-                  </button>
-                )}
+                {/* 자리는 늘 잡아 두고 겨눴을 때만 보인다(단추가 생기며 판이 밀려 두 번째 누르기가 빗나가지 않게) */}
+                <button
+                  type="button"
+                  disabled={aim === null || !myTurn}
+                  onClick={() => {
+                    if (aim === null) return;
+                    const at = aim;
+                    setAim(null);
+                    submit({ type: "place", at });
+                  }}
+                  className={cn(
+                    "rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black",
+                    (aim === null || !myTurn) && "invisible",
+                  )}
+                >
+                  여기 두기
+                </button>
                 {!online && !mission && (
                   <button
                     type="button"
