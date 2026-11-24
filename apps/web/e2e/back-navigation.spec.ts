@@ -52,7 +52,7 @@ test("혼자 하는 대국은 판에서만 당겨서 새로고침을 막고, 뒤
   await expect(noPull(page)).toHaveCount(0);
 });
 
-test("온라인 방에서 뒤로가기는 먼저 묻고, 계속 하기면 방에 남고 나가기면 시작 화면으로", {
+test("온라인 방에서 뒤로가기는 먼저 묻고, 계속하기면 방에 남고 나가기면 시작 화면으로", {
   tag: "@only-desktop",
 }, async ({ page }) => {
   await page.goto("/hearts?net=local");
@@ -67,7 +67,7 @@ test("온라인 방에서 뒤로가기는 먼저 묻고, 계속 하기면 방에
   await page.goBack();
   const confirm = page.locator("[data-leave-confirm]");
   await expect(confirm).toBeVisible();
-  await confirm.getByRole("button", { name: "계속 하기" }).click();
+  await confirm.getByRole("button", { name: "계속하기" }).click();
   await expect(confirm).toHaveCount(0);
   await expect(roomCode).toBeVisible();
 

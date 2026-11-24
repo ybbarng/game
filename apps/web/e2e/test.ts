@@ -86,6 +86,18 @@ export async function ready(page: Page): Promise<void> {
   await page.locator(READY).waitFor({ state: "attached" });
 }
 
+/**
+ * 온라인 판(방·방에서 들어간 대국)에서 화면 안 나가기 단추(「← 오목」, 「나가기」 등)를 누르고,
+ * 뜨는 확인창에서 「나가기」를 고른다(뒤로가기와 같은 확인, game/screen-history.ts)
+ */
+export async function leaveOnline(page: Page, button: string): Promise<void> {
+  await page.getByRole("button", { name: button, exact: true }).click();
+  await page
+    .locator("[data-leave-confirm]")
+    .getByRole("button", { name: "나가기" })
+    .click();
+}
+
 function waitForReady(page: Page): void {
   const goto = page.goto.bind(page);
   const reload = page.reload.bind(page);

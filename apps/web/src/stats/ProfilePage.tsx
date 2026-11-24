@@ -176,7 +176,7 @@ export function ProfilePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mighty-stats-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `game-stats-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -207,7 +207,7 @@ export function ProfilePage() {
             >
               지난 게임 복기 →
             </a>
-            <span className="hidden text-white/50 text-xs sm:inline">
+            <span className="hidden text-white/75 text-xs sm:inline">
               {total > 0
                 ? `${new Date(book.since).toLocaleDateString("ko-KR")}부터`
                 : ""}
@@ -233,7 +233,7 @@ export function ProfilePage() {
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
-              <div className="text-white/50 text-xs">
+              <div className="text-white/75 text-xs">
                 다음 레벨까지 {ROUNDS_PER_LEVEL - (total % ROUNDS_PER_LEVEL)}판
               </div>
             </div>
@@ -502,7 +502,7 @@ function MightyStats({ book }: { book: StatsBook }) {
 
       <Card title="번 돈 흐름(최근 100판)">
         <TrendLine values={s.moneyLine} unit="" label="쌓인 돈" />
-        <p className="text-white/50 text-xs">
+        <p className="text-white/75 text-xs">
           가장 크게 잃은 판 {signed(s.worstRound)} · 가장 긴 연승 {s.bestStreak}
           판 ·{" "}
           {s.streak >= 0 ? `지금 ${s.streak}연승` : `지금 ${-s.streak}연패`}
@@ -569,21 +569,13 @@ function HeartsStats({ book }: { book: StatsBook }) {
           value={pct(s.wins, s.games)}
           sub={`${s.wins}/${s.games}게임`}
         />
-        <StatTile
-          label="판 평균 점수"
-          value={s.average.toFixed(1)}
-          sub="낮을수록 좋아요."
-        />
+        <StatTile label="판 평균 점수" value={s.average.toFixed(1)} />
         <StatTile
           label="0점 판"
           value={pct(s.clean, s.rounds)}
           sub={`${s.clean}/${s.rounds}판`}
         />
-        <StatTile
-          label="가장 좋은 게임"
-          value={s.bestGame ?? "—"}
-          sub="끝난 게임의 가장 낮은 점수"
-        />
+        <StatTile label="가장 좋은 게임" value={s.bestGame ?? "—"} />
       </div>
       <Card title="숫자로 보기">
         <Counts
@@ -633,16 +625,8 @@ function OmokStats({ book }: { book: StatsBook }) {
           value={pct(s.wins, s.rounds)}
           sub={`${s.wins}승 ${s.losses}패 ${s.draws}무`}
         />
-        <StatTile
-          label="평균 수"
-          value={s.averageMoves.toFixed(0)}
-          sub="판에 놓인 돌"
-        />
-        <StatTile
-          label="가장 빠른 승리"
-          value={s.fastestWin ?? "—"}
-          sub="다섯을 이은 판의 수"
-        />
+        <StatTile label="평균 수" value={s.averageMoves.toFixed(0)} />
+        <StatTile label="가장 빠른 승리" value={s.fastestWin ?? "—"} />
         <StatTile
           label="다섯으로 이김"
           value={s.byFive}
@@ -674,17 +658,13 @@ function BadukStats({ book }: { book: StatsBook }) {
           value={pct(s.wins, s.rounds)}
           sub={`${s.wins}승 ${s.losses}패`}
         />
-        <StatTile
-          label="평균 수"
-          value={s.averageMoves.toFixed(0)}
-          sub="판에 둔 수"
-        />
+        <StatTile label="평균 수" value={s.averageMoves.toFixed(0)} />
         <StatTile
           label="세어서 이김"
           value={s.byScore}
           sub={`평균 ${s.averageMargin.toFixed(1)}점 차`}
         />
-        <StatTile label="기권승" value={s.byResign} sub="상대가 기권한 판" />
+        <StatTile label="기권승" value={s.byResign} />
       </div>
       <Card title="돌 색별 승률">
         <RateBar label="흑(먼저)" won={s.black.won} n={s.black.n} />
@@ -711,17 +691,13 @@ function JanggiStats({ book }: { book: StatsBook }) {
           value={pct(s.wins, s.rounds)}
           sub={`${s.wins}승 ${s.losses}패`}
         />
-        <StatTile
-          label="평균 수"
-          value={s.averageMoves.toFixed(0)}
-          sub="판에 둔 수"
-        />
+        <StatTile label="평균 수" value={s.averageMoves.toFixed(0)} />
         <StatTile
           label="외통으로 이김"
           value={s.byCheckmate}
           sub={`점수승 ${s.byScore}판`}
         />
-        <StatTile label="기권승" value={s.byResign} sub="상대가 기권한 판" />
+        <StatTile label="기권승" value={s.byResign} />
       </div>
       <Card title="편별 승률">
         <RateBar label="초(먼저)" won={s.cho.won} n={s.cho.n} />

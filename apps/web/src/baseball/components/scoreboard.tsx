@@ -174,7 +174,7 @@ export function Scoreboard({
       <div ref={table} className="overflow-x-auto px-2 py-1.5">
         <table className="w-full border-separate border-spacing-x-0.5 font-mono text-xs">
           <thead>
-            <tr className="text-[10px] text-white/45">
+            <tr className="text-[10px] text-white/75">
               <th className="w-full min-w-16 text-left font-normal">
                 {puzzle ? "" : "팀"}
               </th>

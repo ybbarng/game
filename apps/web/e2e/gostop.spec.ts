@@ -2,6 +2,7 @@ import { useTestSpeed } from "./fast";
 import {
   expect,
   fastForwardUntil,
+  leaveOnline,
   type Page,
   ready,
   speedUpAnimations,
@@ -57,7 +58,8 @@ async function playCard(page: Page, id?: string) {
     `section[aria-label="손패"] [data-card="${chosen}"]`,
   );
   await target.click();
-  await expect(page.getByRole("status")).toHaveText("한 번 더 누르면 내요.");
+  await expect(page.getByRole("status")).toHaveText(/^내 차례 · /);
+  await expect(page.getByRole("button", { name: "내기" })).toBeVisible();
   await target.click();
   // 낸 카드가 손에서 빠지거나, 흔들기·폭탄을 묻는다.
   await expect
@@ -303,7 +305,7 @@ test(
     await guest.screenshot({ path: info.outputPath("gostop-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
-    await host.getByRole("button", { name: "← 고스톱" }).click();
+    await leaveOnline(host, "← 고스톱");
     await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
       timeout: 10_000,
     });

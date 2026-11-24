@@ -16,11 +16,6 @@ export function money(n: number): string {
   return `✦${n.toLocaleString("ko-KR")}`;
 }
 
-/** 별빛 변화 표시: +✦30 / −✦30 */
-export function signedMoney(n: number): string {
-  return `${n >= 0 ? "+" : "−"}${money(Math.abs(n))}`;
-}
-
 /** 등급 표시: −1.5등급, 0.0등급 */
 export function magText(mag: number): string {
   const v = Math.round(mag * 10) / 10;

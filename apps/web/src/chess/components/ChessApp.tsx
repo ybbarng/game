@@ -341,7 +341,7 @@ function ChessHome({
           <h1 className="mt-2 font-black text-4xl tracking-wide">체스</h1>
         </>
       }
-      tagline="여섯 가지 기물로 상대 킹을 피할 곳 없이 몰아라"
+      tagline="여섯 가지 기물로 상대 킹을 피할 곳 없이 몰아요."
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "♔︎",

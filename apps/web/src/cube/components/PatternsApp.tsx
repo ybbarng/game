@@ -3,6 +3,7 @@
 import { formatMoves, invertMoves, parseMoves } from "@game/cube-engine";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { cn } from "@/lib/cn";
 import {
   LEVEL_LABEL,
@@ -315,7 +316,7 @@ function MinePatterns({
               spellCheck={false}
               autoCapitalize="off"
               data-mine-alg
-              className="rounded-lg bg-white/10 px-3 py-2 font-mono"
+              className="rounded-lg bg-white/10 px-3 py-2 font-mono max-sm:text-base"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -326,7 +327,7 @@ function MinePatterns({
               onChange={(e) => setName(e.target.value)}
               placeholder="내 패턴"
               data-mine-name
-              className="rounded-lg bg-white/10 px-3 py-2"
+              className="rounded-lg bg-white/10 px-3 py-2 max-sm:text-base"
             />
           </label>
           {read && !read.ok && (
@@ -365,13 +366,16 @@ function MinePatterns({
                 settings={settings}
                 onOpen={onOpen}
               />
-              <button
-                type="button"
-                onClick={() => onMine(removeMyPattern(mine, m.id))}
-                className="self-end text-white/50 text-xs hover:text-white"
-              >
-                지우기
-              </button>
+              <span className="self-end">
+                <ConfirmButton
+                  question="정말 지울까요?"
+                  confirmLabel="지우기"
+                  onConfirm={() => onMine(removeMyPattern(mine, m.id))}
+                  className="text-white/70 text-xs hover:text-white"
+                >
+                  지우기
+                </ConfirmButton>
+              </span>
             </li>
           ))}
         </ul>

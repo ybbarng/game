@@ -26,6 +26,7 @@ function Chips<T extends string | number>({
         <button
           key={String(o.value)}
           type="button"
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
             "whitespace-nowrap rounded-full border px-3 py-1 text-xs",
@@ -129,7 +130,7 @@ export function SettingsMenu({ onClose }: { onClose: () => void }) {
         >
           📖 용어 사전
         </button>
-        <p className="text-[11px] leading-relaxed opacity-50">
+        <p className="text-white/75 text-xs leading-relaxed">
           키보드: ← → 로 카드 고르기, Enter 로 내기, Esc 로 선택 취소
         </p>
       </div>

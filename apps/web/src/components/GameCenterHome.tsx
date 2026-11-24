@@ -22,7 +22,7 @@ const SHARED_LINKS = [
     href: "/profile",
     icon: "📊",
     title: "내 기록",
-    detail: "이 기기에 쌓인 판과 승률",
+    detail: "판과 승률",
   },
 ] as const;
 
@@ -62,7 +62,7 @@ export function GameCenterHome() {
                 <span className="break-keep text-sm text-white/70">
                   {game.tagline}
                 </span>
-                <span className="text-white/50 text-xs">{game.players}</span>
+                <span className="text-white/75 text-xs">{game.players}</span>
               </span>
             </a>
           ))}
@@ -84,7 +84,7 @@ export function GameCenterHome() {
           ))}
         </section>
 
-        <footer className="text-center text-[11px] text-white/40">
+        <footer className="text-center text-white/75 text-xs">
           <MadeWith />
         </footer>
       </div>

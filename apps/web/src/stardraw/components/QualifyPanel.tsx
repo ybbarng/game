@@ -451,7 +451,7 @@ function ImportCode({
           rows={3}
           placeholder="SDQ1-…"
           aria-label="복구 코드"
-          className="rounded-lg border border-white/15 bg-black/30 p-2 font-mono text-xs"
+          className="rounded-lg border border-white/15 bg-black/30 p-2 font-mono text-base sm:text-xs"
         />
         <button
           type="button"

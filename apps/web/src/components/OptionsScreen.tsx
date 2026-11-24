@@ -11,7 +11,7 @@ import { BOT_LEVELS } from "@/game/bots";
 import { botName, SPEEDS, useSettings } from "@/game/settings";
 import { previewVolume } from "@/game/sound";
 import { cn } from "@/lib/cn";
-
+import { ConfirmButton } from "./ConfirmButton";
 import { CardArt } from "./card-art/CardArt";
 import {
   CARD_BACKS,
@@ -79,6 +79,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                 <button
                   key={p.id}
                   type="button"
+                  aria-pressed={p.code === code}
                   onClick={() => chooseRule(p.code)}
                   className={chip(p.code === code)}
                 >
@@ -95,19 +96,21 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                 >
                   <button
                     type="button"
+                    aria-pressed={r.code === code}
                     onClick={() => chooseRule(r.code)}
                     className="truncate"
                   >
                     {r.name}
                   </button>
-                  <button
-                    type="button"
+                  <ConfirmButton
                     aria-label={`${r.name} 지우기`}
-                    onClick={() => settings.removeCustomRule(r.name)}
+                    question="정말 지울까요?"
+                    confirmLabel="지우기"
+                    onConfirm={() => settings.removeCustomRule(r.name)}
                     className="opacity-50 hover:opacity-100"
                   >
                     ×
-                  </button>
+                  </ConfirmButton>
                 </span>
               ))}
             </div>
@@ -127,7 +130,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               value={ruleText}
               onChange={(e) => chooseRule(e.target.value)}
               spellCheck={false}
-              className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 font-mono text-sm"
+              className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 font-mono text-base sm:text-sm"
             />
             {decoded && !decoded.ok && (
               <p className="text-red-300 text-xs">{decoded.reason}</p>
@@ -141,7 +144,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                     value={saveName}
                     onChange={(e) => setSaveName(e.target.value)}
                     placeholder="이 규칙의 이름 (예: 우리 학교 5마)"
-                    className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-xs"
+                    className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-base sm:text-xs"
                   />
                   <ActionButton
                     variant="secondary"
@@ -165,6 +168,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                 <button
                   key={t.id}
                   type="button"
+                  aria-pressed={t.id === settings.cardThemeId}
                   onClick={() => settings.setCardTheme(t.id)}
                   className={chip(t.id === settings.cardThemeId)}
                 >
@@ -192,6 +196,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                   <button
                     key={f.id}
                     type="button"
+                    aria-pressed={selected}
                     onClick={() => settings.setFaceStyle(f.id)}
                     className={cn(
                       "flex flex-col items-center gap-1 rounded-lg p-1.5 text-[11px]",
@@ -229,6 +234,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                   <button
                     key={b.id}
                     type="button"
+                    aria-pressed={selected}
                     onClick={() => settings.setCardBack(b.id)}
                     className={cn(
                       "flex flex-col items-center gap-1 rounded-lg p-1 text-[11px]",
@@ -256,6 +262,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
             <div className="flex gap-1.5">
               <button
                 type="button"
+                aria-pressed={settings.cardTip}
                 onClick={() => settings.setCardTip(true)}
                 className={chip(settings.cardTip)}
               >
@@ -263,6 +270,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               </button>
               <button
                 type="button"
+                aria-pressed={!settings.cardTip}
                 onClick={() => settings.setCardTip(false)}
                 className={chip(!settings.cardTip)}
               >
@@ -282,6 +290,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
             <div className="flex gap-1.5">
               <button
                 type="button"
+                aria-pressed={settings.slangTerms}
                 onClick={() => settings.setSlangTerms(true)}
                 className={chip(settings.slangTerms)}
               >
@@ -289,6 +298,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               </button>
               <button
                 type="button"
+                aria-pressed={!settings.slangTerms}
                 onClick={() => settings.setSlangTerms(false)}
                 className={chip(!settings.slangTerms)}
               >
@@ -307,7 +317,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                   onChange={(e) => settings.setBotName(n, e.target.value)}
                   placeholder={botName([], n)}
                   maxLength={8}
-                  className="min-w-0 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs"
+                  className="min-w-0 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-base sm:text-xs"
                 />
               ))}
             </div>
@@ -319,6 +329,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                 <button
                   key={level.value}
                   type="button"
+                  aria-pressed={level.value === settings.botLevel}
                   onClick={() => settings.setBotLevel(level.value)}
                   className={chip(level.value === settings.botLevel)}
                 >
@@ -340,6 +351,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                 <button
                   key={s.value}
                   type="button"
+                  aria-pressed={s.value === settings.speed}
                   onClick={() => settings.setSpeed(s.value)}
                   className={chip(s.value === settings.speed)}
                 >
@@ -353,6 +365,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
+                aria-pressed={settings.sound}
                 onClick={() => settings.setSound(true)}
                 className={chip(settings.sound)}
               >
@@ -360,6 +373,7 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
               </button>
               <button
                 type="button"
+                aria-pressed={!settings.sound}
                 onClick={() => settings.setSound(false)}
                 className={chip(!settings.sound)}
               >

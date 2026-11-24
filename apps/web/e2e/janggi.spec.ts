@@ -3,7 +3,14 @@ import { OPENING_LINE_MOVES } from "../src/janggi/opening-line";
 import { planText } from "../src/janggi/plan-text";
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
-import { expect, type Locator, type Page, ready, test } from "./test";
+import {
+  expect,
+  type Locator,
+  leaveOnline,
+  type Page,
+  ready,
+  test,
+} from "./test";
 
 /** 판 크기와 가장자리 여백(JanggiBoard의 PAD) */
 const PAD = 0.62;
@@ -124,9 +131,9 @@ test("장기: 게임 목록에서 들어가 상차림을 고르고 두다가 무
   await expect(page.locator("[data-hint]")).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("내 차례");
 
-  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
+  // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
-  await page.getByRole("button", { name: "계속 두기" }).click();
+  await page.getByRole("button", { name: "계속하기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례");
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();
@@ -769,7 +776,7 @@ test(
     await han.screenshot({ path: info.outputPath("janggi-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 장기" }).click();
+    await leaveOnline(host, "← 장기");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });

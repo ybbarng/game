@@ -530,10 +530,3 @@ export function canActHearts(
     state.view?.decision != null
   );
 }
-
-/** 이번 판에 내가 받은 카드(넘기기 뒤 표를 단다) */
-export function receivedCards(view: PlayerView): Set<Card> {
-  return new Set(
-    view.phase === "play" && view.trickIndex === 0 ? view.received : [],
-  );
-}

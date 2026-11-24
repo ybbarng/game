@@ -20,6 +20,7 @@ function Chips<T extends string>({
         <button
           key={o.value}
           type="button"
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
             "whitespace-nowrap rounded-full border px-3 py-1 text-xs",

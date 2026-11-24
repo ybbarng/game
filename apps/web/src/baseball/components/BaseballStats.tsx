@@ -25,7 +25,6 @@ export function BaseballStats({ book }: { book: StatsBook }) {
         <StatTile
           label="맞힌 평균 물음"
           value={s.averageGuesses === 0 ? "-" : s.averageGuesses.toFixed(1)}
-          sub="서로 맞히기에서 맞힌 판"
         />
         <StatTile
           label="퍼즐 평균"
@@ -36,11 +35,7 @@ export function BaseballStats({ book }: { book: StatsBook }) {
               : `가장 적게 ${s.puzzle.best}번 · ${s.puzzle.solved}/${s.puzzle.n}판 풂`
           }
         />
-        <StatTile
-          label="거짓 답 잡음"
-          value={s.byCheat}
-          sub="상대 답이 비밀과 달라 이긴 판"
-        />
+        <StatTile label="거짓 답 잡음" value={s.byCheat} />
       </div>
       <Card title="선·후공 승률(서로 맞히기)">
         <RateBar label="먼저 물음" won={s.first.won} n={s.first.n} />

@@ -70,7 +70,7 @@ export function TrickTable({
           ))}
         </tbody>
       </table>
-      <p className="mt-1 text-[10px] text-white/45">
+      <p className="mt-1 text-[10px] text-white/75">
         흰 테두리 = 선, 금색 테두리 = 그 턴을 먹은 카드
       </p>
     </div>

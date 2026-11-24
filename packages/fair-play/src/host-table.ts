@@ -9,7 +9,6 @@ import {
   type PlayerView,
   type RuleSet,
   type StepResult,
-  viewOf,
 } from "@game/mighty-engine";
 
 import { checkReplay, type FairLogged, type RoundDeal } from "./audit";
@@ -596,15 +595,6 @@ export function revealSeatView(
     real.friend = view.seat;
   real.decision = decisionFromView(real);
   return real;
-}
-
-/** 시험·디버깅용: 엔진 상태에서 바로 한 자리 화면을 만든다 */
-export function seatView(
-  state: MatchState,
-  seat: number,
-  cards: ReadonlyMap<number, Card>,
-): PlayerView | null {
-  return revealSeatView(viewOf(state, seat), cards);
 }
 
 export { countPoints };

@@ -48,3 +48,26 @@ test(
     expect(overflow).toBe(false);
   },
 );
+
+test("복기: 게임을 보다 뒤로가기면 목록으로 돌아오고, 지우기는 한 번 더 묻는다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await page.goto("/review");
+  await page.getByLabel("복기 기록 파일").setInputFiles(ARCHIVE);
+  const game = page.getByRole("button", { name: /마이티 · 혼자/ });
+  await game.click();
+  await expect(roundCard(page, 1)).toBeVisible();
+  await expect(page).toHaveURL(/\/review\?id=/);
+
+  await page.goBack();
+  await expect(game).toBeVisible();
+  await expect(page).toHaveURL(/\/review$/);
+
+  await page.getByRole("button", { name: "지우기" }).click();
+  await expect(page.getByText("정말 지울까요?")).toBeVisible();
+  await page.getByRole("button", { name: "취소" }).click();
+  await expect(game).toBeVisible();
+  await page.getByRole("button", { name: "지우기" }).click();
+  await page.getByRole("button", { name: "지우기" }).click();
+  await expect(page.getByText("아직 남긴 게임이 없어요.")).toBeVisible();
+});

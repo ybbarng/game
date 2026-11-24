@@ -87,12 +87,6 @@ export function deepColor(k: number): Rgb {
   );
 }
 
-/** 가장자리 색(가장자리 어두워짐): 같은 색을 어둡게 */
-export function rimColor(k: number): Rgb {
-  const [h, s, l] = toHsl(deepColor(k));
-  return toRgb(h, s, l * 0.5);
-}
-
 /** 원반 가운데가 하얗게 타는 정도(0~1). 붉은 별은 거의 안 타고 푸른 별은 많이 탄다 */
 export function coreHeat(k: number): number {
   return Math.min(1, Math.max(0.15, (k - 3000) / 17000));

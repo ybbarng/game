@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
@@ -27,6 +28,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { myRequestCard } from "../chain";
@@ -136,7 +138,7 @@ function MyConstellations({ view }: { view: GalaxyView }) {
     }))
     .filter((r) => r.owned.length > 0);
   if (rows.length === 0)
-    return <p className="text-white/50 text-xs">아직 가진 별이 없어요.</p>;
+    return <p className="text-white/75 text-xs">아직 가진 별이 없어요.</p>;
   return (
     <ul className="flex flex-col gap-1 text-sm">
       {rows.map(({ g, owned }) => {
@@ -214,7 +216,7 @@ function SquareInfo({
               : "주인 없는 별"}
           </p>
           {rents && (
-            <p className="text-white/45 text-xs">
+            <p className="text-white/75 text-xs">
               1단 {money(rents.single)} · 별 둘 {money(rents.pair)} · 완성{" "}
               {money(rents.complete)} · 2단 {money(rents.level2)} · 3단{" "}
               {money(rents.level3)} · 큰 정거장 {money(rents.grand)}
@@ -242,7 +244,7 @@ function Standings({
   if (rows.length === 0) return null;
   return (
     <table data-standings className="w-full text-sm">
-      <thead className="text-white/50 text-xs">
+      <thead className="text-white/75 text-xs">
         <tr>
           <th className="text-left font-normal">순위</th>
           <th className="text-left font-normal">우주인</th>
@@ -260,7 +262,7 @@ function Standings({
             <td className="flex items-center gap-1">
               <ShipToken seat={r.seat} size={11} />
               {name(r.seat)}
-              {r.out && <span className="text-white/40 text-xs">(중단)</span>}
+              {r.out && <span className="text-white/75 text-xs">(중단)</span>}
             </td>
             <td className="text-right tabular-nums">{money(r.cash)}</td>
             <td className="text-right font-bold tabular-nums">
@@ -412,6 +414,7 @@ export function GalaxyGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     offlineSeats,
   } = useGalaxy();
   const submit = useGalaxy((s) => s.submit);
@@ -437,11 +440,7 @@ export function GalaxyGame({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 2200);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   const decision = view?.decision ?? null;
   const ready = !playing && decision !== null;
@@ -786,8 +785,8 @@ export function GalaxyGame({
           onShowChange={setBannerUp}
         />
       </div>
-      {timedDecision && <DecisionTimer resetKey={decisionKey} />}
-      {decisionPanel}
+      {timedDecision && !hostLeft && <DecisionTimer resetKey={decisionKey} />}
+      {!hostLeft && decisionPanel}
       {!decisionPanel && hover !== null && selected === null && !gameOver && (
         <SquareInfo
           view={view}
@@ -842,32 +841,35 @@ export function GalaxyGame({
           </ul>
         </details>
       )}
-      <div className="flex flex-wrap justify-center gap-2">
-        {!gameOver && (
-          <ResignButton
-            resetKey={decisionKey}
-            onResign={() => submit({ type: "resign" })}
-            className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
-          />
-        )}
-        {gameOver && !mission && (
-          <>
-            <button
-              type="button"
-              onClick={onExit}
-              className="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
-            >
-              다시 하기
-            </button>
-            <a
-              href="/"
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-            >
-              게임 목록
-            </a>
-          </>
-        )}
-      </div>
+      {/* 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만) */}
+      {!hostLeft && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {!gameOver && (
+            <ResignButton
+              resetKey={decisionKey}
+              onResign={() => submit({ type: "resign" })}
+              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
+            />
+          )}
+          {gameOver && !mission && (
+            <>
+              <button
+                type="button"
+                onClick={onExit}
+                className="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
+              >
+                다시 하기
+              </button>
+              <a
+                href="/"
+                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
+              >
+                게임 목록
+              </a>
+            </>
+          )}
+        </div>
+      )}
       {online && <ChatBox mySeat={me} />}
     </>
   );
@@ -900,15 +902,15 @@ export function GalaxyGame({
         </span>
       </header>
 
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔어요."
-            : "방장과 연결이 끊겼어요. 다시 잇는 중이에요."}
-        </p>
+      {online && (invalid || reconnecting || hostLeft) && (
+        <div className="w-full max-w-xl">
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
+        </div>
       )}
       {waitingOffline && (
         <div

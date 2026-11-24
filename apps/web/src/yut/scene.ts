@@ -16,6 +16,3 @@ export function sceneOf(phase: Phase, tossing: boolean): YutScene {
   if (tossing) return "throw";
   return phase === "move" || phase === "gameOver" ? "move" : "throw";
 }
-
-/** 장면을 바꾸는 시간(ms). 움직임 줄이기면 바로 바뀐다 */
-export const SCENE_SWITCH_MS = 1100;

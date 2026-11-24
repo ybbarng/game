@@ -15,7 +15,7 @@ export function LeaveConfirm() {
 
   useEffect(() => {
     if (!open) return;
-    // 실수로 나가지 않게 "계속 하기"에 먼저 초점을 둔다
+    // 실수로 나가지 않게 "계속하기"에 먼저 초점을 둔다
     stay.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -31,7 +31,8 @@ export function LeaveConfirm() {
       aria-modal="true"
       aria-labelledby="leave-confirm-title"
       data-leave-confirm
-      className="fixed inset-0 z-[100] grid place-items-center bg-black/60 p-4"
+      // 판 층(화투 판 230·알림 350·설정 500)보다 위에 둔다. 전에는 100이라 화투 판에서 「나가기」가 가려졌다
+      className="fixed inset-0 z-[900] grid place-items-center bg-black/60 p-4"
     >
       <div className="flex w-full max-w-xs flex-col gap-4 rounded-2xl border border-white/15 bg-neutral-900 p-5 text-center shadow-2xl">
         <p id="leave-confirm-title" className="break-keep font-bold">
@@ -44,7 +45,7 @@ export function LeaveConfirm() {
             onClick={close}
             className="rounded-xl bg-white/10 px-3 py-2.5 hover:bg-white/15"
           >
-            계속 하기
+            계속하기
           </button>
           <button
             type="button"

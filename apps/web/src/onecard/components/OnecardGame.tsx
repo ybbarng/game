@@ -36,8 +36,10 @@ import {
   useHandSpread,
 } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
+import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
 import { ActionButton, Panel } from "@/components/panels/common";
+import { ResignConfirm } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { useRelayoutFade } from "@/components/relayout";
@@ -64,6 +66,7 @@ import {
 } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 
 import { fanFlipId, onecardDealPattern, planFx } from "../card-fx";
@@ -460,6 +463,7 @@ export function OnecardGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     offlineSeats,
     shoutEvents,
     dealing,
@@ -493,11 +497,7 @@ export function OnecardGame({
   // 나눠 준 뒤 손패가 손패 가운데에서 펼쳐진다(하트·마이티와 같다)
   const spread = useHandSpread(dealing !== null);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   const handKey = view?.hand.join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: 손패가 바뀔 때만 푼다
@@ -773,10 +773,7 @@ export function OnecardGame({
                 ? `배우기 · ${mission.title}`
                 : `${n}명 · ${view.rules.handSize}장 · ${replay ? "다시 보기" : online ? "친구와" : `컴퓨터(${levelName})`}`}
             </span>
-            <span
-              className="shrink-0 tabular-nums opacity-90"
-              title="내 남은 카드"
-            >
+            <span className="shrink-0 tabular-nums opacity-90">
               나 {hand.length}장
             </span>
             {online && (
@@ -806,7 +803,7 @@ export function OnecardGame({
                 onClick={() => setConfirmResign(true)}
                 className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
               >
-                그만두기
+                기권
               </button>
             )}
             <button
@@ -1002,7 +999,7 @@ export function OnecardGame({
             </div>
           )}
 
-          {/* 손패 바로 위: 차례 안내, 7 무늬 고르기, 터치로 겨눈 카드 내기, 그만두기 묻기 */}
+          {/* 손패 바로 위: 차례 안내, 7 무늬 고르기, 터치로 겨눈 카드 내기, 기권 묻기 */}
           {!over && (
             <div
               className="pointer-events-none absolute z-[240] flex flex-col items-center justify-end gap-1.5"
@@ -1046,26 +1043,14 @@ export function OnecardGame({
                 </fieldset>
               )}
               {confirmResign && canResign && (
-                <span className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-black/75 px-3 py-1.5 text-sm shadow-xl">
-                  정말 그만둘까요?
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmResign(false);
-                      resign();
-                    }}
-                    className="rounded-xl bg-rose-600 px-3 py-1.5"
-                  >
-                    그만두기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmResign(false)}
-                    className="rounded-xl bg-white/10 px-3 py-1.5"
-                  >
-                    계속하기
-                  </button>
-                </span>
+                <ResignConfirm
+                  onResign={() => {
+                    setConfirmResign(false);
+                    resign();
+                  }}
+                  onKeep={() => setConfirmResign(false)}
+                  className="pointer-events-auto w-fit rounded-2xl bg-black/75 px-3 py-1.5 shadow-xl"
+                />
               )}
               {myTurn && selected && (
                 <button
@@ -1245,26 +1230,19 @@ export function OnecardGame({
             </div>
           )}
 
-          {online && reconnecting && !hostLeft && (
-            <div
-              role="status"
-              className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit max-w-[92%] items-center gap-2 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl"
-            >
-              <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              방장과 연결이 끊겼어요. 다시 연결하는 중…
-            </div>
-          )}
-          {online && hostLeft && (
-            <div className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit items-center gap-3 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl">
-              방장이 방을 나갔어요.
-              <button
-                type="button"
-                onClick={onExit}
-                className="rounded-lg bg-amber-400 px-3 py-1 font-semibold text-black"
-              >
-                처음으로
-              </button>
-            </div>
+          {online && (
+            <>
+              <InvalidBanner
+                invalid={invalid}
+                top={layout.hud.y + layout.hud.h + 6}
+              />
+              <ConnectionNotices
+                reconnecting={reconnecting}
+                hostLeft={hostLeft}
+                onExit={onExit}
+                floating
+              />
+            </>
           )}
 
           {showSettings && (

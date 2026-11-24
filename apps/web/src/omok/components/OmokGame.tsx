@@ -9,12 +9,12 @@ import {
   stoneOfSeat,
   timeControlOf,
 } from "@game/omok-engine";
-import { useEffect, useState } from "react";
-
+import { useState } from "react";
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
 import { HintButton, useHint } from "@/components/HintButton";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
@@ -24,6 +24,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { OMOK_LEVELS, useOmokSettings, VARIANT_INFO } from "../settings";
 import { useOmok } from "../store";
@@ -94,6 +95,7 @@ export function OmokGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     events,
   } = useOmok();
   const submit = useOmok((s) => s.submit);
@@ -106,11 +108,7 @@ export function OmokGame({
   // 힌트: 고수가 이 판에서 고르는 자리(수가 오가면 저절로 지운다, 공통 useHint)
   const { hint, showHint, thinking, ask } = useHint<number>(played);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   if (!view || !host) return null;
   const me = host.seat;
@@ -130,8 +128,8 @@ export function OmokGame({
       ? aim !== null
         ? hint === aim
           ? `힌트 ${pointName(aim)}: 초록 고리가 고수가 고른 자리예요.`
-          : `${pointName(aim)}: 한 번 더 누르면 둬요.`
-        : "내 차례 — 판을 눌러 두세요."
+          : `내 차례 · ${pointName(aim)}`
+        : "내 차례예요."
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
@@ -207,15 +205,13 @@ export function OmokGame({
       }
       alerts={
         online &&
-        (reconnecting || hostLeft) && (
-          <p
-            role="alert"
-            className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
-          >
-            {hostLeft
-              ? "방장이 방을 나갔어요."
-              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
-          </p>
+        (invalid || reconnecting || hostLeft) && (
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
         )
       }
       opponent={
@@ -248,91 +244,94 @@ export function OmokGame({
         />
       }
       actions={
-        <div className="flex w-full flex-wrap justify-center gap-2">
-          {view.phase === "play" && (
-            <>
-              {aim !== null && myTurn && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAim(null);
-                    submit({ type: "place", at: aim });
-                  }}
-                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-                >
-                  여기 두기
-                </button>
-              )}
-              {!online && !mission && (
-                <button
-                  type="button"
-                  disabled={!canUndo}
-                  onClick={() => {
-                    setAim(null);
-                    undo();
-                  }}
-                  className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
-                >
-                  무르기
-                </button>
-              )}
-              <HintButton
-                online={online}
-                mission={!!mission}
-                myTurn={myTurn}
-                thinking={thinking}
-                onHint={() =>
-                  // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다). 워커에서 센다.
-                  ask(
-                    () =>
-                      adviseWith<Action>(
-                        { game: "omok", name: "advisor" },
-                        view,
-                        createRng(played + 1).seed,
-                      ),
-                    (action) => {
-                      if (action.type !== "place") return;
-                      showHint(action.at);
-                      setAim(action.at);
-                    },
-                  )
-                }
-              />
-              {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-              {(!online || myTurn) && (
-                <ResignButton
-                  resetKey={played}
-                  onAsk={() => setAim(null)}
-                  onResign={() => submit({ type: "resign" })}
+        // 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만)
+        !hostLeft && (
+          <div className="flex w-full flex-wrap justify-center gap-2">
+            {view.phase === "play" && (
+              <>
+                {aim !== null && myTurn && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAim(null);
+                      submit({ type: "place", at: aim });
+                    }}
+                    className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                  >
+                    여기 두기
+                  </button>
+                )}
+                {!online && !mission && (
+                  <button
+                    type="button"
+                    disabled={!canUndo}
+                    onClick={() => {
+                      setAim(null);
+                      undo();
+                    }}
+                    className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
+                  >
+                    무르기
+                  </button>
+                )}
+                <HintButton
+                  online={online}
+                  mission={!!mission}
+                  myTurn={myTurn}
+                  thinking={thinking}
+                  onHint={() =>
+                    // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다). 워커에서 센다.
+                    ask(
+                      () =>
+                        adviseWith<Action>(
+                          { game: "omok", name: "advisor" },
+                          view,
+                          createRng(played + 1).seed,
+                        ),
+                      (action) => {
+                        if (action.type !== "place") return;
+                        showHint(action.at);
+                        setAim(action.at);
+                      },
+                    )
+                  }
                 />
-              )}
-            </>
-          )}
-          {view.phase === "roundEnd" && !view.continued[me] && (
-            <button
-              type="button"
-              onClick={() => submit({ type: "continue" })}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다음 판
-            </button>
-          )}
-          {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
-          {gameOver && !mission && (
-            <>
+                {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
+                {(!online || myTurn) && (
+                  <ResignButton
+                    resetKey={played}
+                    onAsk={() => setAim(null)}
+                    onResign={() => submit({ type: "resign" })}
+                  />
+                )}
+              </>
+            )}
+            {view.phase === "roundEnd" && !view.continued[me] && (
               <button
                 type="button"
-                onClick={onExit}
+                onClick={() => submit({ type: "continue" })}
                 className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
               >
-                다시 하기
+                다음 판
               </button>
-              <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-                게임 목록
-              </a>
-            </>
-          )}
-        </div>
+            )}
+            {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
+            {gameOver && !mission && (
+              <>
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                >
+                  다시 하기
+                </button>
+                <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
+                  게임 목록
+                </a>
+              </>
+            )}
+          </div>
+        )
       }
       chat={online && <ChatBox mySeat={me} />}
     />

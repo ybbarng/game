@@ -6,10 +6,9 @@ import type {
   GameEvent,
 } from "@game/baseball-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type BaseballHostRoom = HostRoom<
   BaseballRules,
@@ -36,14 +35,5 @@ export const baseballSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endBaseballSession(): void {
-  clearHostingRoom();
-  if (baseballSession.host) {
-    baseballSession.host.finish();
-    const host = baseballSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  baseballSession.guest?.leave();
-  baseballSession.host = null;
-  baseballSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(baseballSession);
 }

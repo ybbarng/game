@@ -57,6 +57,7 @@ import {
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { gostopDealCounts, gostopMoves } from "../card-fx";
 import { GOSTOP_LEVELS } from "../settings";
@@ -121,18 +122,13 @@ function SeatPlate({
         {!mine && (
           <span
             className="shrink-0 tabular-nums text-white/70"
-            title="남은 손패"
             data-hand-count={seat}
           >
             {view.handCounts[seat] ?? 0}장
           </span>
         )}
         {revealed.length > 0 && (
-          <span
-            className="flex shrink-0 -space-x-1"
-            title="흔들어 보인 패"
-            data-revealed={seat}
-          >
+          <span className="flex shrink-0 -space-x-1" data-revealed={seat}>
             {revealed.map((id) => (
               <HwatuCardView key={id} id={id} width={14} />
             ))}
@@ -286,6 +282,7 @@ export function GostopTable({
     level,
     reconnecting,
     hostLeft,
+    invalid,
     events,
     seq,
   } = useGostop();
@@ -303,11 +300,7 @@ export function GostopTable({
   /** 판 끝 결과 띠가 떠 있는 동안은 결과·정산 상자를 띄우지 않는다(띠가 사라진 뒤 차례로) */
   const [bannerUp, setBannerUp] = useState(false);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 새 장면이 오면 고른 카드를 놓는다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: 장면 번호가 바뀔 때만 푼다
@@ -414,7 +407,7 @@ export function GostopTable({
     if (sent.waiting) status = "보내는 중…";
     else if (d?.kind === "play")
       status = selected
-        ? "한 번 더 누르면 내요."
+        ? `내 차례 · ${cardOf(selected).name}`
         : d.cards.length === 0
           ? "뒤집기만 하세요."
           : "내 차례 — 낼 카드를 고르세요.";
@@ -471,7 +464,7 @@ export function GostopTable({
   );
   const endButtons = (
     <div className="flex flex-wrap justify-center gap-2">
-      {view.phase === "roundEnd" && !view.continued[me] && (
+      {view.phase === "roundEnd" && !view.continued[me] && !hostLeft && (
         <button
           type="button"
           onClick={() => send({ type: "continue" })}
@@ -655,6 +648,8 @@ export function GostopTable({
           rect={center}
           reconnecting={reconnecting}
           hostLeft={hostLeft}
+          invalid={invalid}
+          onExit={onExit}
         >
           <HwatuFairBar me={me} over={view.phase === "gameOver"} />
         </HwatuOnlineNotes>
@@ -670,8 +665,8 @@ export function GostopTable({
         mine
       />
 
-      {/* 내 단추 */}
-      {layout.actions && (
+      {/* 내 단추(방장이 나가 끝난 판에서는 두지 않는다) */}
+      {layout.actions && !hostLeft && (
         <div
           className="absolute flex flex-wrap content-center items-center justify-center gap-2"
           style={at(layout.actions)}

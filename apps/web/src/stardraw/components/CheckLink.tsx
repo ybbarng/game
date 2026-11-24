@@ -291,7 +291,7 @@ export function CheckLink({
                   onChange={(e) => setRecipient(e.target.value)}
                   maxLength={40}
                   data-check-recipient
-                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-2"
+                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 max-sm:text-base"
                 />
               </label>
               <button

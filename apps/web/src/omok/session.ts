@@ -6,10 +6,9 @@ import type {
   OmokView,
 } from "@game/omok-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type OmokHostRoom = HostRoom<
   OmokRules,
@@ -36,14 +35,5 @@ export const omokSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endOmokSession(): void {
-  clearHostingRoom();
-  if (omokSession.host) {
-    omokSession.host.finish();
-    const host = omokSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  omokSession.guest?.leave();
-  omokSession.host = null;
-  omokSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(omokSession);
 }

@@ -10,6 +10,7 @@ import {
   animationsDone,
   expect,
   fastForwardUntil,
+  leaveOnline,
   type Page,
   ready,
   speedUpAnimations,
@@ -341,7 +342,7 @@ test(
     await host.screenshot({ path: info.outputPath("yut-online-host-end.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 모든 던지기를 다시 계산해 확인한다.
-    await host.getByRole("button", { name: "← 윷놀이" }).click();
+    await leaveOnline(host, "← 윷놀이");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 15_000,
     });
@@ -358,9 +359,9 @@ test(
     await startSolo(page);
     for (let i = 0; i < 4; i++) await playStep(page, false);
     await untilMyThrow(page);
-    // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
+    // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
     await page.getByRole("button", { name: "기권" }).click();
-    await page.getByRole("button", { name: "계속 두기" }).click();
+    await page.getByRole("button", { name: "계속하기" }).click();
     await expect(throwButton(page)).toBeVisible();
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();

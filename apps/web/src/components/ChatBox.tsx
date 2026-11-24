@@ -37,7 +37,7 @@ export function ChatBox({
         className="flex h-32 flex-col gap-1 overflow-y-auto rounded-xl bg-black/30 p-2 text-sm"
       >
         {messages.length === 0 ? (
-          <p className="m-auto text-xs opacity-50">{emptyText}</p>
+          <p className="m-auto text-white/75 text-xs">{emptyText}</p>
         ) : (
           messages.map((m) =>
             m.seat < 0 ? (
@@ -85,7 +85,8 @@ export function ChatBox({
           maxLength={CHAT_MAX_LENGTH}
           placeholder="한마디"
           aria-label="채팅 입력"
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm"
+          enterKeyHint="send"
+          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-base sm:text-sm"
         />
         <button
           type="submit"

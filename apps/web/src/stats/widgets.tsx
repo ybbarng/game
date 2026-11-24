@@ -33,7 +33,7 @@ export function StatTile({
     <div className="flex min-w-0 flex-col gap-0.5 rounded-2xl bg-white/[0.06] px-4 py-3">
       <div className="truncate text-white/60 text-xs">{label}</div>
       <div className="font-semibold text-2xl text-white">{value}</div>
-      {sub && <div className="truncate text-white/55 text-xs">{sub}</div>}
+      {sub && <div className="truncate text-white/75 text-xs">{sub}</div>}
     </div>
   );
 }
@@ -131,7 +131,7 @@ export function RateColumns({
             className="flex-1 text-center text-[11px] text-white/70"
           >
             {item.label}
-            <div className="text-[10px] text-white/45">{item.n}판</div>
+            <div className="text-[10px] text-white/75">{item.n}판</div>
           </div>
         ))}
       </div>
@@ -328,7 +328,7 @@ export function Counts({
           <dd className="shrink-0 text-right tabular-nums">
             <b className="text-white">{item.value.toLocaleString()}</b>
             {item.sub && (
-              <span className="ml-1 text-white/50 text-xs">{item.sub}</span>
+              <span className="ml-1 text-white/75 text-xs">{item.sub}</span>
             )}
           </dd>
         </div>

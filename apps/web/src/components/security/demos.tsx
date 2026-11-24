@@ -284,7 +284,7 @@ export function CommitRevealDemo() {
                   s.map((v, j) => (j === i ? e.target.value : v)),
                 )
               }
-              className="min-w-0 flex-1 rounded border border-white/15 bg-black/40 px-2 py-1 font-mono"
+              className="min-w-0 flex-1 rounded border border-white/15 bg-black/40 px-2 py-1 font-mono max-sm:text-base"
             />
             {hashes && (
               <span className="hidden w-40 truncate font-mono text-[10px] opacity-60 sm:inline">

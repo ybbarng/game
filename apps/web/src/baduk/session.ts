@@ -6,10 +6,9 @@ import type {
   GameEvent,
 } from "@game/baduk-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type BadukHostRoom = HostRoom<
   BadukRules,
@@ -36,14 +35,5 @@ export const badukSession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endBadukSession(): void {
-  clearHostingRoom();
-  if (badukSession.host) {
-    badukSession.host.finish();
-    const host = badukSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  badukSession.guest?.leave();
-  badukSession.host = null;
-  badukSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(badukSession);
 }

@@ -157,7 +157,7 @@ export function TsaToy() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 font-mono text-sm"
+          className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 font-mono text-base sm:text-sm"
           aria-label="봉인 값"
         />
       </label>

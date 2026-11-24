@@ -606,11 +606,3 @@ export function positionKey(pos: Position): string {
   }
   return `${pos.board.map((c) => c || ".").join("")}|${pos.turn}|${pos.castling}|${ep}`;
 }
-
-/** 이 편에 남은 기물 점수 합(폰 1·나이트 3·비숍 3·룩 5·퀸 9) */
-export function materialPoints(board: Board, side: Side): number {
-  let sum = 0;
-  for (const cell of board)
-    if (cell !== "" && cell[0] === side) sum += PIECE_POINTS[cell[1] as Kind];
-  return sum;
-}

@@ -478,7 +478,7 @@ function Board({
           {playedTitle}
         </h3>
         {compact && played.length === 0 && (
-          <span className="text-white/30 text-xs">아직 없음</span>
+          <span className="text-white/75 text-xs">아직 없음</span>
         )}
         {SUITS.map((suit) => {
           const cards = played.filter((c) => c.startsWith(suit));
@@ -493,7 +493,7 @@ function Board({
                 <SuitMark suit={suit} />
               </span>
               {cards.length === 0 ? (
-                <span className="text-white/30 text-xs">없음</span>
+                <span className="text-white/75 text-xs">없음</span>
               ) : (
                 cards.map(chip)
               )}
@@ -527,7 +527,7 @@ function Explanation({
   compact: boolean;
 }) {
   if (commentary === null)
-    return <p className="mt-2 text-white/40 text-xs">해설을 계산하는 중…</p>;
+    return <p className="mt-2 text-white/75 text-xs">해설을 계산하는 중…</p>;
   const { situation, verdict, reasons } = commentary;
   if (situation.length === 0 && reasons.length === 0) return null;
   if (compact)

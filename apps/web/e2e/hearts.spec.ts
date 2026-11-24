@@ -3,6 +3,7 @@ import {
   expect,
   fastForwardUntil,
   type Locator,
+  leaveOnline,
   type Page,
   ready,
   speedUpAnimations,
@@ -289,7 +290,7 @@ test(
     });
 
     // 방장이 나가면 기록이 공개되고 참가자가 공정성을 확인한다.
-    await host.getByRole("button", { name: "나가기" }).click();
+    await leaveOnline(host, "나가기");
     await expect(
       guest.getByText("공정성 확인: 섞기와 진행에 문제가 없어요"),
     ).toBeVisible({ timeout: 10_000 });

@@ -19,9 +19,9 @@ export default function NotFound() {
       className="sd-night flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center text-white"
     >
       <p className="font-mono text-5xl text-amber-100/80 tabular-nums">404</p>
-      <h1 className="font-bold text-xl">찾을 수 없는 페이지입니다.</h1>
+      <h1 className="font-bold text-xl">찾을 수 없는 페이지예요.</h1>
       <p className="break-keep text-sm text-white/70">
-        주소가 바뀌었거나 지워졌을 수 있습니다.
+        주소가 바뀌었거나 지워졌을 수 있어요.
       </p>
       <NotFoundLinks />
     </main>

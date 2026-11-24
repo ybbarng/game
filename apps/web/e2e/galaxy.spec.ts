@@ -2,6 +2,7 @@ import { useTestSpeed } from "./fast";
 import {
   expect,
   fastForwardUntil,
+  leaveOnline,
   type Page,
   ready,
   SAVE_SCREENSHOTS,
@@ -500,7 +501,7 @@ test(
     await expect(over(guest)).toBeVisible({ timeout: 20_000 });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 모든 걸음을 다시 계산해 확인한다.
-    await host.getByRole("button", { name: "← 은하 한 바퀴" }).click();
+    await leaveOnline(host, "← 은하 한 바퀴");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 15_000,
     });

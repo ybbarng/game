@@ -27,14 +27,7 @@ import {
   sideOf,
   starAt,
 } from "./board";
-import {
-  activeCards,
-  CARD_AMOUNTS,
-  type CardKind,
-  cardById,
-  matchesFact,
-  type StarFact,
-} from "./cards";
+import { activeCards, CARD_AMOUNTS, matchesFact, type StarFact } from "./cards";
 import {
   bidCommitment,
   dealStars,
@@ -1898,9 +1891,4 @@ export function replay(
     state = result.state;
   }
   return { ok: true, state };
-}
-
-/** 공문 갈래(화면 색 등) */
-export function cardKind(card: number): CardKind {
-  return cardById(card).kind;
 }

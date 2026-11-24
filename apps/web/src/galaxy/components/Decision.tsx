@@ -284,7 +284,7 @@ export function BidSheet({
           </button>
         ))}
       </div>
-      <p className="mb-2 text-center text-white/50 text-xs">
+      <p className="mb-2 text-center text-white/75 text-xs">
         가진 별빛 {money(max)}
       </p>
       <div className="flex gap-2">
@@ -405,7 +405,7 @@ export function ManagePanel({
         못해요.
       </p>
       {actions.length === 0 ? (
-        <p className="mt-1 text-white/50 text-xs">
+        <p className="mt-1 text-white/75 text-xs">
           지금은 올리거나 맡길 별이 없어요.
         </p>
       ) : (
@@ -419,7 +419,7 @@ export function ManagePanel({
               <li key={sq} className="flex items-center justify-between gap-2">
                 <span className="truncate">
                   ✶ {squareName(view.board, sq)}{" "}
-                  <span className="text-white/50 text-xs">
+                  <span className="text-white/75 text-xs">
                     {(view.levels[sq] ?? 1) >= 4
                       ? "큰 정거장"
                       : `${view.levels[sq] ?? 1}단`}

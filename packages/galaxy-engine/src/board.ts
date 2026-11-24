@@ -279,12 +279,6 @@ export function starAt(board: GalaxyBoard, square: number): BoardStar | null {
   return board.squares[square]?.star ?? null;
 }
 
-/** 이 칸이 속한 별자리(별 칸이 아니면 null) */
-export function groupAt(board: GalaxyBoard, square: number): BoardGroup | null {
-  const star = starAt(board, square);
-  return star ? (board.groups[star.group] ?? null) : null;
-}
-
 /** 이 변의 첫 별 칸 */
 export function firstStarOfSide(side: number): number {
   return (((side % 4) + 4) % 4) * 8 + 1;

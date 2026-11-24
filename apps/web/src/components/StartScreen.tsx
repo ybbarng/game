@@ -48,7 +48,7 @@ export function StartScreen({
           <Logo size={240} animated />
         </h1>
       }
-      tagline="점수 카드를 몇 장 딸지 걸고, 숨은 짝과 함께 겨뤄라"
+      tagline="점수 카드를 몇 장 딸지 걸고, 숨은 짝과 함께 겨뤄요."
       {...(onResume ? { resume: onResume } : {})}
       solo={{
         icon: "♠",

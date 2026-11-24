@@ -182,7 +182,7 @@ export function ChessReplay({
         {resultText ? ` · ${resultText}` : ""}
       </p>
       <p
-        title="기보"
+        data-move-list
         className="w-full max-w-xl rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs"
       >
         {state.played.length === 0

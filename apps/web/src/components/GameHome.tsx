@@ -182,7 +182,7 @@ export function GameHome({
           </a>
         </div>
         {footer}
-        <p className="mt-2 text-center text-[11px] opacity-40">
+        <p className="mt-2 text-center text-white/75 text-xs">
           {credit}
           {credit && <br />}
           <MadeWith />

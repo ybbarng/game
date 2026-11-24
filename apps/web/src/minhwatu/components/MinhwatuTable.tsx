@@ -58,6 +58,7 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { subj, wa } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
 import { MINHWATU_LEVELS } from "../settings";
@@ -212,7 +213,6 @@ function SeatPlate({
         {!mine && (
           <span
             className="ml-auto shrink-0 tabular-nums text-white/70"
-            title="남은 손패"
             data-hand-count={seat}
           >
             {view.handCounts[seat] ?? 0}장
@@ -307,8 +307,17 @@ export function MinhwatuTable({
   /** 추천 카드를 보인다(튜토리얼 실전) */
   hints?: boolean;
 }) {
-  const { view, host, local, notice, level, reconnecting, hostLeft, events } =
-    useMinhwatu();
+  const {
+    view,
+    host,
+    local,
+    notice,
+    level,
+    reconnecting,
+    hostLeft,
+    invalid,
+    events,
+  } = useMinhwatu();
   const submit = useMinhwatu((s) => s.submit);
   const undo = useMinhwatu((s) => s.undo);
   const canUndo = useMinhwatu((s) => s.canUndo());
@@ -344,11 +353,7 @@ export function MinhwatuTable({
       ),
   });
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 차례가 바뀌면 고른 카드를 놓는다.
   const turnKey = `${view?.roundNumber}-${view?.hand.length}-${view?.phase}`;
@@ -480,7 +485,7 @@ export function MinhwatuTable({
       ? needTarget
         ? "같은 달 바닥 패가 둘이에요. 먹을 패를 누르세요."
         : selected
-          ? "한 번 더 누르면 내요."
+          ? `내 차례 · ${cardOf(selected).name}`
           : "내 차례 — 낼 패를 누르세요."
       : online
         ? `${name(view.turn)}의 차례`
@@ -550,7 +555,7 @@ export function MinhwatuTable({
   );
   const endButtons = (
     <div className="flex flex-wrap justify-center gap-2">
-      {view.phase === "roundEnd" && !view.continued[me] && (
+      {view.phase === "roundEnd" && !view.continued[me] && !hostLeft && (
         <button
           type="button"
           onClick={() => submit({ type: "continue" })}
@@ -718,6 +723,8 @@ export function MinhwatuTable({
           rect={center}
           reconnecting={reconnecting}
           hostLeft={hostLeft}
+          invalid={invalid}
+          onExit={onExit}
         >
           <HwatuFairBar me={me} over={gameOver} />
         </HwatuOnlineNotes>
@@ -733,8 +740,8 @@ export function MinhwatuTable({
         mine
       />
 
-      {/* 내 단추 */}
-      {layout.actions && (
+      {/* 내 단추(방장이 나가 끝난 판에서는 두지 않는다) */}
+      {layout.actions && !hostLeft && (
         <div
           className="absolute flex flex-wrap content-center items-center justify-center gap-2"
           style={at(layout.actions)}
@@ -743,6 +750,16 @@ export function MinhwatuTable({
             <p className="w-full text-center text-amber-200 text-xs">
               추천: {cardOf(hint).name}(바닥에 짝이 있어요)
             </p>
+          )}
+          {/* 겨눈 패를 내는 확정 단추(오목 「여기 두기」와 같은 꼴) */}
+          {myPlay && selected && !needTarget && (
+            <button
+              type="button"
+              onClick={() => onAct(selected, false)}
+              className={HWATU_PRIMARY}
+            >
+              내기
+            </button>
           )}
           {!over && !online && !mission && (
             <>

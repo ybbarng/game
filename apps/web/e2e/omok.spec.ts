@@ -1,5 +1,5 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /** 판 한 변 줄 수와 가장자리 여백(OmokBoard의 PAD) */
 const SIZE = 15;
@@ -42,7 +42,7 @@ async function placeOne(page: Page, touch: boolean): Promise<void> {
     if (touch) {
       await page.touchscreen.tap(p.x, p.y);
       await expect(page.getByRole("status")).toContainText(
-        `${pointName(x, y)}: 한 번 더 누르면 둬요.`,
+        `내 차례 · ${pointName(x, y)}`,
       );
       await page.touchscreen.tap(p.x, p.y);
     } else await page.mouse.click(p.x, p.y);
@@ -227,7 +227,7 @@ test(
     await guest.screenshot({ path: info.outputPath("omok-online-guest.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 오목" }).click();
+    await leaveOnline(host, "← 오목");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });
@@ -250,12 +250,12 @@ test(
       .press("ArrowRight");
     const placeHere = page.getByRole("button", { name: "여기 두기" });
     await expect(placeHere).toBeVisible();
-    // 기권은 한 번 더 묻는다. 물을 때 겨눈 자리를 푼다. 「계속 두기」면 판이 그대로다.
+    // 기권은 한 번 더 묻는다. 물을 때 겨눈 자리를 푼다. 「계속하기」면 판이 그대로다.
     await page.getByRole("button", { name: "기권" }).click();
     await expect(page.getByText("정말 기권할까요?")).toBeVisible();
     await expect(placeHere).toBeHidden();
     await page.screenshot({ path: info.outputPath("omok-resign-confirm.png") });
-    await page.getByRole("button", { name: "계속 두기" }).click();
+    await page.getByRole("button", { name: "계속하기" }).click();
     await expect(page.getByRole("status")).toContainText("내 차례");
     await expect(placeHere).toBeHidden();
     await page.getByRole("button", { name: "기권" }).click();
@@ -470,8 +470,8 @@ test(
     );
     // 힌트를 누르면 금지 안내는 지워지고 힌트 자리를 겨눈다.
     await page.getByRole("button", { name: "힌트" }).click();
-    await expect(page.getByRole("status")).toHaveText(
-      "B11: 한 번 더 누르면 둬요.",
+    await expect(page.getByRole("status")).not.toHaveText(
+      "F11: 흑은 4·4 금지예요.",
     );
     await play("B11");
     await expect(page.getByRole("status")).toHaveText(

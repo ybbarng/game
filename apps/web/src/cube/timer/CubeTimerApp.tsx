@@ -863,7 +863,7 @@ function SolveDetail({
         </button>
       </div>
       <input
-        className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1"
+        className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1 max-sm:text-base"
         placeholder="메모"
         value={note}
         onChange={(e) => setNoteText(e.target.value)}
@@ -944,7 +944,7 @@ function SettingsPanel({
           <label className="flex items-center gap-2">
             준비까지 누르고 있기
             <select
-              className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1"
+              className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1 max-sm:text-base"
               value={s.holdMs}
               onChange={(e) => {
                 onChange({ holdMs: Number(e.target.value) });

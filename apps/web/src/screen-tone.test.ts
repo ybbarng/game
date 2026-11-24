@@ -12,8 +12,12 @@ import { sentenceProblem, sentencesOf } from "@/study/tone";
 const files: Record<string, string> = import.meta.glob(
   [
     "./{baduk,baseball,chess,galaxy,game,gostop,hearts,hwatu,janggi,minhwatu,nyrongppong,omok,onecard,yut,review,stats,components}/**/*.{ts,tsx}",
+    // 게임 목록 한 줄 소개(해요체 문장, 2026-11-24 사용자)
+    "./games/registry.ts",
     // 온라인 방 안내와 판 끝 검증 실패 사유(검증 알림 「공정성 확인 실패: …」에 그대로 들어간다)
     "./net/**/*.ts",
+    // 없는 주소 화면(별 따기와 함께 쓴다)
+    "./app/not-found.tsx",
     // 엔진이 돌려주는 거절 사유(잘못 누르면 화면 알림으로 그대로 보인다)와 멘탈 포커 검증 실패 사유
     "../../../packages/{*-engine,engine,fair-play}/src/**/*.ts",
     "!./**/*.test.{ts,tsx}",
@@ -26,7 +30,6 @@ const files: Record<string, string> = import.meta.glob(
     // 따로 정한 말투나 따로 보는 시험이 있는 글
     "!./components/learn/**", // 보안 배우기: 학습 글, learn-terms.test.tsx
     "!./components/security/**", // 보안 설명(/security)
-    "!./components/AboutScreen.tsx", // 사이트 소개
     "!./components/brand/**", // 사이트 이름·검색 설명(꾸밈 글)
     "!./components/tutorial/**",
     "!./components/study/**",
@@ -50,8 +53,8 @@ const files: Record<string, string> = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 );
 
-/** 서술어처럼 끝나지만 이름인 낱말(공약 「노기루다」, 무늬 첫 글자 「다」) */
-const NAMES = ["노기루다", "다"];
+/** 서술어처럼 끝나지만 이름인 낱말(으뜸 무늬 「기루다」·공약 「노기루다」, 무늬 첫 글자 「다」) */
+const NAMES = ["기루다", "노기루다", "다"];
 /** 제목·단추 이름 자리(속성 이름). 문장이 아니라 보지 않는다 */
 const LABEL_KEYS = new Set(["label", "title"]);
 

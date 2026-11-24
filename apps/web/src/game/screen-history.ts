@@ -13,7 +13,8 @@ import { useNoPullRefresh } from "./no-pull-refresh";
  * - 옵션·규칙·소개·배우기 목록·수 배우기 목록은 주소의 # 조각에 남겨 새로고침해도 그 화면이다.
  *   단원·문제는 목록으로, 대국·방·시작은 # 없이(대국은 이어하기, 방은 ?room= 이 있다).
  * - 판·방 화면을 뒤로가기로 떠나도 앱이 하던 정리(`leavePlay`)를 한다.
- * - 온라인(방, 방에서 들어간 대국)을 뒤로가기로 떠나려 하면 페이지 안 확인창으로 묻는다.
+ * - 온라인(방, 방에서 들어간 대국)을 뒤로가기나 화면 안 나가기 단추로 떠나려 하면 페이지 안 확인창으로 묻는다
+ *   (이미 끝난 연결에서 「처음으로」는 `leaveQuietly`로 묻지 않는다).
  *   혼자 하기는 이어하기 저장이 있어 묻지 않는다.
  * - 판을 두는 화면에서는 당겨서 새로고침을 막는다(useNoPullRefresh).
  */
@@ -190,10 +191,7 @@ export function useScreenHistory<S extends ScreenLike>(
         urlFor(stack.current[from] as S),
       );
       useLeaveConfirm.getState().ask({
-        message:
-          stack.current[from]?.kind === "online"
-            ? "온라인 방에서 나가시겠어요?"
-            : "온라인 대국에서 나가시겠어요? 함께 하던 사람들과 연결이 끊겨요.",
+        message: leaveMessage(stack.current[from]),
         onLeave: () => {
           bypass.current = true;
           window.history.go(to - from);
@@ -208,14 +206,30 @@ export function useScreenHistory<S extends ScreenLike>(
     (next: S) => {
       const here = index.current;
       if (same(stack.current[here], next)) return;
-      // 앞서 지나온 화면이면 기록을 그만큼 되돌린다
-      for (let j = here - 1; j >= 0; j--) {
+      let back: number | null = null;
+      for (let j = here - 1; j >= 0; j--)
         if (same(stack.current[j], next)) {
-          apply(j);
-          expected.current = j;
-          window.history.go(j - here);
-          return;
+          back = j;
+          break;
         }
+      // 화면 안 나가기 단추(「← 오목」, 「나가기」 등)도 뒤로가기처럼 온라인 판을 떠나기 전에 묻는다
+      const nextOnline =
+        back !== null
+          ? isOnline(stack.current, back)
+          : isOnline([...stack.current.slice(0, here + 1), next], here + 1);
+      if (!quiet && isOnline(stack.current, here) && !nextOnline) {
+        useLeaveConfirm.getState().ask({
+          message: leaveMessage(stack.current[here]),
+          onLeave: () => leaveQuietly(() => setScreenRef.current(next)),
+        });
+        return;
+      }
+      // 앞서 지나온 화면이면 기록을 그만큼 되돌린다
+      if (back !== null) {
+        apply(back);
+        expected.current = back;
+        window.history.go(back - here);
+        return;
       }
       const before = stack.current[here];
       if (before && PLAY_KINDS.has(before.kind) && !PLAY_KINDS.has(next.kind))
@@ -231,9 +245,34 @@ export function useScreenHistory<S extends ScreenLike>(
     },
     [apply, mark],
   );
+  const setScreenRef = useRef(setScreen);
+  setScreenRef.current = setScreen;
 
   useNoPullRefresh(BOARD_KINDS.has(screen.kind));
   return [screen, setScreen];
+}
+
+/** 온라인 판을 떠날 때 묻는 글(방 화면과 방에서 들어간 대국) */
+function leaveMessage(here: ScreenLike | undefined): string {
+  return here?.kind === "online"
+    ? "온라인 방에서 나가시겠어요?"
+    : "온라인 대국에서 나가시겠어요? 함께 하던 사람들과 연결이 끊겨요.";
+}
+
+/** `leaveQuietly` 안에서 바꾸는 화면은 묻지 않는다 */
+let quiet = false;
+
+/**
+ * 묻지 않고 온라인 판을 떠난다. 이미 끝난 연결(방장이 나감, 방에 연결하지 못함)에서 「처음으로」를 누를 때,
+ * 확인창에서 「나가기」를 고른 뒤에 쓴다. `leave` 안에서 바로(같은 흐름에서) 화면을 바꿔야 한다
+ */
+export function leaveQuietly(leave: () => void): void {
+  quiet = true;
+  try {
+    leave();
+  } finally {
+    quiet = false;
+  }
 }
 
 /** 온라인 판을 뒤로가기로 떠나려 할 때의 확인창 상태(LeaveConfirm 이 그린다) */

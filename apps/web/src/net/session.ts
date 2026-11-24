@@ -1,10 +1,9 @@
 import { prepareGroup } from "@game/fair-play";
 import { type GameId, track } from "@/stats/track";
-import { useChat } from "./chat";
 import type { DiagContext } from "./diag";
 import type { FairSaved, GuestRoom } from "./guest-room";
 import type { HostRoom } from "./host-room";
-import { clearHostingRoom } from "./host-store";
+import { endRoomSession } from "./room-session";
 import { joinBroadcast, type Transport } from "./transport";
 
 /** 지금 들어가 있는 온라인 방. 화면이 바뀌어도(대기실 → 게임) 연결은 이어진다 */
@@ -71,17 +70,7 @@ export function inviteUrl(roomCode: string, fingerprint?: string): string {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endOnlineSession(): void {
-  clearHostingRoom();
-  if (onlineSession.host) {
-    onlineSession.host.finish();
-    // 기록이 전달될 시간을 조금 준다.
-    const host = onlineSession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  onlineSession.guest?.leave();
-  onlineSession.host = null;
-  onlineSession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(onlineSession);
 }
 
 const tokenKey = (room: string) => `mighty-room-${room}`;

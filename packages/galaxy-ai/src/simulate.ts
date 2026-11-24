@@ -12,7 +12,7 @@ import {
 } from "@game/galaxy-engine";
 import { createRng } from "@game/mighty-engine";
 
-import { type GalaxyBot, galaxyBotFor } from "./bots";
+import type { GalaxyBot } from "./bots";
 
 /** 걸음 하나를 지켜보는 함수(bench가 칸 밟힘·공문 이득 등을 센다) */
 export type StepWatcher = (
@@ -63,28 +63,4 @@ export function playGalaxy(options: PlayOptions): {
     state = result.state;
   }
   throw new Error("판이 끝나지 않는다");
-}
-
-/**
- * 시드·규칙·하늘·단계 목록으로 한 판을 끝까지 둔다(`levels[s]`가 자리 s의 단계: 0 입문, 1 중수, 2 고수).
- * 하늘을 적지 않으면 규칙의 하늘
- */
-export function simulateGalaxy(options: {
-  seed: number;
-  rules: GalaxyRules;
-  levels: readonly number[];
-  sky?: string;
-  onStep?: StepWatcher;
-}): { state: GalaxyState; steps: number } {
-  const rules = options.sky
-    ? { ...options.rules, sky: options.sky }
-    : options.rules;
-  if (options.levels.length !== rules.players)
-    throw new Error("단계 수와 인원이 다르다");
-  return playGalaxy({
-    bots: options.levels.map(galaxyBotFor),
-    rules,
-    seed: options.seed,
-    ...(options.onStep ? { onStep: options.onStep } : {}),
-  });
 }

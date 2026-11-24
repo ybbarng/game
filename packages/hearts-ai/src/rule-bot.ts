@@ -42,15 +42,6 @@ export type HeartsBookRule =
   | "safeLead"
   | "moonGuard";
 
-export const HEARTS_BOOK: readonly HeartsBookRule[] = [
-  "smartPass",
-  "duck",
-  "dump",
-  "flushQueen",
-  "safeLead",
-  "moonGuard",
-];
-
 export interface HeartsRuleBotOptions {
   name?: string;
   book?: readonly HeartsBookRule[];

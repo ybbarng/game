@@ -149,7 +149,7 @@ test("컴퓨터 4명과 한 판을 끝까지 하고, 내 기록과 복기에 남
   await page.getByRole("button", { name: "← 목록" }).click();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "내보내기" }).click();
-  expect((await download).suggestedFilename()).toMatch(/^mighty-review-/);
+  expect((await download).suggestedFilename()).toMatch(/^game-review-/);
 
   expect(errors).toEqual([]);
 });

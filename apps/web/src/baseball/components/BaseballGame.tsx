@@ -9,10 +9,10 @@ import {
   timeControlOf,
 } from "@game/baseball-engine";
 import { useEffect, useState } from "react";
-
 import { BoardSeat } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
@@ -22,6 +22,7 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
+import { useAutoClear } from "@/lib/use-auto-clear";
 
 import { mySecret, randomSecret, type SecretBook } from "../secret";
 import { baseballSession } from "../session";
@@ -169,6 +170,7 @@ export function BaseballGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     events,
     offlineSeats,
     secrets,
@@ -183,11 +185,7 @@ export function BaseballGame({
   const [memo, setMemo] = useState<DigitMemo>({});
   const calls = usePitchCalls(view, host?.seat ?? 0);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 2200);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   // 판이 바뀌거나 비밀 정하기가 끝나면 넣던 수(패드 key)와 메모를 비운다.
   // 상대 차례에도 다음에 물을 수를 미리 넣어 둘 수 있게, 묻기 차례가 바뀌어도 비우지 않는다.
@@ -390,7 +388,7 @@ export function BaseballGame({
       extra={
         view.commits[opp] &&
         !roundOver && (
-          <span className="min-w-0 truncate text-white/50 text-xs">
+          <span className="min-w-0 truncate text-white/75 text-xs">
             상대 수는 잠겨 있어요 🔒
           </span>
         )
@@ -444,15 +442,15 @@ export function BaseballGame({
         </span>
       </header>
 
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔어요."
-            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
-        </p>
+      {online && (invalid || reconnecting || hostLeft) && (
+        <div className="w-full max-w-xl split:col-span-2 split:max-w-none">
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
+        </div>
       )}
       {waitingOffline && (
         <div
@@ -495,7 +493,7 @@ export function BaseballGame({
       {/* 아래(세로)·오른쪽(가로): 타석과 숫자 패드, 상태, 단추. 가로 화면은 한 칸에 모아
           왼쪽 기둥 높이에 밀려 줄 사이가 벌어지지 않게 한다 */}
       <div className="contents split:col-start-2 split:row-start-2 split:flex split:min-w-0 split:flex-col split:items-center split:gap-3 short-landscape:gap-1.5">
-        {showPad && (
+        {showPad && !hostLeft && (
           <div className="flex w-full max-w-xl flex-col items-center gap-2 split:col-start-2 split:row-start-2">
             <PadArea
               key={`${view.roundNumber}:${setup}:${padReset}`}
@@ -525,68 +523,70 @@ export function BaseballGame({
           <ResultBanner banner={banner} seq={view.roundNumber} />
         </div>
 
-        <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
-          {(playing || view.phase === "setup") && (
-            <>
-              {!online && !mission && (
-                <button
-                  type="button"
-                  disabled={!canUndo}
-                  onClick={() => {
-                    setPadReset((n) => n + 1);
-                    undo();
-                  }}
-                  className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm disabled:opacity-40"
-                >
-                  무르기
-                </button>
-              )}
-              {/* 혼자 푸는 문제는 잃을 판이 없으니 묻지 않고 바로 답을 보인다 */}
-              {puzzle ? (
-                <button
-                  type="button"
-                  onClick={() => submit({ type: "resign" })}
-                  className={SMALL_BUTTON}
-                >
-                  그만두고 답 보기
-                </button>
-              ) : (
-                <ResignButton
-                  resetKey={view.guesses.length}
-                  onResign={() => submit({ type: "resign" })}
-                  className={SMALL_BUTTON}
-                  keepLabel="계속 하기"
-                />
-              )}
-            </>
-          )}
-          {view.phase === "roundEnd" && !view.continued[me] && (
-            <button
-              type="button"
-              onClick={() => submit({ type: "continue" })}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다음 판
-            </button>
-          )}
-          {gameOver && !mission && (
-            <>
+        {/* 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만) */}
+        {!hostLeft && (
+          <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
+            {(playing || view.phase === "setup") && (
+              <>
+                {!online && !mission && (
+                  <button
+                    type="button"
+                    disabled={!canUndo}
+                    onClick={() => {
+                      setPadReset((n) => n + 1);
+                      undo();
+                    }}
+                    className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm disabled:opacity-40"
+                  >
+                    무르기
+                  </button>
+                )}
+                {/* 혼자 푸는 문제는 잃을 판이 없으니 묻지 않고 바로 답을 보인다 */}
+                {puzzle ? (
+                  <button
+                    type="button"
+                    onClick={() => submit({ type: "resign" })}
+                    className={SMALL_BUTTON}
+                  >
+                    그만두고 답 보기
+                  </button>
+                ) : (
+                  <ResignButton
+                    resetKey={view.guesses.length}
+                    onResign={() => submit({ type: "resign" })}
+                    className={SMALL_BUTTON}
+                  />
+                )}
+              </>
+            )}
+            {view.phase === "roundEnd" && !view.continued[me] && (
               <button
                 type="button"
-                onClick={onExit}
+                onClick={() => submit({ type: "continue" })}
                 className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
               >
-                다시 하기
+                다음 판
               </button>
-              <a
-                href="/"
-                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-              >
-                게임 목록
-              </a>
-            </>
-          )}
-        </div>
+            )}
+            {gameOver && !mission && (
+              <>
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                >
+                  다시 하기
+                </button>
+                <a
+                  href="/"
+                  className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
+                >
+                  게임 목록
+                </a>
+              </>
+            )}
+          </div>
+        )}
 
         {online && (
           <div className="w-full max-w-xl split:col-start-2">
@@ -650,7 +650,7 @@ function PadArea({
             </button>
           }
         />
-        <p className="text-center text-white/50 text-xs">
+        <p className="text-center text-white/75 text-xs">
           비밀 수는 이 기기에만 남고, 상대에게는 잠긴 약속만 가요.
         </p>
       </>

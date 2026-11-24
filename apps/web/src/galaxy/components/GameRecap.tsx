@@ -42,7 +42,7 @@ export function GameRecap({
       <tr>
         <th
           colSpan={4}
-          className="pt-1.5 text-left font-normal text-[11px] text-white/45"
+          className="pt-1.5 text-left font-normal text-[11px] text-white/75"
         >
           {title}
         </th>

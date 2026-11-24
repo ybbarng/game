@@ -9,6 +9,7 @@ import {
   FlightScope,
   HWATU_CARD,
 } from "@/components/card-fx";
+import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import {
   MissionOverlay,
   type MissionProps,
@@ -269,17 +270,21 @@ export function HwatuVerifyLines() {
   );
 }
 
-/** 온라인 판 위쪽 알림: 암호화방 띠와 연결 끊김 */
+/** 온라인 판 위쪽 알림: 암호화방 띠, 공정성 검증 실패, 연결 끊김·방장 나감(「처음으로」) */
 export function HwatuOnlineNotes({
   rect,
   children,
   reconnecting,
   hostLeft,
+  invalid,
+  onExit,
 }: {
   rect: Rect;
   children: ReactNode;
   reconnecting: boolean;
   hostLeft: boolean;
+  invalid: string | null;
+  onExit: () => void;
 }) {
   return (
     <div
@@ -287,16 +292,12 @@ export function HwatuOnlineNotes({
       style={{ left: rect.x, width: rect.w, top: rect.y + 6 }}
     >
       {children}
-      {(reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="rounded-xl bg-rose-700/90 px-3 py-1.5 text-center text-sm"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔어요."
-            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
-        </p>
-      )}
+      <InvalidBanner invalid={invalid} />
+      <ConnectionNotices
+        reconnecting={reconnecting}
+        hostLeft={hostLeft}
+        onExit={onExit}
+      />
     </div>
   );
 }

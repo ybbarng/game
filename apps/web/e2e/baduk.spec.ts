@@ -19,7 +19,7 @@ import {
 } from "../src/baduk/study";
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 import { linesBreakAtSpaces } from "./word-wrap";
 
 /** 9줄 판과 가장자리 여백(BadukBoard의 BADUK_PAD) */
@@ -42,9 +42,8 @@ async function placeAt(page: Page, name: string, touch: boolean) {
   const py = box.y + (y + PAD) * unit;
   if (touch) {
     await page.touchscreen.tap(px, py);
-    await expect(page.getByRole("status")).toContainText(
-      `${name}: 한 번 더 누르면 둬요.`,
-    );
+    // 처음 누르면 겨누기만 한다(다시 누르거나 대국 화면의 「여기 두기」로 둔다)
+    await expect(board(page)).toHaveAttribute("data-aim", String(y * SIZE + x));
     await page.touchscreen.tap(px, py);
   } else await page.mouse.click(px, py);
 }
@@ -115,7 +114,17 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await expect(stones(page)).toHaveCount(2);
   await expect(page.getByRole("status")).toContainText("내 차례");
 
-  await playOne(page, touch);
+  // 키보드로 겨누면 상태 줄에 자리가 보이고, 확정 단추 「여기 두기」로 둔다.
+  // 처음 화살표는 가운데(E5)를 겨누고, 왼쪽·아래로 넷씩 가면 구석 A1이다(입문 컴퓨터가 두 수 만에 두지 않는 자리).
+  await board(page).focus();
+  for (const key of [
+    "ArrowDown",
+    ...Array(4).fill("ArrowLeft"),
+    ...Array(4).fill("ArrowDown"),
+  ])
+    await page.keyboard.press(key);
+  await expect(page.getByRole("status")).toHaveText("내 차례 · A1");
+  await page.getByRole("button", { name: "여기 두기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });
@@ -136,8 +145,8 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await page.screenshot({ path: info.outputPath("baduk-hint.png") });
 
   await page.getByRole("button", { name: "기권" }).click();
-  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
-  await page.getByRole("button", { name: "계속 두기" }).click();
+  // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
+  await page.getByRole("button", { name: "계속하기" }).click();
   await expect(page.getByRole("button", { name: "쉬기" })).toBeVisible();
   await expect(stones(page)).toHaveCount(2);
   await page.getByRole("button", { name: "기권" }).click();
@@ -273,7 +282,7 @@ test(
     await white.screenshot({ path: info.outputPath("baduk-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 바둑" }).click();
+    await leaveOnline(host, "← 바둑");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });

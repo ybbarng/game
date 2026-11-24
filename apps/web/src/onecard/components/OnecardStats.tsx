@@ -22,7 +22,7 @@ export function OnecardStats({ book }: { book: StatsBook }) {
           value={s.averageRank.toFixed(1)}
           sub={`다 냄 ${s.outs}번 · 파산 ${s.bankrupts}번`}
         />
-        <StatTile label="잡은 횟수" value={s.catches} sub="원카드로 잡음" />
+        <StatTile label="잡은 횟수" value={s.catches} />
         <StatTile
           label="잡힌 횟수"
           value={s.caught}

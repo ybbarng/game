@@ -1,5 +1,5 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /** 세 자리·1~9 수를 작은 것부터(테스트가 차례로 물을 때) */
 const NUMBERS: string[] = [];
@@ -498,7 +498,7 @@ test(
     });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 계산해 확인한다.
-    await host.getByRole("button", { name: "← 숫자야구" }).click();
+    await leaveOnline(host, "← 숫자야구");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 15_000,
     });
@@ -522,9 +522,9 @@ test(
     await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
       timeout: 15_000,
     });
-    // 기권은 한 번 더 묻는다. 「계속 하기」면 판이 그대로다.
+    // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
     await page.getByRole("button", { name: "기권" }).click();
-    await page.getByRole("button", { name: "계속 하기" }).click();
+    await page.getByRole("button", { name: "계속하기" }).click();
     await expect(status(page)).toContainText(/내 차례|마지막 기회/);
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();

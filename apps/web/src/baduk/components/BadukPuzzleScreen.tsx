@@ -4,7 +4,6 @@ import {
   type BadukState,
   legalPoints,
   pointAt,
-  pointName,
   step,
 } from "@game/baduk-engine";
 import { useState } from "react";
@@ -260,10 +259,7 @@ function BadukPuzzleRun({
       }
   }
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
-  const prompt =
-    aim !== null
-      ? `${pointName(aim, PUZZLE_SIZE)}: 한 번 더 누르면 둬요.`
-      : goal;
+  const prompt = goal;
 
   return (
     <PuzzleScreen

@@ -6,10 +6,9 @@ import type {
   GameEvent,
 } from "@game/galaxy-engine";
 
-import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";
 import type { HostRoom } from "@/net/host-room";
-import { clearHostingRoom } from "@/net/host-store";
+import { endRoomSession } from "@/net/room-session";
 
 export type GalaxyHostRoom = HostRoom<
   GalaxyRules,
@@ -36,14 +35,5 @@ export const galaxySession: {
 
 /** 방을 나간다. 방장이면 검증용 기록을 공개하고 닫는다 */
 export function endGalaxySession(): void {
-  clearHostingRoom();
-  if (galaxySession.host) {
-    galaxySession.host.finish();
-    const host = galaxySession.host;
-    setTimeout(() => host.close(), 500);
-  }
-  galaxySession.guest?.leave();
-  galaxySession.host = null;
-  galaxySession.guest = null;
-  useChat.getState().reset();
+  endRoomSession(galaxySession);
 }

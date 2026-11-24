@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BadukReplay } from "@/baduk/components/BadukReplay";
 import { BaseballReplay } from "@/baseball/components/BaseballReplay";
 import { ChessReplay } from "@/chess/components/ChessReplay";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { GalaxyReplay } from "@/galaxy/components/GalaxyReplay";
 import { botName } from "@/game/bot-names";
 import { useSettings } from "@/game/settings";
@@ -70,7 +71,7 @@ export function ReviewPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mighty-review-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `game-review-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -84,14 +85,30 @@ export function ReviewPage() {
     setList(await listArchives());
   };
 
+  /** 목록에서 연 게임이면 기록에 한 칸 쌓았다(뒤로가기·「목록」이 그 칸을 되돌린다) */
+  const pushed = useRef(false);
+
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("id");
-    if (id)
+    const openFromUrl = () => {
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (!id) {
+        setArchive(null);
+        return;
+      }
       void loadArchive(id).then((a) => {
         if (a) setArchive(a);
         else setMissing(true);
       });
+    };
+    openFromUrl();
     void listArchives().then(setList);
+    // 휴대폰 뒤로가기: 보던 게임에서 목록으로(페이지 밖으로 나가지 않게)
+    const onPop = () => {
+      pushed.current = false;
+      openFromUrl();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   if (archive)
@@ -99,6 +116,10 @@ export function ReviewPage() {
       <ArchiveView
         archive={archive}
         onBack={() => {
+          if (pushed.current) {
+            window.history.back();
+            return;
+          }
           setArchive(null);
           window.history.replaceState(null, "", "/review");
         }}
@@ -170,7 +191,8 @@ export function ReviewPage() {
                   type="button"
                   onClick={() => {
                     setArchive(a);
-                    window.history.replaceState(
+                    pushed.current = true;
+                    window.history.pushState(
                       null,
                       "",
                       `/review?id=${encodeURIComponent(a.id)}`,
@@ -187,9 +209,10 @@ export function ReviewPage() {
                     {a.over ? " · 끝남" : " · 하던 중"}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
+                <ConfirmButton
+                  question="정말 지울까요?"
+                  confirmLabel="지우기"
+                  onConfirm={() =>
                     void deleteArchive(a.id).then(() =>
                       setList((l) => l?.filter((x) => x.id !== a.id) ?? null),
                     )
@@ -197,7 +220,7 @@ export function ReviewPage() {
                   className="rounded-lg bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
                 >
                   지우기
-                </button>
+                </ConfirmButton>
               </li>
             ))}
           </ul>

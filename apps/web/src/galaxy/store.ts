@@ -32,7 +32,7 @@ import {
 } from "./chain";
 import { buildTimeline, EMPTY_TIMELINE, type Timeline } from "./fx";
 import { GALAXY_FX } from "./fx-timing";
-import { galaxyKit, myRank } from "./kit";
+import { galaxyKit } from "./kit";
 import { rememberMet } from "./met-stars";
 import { scriptedDiceStep } from "./practice";
 import { galaxyCuesFor } from "./sound";
@@ -111,6 +111,8 @@ interface GalaxyStore {
   seatNames: string[] | null;
   reconnecting: boolean;
   hostLeft: boolean;
+  /** 내 기기의 판 끝 검증이 실패했으면 그 사유(이 게임은 무효, 마이티·하트와 같다) */
+  invalid: string | null;
   offlineSeats: number[];
   /** 온라인: 이 기기에만 있는 주사위 사슬 씨앗과 봉투(`chain.ts`) */
   secrets: GalaxySecrets;
@@ -321,6 +323,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
       seatNames: options.seatNames,
       reconnecting: false,
       hostLeft: false,
+      invalid: null,
       offlineSeats: [],
       secrets: options.secrets,
       view: host.current(),
@@ -403,6 +406,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     seatNames: null,
     reconnecting: false,
     hostLeft: false,
+    invalid: null,
     offlineSeats: [],
     secrets: EMPTY_SECRETS,
     view: null,
@@ -521,6 +525,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
         seatNames: null,
         reconnecting: false,
         hostLeft: false,
+        invalid: null,
         offlineSeats: [],
         secrets: EMPTY_SECRETS,
         view: null,
@@ -540,8 +545,3 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     },
   };
 });
-
-/** 판 끝 순위 문구에 쓰는 내 순위(끝나지 않았으면 null) */
-export function myStanding(view: GalaxyView) {
-  return myRank(view.result, view.mySeat);
-}

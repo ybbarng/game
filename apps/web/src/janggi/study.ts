@@ -14,7 +14,6 @@ import {
   pointAt,
   pointName,
   pseudoTargets,
-  sideOfSeat,
   viewOf,
   xyOf,
 } from "@game/janggi-engine";
@@ -146,12 +145,6 @@ export function explainMate(board: Board, move: Move): string[] {
   lines.push("막거나 잡을 수도 없어 외통이에요.");
   return lines;
 }
-
-/** 이 판에서 둘 차례인 편이 초인가(문제 화면에서 내 차례 표시) */
-export const choToMove = (state: JanggiState) =>
-  state.phase === "play" &&
-  sideOfSeat(state, 0) === "c" &&
-  state.played.length % 2 === 0;
 
 /** 양수겸장을 말로 풀어 준다: 옮긴 기물이 노리는 상대 기물들 */
 export function explainFork(board: Board, move: Move): string[] {

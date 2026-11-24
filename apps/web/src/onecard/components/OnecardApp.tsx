@@ -1,6 +1,10 @@
 "use client";
 
-import { MAX_PLAYERS, MIN_PLAYERS } from "@game/onecard-engine";
+import {
+  HAND_SIZE_OPTIONS,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+} from "@game/onecard-engine";
 import { useEffect, useState } from "react";
 
 import { GameHome } from "@/components/GameHome";
@@ -130,7 +134,7 @@ function OnecardOptions({ onBack }: { onBack: () => void }) {
       </Section>
       <Section title="처음 받는 카드">
         <div className="flex flex-wrap gap-1.5">
-          {([7, 5] as const).map((h) => (
+          {HAND_SIZE_OPTIONS.map((h) => (
             <Chip
               key={h}
               active={s.handSize === h}

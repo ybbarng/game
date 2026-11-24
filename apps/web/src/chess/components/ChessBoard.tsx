@@ -52,10 +52,6 @@ const GLYPH: Record<Kind, string> = {
 export const PIECE_FONT =
   '"Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols2", "DejaVu Sans", serif';
 
-export function pieceGlyph(kind: Kind): string {
-  return GLYPH[kind];
-}
-
 /** 백은 흰 바탕에 짙은 테, 흑은 검은 바탕에 옅은 테(어두운 칸에서도 보이게) */
 export const PIECE_STYLE: Record<
   Side,

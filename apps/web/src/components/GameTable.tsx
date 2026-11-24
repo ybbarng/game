@@ -14,7 +14,6 @@ import {
   unplayableReason,
 } from "@game/mighty-engine";
 import { useEffect, useRef, useState } from "react";
-
 import { effectFor } from "@/game/effects";
 import { mightyResultBanner } from "@/game/result-banner";
 import { botName, useCardTheme, useSettings } from "@/game/settings";
@@ -39,6 +38,7 @@ import {
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
+import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
@@ -51,6 +51,7 @@ import {
 } from "./card-fx";
 import { FairOverlays, FairStatus } from "./FairOverlays";
 import { useHandControls } from "./hand-controls";
+import { ConnectionNotices, InvalidBanner } from "./OnlineAlerts";
 import { OpenHand } from "./OpenHand";
 import { PlayingCard } from "./PlayingCard";
 import { ElectionPanel } from "./panels/ElectionPanel";
@@ -213,11 +214,7 @@ export function GameTable({
     setLeadChoice(null);
   }, [phaseKey]);
 
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 1800);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  useAutoClear(notice, clearNotice);
 
   if (!view)
     return <div ref={stage.ref} className="h-dvh w-full" style={insetStyle} />;
@@ -569,10 +566,7 @@ export function GameTable({
               {shuffling && !dealing && !incident ? (
                 <FairStatus shuffling={shuffling} />
               ) : (
-                <span
-                  className="shrink-0 tabular-nums opacity-80"
-                  title="턴 진행과 아직 나오지 않은 점수 카드 수"
-                >
+                <span className="shrink-0 tabular-nums opacity-80">
                   {view.phase === "play"
                     ? compactHud
                       ? `${view.trickIndex + 1}/${lastTrickIndex(rules) + 1} · ${20 - pointsTaken}점`
@@ -1132,36 +1126,16 @@ export function GameTable({
               deckCount={deckFor(rules).length}
               top={layout.hud.y + layout.hud.h + 6}
             />
-            {invalid && (
-              <div
-                role="alert"
-                className="absolute inset-x-0 z-[340] mx-auto w-fit max-w-[92%] rounded-xl bg-rose-700/95 px-3 py-1.5 text-center font-semibold text-sm shadow-xl"
-                style={{ top: layout.hud.y + layout.hud.h + 6 }}
-              >
-                ⚠ 공정성 검증 실패 — 이 게임은 무효예요 ({invalid})
-              </div>
-            )}
-            {reconnecting && !hostLeft && (
-              <div
-                role="status"
-                className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit max-w-[92%] items-center gap-2 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl"
-              >
-                <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                방장과 연결이 끊겼어요. 다시 연결하는 중…
-              </div>
-            )}
-            {hostLeft && (
-              <div className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit items-center gap-3 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl">
-                방장이 방을 나가 게임이 끝났어요.
-                <button
-                  type="button"
-                  onClick={onExit}
-                  className="rounded-lg bg-amber-400 px-3 py-1 font-semibold text-black"
-                >
-                  처음으로
-                </button>
-              </div>
-            )}
+            <InvalidBanner
+              invalid={invalid}
+              top={layout.hud.y + layout.hud.h + 6}
+            />
+            <ConnectionNotices
+              reconnecting={reconnecting}
+              hostLeft={hostLeft}
+              onExit={onExit}
+              floating
+            />
 
             {/* 카드 툴팁: 같은 무늬에서 아직 안 나온 더 높은 카드 */}
             {tipCard && tipSlot && (

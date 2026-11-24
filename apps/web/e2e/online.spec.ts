@@ -1,5 +1,5 @@
 import { prepareFast } from "./fast";
-import { expect, type Page, test } from "./test";
+import { expect, leaveOnline, type Page, test } from "./test";
 
 /**
  * 친구와 하기: 같은 브라우저의 두 탭(방장, 참가자)을 BroadcastChannel로 이어(?net=local)
@@ -112,7 +112,7 @@ test("방장이 방을 만들고 친구가 링크로 들어와 한 판을 끝까
   });
 
   // 방장이 나가면 기록이 공개되고 참가자가 공정성을 확인한다.
-  await host.getByRole("button", { name: "나가기" }).click();
+  await leaveOnline(host, "나가기");
   await expect(
     guest.getByText("공정성 확인: 섞기와 진행에 문제가 없어요"),
   ).toBeVisible({ timeout: 10_000 });
