@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import type { MatchHost } from "@/game/host";
 import { type AuditResult, GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { roomRandom } from "@/net/room-random-fixture";
 import { MemoryNetwork } from "@/net/transport";
 
 import {
@@ -121,6 +122,8 @@ const ROOM_RULES: GalaxyRules = { ...SHORT_RULES, players: 2 };
 async function setup(rules: GalaxyRules = ROOM_RULES) {
   const clock = new ManualClock();
   const net = new MemoryNetwork();
+  // 방장·참가자 비밀 값을 정해 공동 시드(운 카드·컴퓨터 수)가 실행마다 같다
+  const random = roomRandom("galaxy");
   const host = new HostRoom({
     kit: galaxyOnlineKit,
     transport: net.join("host"),
@@ -130,6 +133,7 @@ async function setup(rules: GalaxyRules = ROOM_RULES) {
     bot: galaxyBotFor(1),
     botLevel: 1,
     standInDelayMs: 1_000,
+    testRandom: random.host,
   });
   // 방장 기기가 받은 모든 메시지
   const hostInbox: string[] = [];
@@ -140,6 +144,7 @@ async function setup(rules: GalaxyRules = ROOM_RULES) {
     clock,
     name: "철수",
     token: null,
+    testRandom: random.guest(0),
   });
   await until(() => guest.seat !== null && guest.lobby !== null);
   const audits: AuditResult[] = [];

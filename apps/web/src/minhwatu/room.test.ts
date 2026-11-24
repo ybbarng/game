@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { roomRandom } from "@/net/room-random-fixture";
 import { MemoryNetwork } from "@/net/transport";
 
 import { minhwatuKit } from "./kit";
@@ -33,6 +34,8 @@ async function until(condition: () => boolean): Promise<void> {
 describe("민화투 온라인 방", () => {
   it("방장·참가자·컴퓨터 셋이 끝까지 치고, 참가자는 남의 패를 못 보며 판 끝 검증을 통과한다", async () => {
     const net = new MemoryNetwork();
+    // 방장·참가자 비밀 값을 정해 판의 패가 실행마다 같다
+    const random = roomRandom("minhwatu");
     const host = new HostRoom({
       kit: minhwatuKit,
       transport: net.join("host"),
@@ -41,6 +44,7 @@ describe("민화투 온라인 방", () => {
       rules: { ...STANDARD_RULES, rounds: 2 },
       bot: minhwatuIntermediateBot,
       botLevel: 1,
+      testRandom: random.host,
     });
     const guest = new GuestRoom({
       kit: minhwatuKit,
@@ -48,6 +52,7 @@ describe("민화투 온라인 방", () => {
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => guest.seat !== null && guest.lobby !== null);
     expect(guest.lobby?.game).toBe("minhwatu");

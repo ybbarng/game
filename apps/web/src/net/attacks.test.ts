@@ -9,6 +9,7 @@ import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { type AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import type { HostMessage } from "./protocol";
+import { roomRandom } from "./room-random-fixture";
 import { MemoryNetwork } from "./transport";
 
 /** 시험마다 새 시계. 제한 시간은 시험이 옮길 때만 지난다(기기가 느려도 결과가 같다) */
@@ -33,6 +34,13 @@ async function until(condition: () => boolean): Promise<void> {
   }
 }
 
+/**
+ * 판을 정하는 씨앗. 첫 판에 모두 포기하지 않고 철수가 카드를 내며, 컴퓨터 자리(중수)가 고를 카드가 둘 이상인 수를 둔다
+ * (바꿔치기·조종 시험이 첫 판 안에서 생긴다)
+ */
+const SEED = "attacks";
+const random = roomRandom(SEED);
+
 async function room() {
   const net = new MemoryNetwork();
   const host = new HostRoom({
@@ -43,6 +51,7 @@ async function room() {
     rules,
     revealTimeoutMs: 300,
     bot: heuristicBot,
+    testRandom: random.host,
   });
   const fingerprint = await host.fingerprint();
   const a = new GuestRoom({
@@ -52,6 +61,7 @@ async function room() {
     name: "철수",
     token: null,
     hostFingerprint: fingerprint,
+    testRandom: random.guest(0),
   });
   await until(() => a.seat !== null && a.lobby !== null);
   return { net, host, a, fingerprint };
@@ -125,9 +135,8 @@ describe("방장이 고친 경우", () => {
       }
       return original(seat, action);
     };
-    // 카드를 낼 때까지(모두 포기해 다시 나누는 판이 있을 수 있다) 바꿔치기가 생길 때까지 둔다.
-    for (let rounds = 3; rounds < 15 && !swapped; rounds += 3)
-      await playRounds(host, a, rounds);
+    // 씨앗으로 정한 첫 판에 철수가 카드를 낸다.
+    await playRounds(host, a, 1);
     host.finish();
     await until(() => audits.length === 1);
     expect(swapped).toBe(true);
@@ -158,6 +167,7 @@ describe("컴퓨터 자리", () => {
       revealTimeoutMs: 300,
       bot: intermediateBot,
       botLevel: 1,
+      testRandom: random.host,
     });
     // 연결 알림을 놓치지 않게 지문을 먼저 받아 두고 들어간다.
     const hostFingerprint = await host.fingerprint();
@@ -168,6 +178,7 @@ describe("컴퓨터 자리", () => {
       name: "철수",
       token: null,
       hostFingerprint,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null && a.lobby?.botLevel === 1);
     return { host, a };
@@ -213,9 +224,8 @@ describe("컴퓨터 자리", () => {
       },
     };
     (host.match as unknown as { bot: unknown }).bot = rigged;
-    // 모두 포기해 카드를 한 장도 안 내는 판만 이어지면 조종할 일이 없다. 조종이 생길 때까지 둔다.
-    for (let rounds = 2; rounds < 12 && rigs === 0; rounds += 2)
-      await playRounds(host, a, rounds);
+    // 씨앗으로 정한 첫 판에 컴퓨터 자리가 카드를 고르는 수가 있다.
+    await playRounds(host, a, 1);
     expect(rigs).toBeGreaterThan(0);
     host.finish();
     await until(() => audits.length === 1);
@@ -248,6 +258,7 @@ describe("참가자가 고친 경우", () => {
       token,
       secret: a.secret,
       hostFingerprint: fingerprint,
+      testRandom: random.guest(0),
     });
     await until(() => a2.seat !== null);
     await until(() => stolen.length > 0);

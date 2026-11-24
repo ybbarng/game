@@ -6,7 +6,11 @@ import { describe, expect, it } from "vitest";
 import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
+import { roomRandom } from "./room-random-fixture";
 import { MemoryNetwork, type Transport } from "./transport";
+
+/** 방장·참가자 비밀 값을 정해 판이 실행마다 같다(철수 0, 영희 1) */
+const random = roomRandom("claim-compat");
 
 /**
  * 실시간 청구가 없는 게임(마이티)의 방, 곧 이 기능을 모르는 옛 방 코드가 청구·방장 발표·함께 정한 난수 메시지를
@@ -95,6 +99,7 @@ describe("옛 방 코드가 청구 메시지를 무시한다", () => {
       revealTimeoutMs: 500,
       standInDelayMs: 10,
       bot: heuristicBot,
+      testRandom: random.host,
     });
     expect(host.claims).toBe(null);
     const aTransport = net.join("a");
@@ -104,6 +109,7 @@ describe("옛 방 코드가 청구 메시지를 무시한다", () => {
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null);
     const b = new GuestRoom({
@@ -112,6 +118,7 @@ describe("옛 방 코드가 청구 메시지를 무시한다", () => {
       clock,
       name: "영희",
       token: null,
+      testRandom: random.guest(1),
     });
     await until(() => b.seat !== null && a.lobby?.seats.length === 5);
     const guests = [a, b];

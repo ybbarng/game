@@ -59,6 +59,7 @@ describe("멘탈 포커 시험 난수원", () => {
     );
     expect(users).toContain("apps/web/src/hwatu/fair-room-fixture.ts");
     expect(users).toContain("apps/web/src/net/fair-room-fixture.ts");
+    expect(users).toContain("apps/web/src/net/room-random-fixture.ts");
   });
 
   it("묶음 `@game/fair-play`은 만드는 함수를 내보내지 않는다(타입만)", () => {

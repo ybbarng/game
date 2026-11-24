@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { mightyKit } from "@/game/mighty-kit";
 import { type AuditResult, GuestRoom, OTHER_GAME_ROOM } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { roomRandom } from "@/net/room-random-fixture";
 import { MemoryNetwork } from "@/net/transport";
 
 import { heartsKit } from "./kit";
@@ -31,6 +32,8 @@ async function until(condition: () => boolean): Promise<void> {
 describe("하트 온라인 방", () => {
   it("방장과 참가자가 한 게임을 끝까지 두고, 참가자가 공정성을 확인한다", async () => {
     const net = new MemoryNetwork();
+    // 방장·참가자 비밀 값을 정해 판의 패와 게임 길이가 실행마다 같다
+    const random = roomRandom("hearts");
     const host = new HostRoom({
       kit: heartsKit,
       transport: net.join("host"),
@@ -40,6 +43,7 @@ describe("하트 온라인 방", () => {
       bot: heartsIntermediateBot,
       botLevel: 1,
       revealTimeoutMs: 500,
+      testRandom: random.host,
     });
     const guest = new GuestRoom({
       kit: heartsKit,
@@ -47,6 +51,7 @@ describe("하트 온라인 방", () => {
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => guest.seat !== null && guest.lobby !== null);
     expect(guest.lobby?.game).toBe("hearts");

@@ -17,10 +17,7 @@ import {
   until,
 } from "./fair-room-fixture";
 
-/**
- * 첫 판을 끝까지 쳐서 둘째 판이 시작할 때까지. 첫 판 카드를 다 열기 전에 그만하면 판 끝 검증이 첫 판 패를
- * 몰라 실패하므로(이 시험과 따로 있는 일) 한 판을 마친 뒤에 끝낸다
- */
+/** 첫 판을 끝까지 쳐서 둘째 판이 시작할 때까지(이 기기가 「1판 끝」을 본 앞 게임을 만든다) */
 async function playToSecondRound(
   host: AnyHost,
   guests: AnyGuest[],
@@ -52,21 +49,25 @@ describe("화투 암호화방: 한 판 더", () => {
       HostRoom: HostRoom as never,
       GuestRoom: GuestRoom as never,
     });
-    // 새 게임에서 오간 멘탈 포커 메시지에는 게임 꼬리표가 붙는다.
-    const tags = new Set<number>();
-    guests[0]?.transport.onMessage((m) => {
-      if (isFairMessage(m)) tags.add((m as { g?: number }).g ?? 1);
-    });
+    // 기기마다 받은 멘탈 포커 메시지(보낸 기기와 함께). 새 게임 메시지에는 게임 꼬리표가 붙는다.
+    const devices = [host, ...guests];
+    const received = devices.map(() => [] as { m: unknown; from: string }[]);
+    for (const [i, d] of devices.entries())
+      d.transport.onMessage((m, from) => {
+        if (isFairMessage(m)) received[i]?.push({ m, from });
+      });
+    const tagsOf = (i: number) =>
+      new Set(received[i]?.map(({ m }) => (m as { g?: number }).g ?? 1));
 
     await host.start();
     await until(() => guests.every((g) => g.match !== null), "첫 화면");
-    // 첫 판을 끝까지 치고 둘째 판을 막 시작했을 때 그만한다(첫 판 검증까지 하고, 둘째 판 섞기 증명은 오가는 중).
-    await playToSecondRound(host, guests, incidents);
     host.abandon();
     await until(() => audits.length === 2, "첫 게임 검증");
     expect(audits).toEqual([{ ok: true }, { ok: true }]);
     const firstSeed = host.archiveSource()?.seed;
     const firstKeys = guests.map((g) => keysOf(g.fair?.device));
+    const stale = received.map((list) => [...list]);
+    expect(stale.map((list) => list.length > 0)).toEqual([true, true, true]);
 
     await host.rematch();
     await until(
@@ -75,9 +76,25 @@ describe("화투 암호화방: 한 판 더", () => {
     );
     expect(host.archiveSource()?.seed).not.toBe(firstSeed);
     expect(guests.map((g) => keysOf(g.fair?.device))).not.toEqual(firstKeys);
-    expect(tags.has(2)).toBe(true);
+    expect([tagsOf(0).has(2), tagsOf(1).has(2), tagsOf(2).has(2)]).toEqual([
+      true,
+      true,
+      true,
+    ]);
 
-    await playToSecondRound(host, guests, incidents);
+    // 앞 게임 메시지(꼬리표 없음)가 새 게임 첫 판 중에 늦게 닿는다: 같은 판 번호(1판)라도 새 게임 진행에 넣지 않는다.
+    const sender = new Map(devices.map((d) => [d.transport.selfId, d]));
+    for (const [i, list] of stale.entries())
+      for (const { m, from } of list)
+        sender.get(from)?.transport.send(m, devices[i]?.transport.selfId);
+    // 새 열쇠로 카드를 여는 수(세 자리가 한 번씩)까지 친 뒤 그만한다.
+    await playHwatu({
+      host,
+      guests,
+      bot: minhwatuIntermediateBot,
+      incidents,
+      done: () => (host.match?.actionLog().length ?? 0) >= 3,
+    });
     host.abandon();
     await until(() => audits.length === 4, "새 게임 검증");
     expect(audits.slice(2)).toEqual([{ ok: true }, { ok: true }]);

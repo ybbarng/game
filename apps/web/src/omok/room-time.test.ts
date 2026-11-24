@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { roomRandom } from "@/net/room-random-fixture";
 import { MemoryNetwork } from "@/net/transport";
 
 import { omokKit } from "./kit";
@@ -27,6 +28,8 @@ describe("오목 온라인 방의 개인 시간", () => {
   it("방장 시계가 참가자의 시간패를 기록하고, 참가자의 판 끝 검증을 통과한다", async () => {
     const clock = new ManualClock();
     const net = new MemoryNetwork();
+    // 방장·참가자 비밀 값을 정해 공동 시드(흑백·컴퓨터 수)가 실행마다 같다
+    const random = roomRandom("omok-time");
     const host = new HostRoom({
       kit: omokKit,
       transport: net.join("host"),
@@ -35,6 +38,7 @@ describe("오목 온라인 방의 개인 시간", () => {
       rules: FAST,
       bot: omokBotFor(1),
       botLevel: 1,
+      testRandom: random.host,
     });
     const guest = new GuestRoom({
       kit: omokKit,
@@ -42,6 +46,7 @@ describe("오목 온라인 방의 개인 시간", () => {
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => guest.seat !== null && guest.lobby !== null);
     const audits: AuditResult[] = [];
@@ -96,12 +101,15 @@ async function twoClocks() {
   const hostClock = new ManualClock();
   const guestClock = new ManualClock();
   const net = new MemoryNetwork();
+  // 방장·참가자 비밀 값을 정해 공동 시드(흑백)가 실행마다 같다
+  const random = roomRandom("omok-time");
   const host = new HostRoom({
     kit: omokKit,
     transport: net.join("host"),
     clock: hostClock,
     hostName: "방장",
     rules: FAST,
+    testRandom: random.host,
   });
   const guest = new GuestRoom({
     kit: omokKit,
@@ -109,6 +117,7 @@ async function twoClocks() {
     clock: guestClock,
     name: "철수",
     token: null,
+    testRandom: random.guest(0),
   });
   await until(() => guest.seat !== null && guest.lobby !== null);
   const audits: AuditResult[] = [];

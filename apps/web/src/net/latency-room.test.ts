@@ -9,7 +9,11 @@ import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import { type LatencyMessage, withLatency } from "./latency";
+import { roomRandom } from "./room-random-fixture";
 import { MemoryNetwork, type Transport } from "./transport";
+
+/** 방장·참가자 비밀 값을 정해 판이 실행마다 같다(철수 0, 영희 1) */
+const random = roomRandom("latency-room");
 
 /**
  * 옛 클라이언트와 새 클라이언트가 섞인 방(docs/43 5절 E2). 새 클라이언트는 `withLatency`로 측정 메시지를
@@ -154,6 +158,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
       revealTimeoutMs: 500,
       standInDelayMs: 10,
       bot: heuristicBot,
+      testRandom: random.host,
     });
     // 손님이 알림도 보내게 해 beacon·seen까지 옛 기기에 닿게 한다
     const fresh = newClient(net, "a", true);
@@ -163,6 +168,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null);
     const bTransport = net.join("b");
@@ -173,6 +179,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
       clock,
       name: "영희",
       token: null,
+      testRandom: random.guest(1),
     });
     await until(() => b.seat !== null && a.lobby?.seats.length === 5);
     const guests = [a, b];
@@ -224,6 +231,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
       revealTimeoutMs: 500,
       standInDelayMs: 10,
       bot: heuristicBot,
+      testRandom: random.host,
     });
     const aTransport = net.join("a");
     const aGot = countLatency(aTransport);
@@ -233,6 +241,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null);
     const b = new GuestRoom({
@@ -241,6 +250,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
       clock,
       name: "영희",
       token: null,
+      testRandom: random.guest(1),
     });
     await until(() => b.seat !== null && a.lobby?.seats.length === 5);
     const guests = [a, b];
