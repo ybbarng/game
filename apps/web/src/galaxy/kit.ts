@@ -244,7 +244,7 @@ export function describeGalaxy(action: unknown): string {
     case "resign":
       return "기권";
     case "retire":
-      return "끝내기";
+      return "그만하기";
   }
 }
 

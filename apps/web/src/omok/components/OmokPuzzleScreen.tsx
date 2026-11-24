@@ -132,6 +132,12 @@ function OmokPuzzleRun({
     return true;
   };
   const prompt = notice ?? goal;
+  const place = (at: number) => {
+    setAim(null);
+    if (warnForbidden(at)) return;
+    setNotice(null);
+    run.play(at);
+  };
 
   return (
     <PuzzleScreen
@@ -156,13 +162,21 @@ function OmokPuzzleRun({
             setAim(at);
             if (at === null || !warnForbidden(at)) setNotice(null);
           }}
-          onPlace={(at) => {
-            setAim(null);
-            if (warnForbidden(at)) return;
-            setNotice(null);
-            run.play(at);
-          }}
+          onPlace={place}
         />
+      }
+      extraButtons={
+        // 겨눈 자리(손가락 첫 누름·화살표·힌트)는 대국 화면처럼 확정 단추로도 둔다.
+        aim !== null &&
+        state.board[aim] === 0 && (
+          <button
+            type="button"
+            onClick={() => place(aim)}
+            className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+          >
+            여기 두기
+          </button>
+        )
       }
       status={status}
       prompt={prompt}

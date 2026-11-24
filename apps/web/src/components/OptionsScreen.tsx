@@ -277,9 +277,6 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                 끄기
               </button>
             </div>
-            <p className="text-xs opacity-60">
-              손패 카드에 그 무늬에서 아직 안 나온 높은 카드를 보여 줘요.
-            </p>
           </Section>
 
           <Section title="무늬 표기">

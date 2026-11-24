@@ -172,7 +172,7 @@ export function describeAction(action: Action): string {
     case "claims":
       return `원카드! 청구 ${action.shouts.length}개`;
     case "retire":
-      return "게임 끝냄";
+      return "그만하기";
   }
 }
 

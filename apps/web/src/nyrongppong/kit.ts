@@ -157,7 +157,7 @@ export function describeAction(action: Action): string {
     case "continue":
       return "다음 판";
     case "retire":
-      return "게임 끝냄";
+      return "그만하기";
   }
 }
 

@@ -11,7 +11,7 @@ import {
  * 원카드 화면 시험(docs/42 14절). 혼자 하기는 `?seed=`로 패를 정한다(씨앗 10: 둘이서 5장, 첫 차례에 7을 낼 수 있다).
  * 컴퓨터 대기·외침 창·누르고 있는 시간은 모두 타이머라 `page.clock`으로 감는다(실제 시간으로 기다리지 않는다).
  * 규칙·외침 판정·컴퓨터는 단위 시험(onecard/match.test.ts, bots.test.ts)이 본다. 여기서는 화면으로만 보이는 것을
- * 확인할 지점까지만 본다: 시작 → 7 무늬 고르기 → 먹기 → 더미 치기(말풍선) → 그만두기로 판 끝 화면
+ * 확인할 지점까지만 본다: 시작 → 7 무늬 고르기 → 먹기 → 더미 치기(말풍선) → 기권으로 판 끝 화면
  */
 
 const hand = (page: Page) => page.getByRole("region", { name: "내 손패" });
@@ -72,7 +72,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("원카드: 들어가 단계를 고르고 7·먹기·더미 치기를 한 뒤 그만두기로 판 끝 화면을 본다", async ({
+test("원카드: 들어가 단계를 고르고 7·먹기·더미 치기를 한 뒤 기권으로 판 끝 화면을 본다", async ({
   page,
 }, info) => {
   const touch = info.project.name.startsWith("phone");

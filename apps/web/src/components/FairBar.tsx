@@ -79,7 +79,7 @@ export function FairBar({
                     onClick={() => voteEnd(true)}
                     className="rounded-lg bg-rose-500 px-2 py-0.5 font-semibold"
                   >
-                    끝내기
+                    그만하기
                   </button>
                   <button
                     type="button"
@@ -102,7 +102,7 @@ export function FairBar({
               onClick={endGame}
               className="rounded-lg bg-rose-500 px-3 py-1 font-semibold"
             >
-              게임 끝내기
+              그만하기
             </button>
           ) : null}
         </div>

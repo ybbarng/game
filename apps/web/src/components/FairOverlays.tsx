@@ -106,7 +106,7 @@ export function FairOverlays({
               onClick={endGame}
               className="rounded-lg bg-rose-500 px-3 py-1 font-semibold"
             >
-              게임 끝내기
+              그만하기
             </button>
           ) : null}
         </div>
@@ -261,7 +261,7 @@ function EndVote({
         onClick={() => onVote(true)}
         className={`rounded-lg px-3 py-1 font-semibold ${mine === true ? "bg-rose-500 ring-2 ring-white" : "bg-rose-500/70"}`}
       >
-        {host ? "게임 끝내기" : "끝내기"}
+        그만하기
       </button>
     </span>
   );

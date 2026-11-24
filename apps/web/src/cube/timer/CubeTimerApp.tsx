@@ -2,6 +2,7 @@
 
 import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 import { cn } from "@/lib/cn";
 
@@ -852,15 +853,16 @@ function SolveDetail({
             {label}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm("이 기록을 지울까요?")) onRemove();
-          }}
-          className="ml-auto rounded-md border border-red-400/40 px-3 py-1 text-red-300 hover:border-red-300"
-        >
-          지우기
-        </button>
+        <span className="ml-auto">
+          <ConfirmButton
+            question="정말 지울까요?"
+            confirmLabel="지우기"
+            onConfirm={onRemove}
+            className="rounded-md border border-red-400/40 px-3 py-1 text-red-300 hover:border-red-300"
+          >
+            지우기
+          </ConfirmButton>
+        </span>
       </div>
       <input
         className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1 max-sm:text-base"
