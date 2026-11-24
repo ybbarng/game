@@ -10,6 +10,7 @@ import {
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";
 import { FairLine, RoomKindPicker } from "@/components/FairLine";
+import { HIT_AREA } from "@/components/hit-area";
 import { InviteLink } from "@/components/InviteLink";
 import {
   NameForm,
@@ -643,7 +644,7 @@ export function RoomScreen<
                   key={s.seat}
                   data-lobby-seat={s.seat}
                   className={cn(
-                    "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
+                    "flex min-h-11 items-center justify-between rounded-lg px-3 py-2 text-sm",
                     s.kind === "bot" ? "bg-white/5 opacity-60" : "bg-white/10",
                   )}
                 >
@@ -665,7 +666,10 @@ export function RoomScreen<
                       <button
                         type="button"
                         onClick={() => session.host?.kick(s.seat)}
-                        className="rounded bg-white/10 px-1.5 py-0.5 hover:bg-red-500/60"
+                        className={cn(
+                          HIT_AREA,
+                          "rounded bg-white/10 px-1.5 py-0.5 hover:bg-red-500/60",
+                        )}
                       >
                         내보내기
                       </button>

@@ -917,7 +917,7 @@ export function GalaxyGame({
               type="button"
               data-abandon
               onClick={() => hostRoom.abandon()}
-              className="rounded-lg bg-white px-2 py-0.5 font-semibold text-black"
+              className="min-h-11 rounded-lg bg-white px-3 py-1 font-semibold text-black"
             >
               기다리지 않고 끝내기
             </button>

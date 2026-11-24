@@ -5,3 +5,6 @@
  */
 export const HIT_AREA =
   "relative after:absolute after:top-1/2 after:left-1/2 after:h-11 after:w-full after:min-w-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']";
+
+/** 화면 왼쪽 위 「← 목록」 같은 뒤로 단추(글자만, 누르는 자리 44px) */
+export const BACK_BUTTON = `${HIT_AREA} shrink-0 text-white/70 hover:text-white`;
