@@ -21,6 +21,8 @@ import { useEffect, useRef, useState } from "react";
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { HintButton, useHint } from "@/components/HintButton";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
@@ -35,7 +37,6 @@ import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
 import { CHESS_LEVELS, useChessSettings } from "../settings";
@@ -315,19 +316,18 @@ export function ChessGame({
       mission={!!mission}
       overlay={mission && <MissionOverlay mission={mission} top={8} />}
       header={
-        <header className="flex w-full items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={onExit}
-            className="text-white/70 hover:text-white"
-          >
-            ← 체스
-          </button>
-          <span className="ml-auto text-white/60">
-            나는 {SIDE_NAMES[mySide]} · {view.roundNumber}판째
-            {view.draws > 0 ? ` · 비김 ${view.draws}` : ""}
-          </span>
-        </header>
+        <GameHeader
+          exitLabel="← 체스"
+          onExit={onExit}
+          info={`나는 ${SIDE_NAMES[mySide]} · ${view.roundNumber}판째${view.draws > 0 ? ` · 비김 ${view.draws}` : ""}`}
+          settings={
+            <BoardSettingsButton
+              useStore={useChessSettings}
+              levels={CHESS_LEVELS}
+              solo={!online && !mission}
+            />
+          }
+        />
       }
       alerts={
         online &&

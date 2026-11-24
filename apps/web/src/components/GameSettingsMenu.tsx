@@ -136,6 +136,48 @@ export function GameSettingsMenu<T extends string | number>({
   );
 }
 
+/** 게임 설정 저장소 중 컴퓨터 단계 칸(`level`)과 고치기(`set`)만 본 꼴. 판 게임 저장소가 모두 이 꼴이다 */
+export type LevelStore<T> = <U>(
+  selector: (s: { level: T; set: (patch: { level: T }) => void }) => U,
+) => U;
+
+/**
+ * 판 게임 머리줄의 「설정」: 효과음과, 혼자 하기면 그 게임 저장소의 컴퓨터 단계(새 게임부터).
+ * 온라인·미션에서는 컴퓨터 단계를 빼고 효과음만 둔다.
+ */
+export function BoardSettingsButton<T extends string | number>({
+  useStore,
+  levels,
+  solo,
+  tone,
+  onQuit,
+}: {
+  useStore: LevelStore<T>;
+  levels: readonly { value: T; label: string }[];
+  solo: boolean;
+  tone?: string;
+  /** 혼자 하기 도중 게임 전체 끝내기(「그만하기」) */
+  onQuit?: (() => void) | undefined;
+}) {
+  const level = useStore((s) => s.level);
+  const set = useStore((s) => s.set);
+  return (
+    <GameSettingsButton
+      {...(tone ? { tone } : {})}
+      onQuit={onQuit}
+      levels={
+        solo
+          ? {
+              options: levels,
+              value: level,
+              onChange: (v) => set({ level: v }),
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 /**
  * 위쪽 막대의 「설정」 단추와 판 중 설정 메뉴. 모든 게임이 같은 이름·같은 모양으로 막대 오른쪽에 둔다.
  * 단추 모양은 막대 단추 공통(`BAR_BUTTON`).

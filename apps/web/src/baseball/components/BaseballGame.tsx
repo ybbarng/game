@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import { BoardSeat } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
@@ -24,7 +26,6 @@ import {
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { mySecret, randomSecret, type SecretBook } from "../secret";
 import { baseballSession } from "../session";
 import { BASEBALL_LEVELS, useBaseballSettings } from "../settings";
@@ -429,22 +430,19 @@ export function BaseballGame({
     >
       <Infield className="absolute bottom-0 left-1/2 -z-10 w-[min(46rem,150vw)] max-w-none -translate-x-1/2 opacity-30 split:w-[min(60rem,100vw)] split:opacity-25" />
       {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full max-w-xl items-center gap-2 text-sm split:col-span-2 split:max-w-none">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
-          ← 숫자야구
-        </button>
-        <span className="ml-auto text-white/60">
-          {digits}자리{view.rules.zero ? "·0 씀" : ""}
-          {puzzle ? " · 퍼즐" : ` · ${view.roundNumber}판째`}
-          {!puzzle && view.rules.winsToFinish > 1
-            ? ` · ${view.rules.winsToFinish}승 먼저`
-            : ""}
-        </span>
-      </header>
+      <GameHeader
+        className="max-w-xl split:col-span-2 split:max-w-none"
+        exitLabel="← 숫자야구"
+        onExit={onExit}
+        info={`${digits}자리${view.rules.zero ? "·0 씀" : ""}${puzzle ? " · 퍼즐" : ` · ${view.roundNumber}판째`}${!puzzle && view.rules.winsToFinish > 1 ? ` · ${view.rules.winsToFinish}승 먼저` : ""}`}
+        settings={
+          <BoardSettingsButton
+            useStore={useBaseballSettings}
+            levels={BASEBALL_LEVELS}
+            solo={!online && !mission && !puzzle}
+          />
+        }
+      />
 
       {online && (invalid || reconnecting || hostLeft) && (
         <div className="w-full max-w-xl split:col-span-2 split:max-w-none">

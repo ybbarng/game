@@ -18,6 +18,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
@@ -879,22 +881,19 @@ export function GalaxyGame({
       )}
     >
       {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full items-center gap-2 text-sm">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
-          ← 은하 한 바퀴
-        </button>
-        <span className="ml-auto truncate text-white/60">
-          {lengthName}
-          {limit
-            ? ` · ${Math.min(view.round, limit)}/${limit}차례`
-            : ` · ${view.round}차례째`}
-          {online ? "" : ` · 컴퓨터 ${levelName}`}
-        </span>
-      </header>
+      <GameHeader
+        exitLabel="← 은하 한 바퀴"
+        onExit={onExit}
+        info={`${lengthName}${limit ? ` · ${Math.min(view.round, limit)}/${limit}차례` : ` · ${view.round}차례째`}${online ? "" : ` · 컴퓨터 ${levelName}`}`}
+        settings={
+          <BoardSettingsButton
+            useStore={useGalaxySettings}
+            levels={GALAXY_LEVELS}
+            solo={!online && !mission}
+            tone="bg-slate-950/95"
+          />
+        }
+      />
 
       {online && (invalid || reconnecting || hostLeft) && (
         <div className="w-full max-w-xl">

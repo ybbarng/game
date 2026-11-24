@@ -20,6 +20,8 @@ import { useEffect, useMemo, useState } from "react";
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { HintButton, useHint } from "@/components/HintButton";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
@@ -35,7 +37,6 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { piecesInDanger } from "../danger";
 import { planText } from "../plan-text";
 import { BIKJANG_INFO, JANGGI_LEVELS, useJanggiSettings } from "../settings";
@@ -298,28 +299,33 @@ export function JanggiGame({
       mission={!!mission}
       overlay={mission && <MissionOverlay mission={mission} top={8} />}
       header={
-        <header className="flex w-full items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={onExit}
-            className="text-white/70 hover:text-white"
-          >
-            {exitLabel}
-          </button>
-          <span className="ml-auto text-right text-white/60">
-            나는 {SIDE_NAMES[mySide]} · {bikjangLabel} · {view.roundNumber}판째
-            {view.phase === "play" && played > 0 && (
-              <span
-                data-move-count={played}
-                className={cn(played >= MOVE_LIMIT_WARN && "text-amber-300")}
-              >
-                {" "}
-                · {played}수
-                {played >= MOVE_LIMIT_WARN && `(${MOVE_LIMIT}수에서 점수로)`}
-              </span>
-            )}
-          </span>
-        </header>
+        <GameHeader
+          exitLabel={exitLabel}
+          onExit={onExit}
+          info={
+            <>
+              나는 {SIDE_NAMES[mySide]} · {bikjangLabel} · {view.roundNumber}
+              판째
+              {view.phase === "play" && played > 0 && (
+                <span
+                  data-move-count={played}
+                  className={cn(played >= MOVE_LIMIT_WARN && "text-amber-300")}
+                >
+                  {" "}
+                  · {played}수
+                  {played >= MOVE_LIMIT_WARN && `(${MOVE_LIMIT}수에서 점수로)`}
+                </span>
+              )}
+            </>
+          }
+          settings={
+            <BoardSettingsButton
+              useStore={useJanggiSettings}
+              levels={JANGGI_LEVELS}
+              solo={!online && !mission}
+            />
+          }
+        />
       }
       alerts={
         online &&

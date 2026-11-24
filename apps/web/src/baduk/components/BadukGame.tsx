@@ -17,6 +17,8 @@ import { useEffect, useState } from "react";
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { HintButton, useHint } from "@/components/HintButton";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
@@ -31,7 +33,6 @@ import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { countText } from "../kit";
 import { BADUK_LEVELS, useBadukSettings } from "../settings";
 import { useBaduk } from "../store";
@@ -250,19 +251,18 @@ export function BadukGame({
       mission={!!mission}
       overlay={mission && <MissionOverlay mission={mission} top={8} />}
       header={
-        <header className="flex w-full items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={onExit}
-            className="text-white/70 hover:text-white"
-          >
-            ← 바둑
-          </button>
-          <span className="ml-auto text-white/60">
-            나는 {STONE_NAMES[myStone]} · {size}줄 · 덤 {view.rules.komi} ·{" "}
-            {view.roundNumber}판째
-          </span>
-        </header>
+        <GameHeader
+          exitLabel="← 바둑"
+          onExit={onExit}
+          info={`나는 ${STONE_NAMES[myStone]} · ${size}줄 · 덤 ${view.rules.komi} · ${view.roundNumber}판째`}
+          settings={
+            <BoardSettingsButton
+              useStore={useBadukSettings}
+              levels={BADUK_LEVELS}
+              solo={!online && !mission}
+            />
+          }
+        />
       }
       alerts={
         online &&

@@ -14,6 +14,8 @@ import {
 } from "@game/yut-engine";
 import { useEffect, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
@@ -28,11 +30,10 @@ import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
-
 import { outcomeFor } from "../kit";
 import { sceneOf } from "../scene";
 import { yutSession } from "../session";
-import { YUT_LEVELS } from "../settings";
+import { useYutSettings, YUT_LEVELS } from "../settings";
 import { useYut } from "../store";
 import { resultLabel } from "../toss/plan";
 import {
@@ -299,24 +300,19 @@ export function YutGame({
       )}
     >
       {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full max-w-xl items-center gap-2 text-sm split:col-span-2 split:max-w-none">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
-          ← 윷놀이
-        </button>
-        <span className="ml-auto text-white/60">
-          {view.rules.mode === "team"
-            ? "2:2 편"
-            : players === 2
-              ? "1:1"
-              : `${players}인`}
-          {` · 말 ${view.rules.pieces}개`}
-          {online ? "" : ` · 컴퓨터 ${levelName}`}
-        </span>
-      </header>
+      <GameHeader
+        className="max-w-xl split:col-span-2 split:max-w-none"
+        exitLabel="← 윷놀이"
+        onExit={onExit}
+        info={`${view.rules.mode === "team" ? "2:2 편" : players === 2 ? "1:1" : `${players}인`} · 말 ${view.rules.pieces}개${online ? "" : ` · 컴퓨터 ${levelName}`}`}
+        settings={
+          <BoardSettingsButton
+            useStore={useYutSettings}
+            levels={YUT_LEVELS}
+            solo={!online && !mission}
+          />
+        }
+      />
 
       {online && (invalid || reconnecting || hostLeft) && (
         <div className="w-full max-w-xl split:col-span-2 split:max-w-none">

@@ -13,6 +13,8 @@ import { useState } from "react";
 import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { GameHeader } from "@/components/GameHeader";
+import { BoardSettingsButton } from "@/components/GameSettingsMenu";
 import { HintButton, useHint } from "@/components/HintButton";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
@@ -26,7 +28,6 @@ import {
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useAutoClear } from "@/lib/use-auto-clear";
-
 import { OMOK_LEVELS, useOmokSettings, VARIANT_INFO } from "../settings";
 import { useOmok } from "../store";
 import { OmokBoard } from "./OmokBoard";
@@ -194,18 +195,18 @@ export function OmokGame({
       mission={!!mission}
       overlay={mission && <MissionOverlay mission={mission} top={8} />}
       header={
-        <header className="flex w-full items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={onExit}
-            className="text-white/70 hover:text-white"
-          >
-            ← 오목
-          </button>
-          <span className="ml-auto text-white/60">
-            {variantLabel} · {view.roundNumber}판째
-          </span>
-        </header>
+        <GameHeader
+          exitLabel="← 오목"
+          onExit={onExit}
+          info={`${variantLabel} · ${view.roundNumber}판째`}
+          settings={
+            <BoardSettingsButton
+              useStore={useOmokSettings}
+              levels={OMOK_LEVELS}
+              solo={!online && !mission}
+            />
+          }
+        />
       }
       alerts={
         online &&
