@@ -65,7 +65,7 @@ node apps/cubie/scripts/window-compare.mjs <폴더>          # 기록 창·티�
 - 기록 창·티어표·설정 창(docs/52 5-8)의 화면 글은 `CubieCore/RecordsSheet.swift`·`TierSheet.swift`·`SettingsSheet.swift`에 모았다. 사이트 화면 글이 바뀌면 웹 시험 `apps/web/src/cube/native/native-windows-text.test.ts`가 깨져 앱 글도 고치라고 알린다.
 
 - Rust는 rustup의 cargo를 절대 경로로 쓴다(`CUBIE_CARGO`로 바꿀 수 있다). 유니버설 빌드는 `rustup target add x86_64-apple-darwin`이 한 번 필요하다.
-- C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi_game.rs`와 하나씩 맞춘다.
+- C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi_game.rs`·`ffi_records.rs`·`ffi_keymap.rs`와 하나씩 맞춘다. 어긋나면 `test.sh`가 먼저 도는 Rust 시험 `native/cubie-native/tests/header_abi.rs`가 깨진다(함수 이름 목록·돌려주는 타입·인자 타입 차례, `#[repr(C)]` 구조체 필드 이름·타입·차례, `CUBIE_*` 상수 값).
 - 정적 라이브러리를 링크하므로 스위치를 꺼도 앱이 조금 커진다(유니버설 실행 파일 0.6MB → 1.7MB).
 - `swift build`는 정적 라이브러리가 바뀐 것을 몰라 다시 링크하지 않을 수 있다. 라이브러리만 바꿨으면 `.build/<칩>-apple-macosx/release/Cubie`를 지우고 빌드한다.
 - 스크린샷은 `layer.render(in:)`이 3D 변환을 납작하게 그려서 `CARenderer`(Metal 텍스처)로 찍는다. 렌더러에 층을 붙인 뒤 한 번 더 커밋해야 그린다.
