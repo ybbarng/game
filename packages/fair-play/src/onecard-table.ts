@@ -1,13 +1,14 @@
 import type { Card } from "@game/mighty-engine";
 import { obj } from "@game/mighty-engine/josa";
 
-import { tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
-import { type Incident, reportShuffleTamper } from "./coordinator";
+import type { Incident } from "./coordinator";
 import type { FairDevice } from "./device";
 import type { FairControl } from "./messages";
 import { nothingOpened } from "./nothing-opened";
 import { CARD_CODES, COLOR_JOKER, DECK } from "./protocol";
+import { tokenOf } from "./slot-token";
+import { reportShuffleTamper } from "./tamper";
 
 /*
  * 원카드 멘탈 포커(docs/42 4-2). 마이티·하트·화투와 같은 섞기·열쇠(device.ts)에 54장 덱을 얹고,

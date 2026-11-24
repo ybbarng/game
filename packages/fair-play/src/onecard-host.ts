@@ -1,10 +1,8 @@
 import type { Card } from "@game/mighty-engine";
 
-import { slotOfToken } from "./blind";
 import { type Clock, realClock } from "./clock";
 import type { BusyReason, Incident } from "./coordinator";
 import { FairDevice, type FairWire, type GroupName } from "./device";
-import { swapTokens } from "./hwatu-table";
 import type { FairControl } from "./messages";
 import { nothingOpened } from "./nothing-opened";
 import {
@@ -22,6 +20,7 @@ import {
   onecardReshuffleMessage,
 } from "./onecard-table";
 import type { PartySnapshot } from "./protocol";
+import { slotOfToken, swapTokens } from "./slot-token";
 
 /*
  * 원카드 멘탈 포커 진행(docs/42 4-2, 16절). `OnecardDeck`(섞기·뽑기·다시 섞기 사슬) 위에 방장 엔진을 잇는다.
