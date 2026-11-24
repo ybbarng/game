@@ -166,7 +166,7 @@ export const mightyKit: MightyKit = {
         case "continue":
           return "다음 판";
         case "retire":
-          return "그만두기";
+          return "그만하기";
       }
     },
     sortHand: (state, cards) =>

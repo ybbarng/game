@@ -7,13 +7,15 @@ import { clearGame, loadGame } from "@/game/persistence";
 import { useScreenHistory } from "@/game/screen-history";
 import { chosenRules, useSettings } from "@/game/settings";
 import { useGame } from "@/game/store";
+import { seedFromUrl } from "@/lib/url-seed";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { endOnlineSession } from "@/net/session";
 
 import { AboutScreen } from "./AboutScreen";
 import { GameTable } from "./GameTable";
-import { OnlineScreen } from "./OnlineScreen";
+import { mightyRoom } from "./mighty-room";
 import { OptionsScreen } from "./OptionsScreen";
+import { RoomScreen } from "./RoomScreen";
 import { Splash } from "./Splash";
 import { StartScreen } from "./StartScreen";
 import { LessonPlayer } from "./tutorial/LessonPlayer";
@@ -44,7 +46,6 @@ export function MightyApp() {
       hostLeft: false,
       reconnecting: false,
       offlineSeats: [],
-      endVote: null,
     });
   }
   // 화면마다 브라우저 기록에 남겨 뒤로가기가 바로 전 화면으로 간다(game/screen-history)
@@ -83,10 +84,20 @@ export function MightyApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「혼자 하기」와 판 끝 「다시 하기」). 고른 규칙 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) =>
+    newGame({
+      rules: chosenRules(useSettings.getState().ruleCode),
+      ...(seed !== undefined ? { seed } : {}),
+    });
 
   if (screen.kind === "online") {
     return (
-      <OnlineScreen
+      <RoomScreen
+        game={mightyRoom}
         rules={screen.rules}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}
@@ -136,13 +147,7 @@ export function MightyApp() {
         <StartScreen
           onSolo={() => {
             // 주소에 ?seed=숫자 가 있으면 같은 패로 시작한다(버그 재현용).
-            const seed = Number(
-              new URLSearchParams(window.location.search).get("seed"),
-            );
-            newGame({
-              rules: rules(),
-              ...(Number.isInteger(seed) && seed > 0 ? { seed } : {}),
-            });
+            startSolo(seedFromUrl());
             setScreen({ kind: "playing" });
           }}
           onTogether={() =>
@@ -169,5 +174,5 @@ export function MightyApp() {
       </>
     );
   }
-  return <GameTable onExit={backToStart} />;
+  return <GameTable onExit={backToStart} onRestart={() => startSolo()} />;
 }

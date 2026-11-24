@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import {
   TimePresetPicker,
   timePresetLabel,
@@ -413,10 +413,18 @@ export function YutApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
+  const startSolo = () => {
+    const s = useYutSettings.getState();
+    useYut.getState().newGame({
+      rules: rulesFromSettings(s),
+      level: s.level,
+    });
+  };
 
   if (screen.kind === "online")
     return (
-      <BoardOnlineScreen
+      <RoomScreen
         game={yutOnline}
         rules={rulesFromSettings(settings)}
         roomFromUrl={screen.room}
@@ -425,7 +433,8 @@ export function YutApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <YutGame onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <YutGame onExit={backToStart} onRestart={startSolo} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -455,13 +464,7 @@ export function YutApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useYut.getState().resume(saved);
-        else {
-          const s = useYutSettings.getState();
-          useYut.getState().newGame({
-            rules: rulesFromSettings(s),
-            level: s.level,
-          });
-        }
+        else startSolo();
         setScreen({ kind: "playing" });
       }}
     />

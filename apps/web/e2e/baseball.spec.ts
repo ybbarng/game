@@ -16,7 +16,8 @@ for (const a of "123456789")
 const SEED = 1;
 
 const status = (page: Page) => page.getByRole("status").first();
-const over = (page: Page) => page.getByRole("button", { name: "다시 하기" });
+/** 게임이 끝나면 혼자 하기·온라인 모두 「처음으로」가 뜬다(「다시 하기」는 혼자 하기만) */
+const over = (page: Page) => page.getByRole("button", { name: "처음으로" });
 /** 내가 물은 줄들(전광판 아래 "내 공격" 기록. 휴대폰 세로에서 탭에 가려져도 센다) */
 const myRows = (page: Page) => page.locator('[data-log="mine"] li');
 

@@ -23,6 +23,7 @@ import { cn } from "@/lib/cn";
 import { ro } from "@/lib/josa";
 
 import { CardArt } from "../card-art/CardArt";
+import { PANEL_BUTTONS, RoundEndButtons } from "../RoundEndButtons";
 import { SuitMark, SuitText } from "../SuitText";
 
 import { ActionButton, CardPicker, Panel } from "./common";
@@ -211,13 +212,17 @@ export function RoundResultPanel({
   startMoney,
   seatName,
   onSubmit,
-  onNewGame,
+  onHome,
+  onRestart,
 }: {
   view: PlayerView;
   startMoney: number[];
   seatName: (seat: number) => string;
   onSubmit: (action: Action) => void;
-  onNewGame: () => void;
+  /** 게임 첫 화면으로 */
+  onHome: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판. 온라인·다시 보기는 없다 */
+  onRestart: (() => void) | undefined;
 }) {
   const result = view.result;
   // 판 점수 없이 끝났다: 끊긴 사람을 더 기다리지 않고 중간에 끝냈다(멘탈 포커 온라인).
@@ -225,7 +230,13 @@ export function RoundResultPanel({
     return (
       <Panel title="게임을 중간에 끝냈어요">
         <p className="text-center text-sm">이번 판은 점수를 매기지 않았어요.</p>
-        <ActionButton onClick={onNewGame}>처음으로</ActionButton>
+        <div className="flex flex-wrap justify-center gap-2">
+          <RoundEndButtons
+            onRestart={onRestart}
+            onHome={onHome}
+            {...PANEL_BUTTONS}
+          />
+        </div>
       </Panel>
     );
   if (!result || !view.goal) return null;
@@ -353,7 +364,13 @@ export function RoundResultPanel({
             </b>
             이에요.
           </p>
-          <ActionButton onClick={onNewGame}>새 게임</ActionButton>
+          <div className="flex flex-wrap justify-center gap-2">
+            <RoundEndButtons
+              onRestart={onRestart}
+              onHome={onHome}
+              {...PANEL_BUTTONS}
+            />
+          </div>
         </div>
       ) : (
         view.decision?.kind === "continue" && (

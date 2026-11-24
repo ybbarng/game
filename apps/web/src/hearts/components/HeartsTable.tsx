@@ -23,6 +23,7 @@ import { OpenHand } from "@/components/OpenHand";
 import { PlayingCard } from "@/components/PlayingCard";
 import { ActionButton, Panel } from "@/components/panels/common";
 import { ResultBanner } from "@/components/ResultBanner";
+import { PANEL_BUTTONS, RoundEndButtons } from "@/components/RoundEndButtons";
 import { useRelayoutFade } from "@/components/relayout";
 import { SeatPlate } from "@/components/SeatPlate";
 import { SuitText } from "@/components/SuitText";
@@ -44,6 +45,7 @@ import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
+import { useFairBar } from "@/net/fair-bar";
 
 import { canActHearts, HEARTS_DEAL_PATTERN, useHearts } from "../store";
 import { directionLabel, sortHearts } from "../terms";
@@ -66,11 +68,14 @@ const MISSION_BAND_MIN_W = 220;
 
 export function HeartsTable({
   onExit,
+  onRestart,
   mission,
   openHands = null,
   topInset = 0,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션 목표와 결과 안내 */
   mission?: MissionProps;
   /** 다시 보기: 다른 사람 손패를 앞면으로 펼친다(자리마다 정렬한 패) */
@@ -101,12 +106,12 @@ export function HeartsTable({
   const reconnecting = useHearts((s) => s.reconnecting);
   const offlineSeats = useHearts((s) => s.offlineSeats);
   const invalid = useHearts((s) => s.invalid);
-  const incident = useHearts((s) => s.incident);
-  const shuffling = useHearts((s) => s.shuffling);
-  const fair = useHearts((s) => s.fair);
-  const endGame = useHearts((s) => s.endGame);
-  const endVote = useHearts((s) => s.endVote);
-  const voteEnd = useHearts((s) => s.voteEnd);
+  const incident = useFairBar((s) => s.incident);
+  const shuffling = useFairBar((s) => s.shuffling);
+  const fair = useFairBar((s) => s.fair);
+  const endGame = useFairBar((s) => s.endGame);
+  const endVote = useFairBar((s) => s.endVote);
+  const voteEnd = useFairBar((s) => s.voteEnd);
   const submit = useHearts((s) => s.submit);
   const clearNotice = useHearts((s) => s.clearNotice);
   const botNames = useSettings((s) => s.botNames);
@@ -468,10 +473,7 @@ export function HeartsTable({
                 accused={incident?.seat === seat}
                 badges={
                   ready && (
-                    <span
-                      className="shrink-0 rounded bg-emerald-400 px-1 text-[10px] text-black"
-                      title="넘길 카드를 골랐어요"
-                    >
+                    <span className="shrink-0 rounded bg-emerald-400 px-1 text-[10px] text-black">
                       ✓
                     </span>
                   )
@@ -680,6 +682,7 @@ export function HeartsTable({
                     seatName={seatName}
                     onContinue={() => act({ type: "continue" })}
                     onExit={onExit}
+                    onRestart={network ? undefined : onRestart}
                   />
                 ) : null}
               </div>
@@ -785,11 +788,13 @@ function RoundPanel({
   seatName,
   onContinue,
   onExit,
+  onRestart,
 }: {
   view: PlayerView;
   seatName: (seat: number) => string;
   onContinue: () => void;
   onExit: () => void;
+  onRestart: (() => void) | undefined;
 }) {
   const over = view.phase === "gameOver";
   // 판 점수 없이 끝났다: 끊긴 사람을 더 기다리지 않고 중간에 끝냈다.
@@ -840,7 +845,13 @@ function RoundPanel({
         </tbody>
       </table>
       {over ? (
-        <ActionButton onClick={onExit}>처음으로</ActionButton>
+        <div className="flex flex-wrap justify-center gap-2">
+          <RoundEndButtons
+            onRestart={onRestart}
+            onHome={onExit}
+            {...PANEL_BUTTONS}
+          />
+        </div>
       ) : view.decision?.kind === "continue" ? (
         <ActionButton onClick={onContinue}>다음 판</ActionButton>
       ) : (

@@ -7,7 +7,7 @@ import type {
   OmokView,
 } from "@game/omok-engine";
 
-import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
+import { boardRoom } from "@/components/board-room";
 
 import { omokKit } from "./kit";
 import { omokSession } from "./session";
@@ -15,13 +15,13 @@ import { VARIANT_INFO } from "./settings";
 import { useOmok } from "./store";
 
 /** 친구와 오목(`BoardOnlineScreen`)에서 오목만 다른 것 */
-export const omokOnline: BoardOnlineGame<
+export const omokOnline = boardRoom<
   OmokRules,
   OmokState,
   OmokView,
   Action,
   GameEvent
-> = {
+>({
   kit: omokKit,
   name: "오목",
   shareTitle: "오목 한 판 하자",
@@ -34,4 +34,4 @@ export const omokOnline: BoardOnlineGame<
   },
   rulesNote: (rules) =>
     VARIANT_INFO.find((v) => v.value === rules.variant)?.description ?? "",
-};
+});

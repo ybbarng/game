@@ -1,4 +1,5 @@
 import { useChat } from "./chat";
+import { useFairBar } from "./fair-bar";
 import { clearHostingRoom } from "./host-store";
 
 /** 방장 쪽 방: 판 끝 기록을 공개하고(`finish`) 닫는다(`close`) */
@@ -29,4 +30,5 @@ export function endRoomSession(session: RoomSession): void {
   session.host = null;
   session.guest = null;
   useChat.getState().reset();
+  useFairBar.getState().reset();
 }

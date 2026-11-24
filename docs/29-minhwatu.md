@@ -80,7 +80,7 @@
 
 - `packages/minhwatu-engine`(`@game/minhwatu-engine`): `rules.ts`(규칙·부호·나누기 표·본), `score.ts`(카드 점수·약·판 점수), `state.ts`(상태·행동·사건·화면), `match.ts`(`createMatch`·`step`·`viewOf`·`pendingSeats`·`replay`·`dealRound`·`matchOnFloor`), `scenario.ts`(튜토리얼 장면). 카드 데이터와 섞기는 `@game/hwatu`.
 - `packages/minhwatu-ai`(`@game/minhwatu-ai`): `bots.ts`, `simulate.ts`, `bots.strength.ts`(세기 비교, 따로 돌림).
-- `apps/web/src/minhwatu/`: `kit.ts`(GameKit, 해설), `stats.ts`, `store.ts`, `session.ts`, `settings.ts`, `progress.ts`(튜토리얼 진행), `cues.ts`(소리), `tutorial.ts`, `rules-text.ts`, `components/`(App·Table·Floor·OnlineScreen·Replay·Stats·IconArt·tutorial kit).
+- `apps/web/src/minhwatu/`: `kit.ts`(GameKit, 해설), `stats.ts`, `store.ts`, `session.ts`, `settings.ts`, `progress.ts`(튜토리얼 진행), `cues.ts`(소리), `tutorial.ts`, `rules-text.ts`, `components/`(App·Table·Floor·Replay·Stats·IconArt·tutorial kit), `online.ts`(공통 `RoomScreen` 설정).
 - `apps/web/src/app/minhwatu/`: `page.tsx`, `icon.tsx`, `apple-icon.tsx`, `opengraph-image.tsx`.
 - 시험: 엔진 27, 컴퓨터 9, 웹(튜토리얼 9·키트·소리·기록 7·온라인 방 1) 17, 화면 시험 `e2e/minhwatu.spec.ts` 4개(세 화면 크기, 온라인·기록은 데스크톱만).
 

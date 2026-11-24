@@ -35,12 +35,14 @@ import {
   useCardFlights,
   useHandSpread,
 } from "@/components/card-fx";
+import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
-import { ActionButton, Panel } from "@/components/panels/common";
+import { Panel } from "@/components/panels/common";
 import { ResignConfirm } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
+import { PANEL_BUTTONS, RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { useRelayoutFade } from "@/components/relayout";
 import { SeatPlate } from "@/components/SeatPlate";
@@ -53,7 +55,6 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { useStimulusShown } from "@/game/stimulus-shown";
 import { prefersReducedMotion } from "@/game/timing";
-import { HwatuFairBar, useHwatuFair } from "@/hwatu/fair-bar";
 import {
   computeLayout,
   FAN_PEEK,
@@ -68,6 +69,7 @@ import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
+import { useFairBar } from "@/net/fair-bar";
 
 import { fanFlipId, onecardDealPattern, planFx } from "../card-fx";
 import { isRedSuit, SUIT_NAMES, SUIT_SYMBOLS } from "../cards";
@@ -445,10 +447,13 @@ export interface OnecardReplayProps {
  */
 export function OnecardGame({
   onExit,
+  onRestart,
   mission,
   replay,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   mission?: MissionProps;
   replay?: OnecardReplayProps;
 }) {
@@ -468,7 +473,7 @@ export function OnecardGame({
     shoutEvents,
     dealing,
   } = useOnecard();
-  const fairShuffling = useHwatuFair((s) => s.shuffling);
+  const fairShuffling = useFairBar((s) => s.shuffling);
   const submit = useOnecard((s) => s.submit);
   const shout = useOnecard((s) => s.shout);
   const resign = useOnecard((s) => s.resign);
@@ -984,14 +989,12 @@ export function OnecardGame({
                   />
                   <RankTable view={view} name={name} />
                   {!mission && !replay && (
-                    <div className="flex justify-center gap-2">
-                      <ActionButton onClick={onExit}>다시 하기</ActionButton>
-                      <a
-                        href="/"
-                        className="rounded-xl bg-white/15 px-4 py-2 font-semibold text-sm hover:bg-white/25"
-                      >
-                        게임 목록
-                      </a>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <RoundEndButtons
+                        onRestart={online ? undefined : onRestart}
+                        onHome={onExit}
+                        {...PANEL_BUTTONS}
+                      />
                     </div>
                   )}
                 </Panel>
@@ -1202,7 +1205,7 @@ export function OnecardGame({
                 top: layout.hud.y + layout.hud.h + 6,
               }}
             >
-              <HwatuFairBar me={me} over={over} />
+              <FairBar me={me} over={over} />
             </div>
           )}
 

@@ -7,7 +7,7 @@ import type {
   JanggiView,
 } from "@game/janggi-engine";
 
-import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
+import { boardRoom } from "@/components/board-room";
 
 import { janggiKit } from "./kit";
 import { janggiSession } from "./session";
@@ -15,13 +15,13 @@ import { BIKJANG_INFO } from "./settings";
 import { useJanggi } from "./store";
 
 /** 친구와 장기(`BoardOnlineScreen`)에서 장기만 다른 것 */
-export const janggiOnline: BoardOnlineGame<
+export const janggiOnline = boardRoom<
   JanggiRules,
   JanggiState,
   JanggiView,
   Action,
   GameEvent
-> = {
+>({
   kit: janggiKit,
   name: "장기",
   shareTitle: "장기 한 판 두자",
@@ -34,4 +34,4 @@ export const janggiOnline: BoardOnlineGame<
   },
   rulesNote: (rules) =>
     BIKJANG_INFO.find((v) => v.value === rules.bikjang)?.description ?? "",
-};
+});

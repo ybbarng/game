@@ -52,7 +52,7 @@ export function describeAction(action: Action): string {
     case "continue":
       return "다음 판";
     case "retire":
-      return "끝내기";
+      return "그만하기";
   }
 }
 

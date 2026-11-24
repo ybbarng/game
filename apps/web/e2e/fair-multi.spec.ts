@@ -494,16 +494,16 @@ for (const [preset, players] of [
       });
       await a.screenshot({ path: info.outputPath("waiting.png") });
       await expect(
-        a.getByRole("button", { name: "끝내기", exact: true }),
+        a.getByRole("button", { name: "그만하기", exact: true }),
       ).toBeVisible({
         timeout: 30_000,
       });
-      await a.getByRole("button", { name: "끝내기", exact: true }).click();
+      await a.getByRole("button", { name: "그만하기", exact: true }).click();
       await expect(b.getByTestId("end-vote-count")).toHaveText(/끝내기 1\/2표/);
       await host.getByRole("button", { name: "더 기다리기" }).click();
       await b.screenshot({ path: info.outputPath("voting.png") });
       await expect(host.getByText("점수판")).toBeVisible();
-      await b.getByRole("button", { name: "끝내기", exact: true }).click();
+      await b.getByRole("button", { name: "그만하기", exact: true }).click();
       for (const p of [host, a, b]) {
         await expect(p.getByText("게임을 중간에 끝냈어요")).toBeVisible({
           timeout: 30_000,

@@ -217,6 +217,10 @@ function BadukPuzzleRun({
   const target = targetOf(puzzle);
 
   const legal = status === "play" ? legalPoints(state) : [];
+  const place = (at: number) => {
+    setAim(null);
+    run.play(at);
+  };
   const capture = puzzle.kind === "capture" ? CAPTURE_TEXT[puzzle.theme] : null;
   const ko = puzzle.kind === "kofight" ? KO_FIGHT_TEXT[puzzle.mode] : null;
   const endgame = puzzle.kind === "endgame" ? ENDGAME_TEXT[puzzle.mode] : null;
@@ -278,12 +282,22 @@ function BadukPuzzleRun({
           lastMove={run.lastMove}
           aim={aim}
           onAim={setAim}
-          onPlace={(at) => {
-            setAim(null);
-            run.play(at);
-          }}
+          onPlace={place}
           marks={marks}
         />
+      }
+      extraButtons={
+        // 겨눈 자리(손가락 첫 누름·화살표·힌트)는 대국 화면처럼 확정 단추로도 둔다.
+        aim !== null &&
+        state.board[aim] === 0 && (
+          <button
+            type="button"
+            onClick={() => place(aim)}
+            className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+          >
+            여기 두기
+          </button>
+        )
       }
       status={status}
       prompt={prompt}

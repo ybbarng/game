@@ -11,7 +11,8 @@ import {
 } from "./test";
 
 const status = (page: Page) => page.getByRole("status").first();
-const over = (page: Page) => page.getByRole("button", { name: "다시 하기" });
+/** 게임이 끝나면 혼자 하기·온라인 모두 「처음으로」가 뜬다(「다시 하기」는 혼자 하기만) */
+const over = (page: Page) => page.getByRole("button", { name: "처음으로" });
 const board = (page: Page) => page.locator("[data-galaxy-board]");
 const rollButton = (page: Page) => page.locator("[data-roll]");
 const buyButton = (page: Page) => page.locator("[data-buy]:enabled");

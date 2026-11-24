@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
 import {
@@ -461,6 +461,18 @@ export function ChessApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
+  const startSolo = () => {
+    const s = useChessSettings.getState();
+    useChess.getState().newGame({
+      rules: {
+        winsToFinish: s.winsToFinish,
+        ...(s.time !== "none" ? { time: s.time } : {}),
+      },
+      level: s.level,
+      pick: s.pick,
+    });
+  };
   // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
   const reviewOf = (queue: Review, current: string) =>
     reviewRunFor({
@@ -473,7 +485,7 @@ export function ChessApp() {
 
   if (screen.kind === "online")
     return (
-      <BoardOnlineScreen
+      <RoomScreen
         game={chessOnline}
         rules={{ winsToFinish, ...(time !== "none" ? { time } : {}) }}
         roomFromUrl={screen.room}
@@ -482,7 +494,8 @@ export function ChessApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <ChessGame onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <ChessGame onExit={backToStart} onRestart={startSolo} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -559,17 +572,7 @@ export function ChessApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useChess.getState().resume(saved);
-        else {
-          const s = useChessSettings.getState();
-          useChess.getState().newGame({
-            rules: {
-              winsToFinish: s.winsToFinish,
-              ...(s.time !== "none" ? { time: s.time } : {}),
-            },
-            level: s.level,
-            pick: s.pick,
-          });
-        }
+        else startSolo();
         setScreen({ kind: "playing" });
       }}
     />

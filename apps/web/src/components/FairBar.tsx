@@ -1,55 +1,12 @@
 "use client";
 
-import type { BusyReason } from "@game/fair-play";
-import { create } from "zustand";
-
-import type { EndVoteState, IncidentState } from "@/components/FairOverlays";
-
-/**
- * 화투 세 게임의 암호화방(멘탈 포커) 표시 상태. 마이티·하트는 게임 가게에 두지만, 화투 셋은 같은 띠를 쓰므로
- * 따로 하나만 둔다(`bindFair`·`reportIncident`가 그대로 받는 모양)
- */
-interface HwatuFairState {
-  incident: IncidentState | null;
-  shuffling: BusyReason | null;
-  setShuffling(reason: BusyReason | null): void;
-  fair: boolean;
-  endGame: (() => void) | null;
-  endVote: EndVoteState | null;
-  voteEnd: ((end: boolean) => void) | null;
-  /** 자리 이름과 연결이 끊긴 사람 자리(대기실 정보) */
-  names: string[];
-  offline: number[];
-  /** 혼자 하기·일반방으로 바꿀 때 지운다 */
-  reset(): void;
-}
-
-export const useHwatuFair = create<HwatuFairState>()((set) => ({
-  incident: null,
-  shuffling: null,
-  setShuffling: (shuffling) => set({ shuffling }),
-  fair: false,
-  endGame: null,
-  endVote: null,
-  voteEnd: null,
-  names: [],
-  offline: [],
-  reset: () =>
-    set({
-      incident: null,
-      shuffling: null,
-      fair: false,
-      endGame: null,
-      endVote: null,
-      voteEnd: null,
-    }),
-}));
+import { useFairBar } from "@/net/fair-bar";
 
 /**
  * 암호화방 띠: 함께 섞는 중, 부정 감지(누가·무엇을), 끊긴 사람을 기다리는 동안 끝내기·투표.
- * 온라인 대국 화면 위쪽에 놓는다
+ * 화투 셋·원카드의 온라인 대국 화면 위쪽에 놓는다(마이티·하트는 판 위에 `FairOverlays`로 그린다)
  */
-export function HwatuFairBar({
+export function FairBar({
   me,
   over,
 }: {
@@ -66,7 +23,7 @@ export function HwatuFairBar({
     voteEnd,
     names,
     offline,
-  } = useHwatuFair();
+  } = useFairBar();
   if (!fair) return null;
   const nameOf = (seat: number) =>
     seat === me ? "내 자리" : (names[seat] ?? `${seat + 1}번 자리`);
@@ -122,7 +79,7 @@ export function HwatuFairBar({
                     onClick={() => voteEnd(true)}
                     className="rounded-lg bg-rose-500 px-2 py-0.5 font-semibold"
                   >
-                    끝내기
+                    그만하기
                   </button>
                   <button
                     type="button"
@@ -145,7 +102,7 @@ export function HwatuFairBar({
               onClick={endGame}
               className="rounded-lg bg-rose-500 px-3 py-1 font-semibold"
             >
-              게임 끝내기
+              그만하기
             </button>
           ) : null}
         </div>

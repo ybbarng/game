@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { reviewRunFor } from "@/components/study/review-run";
 import { StudyHome } from "@/components/study/StudyHome";
 import {
@@ -481,6 +481,24 @@ export function BadukApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useBadukSettings.getState();
+    useBaduk.getState().newGame({
+      rules: {
+        size: s.size,
+        komi: s.komi,
+        winsToFinish: s.winsToFinish,
+        ...(s.time !== "none" ? { time: s.time } : {}),
+      },
+      level: s.level,
+      pick: s.pick,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
   // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
   const reviewOf = (queue: Review, current: string) =>
     reviewRunFor({
@@ -493,7 +511,7 @@ export function BadukApp() {
 
   if (screen.kind === "online")
     return (
-      <BoardOnlineScreen
+      <RoomScreen
         game={badukOnline}
         rules={{
           size,
@@ -507,7 +525,8 @@ export function BadukApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <BadukGame onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <BadukGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -589,21 +608,7 @@ export function BadukApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useBaduk.getState().resume(saved);
-        else {
-          const s = useBadukSettings.getState();
-          const seed = seedFromUrl();
-          useBaduk.getState().newGame({
-            rules: {
-              size: s.size,
-              komi: s.komi,
-              winsToFinish: s.winsToFinish,
-              ...(s.time !== "none" ? { time: s.time } : {}),
-            },
-            level: s.level,
-            pick: s.pick,
-            ...(seed !== undefined ? { seed } : {}),
-          });
-        }
+        else startSolo(seedFromUrl());
         setScreen({ kind: "playing" });
       }}
     />

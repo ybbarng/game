@@ -156,7 +156,7 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await page.screenshot({ path: info.outputPath("baduk-end.png") });
 
   // 다 끝난 게임은 이어하기에 남지 않는다.
-  await page.getByRole("button", { name: "다시 하기" }).click();
+  await page.getByRole("button", { name: "처음으로" }).click();
   await expect(page.getByRole("button", { name: /나홀로 바둑/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -390,7 +390,9 @@ test(
     await page.getByRole("button", { name: "다시 하기" }).click();
 
     // 정답: F2에서 단수 → 백이 받고(달아날 곳이 없어 쉰다) → 따낸다.
-    await placeAt(page, "F2", touch);
+    // 힌트는 F2를 겨눠 두고, 대국 화면처럼 「여기 두기」로 둔다.
+    await page.getByRole("button", { name: "힌트" }).click();
+    await page.getByRole("button", { name: "여기 두기" }).click();
     await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요.", {
       timeout: 10_000,
     });

@@ -118,7 +118,7 @@
 
 - `packages/nyrongppong-engine`: `rules.ts`(규칙·문자열), `hand.ts`(카드 값·자연뽕·약), `state.ts`(상태·행동·사건·화면), `match.ts`(`createMatch`·`step`·`viewOf`·`pendingSeats`·`replay`·`callClock`·`callWinner`), `scenario.ts`(튜토리얼 장면, 응답 창이 열린 장면 포함)
 - `packages/nyrongppong-ai`: `bots.ts`(입문·중수), `expert.ts`(고수·짐작), `simulate.ts`, `bots.strength.ts`
-- `apps/web/src/nyrongppong/`: `kit.ts`(GameKit·내 기록·해설), `settings.ts`, `store.ts`, `session.ts`, `progress.ts`, `tutorial.ts`, `icon-art.tsx`, `components/`(App·Game·OnlineScreen·Replay·Stats·tutorial)
+- `apps/web/src/nyrongppong/`: `kit.ts`(GameKit·내 기록·해설), `settings.ts`, `store.ts`, `session.ts`, `progress.ts`, `tutorial.ts`, `icon-art.tsx`, `components/`(App·Game·Replay·Stats·tutorial), `online.ts`(공통 `RoomScreen` 설정)
 - `apps/web/src/app/nyrongppong/`: 페이지·아이콘·공유 그림
 
 ## 7. 설계 다섯 질문(데이터 계약: 규칙 문자열·행동 기록·온라인 화면)

@@ -10,6 +10,7 @@ import type { TutorialKit } from "@/components/tutorial/kit";
 import { DEFAULT_BOT_NAMES } from "@/game/bot-names";
 import { browserPace } from "@/game/bots";
 import { LocalMatch } from "@/game/local-match";
+import { useFairBar } from "@/net/fair-bar";
 import { useHeartsTutorialProgress } from "@/tutorial/progress";
 
 import { heartsKit } from "../kit";
@@ -53,12 +54,7 @@ export const heartsTutorial: TutorialKit<
         : {}),
     });
     useHearts.getState().attachOnline(match, NAMES);
-    useHearts.setState({
-      fair: false,
-      endGame: null,
-      endVote: null,
-      voteEnd: null,
-    });
+    useFairBar.getState().reset();
   },
   subscribe: (listener) =>
     useHearts.subscribe((state, prev) => {

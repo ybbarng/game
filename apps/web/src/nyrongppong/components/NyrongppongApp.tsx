@@ -13,13 +13,16 @@ import {
 } from "@game/nyrongppong-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { cn } from "@/lib/cn";
+import { seedFromUrl } from "@/lib/url-seed";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { nyrongppongRoom } from "../online";
 import { useNyrongppongTutorialProgress } from "../progress";
 import { endNyrongppongSession } from "../session";
 import {
@@ -36,7 +39,6 @@ import {
 } from "../store";
 import { NYRONGPPONG_LESSONS } from "../tutorial";
 import { NYRONGPPONG_BG, NyrongppongGame } from "./NyrongppongGame";
-import { NyrongppongOnlineScreen } from "./NyrongppongOnlineScreen";
 import { nyrongppongTutorial } from "./nyrongppong-tutorial";
 
 function Chip({
@@ -407,10 +409,23 @@ export function NyrongppongApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useNyrongppongSettings.getState();
+    useNyrongppong.getState().newGame({
+      rules: rulesOf(s),
+      level: s.level,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
 
   if (screen.kind === "online")
     return (
-      <NyrongppongOnlineScreen
+      <RoomScreen
+        game={nyrongppongRoom}
         rules={rules}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}
@@ -419,7 +434,9 @@ export function NyrongppongApp() {
       />
     );
   if (screen.kind === "playing")
-    return <NyrongppongGame onExit={backToStart} />;
+    return (
+      <NyrongppongGame onExit={backToStart} onRestart={() => startSolo()} />
+    );
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -457,17 +474,7 @@ export function NyrongppongApp() {
             clearNyrongppong();
             return;
           }
-        } else {
-          const s = useNyrongppongSettings.getState();
-          const seed = Number(
-            new URLSearchParams(window.location.search).get("seed"),
-          );
-          useNyrongppong.getState().newGame({
-            rules: rulesOf(s),
-            level: s.level,
-            ...(Number.isInteger(seed) && seed > 0 ? { seed } : {}),
-          });
-        }
+        } else startSolo(seedFromUrl());
         setScreen({ kind: "playing" });
       }}
     />

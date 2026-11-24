@@ -7,7 +7,7 @@ import type {
   GameEvent,
 } from "@game/chess-engine";
 
-import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
+import { boardRoom } from "@/components/board-room";
 
 import { chessKit } from "./kit";
 import { chessSession } from "./session";
@@ -20,13 +20,13 @@ const WINS_LABEL: Record<number, string> = {
 };
 
 /** 친구와 체스(`BoardOnlineScreen`)에서 체스만 다른 것 */
-export const chessOnline: BoardOnlineGame<
+export const chessOnline = boardRoom<
   ChessRules,
   ChessState,
   ChessView,
   Action,
   GameEvent
-> = {
+>({
   kit: chessKit,
   name: "체스",
   shareTitle: "체스 한 판 두자",
@@ -38,4 +38,4 @@ export const chessOnline: BoardOnlineGame<
       WINS_LABEL[rules.winsToFinish] ?? `${rules.winsToFinish}승 먼저`;
     return `${wins} · 첫 판 백(먼저 둠)은 무작위 · 판마다 백·흑 바꿈`;
   },
-};
+});

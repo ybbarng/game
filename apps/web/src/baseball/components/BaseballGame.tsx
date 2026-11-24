@@ -15,6 +15,7 @@ import { GameClock } from "@/components/GameClock";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
+import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
   MissionOverlay,
@@ -155,9 +156,12 @@ function RevealPanel({
 /** 대국 화면: 마주 앉은 경기처럼 위(맞은편)에 상대 자리, 가운데 전광판, 아래(내 쪽)에 내 자리와 숫자 패드. 가로 화면은 패드를 오른쪽에 */
 export function BaseballGame({
   onExit,
+  onRestart,
   mission,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션이면 목표 띠를 얹는다 */
   mission?: MissionProps;
 }) {
@@ -569,21 +573,10 @@ export function BaseballGame({
               </button>
             )}
             {gameOver && !mission && (
-              <>
-                <button
-                  type="button"
-                  onClick={onExit}
-                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-                >
-                  다시 하기
-                </button>
-                <a
-                  href="/"
-                  className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-                >
-                  게임 목록
-                </a>
-              </>
+              <RoundEndButtons
+                onRestart={online ? undefined : onRestart}
+                onHome={onExit}
+              />
             )}
           </div>
         )}

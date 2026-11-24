@@ -24,6 +24,7 @@ import { HintButton, useHint } from "@/components/HintButton";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
+import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import {
   MissionOverlay,
@@ -146,10 +147,13 @@ const CAPTURE_ORDER: readonly Kind[] = ["R", "C", "N", "E", "A", "P", "K"];
 /** 대국 화면 */
 export function JanggiGame({
   onExit,
+  onRestart,
   mission,
   exitLabel = "← 장기",
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 머리줄 나가기 단추 글(배우기에서 연 연습 대국은 「← 배우기」) */
   exitLabel?: string;
   /** 튜토리얼 미션이면 목표 띠를 얹는다 */
@@ -449,18 +453,10 @@ export function JanggiGame({
             )}
             {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
             {gameOver && !mission && (
-              <>
-                <button
-                  type="button"
-                  onClick={onExit}
-                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-                >
-                  다시 하기
-                </button>
-                <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-                  게임 목록
-                </a>
-              </>
+              <RoundEndButtons
+                onRestart={online ? undefined : onRestart}
+                onHome={onExit}
+              />
             )}
           </div>
         )

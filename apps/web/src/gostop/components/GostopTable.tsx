@@ -12,8 +12,10 @@ import {
 } from "@game/gostop-engine";
 import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
 import { useEffect, useState } from "react";
+import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
+import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { SeatPlateFrame } from "@/components/SeatPlate";
 import type { MissionProps } from "@/components/tutorial/MissionOverlay";
@@ -46,7 +48,6 @@ import {
   HwatuStage,
   HwatuVerifyLines,
 } from "@/hwatu/components/HwatuTable";
-import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
 import {
   endBoxRect,
@@ -268,9 +269,12 @@ const SECONDARY = HWATU_SECONDARY;
  */
 export function GostopTable({
   onExit,
+  onRestart,
   mission,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션이면 목표 띠를 얹는다 */
   mission?: MissionProps;
 }) {
@@ -474,14 +478,12 @@ export function GostopTable({
         </button>
       )}
       {view.phase === "gameOver" && !mission && (
-        <>
-          <button type="button" onClick={onExit} className={PRIMARY}>
-            다시 하기
-          </button>
-          <a href="/" className={SECONDARY}>
-            게임 목록
-          </a>
-        </>
+        <RoundEndButtons
+          onRestart={online ? undefined : onRestart}
+          onHome={onExit}
+          primaryClass={PRIMARY}
+          secondaryClass={SECONDARY}
+        />
       )}
     </div>
   );
@@ -651,7 +653,7 @@ export function GostopTable({
           invalid={invalid}
           onExit={onExit}
         >
-          <HwatuFairBar me={me} over={view.phase === "gameOver"} />
+          <FairBar me={me} over={view.phase === "gameOver"} />
         </HwatuOnlineNotes>
       )}
 

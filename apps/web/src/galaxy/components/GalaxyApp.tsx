@@ -8,8 +8,8 @@ import {
   type ScenarioStar,
 } from "@game/galaxy-engine";
 import { useEffect, useState } from "react";
-import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import {
   TimePresetPicker,
   timePresetLabel,
@@ -496,9 +496,21 @@ export function GalaxyApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 시험용 갈고리를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useGalaxySettings.getState();
+    useGalaxy.getState().newGame({
+      rules: rulesFromSettings(s),
+      level: s.level,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
   if (screen.kind === "online")
     return (
-      <BoardOnlineScreen
+      <RoomScreen
         game={galaxyOnline}
         rules={rulesFromSettings(settings)}
         roomFromUrl={screen.room}
@@ -507,7 +519,8 @@ export function GalaxyApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <GalaxyGame onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <GalaxyGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "options") return <GalaxyOptions onBack={backToStart} />;
   if (screen.kind === "rules")
     return <GalaxyRulesScreen onBack={backToStart} />;
@@ -556,16 +569,7 @@ export function GalaxyApp() {
             level,
             dice,
           );
-        } else {
-          const s = useGalaxySettings.getState();
-          useGalaxy.getState().newGame({
-            rules: rulesFromSettings(s),
-            level: s.level,
-            ...(hooks.__galaxySeed !== undefined
-              ? { seed: hooks.__galaxySeed }
-              : {}),
-          });
-        }
+        } else startSolo(hooks.__galaxySeed);
         setScreen({ kind: "playing" });
       }}
     />

@@ -1,4 +1,3 @@
-import type { BusyReason } from "@game/fair-play";
 import type {
   Action,
   CompletedTrick,
@@ -9,7 +8,7 @@ import type {
 } from "@game/mighty-engine";
 import { isJoker, mightyOf } from "@game/mighty-engine";
 import { create } from "zustand";
-import type { EndVoteState } from "@/components/FairOverlays";
+import { useFairBar } from "@/net/fair-bar";
 import {
   ArchiveRecorder,
   type ArchiveTarget,
@@ -108,26 +107,6 @@ interface GameStore {
   offlineSeats: number[];
   /** 판 끝 검증에서 누군가 문제를 찾았다. 이 게임은 무효로 본다 */
   invalid: string | null;
-  /**
-   * 부정을 찾아 판을 멈췄다(멘탈 포커). `own`이면 내 기기가 찾은 것, 아니면 판을 진행하는 방장이 알린 것.
-   * `seat`가 null이면 누군지 가릴 수 없다
-   */
-  incident: { seat: number | null; reason: string; own: boolean } | null;
-  /**
-   * 멘탈 포커 판: 내 카드를 아직 다 열지 못했다. 판 시작 섞기(`deal`), 6·7마 다시 섞기(`redeal`),
-   * 그 밖에 바닥 카드·증명을 기다리는 중(`wait`)
-   */
-  shuffling: BusyReason | null;
-  /** 섞는 연출(`ShuffleLoop`)을 시작한 시각. 나눠 줄 때 남은 섞기 연출 시간을 정한다 */
-  shuffleStartedAt: number | null;
-  setShuffling(reason: BusyReason | null): void;
-  /** 멘탈 포커 판인가(연결이 끊긴 사람을 컴퓨터가 대신하지 않고 기다린다) */
-  fair: boolean;
-  /** 방장: 연결이 끊긴 사람을 더 기다리지 않고 게임을 끝낸다(멘탈 포커) */
-  endGame: (() => void) | null;
-  /** 멘탈 포커: 끊긴 사람을 오래 기다려 연 끝내기 투표와 내 표 내기 */
-  endVote: EndVoteState | null;
-  voteEnd: ((end: boolean) => void) | null;
   /** 다른 사람과 하는 온라인 대전인가. 카드 툴팁 같은 도움 기능을 끈다(원작 `bUseHintInNetwork`) */
   network: boolean;
   newGame(options: NewGameOptions): void;
@@ -223,7 +202,7 @@ export const useGame = create<GameStore>((set, get) => {
         ...others.map((e) => EVENT_DELAY[e.type] ?? 150),
       );
       // 멘탈 포커로 실제로 섞는 동안 섞는 연출을 보였으면 최소 시간에서 남은 만큼만 더 섞는다.
-      const since = get().shuffleStartedAt;
+      const since = useFairBar.getState().shuffleStartedAt;
       const shuffleMs =
         since === null
           ? SHUFFLE_MS
@@ -252,8 +231,8 @@ export const useGame = create<GameStore>((set, get) => {
           startDelay,
           shuffleMs,
         },
-        shuffleStartedAt: null,
       });
+      useFairBar.setState({ shuffleStartedAt: null });
       // 연출 컴포넌트가 실제 시간으로 돌기 때문에 빨리 감지 않는다.
       wait(
         startDelay +
@@ -344,10 +323,8 @@ export const useGame = create<GameStore>((set, get) => {
       seatNames: options.seatNames,
       network: options.network ?? false,
       invalid: null,
-      incident: null,
-      shuffling: null,
-      shuffleStartedAt: null,
     });
+    useFairBar.getState().clearRound();
     const persist = () => {
       if (options.save && host instanceof LocalMatch) saveGame(host.save());
     };
@@ -410,22 +387,6 @@ export const useGame = create<GameStore>((set, get) => {
     offlineSeats: [],
     network: false,
     invalid: null,
-    incident: null,
-    shuffling: null,
-    shuffleStartedAt: null,
-    setShuffling(reason) {
-      const { shuffling, shuffleStartedAt } = get();
-      // 판 시작 섞기를 시작할 때 섞는 연출 시작 시각을 적는다(다 나눠 줄 때까지 둔다).
-      const starting = reason === "deal" && shuffling !== "deal";
-      set({
-        shuffling: reason,
-        shuffleStartedAt: starting ? Date.now() : shuffleStartedAt,
-      });
-    },
-    fair: false,
-    endGame: null,
-    endVote: null,
-    voteEnd: null,
 
     newGame(options) {
       track("game-start", { game: "mighty", mode: "solo" });
@@ -447,7 +408,7 @@ export const useGame = create<GameStore>((set, get) => {
         stats: { game: "mighty", mode: "solo", key: `solo:${seed}` },
         archive: soloArchive("mighty", `solo:${seed}`),
       });
-      set({ fair: false, endGame: null, endVote: null, voteEnd: null });
+      useFairBar.getState().reset();
     },
 
     resume(saved) {
@@ -467,6 +428,7 @@ export const useGame = create<GameStore>((set, get) => {
           archive: soloArchive("mighty", `solo:${saved.seed}`),
         },
       );
+      useFairBar.getState().reset();
     },
 
     attachOnline(host, seatNames, options) {
@@ -481,7 +443,7 @@ export const useGame = create<GameStore>((set, get) => {
 
     attachReplay(host, seatNames) {
       attach(host, { save: false, seatNames });
-      set({ fair: false, endGame: null, endVote: null, voteEnd: null });
+      useFairBar.getState().reset();
     },
 
     setSeatNames(seatNames) {
@@ -523,10 +485,8 @@ export const useGame = create<GameStore>((set, get) => {
         busy: false,
         network: false,
         invalid: null,
-        incident: null,
-        shuffling: null,
-        shuffleStartedAt: null,
       });
+      useFairBar.getState().reset();
     },
   };
 });

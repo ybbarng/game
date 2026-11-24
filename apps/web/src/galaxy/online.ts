@@ -14,7 +14,7 @@ import {
 } from "@game/galaxy-engine";
 import { createRng } from "@game/mighty-engine";
 
-import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
+import { boardRoom } from "@/components/board-room";
 import type { KitTimer } from "@/game/kit";
 
 import { bidAction } from "./chain";
@@ -253,13 +253,13 @@ export function galaxyRulesSummary(rules: GalaxyRules): string {
  * 친구와 은하 한 바퀴(`BoardOnlineScreen`)에서 이 게임만 다른 것. 2~4명, 빈자리는 컴퓨터.
  * 주사위 사슬 씨앗과 봉투 값·소금은 저장소(`store.ts`)가 이 기기에만 두고, 약속·공개를 자동으로 낸다
  */
-export const galaxyOnline: BoardOnlineGame<
+export const galaxyOnline = boardRoom<
   GalaxyRules,
   GalaxyState,
   GalaxyView,
   Action,
   GameEvent
-> = {
+>({
   kit: galaxyOnlineKit,
   name: "은하 한 바퀴",
   shareTitle: "은하 한 바퀴 한 판 하자",
@@ -269,4 +269,4 @@ export const galaxyOnline: BoardOnlineGame<
   rulesSummary(rules) {
     return `${galaxyRulesSummary(rules)} · 결정마다 ${DECISION_MS / 1000}초`;
   },
-};
+});

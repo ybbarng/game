@@ -21,6 +21,7 @@ import { GameClock } from "@/components/GameClock";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
+import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
   MissionOverlay,
@@ -393,9 +394,12 @@ function DecisionTimer({ resetKey }: { resetKey: string }) {
 /** 대국 화면(docs/48 7절). PC·눕힌 폰은 판 왼쪽 + 오른쪽 칸, 세로 폰은 판 아래로 쌓는다 */
 export function GalaxyGame({
   onExit,
+  onRestart,
   mission,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 배우기 미션: 판 위에 목표 띠와 성공·실패 안내를 얹는다 */
   mission?: MissionProps;
 }) {
@@ -852,21 +856,11 @@ export function GalaxyGame({
             />
           )}
           {gameOver && !mission && (
-            <>
-              <button
-                type="button"
-                onClick={onExit}
-                className="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
-              >
-                다시 하기
-              </button>
-              <a
-                href="/"
-                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-              >
-                게임 목록
-              </a>
-            </>
+            <RoundEndButtons
+              onRestart={online ? undefined : onRestart}
+              onHome={onExit}
+              primaryClass="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
+            />
           )}
         </div>
       )}

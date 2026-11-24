@@ -166,7 +166,7 @@ function describe(action: unknown): string {
     case "resign":
       return "기권";
     case "retire":
-      return "끝내기";
+      return "그만하기";
     case "timeout":
       return "시간패";
   }

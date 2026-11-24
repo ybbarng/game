@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import {
   TimePresetPicker,
   timePresetLabel,
@@ -396,10 +396,22 @@ export function BaseballApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useBaseballSettings.getState();
+    useBaseball.getState().newGame({
+      rules: rulesFromSettings(s),
+      level: s.level,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
 
   if (screen.kind === "online")
     return (
-      <BoardOnlineScreen
+      <RoomScreen
         game={baseballOnline}
         rules={rulesFromSettings(settings, true)}
         roomFromUrl={screen.room}
@@ -408,7 +420,8 @@ export function BaseballApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <BaseballGame onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <BaseballGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -438,15 +451,7 @@ export function BaseballApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useBaseball.getState().resume(saved);
-        else {
-          const s = useBaseballSettings.getState();
-          const seed = seedFromUrl();
-          useBaseball.getState().newGame({
-            rules: rulesFromSettings(s),
-            level: s.level,
-            ...(seed !== undefined ? { seed } : {}),
-          });
-        }
+        else startSolo(seedFromUrl());
         setScreen({ kind: "playing" });
       }}
     />

@@ -3,6 +3,7 @@
 import { YAK_DESCRIPTIONS, YAK_NAMES } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/RoomScreen";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -11,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { ro, topic } from "@/lib/josa";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { minhwatuRoom } from "../online";
 import { useMinhwatuTutorialProgress } from "../progress";
 import { describeRules } from "../rules-text";
 import { endMinhwatuSession } from "../session";
@@ -29,7 +31,6 @@ import {
   useMinhwatu,
 } from "../store";
 import { MINHWATU_LESSONS } from "../tutorial";
-import { MinhwatuOnlineScreen } from "./MinhwatuOnlineScreen";
 import { MINHWATU_BG, MinhwatuTable } from "./MinhwatuTable";
 import { minhwatuTutorial } from "./minhwatu-tutorial";
 
@@ -372,10 +373,23 @@ export function MinhwatuApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useMinhwatuSettings.getState();
+    useMinhwatu.getState().newGame({
+      rules: rulesOf(s),
+      level: s.level,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
 
   if (screen.kind === "online")
     return (
-      <MinhwatuOnlineScreen
+      <RoomScreen
+        game={minhwatuRoom}
         rules={rulesOf(settings)}
         roomFromUrl={screen.room}
         {...(screen.resume ? { resume: screen.resume } : {})}
@@ -383,7 +397,8 @@ export function MinhwatuApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <MinhwatuTable onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <MinhwatuTable onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -413,15 +428,7 @@ export function MinhwatuApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useMinhwatu.getState().resume(saved);
-        else {
-          const s = useMinhwatuSettings.getState();
-          const seed = seedFromUrl();
-          useMinhwatu.getState().newGame({
-            rules: rulesOf(s),
-            level: s.level,
-            ...(seed !== undefined ? { seed } : {}),
-          });
-        }
+        else startSolo(seedFromUrl());
         setScreen({ kind: "playing" });
       }}
     />

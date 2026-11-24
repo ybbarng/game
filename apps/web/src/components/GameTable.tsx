@@ -40,6 +40,7 @@ import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
+import { useFairBar } from "@/net/fair-bar";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
 import {
@@ -103,12 +104,15 @@ function waitingText(
 
 export function GameTable({
   onExit,
+  onRestart,
   mission,
   hints = false,
   openHands = null,
   topInset = 0,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션 목표와 결과 안내 */
   mission?: MissionProps;
   /** 컴퓨터가 추천하는 카드에 빛을 낸다 */
@@ -156,12 +160,12 @@ export function GameTable({
   const botNames = useSettings((s) => s.botNames);
   const network = useGame((s) => s.network);
   const invalid = useGame((s) => s.invalid);
-  const incident = useGame((s) => s.incident);
-  const shuffling = useGame((s) => s.shuffling);
-  const fair = useGame((s) => s.fair);
-  const endGame = useGame((s) => s.endGame);
-  const endVote = useGame((s) => s.endVote);
-  const voteEnd = useGame((s) => s.voteEnd);
+  const incident = useFairBar((s) => s.incident);
+  const shuffling = useFairBar((s) => s.shuffling);
+  const fair = useFairBar((s) => s.fair);
+  const endGame = useFairBar((s) => s.endGame);
+  const endVote = useFairBar((s) => s.endVote);
+  const voteEnd = useFairBar((s) => s.voteEnd);
   const chatMessages = useChat((s) => s.messages);
   const chatUnread = useChat((s) => s.unread);
   const chatOpen = useChat((s) => s.open);
@@ -986,7 +990,8 @@ export function GameTable({
                       startMoney={startMoney}
                       seatName={seatName}
                       onSubmit={act}
-                      onNewGame={onExit}
+                      onHome={onExit}
+                      onRestart={network ? undefined : onRestart}
                     />
                   ) : waiting ? (
                     <p className="text-center text-sm opacity-80">{waiting}</p>
