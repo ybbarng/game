@@ -14,7 +14,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:changed": "vitest run --changed origin/main && pnpm test:always",
-    "test:always": "vitest run scripts/affected-e2e.test.mjs scripts/native-parity.test.mjs scripts/repo-reading-tests.test.mjs",
+    "test:always": "vitest run scripts/affected-e2e.test.mjs scripts/native-parity.test.mjs scripts/repo-reading-tests.test.mjs scripts/fair-test-random.test.mjs",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "check": "pnpm lint && pnpm typecheck && pnpm test",

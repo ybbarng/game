@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./clock": "./src/clock.ts",
-    "./group": "./src/group.ts"
+    "./group": "./src/group.ts",
+    "./test-random": "./src/test-random.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

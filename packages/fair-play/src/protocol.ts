@@ -11,6 +11,7 @@ import {
   type SraGroup,
   unlockExponent,
 } from "./sra";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 멘탈 포커 절차(docs/13-mental-poker.md). 기기마다 Party 하나, 나머지는 모두가 보는 공개 정보다.
@@ -111,15 +112,28 @@ export class Party {
   /** 내가 연 카드 */
   readonly hand = new Map<number, Card>();
 
-  constructor(id: number, g: SraGroup) {
+  /** 시험 전용 난수원(`test-random.ts`). 없으면(제품) Web Crypto */
+  private readonly testRandom: SeededTestRandom | null;
+
+  constructor(id: number, g: SraGroup, testRandom?: SeededTestRandom) {
     this.id = id;
     this.g = g;
+    this.testRandom = testRandom ?? null;
+  }
+
+  /** 열쇠 하나·섞기 하나마다 따로 뽑는다. 시험 난수원이면 이름만으로 정해져 계산 차례와 상관없다 */
+  private below(name: string): (max: bigint) => bigint {
+    return this.testRandom ? this.testRandom.stream(name) : randomBelow;
+  }
+
+  private newKey(name: string): bigint {
+    return newPassKey(this.g, this.below(name));
   }
 
   private pass(name: string): bigint {
     let key = this.passes.get(name);
     if (key === undefined) {
-      key = newPassKey(this.g);
+      key = this.newKey(`pass:${name}`);
       this.passes.set(name, key);
     }
     return key;
@@ -129,7 +143,7 @@ export class Party {
     let key = this.slotKeys.get(slot);
     if (key === undefined) {
       // 짧은 열쇠: 공개한 열쇠를 증명할 때(proof.ts) 거듭제곱이 짧아진다. 섞기 열쇠와 같은 크기라 안전하다.
-      key = newPassKey(this.g);
+      key = this.newKey(`slot:${slot}`);
       this.slotKeys.set(slot, key);
     }
     return key;
@@ -156,8 +170,9 @@ export class Party {
   ): Promise<bigint[]> {
     const key = this.pass(pass);
     const locked = await powEach(this.g, deck, () => key);
+    const below = this.below(`shuffle:${pass}`);
     for (let i = locked.length - 1; i > 0; i--) {
-      const j = Number(randomBelow(BigInt(i + 1)));
+      const j = Number(below(BigInt(i + 1)));
       [locked[i], locked[j]] = [locked[j] as bigint, locked[i] as bigint];
     }
     return locked;
@@ -239,8 +254,12 @@ export class Party {
     };
   }
 
-  static restore(g: SraGroup, s: PartySnapshot): Party {
-    const party = new Party(s.id, g);
+  static restore(
+    g: SraGroup,
+    s: PartySnapshot,
+    testRandom?: SeededTestRandom,
+  ): Party {
+    const party = new Party(s.id, g, testRandom);
     for (const [n, k] of s.passes) party.passes.set(n, BigInt(`0x${k}`));
     for (const [slot, k] of s.slotKeys)
       party.slotKeys.set(slot, BigInt(`0x${k}`));

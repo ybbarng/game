@@ -35,6 +35,7 @@ import {
 } from "./hearts";
 import type { FairControl } from "./messages";
 import type { PartySnapshot } from "./protocol";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 하트 멘탈 포커 진행(마이티의 coordinator·host-table·guest-seat에 해당).
@@ -342,6 +343,8 @@ export class HeartsHostTable {
     hooks: HeartsHostHooks;
     /** 새로고침 전에 남겨 둔 방장 기기 열쇠 */
     restore?: Record<number, PartySnapshot>;
+    /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+    testRandom?: SeededTestRandom;
     /** 제한 시간을 재는 시계. 시험은 ManualClock을 넣는다 */
     clock?: Clock;
   }) {
@@ -357,6 +360,7 @@ export class HeartsHostTable {
       sendTo: (m, device) => this.hooks.sendTo(m, device),
       clock: this.clock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.coordinator = new HeartsCoordinator({
       rules: this.rules,
@@ -677,6 +681,8 @@ export class HeartsGuestSeat {
       onSnapshot: (view: PlayerView, events: GameEvent[]) => void;
       onVerify: (deal: number, log: HeartsLogged[]) => void;
       restore?: Record<number, PartySnapshot>;
+      /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+      testRandom?: SeededTestRandom;
       /** 제한 시간을 재는 시계. 시험은 ManualClock을 넣는다 */
       clock?: Clock;
     },
@@ -691,6 +697,7 @@ export class HeartsGuestSeat {
       sendTo: (m, device) => options.sendTo(m, device),
       clock: options.clock ?? realClock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.coordinator = new HeartsCoordinator({
       rules: options.rules,

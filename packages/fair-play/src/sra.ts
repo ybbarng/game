@@ -171,18 +171,21 @@ export function isProbablePrime(n: bigint, rounds = 24): boolean {
 }
 
 /** 잠그는 열쇠: 1 ≤ k < q (q가 소수라 모두 역원이 있다) */
-export function newKey(g: SraGroup): bigint {
-  return 1n + randomBelow(g.q - 1n);
+export function newKey(g: SraGroup, below = randomBelow): bigint {
+  return 1n + below(g.q - 1n);
 }
 
 /** 섞을 때 쓰는 짧은 열쇠(곱셈군). 잠그기는 열쇠 길이만큼 걸리므로 빨라진다 */
-export function newShortKey(bits = 320): bigint {
-  return 1n + randomBelow((1n << BigInt(bits)) - 1n);
+export function newShortKey(bits = 320, below = randomBelow): bigint {
+  return 1n + below((1n << BigInt(bits)) - 1n);
 }
 
-/** 섞기·자리 열쇠: 군이 짧은 열쇠를 쓰면 그 길이로, 아니면 1 ≤ k < q */
-export function newPassKey(g: SraGroup): bigint {
-  return g.keyBits === null ? newKey(g) : newShortKey(g.keyBits);
+/**
+ * 섞기·자리 열쇠: 군이 짧은 열쇠를 쓰면 그 길이로, 아니면 1 ≤ k < q.
+ * `below`는 시험 난수원(`test-random.ts`)을 넘길 때만 준다. 제품은 비워 Web Crypto를 쓴다
+ */
+export function newPassKey(g: SraGroup, below = randomBelow): bigint {
+  return g.keyBits === null ? newKey(g, below) : newShortKey(g.keyBits, below);
 }
 
 /** 여러 열쇠로 한꺼번에 잠그거나 푸는 지수: 곱(mod q) */

@@ -40,6 +40,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
       verified,
       store,
       tab,
+      random,
     } = await setupHwatu({
       kit: minhwatuRoomKit,
       rules: RULES,
@@ -78,6 +79,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
           botLevel: 1,
           clock,
           store: currentTab.store,
+          random,
         }),
         ...(restore ? { restore } : {}),
       } as never) as AnyHost;

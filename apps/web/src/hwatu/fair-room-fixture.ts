@@ -1,6 +1,11 @@
 /** 화투 멘탈 포커 온라인 방 시험이 같이 쓰는 도우미(민화투·고스톱·나이롱뽕) */
 
-import { ManualClock, prepareGroup } from "@game/fair-play";
+import {
+  ManualClock,
+  prepareGroup,
+  type SeededTestRandom,
+} from "@game/fair-play";
+import { seededTestRandom } from "@game/fair-play/test-random";
 import { isHiddenId } from "@game/hwatu";
 import { expect } from "vitest";
 import type { GameKit, KitBot } from "@/game/kit";
@@ -48,6 +53,17 @@ export function memoryFairStore() {
   };
 }
 
+/**
+ * 시험의 멘탈 포커 난수원. 섞기·열쇠·비밀 값을 씨앗으로 정해 판의 패가 실행마다 같다(docs/13 8절 「시험」).
+ * 방장은 `host`, 참가자는 `guest<i>` 아래 경로를 쓴다. 새로고침한 방장·참가자도 같은 경로를 넘긴다
+ */
+export const DEFAULT_FAIR_SEED = "hwatu";
+
+/** i번째 참가자 몫(새로 만든 참가자 방에 넘긴다) */
+export function guestRandom(random: SeededTestRandom, i: number) {
+  return random.child(`guest${i}`);
+}
+
 /** 방장 옵션(새로고침한 방장을 새로 만들 때도 쓴다) */
 export function hwatuHostOptions(options: {
   kit: AnyKit;
@@ -57,7 +73,10 @@ export function hwatuHostOptions(options: {
   botLevel: number;
   clock: ManualClock;
   store?: HostStore;
+  /** 시험 난수원(`setupHwatu`가 돌려준 `random`). 없으면 기본 씨앗 */
+  random?: SeededTestRandom;
 }) {
+  const random = options.random ?? seededTestRandom(DEFAULT_FAIR_SEED);
   return {
     kit: options.kit,
     hostName: "방장",
@@ -67,6 +86,7 @@ export function hwatuHostOptions(options: {
     revealTimeoutMs: 500,
     fair: { group: "r255" },
     clock: options.clock,
+    testRandom: random.child("host"),
     ...(options.store ? { store: options.store } : {}),
   };
 }
@@ -82,9 +102,12 @@ export async function setupHwatu(options: {
   HostRoom: new (o: never) => AnyHost;
   GuestRoom: new (o: never) => AnyGuest;
   hostStore?: boolean;
+  /** 판을 정하는 씨앗(없으면 `DEFAULT_FAIR_SEED`). 같은 씨앗이면 같은 패·같은 흐름이다 */
+  seed?: string;
 }) {
   const net = new MemoryNetwork();
   const clock = new ManualClock();
+  const random = seededTestRandom(options.seed ?? DEFAULT_FAIR_SEED);
   const store = options.hostStore ? memoryHostStore() : undefined;
   // 방장 새로고침을 흉내 내는 시험은 `tab.reload(옛 방장)` 뒤 `reloadTab(store)`로 새 방장을 연다(reload-tab.ts)
   const tab = store ? reloadTab(store) : undefined;
@@ -93,6 +116,7 @@ export async function setupHwatu(options: {
     ...hwatuHostOptions({
       ...options,
       clock,
+      random,
       ...(tab ? { store: tab.store } : {}),
     }),
   } as never);
@@ -105,6 +129,7 @@ export async function setupHwatu(options: {
       token: null,
       fairStore: memoryFairStore(),
       clock,
+      testRandom: guestRandom(random, i),
     } as never);
     await until(() => guest.seat !== null, "자리");
     guests.push(guest);
@@ -126,7 +151,18 @@ export async function setupHwatu(options: {
   // 0.5~1초를 차지했다(2026-11-24 재 보니 fair-room-extra의 둘째·셋째 시험 처음이 앞 시험의 증명 확인이었다).
   // 시험 중에 새로 연 방장·참가자도 `closeWhenDone`으로 닫는다
   closeWhenDone(host, guests);
-  return { net, clock, host, guests, incidents, audits, verified, store, tab };
+  return {
+    net,
+    clock,
+    host,
+    guests,
+    incidents,
+    audits,
+    verified,
+    store,
+    tab,
+    random,
+  };
 }
 
 /** 방장 엔진 상태에 이 자리들의 진짜 카드가 없는지(자리 표뿐인지) */

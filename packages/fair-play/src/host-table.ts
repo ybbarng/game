@@ -31,6 +31,7 @@ import {
 import { FairDevice, type FairWire, type GroupName } from "./device";
 import type { FairControl, FairQuery } from "./messages";
 import type { PartySnapshot } from "./protocol";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 방장 기기 쪽 멘탈 포커 진행. 대국 진행(LocalMatch)에 끼워 쓴다.
@@ -66,6 +67,8 @@ export interface HostTableOptions {
   clock?: Clock;
   /** 새로고침 전에 남겨 둔 방장 기기 열쇠(`snapshot`) */
   restore?: Record<number, PartySnapshot>;
+  /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+  testRandom?: SeededTestRandom;
 }
 
 /** 방장 새로고침에 대비해 남기는 것: 걸음별 사건과 방장 기기 열쇠 */
@@ -112,6 +115,7 @@ export class FairHostTable {
       send: (m) => this.hooks.broadcast(m),
       clock: this.clock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.coordinator = new FairCoordinator({
       rules: this.rules,

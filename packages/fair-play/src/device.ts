@@ -28,6 +28,7 @@ import {
   verifyShuffle,
 } from "./shuffle-proof";
 import { GROUP_1024, GROUP_2048, modInverse, type SraGroup } from "./sra";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 메시지로 하는 멘탈 포커. 기기마다 FairDevice 하나가 섞기 사슬에 끼고, 열쇠를 공개하고, 자기 카드를 연다.
@@ -242,6 +243,8 @@ export interface FairDeviceOptions {
   proofTimeoutMs?: number;
   /** 제한 시간을 재는 시계. 시험은 ManualClock을 넣는다 */
   clock?: Clock;
+  /** 시험 전용: 섞기 순서·열쇠를 씨앗으로 정한다(`test-random.ts`). 제품은 넘기지 않는다(Web Crypto) */
+  testRandom?: SeededTestRandom;
 }
 
 /** 다시 잠그는 단계에서 푸는 섞기 열쇠(그 단계의 V를 낸다) */
@@ -257,6 +260,7 @@ export class FairDevice {
   private readonly sendTo: ((message: FairWire, device: number) => void) | null;
   private readonly proofTimeoutMs: number;
   private readonly clock: Clock;
+  private readonly testRandom: SeededTestRandom | null;
   private readonly deals = new Map<number, DealCtx>();
   private work: Promise<void> = Promise.resolve();
   private readonly listeners: {
@@ -279,6 +283,7 @@ export class FairDevice {
     this.sendTo = options.sendTo ?? null;
     this.proofTimeoutMs = options.proofTimeoutMs ?? 30_000;
     this.clock = options.clock ?? realClock;
+    this.testRandom = options.testRandom ?? null;
     this.restored = new Map(
       Object.entries(options.restore ?? {}).map(([deal, snap]) => [
         Number(deal),
@@ -402,12 +407,17 @@ export class FairDevice {
     cards: readonly Card[],
   ): void {
     if (this.deals.has(deal)) return;
+    const random = this.testRandom?.child(`device${this.id}/deal${deal}`);
     const ctx: DealCtx = {
       id: deal,
       devices: [...devices],
       party: this.restored.has(deal)
-        ? Party.restore(this.g, this.restored.get(deal) as PartySnapshot)
-        : new Party(this.id, this.g),
+        ? Party.restore(
+            this.g,
+            this.restored.get(deal) as PartySnapshot,
+            random,
+          )
+        : new Party(this.id, this.g, random),
       ledger: new PublicLedger(this.g),
       owners: new Map(),
       chains: new Map(),

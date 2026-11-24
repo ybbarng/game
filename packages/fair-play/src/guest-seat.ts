@@ -22,6 +22,7 @@ import { FairDevice, type FairWire, type GroupName } from "./device";
 import { revealSeatView } from "./host-table";
 import type { FairControl, FairQuery } from "./messages";
 import type { PartySnapshot } from "./protocol";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 참가자 기기 쪽 멘탈 포커 진행.
@@ -45,6 +46,8 @@ export interface GuestSeatOptions {
   onVerify: (deal: number, log: FairLogged[]) => void;
   /** 새로고침 전에 남겨 둔 열쇠 */
   restore?: Record<number, PartySnapshot>;
+  /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+  testRandom?: SeededTestRandom;
   /** 제한 시간을 재는 시계. 시험은 ManualClock을 넣는다 */
   clock?: Clock;
 }
@@ -77,6 +80,7 @@ export class FairGuestSeat {
       send: (m) => options.broadcast(m),
       clock: this.clock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.coordinator = new FairCoordinator({
       rules: options.rules,

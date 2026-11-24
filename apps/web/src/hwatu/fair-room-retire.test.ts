@@ -22,6 +22,12 @@ import {
   until,
 } from "./fair-room-fixture";
 
+/**
+ * 이 씨앗이면 민화투(방장·참가자·컴퓨터) 첫 판이 점수가 난 채 끝난다(끝 점수 [15, -55, 40]).
+ * 기본 씨앗이 바뀌어도 이 시험이 보는 상황이 그대로이게 따로 둔다
+ */
+const SCORED_FIRST_ROUND = "minhwatu-scored-first-round";
+
 describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
   it("첫 판 카드를 다 열기 전에 방장이 끝내도 참가자 게임 끝 검증은 통과한다(끝까지 치지 않은 판은 결과 없음)", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
@@ -99,20 +105,21 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
   it("판을 끝내고 다음 판 도중에 그만두면 참가자 게임 끝 검증은 통과한다(끝 화면 점수 = 앞 판까지 점수)", async () => {
     const { host, guests, incidents, audits } = await setupHwatu({
       kit: minhwatuRoomKit,
-      // 섞기는 멘탈 포커의 진짜 난수라 판 결과를 고정할 수 없다. 첫 판이 0점으로 끝나는 패도 나와(14번에 한 번쯤)
-      // 점수가 생긴 판 뒤에 그만두도록 판을 넉넉히 둔다.
-      rules: { ...STANDARD_RULES, rounds: 6 },
+      rules: { ...STANDARD_RULES, rounds: 2 },
       guests: 1,
       bot: minhwatuIntermediateBot,
       botLevel: 1,
       HostRoom: HostRoom as never,
       GuestRoom: GuestRoom as never,
+      // 첫 판에 점수가 나는 패(시험 난수원의 씨앗으로 정한다). 0점 판 뒤에 그만두면 「앞 판까지 점수」가 0이라
+      // 끝 화면 점수를 견주는 확인이 되지 않는다.
+      seed: SCORED_FIRST_ROUND,
     });
     await host.start();
     const view = () => host.match?.current() as MinhwatuView | undefined;
     const steps = () => host.match?.actionLog().length ?? 0;
-    // 점수가 생긴 판 뒤 다음 판의 몇 수째에서 그만둔다.
-    let roundFrom: { round: number; step: number } | null = null;
+    // 둘째 판의 몇 수째에서 그만둔다.
+    let secondFrom: number | null = null;
     await playHwatu({
       host,
       guests,
@@ -120,12 +127,12 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
       incidents,
       done: () => {
         const v = view();
-        if (!v || v.roundNumber < 2 || v.phase === "roundEnd") return false;
-        if (roundFrom?.round !== v.roundNumber)
-          roundFrom = { round: v.roundNumber, step: steps() };
-        return v.totals.some((t) => t !== 0) && steps() >= roundFrom.step + 3;
+        if (v?.roundNumber !== 2 || v.phase === "roundEnd") return false;
+        secondFrom ??= steps();
+        return steps() >= secondFrom + 3;
       },
     });
+    expect(view()?.roundNumber).toBe(2);
     expect(view()?.totals.some((t) => t !== 0)).toBe(true);
     host.abandon();
     await until(() => audits.length === 1, "게임 끝 검증");

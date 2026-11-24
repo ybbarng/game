@@ -6,6 +6,7 @@ import type {
   GroupName,
   Incident,
   PartySnapshot,
+  SeededTestRandom,
 } from "@game/fair-play";
 
 import type {
@@ -78,6 +79,8 @@ export interface FairHostContext<Rules, State, Action> {
   clock: Clock;
   /** 새로고침 전에 남긴 열쇠 */
   restore?: Record<number, PartySnapshot>;
+  /** 시험 전용 난수원(방의 `testRandom`에서 이 게임 몫). 제품은 넘기지 않는다 */
+  testRandom?: SeededTestRandom;
   hooks: {
     /** 대국 상태를 고친다(자리 표에 연 카드 넣기 등) */
     patch(fn: (state: State) => State): void;
@@ -148,6 +151,8 @@ export interface FairGuestContext<Rules, View, Event> {
   clock: Clock;
   /** 새로고침 전에 남긴 열쇠 */
   restore?: Record<number, PartySnapshot>;
+  /** 시험 전용 난수원(방의 `testRandom`에서 이 게임 몫). 제품은 넘기지 않는다 */
+  testRandom?: SeededTestRandom;
   broadcast(message: FairWire | FairControl): void;
   /** 한 기기에게만(하트: 넘긴 카드 열쇠는 받는 기기에게만 직접, 방장을 거치지 않는다) */
   sendTo(message: FairWire, device: number): void;

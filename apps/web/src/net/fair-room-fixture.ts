@@ -1,6 +1,11 @@
 /** 멘탈 포커 온라인 대전 시험이 같이 쓰는 도우미. 시험이 오래 걸려 파일을 나눠 동시에 돌린다 */
 
-import { ManualClock, prepareGroup } from "@game/fair-play";
+import {
+  ManualClock,
+  prepareGroup,
+  type SeededTestRandom,
+} from "@game/fair-play";
+import { seededTestRandom } from "@game/fair-play/test-random";
 import { heuristicBot, intermediateBot } from "@game/mighty-ai";
 import type { Action, PlayerView, RuleSet } from "@game/mighty-engine";
 import { mightyRoomKit } from "@/game/mighty-fair-table";
@@ -65,11 +70,23 @@ export function memoryStore() {
   };
 }
 
-/** 방장 옵션. 제한 시간은 시험의 시계로 잰다 */
+/**
+ * 시험의 멘탈 포커 난수원 씨앗. 섞기·열쇠·비밀 값을 씨앗으로 정해 판의 패가 실행마다 같다(docs/13 8절 「시험」).
+ * 방장은 `host`, 참가자는 `guest<i>` 아래 경로를 쓴다. 새로고침한 방장·참가자도 같은 경로를 넘긴다
+ */
+export const DEFAULT_FAIR_SEED = "mighty";
+
+/** i번째 참가자 몫(새로 만든 참가자 방에 넘긴다) */
+export function guestRandom(random: SeededTestRandom, i: number) {
+  return random.child(`guest${i}`);
+}
+
+/** 방장 옵션. 제한 시간은 시험의 시계로 잰다. 난수원은 `setup`이 돌려준 `random`(없으면 기본 씨앗) */
 export function hostOptions(
   rules: RuleSet,
   clock: ManualClock,
   store?: HostStore,
+  random: SeededTestRandom = seededTestRandom(DEFAULT_FAIR_SEED),
 ) {
   return {
     kit: mightyRoomKit,
@@ -80,6 +97,7 @@ export function hostOptions(
     botLevel: 1,
     fair: { group: "r255" as const },
     clock,
+    testRandom: random.child("host"),
     ...(store ? { store } : {}),
   };
 }
@@ -89,13 +107,16 @@ export async function setup(
   guestCount: number,
   store?: HostStore,
   voteDelayMs?: number,
+  /** 판을 정하는 씨앗(없으면 `DEFAULT_FAIR_SEED`). 같은 씨앗이면 같은 패·같은 흐름이다 */
+  seed = DEFAULT_FAIR_SEED,
 ) {
   const net = new MemoryNetwork();
   // 제한 시간(투표 열기 등)은 시험이 이 시계를 옮길 때만 지난다.
   const clock = new ManualClock();
+  const random = seededTestRandom(seed);
   const host = new HostRoom({
     transport: net.join("host"),
-    ...hostOptions(rules, clock, store),
+    ...hostOptions(rules, clock, store, random),
     ...(voteDelayMs !== undefined ? { voteDelayMs } : {}),
   });
   const guests: GuestRoom[] = [];
@@ -107,6 +128,7 @@ export async function setup(
       token: null,
       fairStore: memoryStore(),
       clock,
+      testRandom: guestRandom(random, i),
     });
     await until(() => guest.seat !== null);
     guests.push(guest);
@@ -118,14 +140,15 @@ export async function setup(
   host.onIncident((n) => incidents.push(n));
   for (const g of guests) g.on("incident", (n) => incidents.push(n));
   closeWhenDone(host, guests);
-  return { net, host, guests, incidents, clock };
+  return { net, host, guests, incidents, clock, random };
 }
 
 export type Cheat = (view: PlayerView, key: string) => Action | null;
 
 /**
- * 방장(사람 자리)이 공약을 가장 높게 건다. 모두 포기·딜미스로 다시 나누는 판은 멘탈 포커로 다시 섞어
- * 비싸고 몇 번 나올지 운에 달렸다. 공약 자체를 보는 시험이 아니면 이것으로 첫 공약에서 판이 이어지게 한다
+ * 방장(사람 자리)이 공약을 가장 높게 건다. 공약 자체를 보는 시험이 아니면 이것으로 첫 공약에서 판이 이어지고
+ * 방장이 주공이 된다. 판의 패는 시험 난수원으로 정해져 운은 없지만, 모두 포기·딜미스로 다시 나누는 판은 멘탈 포커로
+ * 다시 섞어 비싸고 공약 걸음도 길어 진행 논리 시험에는 필요 없다
  */
 export const hostBidsTop: Cheat = (view, key) => {
   if (key !== "host" || view.decision?.kind !== "election") return null;

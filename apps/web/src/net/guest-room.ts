@@ -1,5 +1,10 @@
 import { createRng } from "@game/core";
-import type { FairLogged, Incident, PartySnapshot } from "@game/fair-play";
+import type {
+  FairLogged,
+  Incident,
+  PartySnapshot,
+  SeededTestRandom,
+} from "@game/fair-play";
 import { type Clock, realClock } from "@game/fair-play/clock";
 import type {
   Action,
@@ -226,6 +231,11 @@ export interface GuestRoomOptions<
   /** 제한 시간을 재는 시계. 시험은 ManualClock을 넣는다 */
   clock?: Clock;
   /**
+   * 시험 전용: 내 비밀 값(게임마다)과 멘탈 포커 섞기·열쇠를 씨앗으로 정한다(`@game/fair-play/test-random`,
+   * `HostRoomOptions.testRandom`과 같이). 제품은 넘기지 않는다(Web Crypto)
+   */
+  testRandom?: SeededTestRandom;
+  /**
    * 초대 링크의 방장 공개 열쇠 지문(`?k=`). 있으면 이 열쇠로 서명한 연결만 방장으로 믿는다(identity.ts).
    * 없으면(예전 링크·시험) 처음 "어서 와"라고 답한 연결을 방장으로 믿는다.
    */
@@ -333,6 +343,8 @@ export class GuestRoom<
   /** 방장이 방을 닫는다고 알렸다 */
   private hostClosed = false;
   private readonly reconnectTimeoutMs: number;
+  /** 시험 전용 난수원(`GuestRoomOptions.testRandom`). 제품은 null */
+  private readonly testRandom: SeededTestRandom | null;
   private readonly hostFingerprint: string | null;
   private readonly fairStore: GuestRoomOptions["fairStore"] | null;
   /** 상대마다 보낸 입장 요청의 임의 값 */
@@ -482,7 +494,8 @@ export class GuestRoom<
     this.transport = options.transport;
     this.name = options.name;
     this.token = options.token;
-    this.secret = options.secret ?? newSecret();
+    this.testRandom = options.testRandom ?? null;
+    this.secret = options.secret ?? this.newGameSecret(1);
     this.commitHash = commit(this.secret);
     this.reconnectTimeoutMs = options.reconnectTimeoutMs ?? 60_000;
     this.clock = options.clock ?? realClock;
@@ -717,6 +730,9 @@ export class GuestRoom<
       },
       clock: this.clock,
       ...(saved ? { restore: saved.snapshots } : {}),
+      ...(this.testRandom
+        ? { testRandom: this.testRandom.child(`g${gen}`) }
+        : {}),
     };
     const deliver = (view: View, events: Event[]) => {
       if (live()) this.deliver({ view, events });
@@ -783,6 +799,11 @@ export class GuestRoom<
 
   /** 새로고침 전에 보낸 행동(되살린 대국의 `sent` 앞에 붙인다) */
   private restoredSent: string[] = [];
+
+  /** 이 게임 시드에 넣을 내 비밀 값. 제품은 Web Crypto, 시험 난수원이 있으면 게임 번호로 정한다 */
+  private newGameSecret(gameNo: number): string {
+    return this.testRandom?.secret(`guest/g${gameNo}`) ?? newSecret();
+  }
 
   private persistFair(): void {
     if (!this.fair || !this.fairStore) return;
@@ -1266,7 +1287,7 @@ export class GuestRoom<
       for (const l of this.listeners.audit) l(result);
     }
     this.gameNo = gameNo;
-    this.secret = newSecret();
+    this.secret = this.newGameSecret(gameNo);
     this.commitHash = commit(this.secret);
     this.commitments = [];
     this.startedCommitments = [];

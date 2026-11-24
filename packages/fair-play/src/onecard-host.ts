@@ -21,6 +21,7 @@ import {
 } from "./onecard-table";
 import type { PartySnapshot } from "./protocol";
 import { slotOfToken, swapTokens } from "./slot-token";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 원카드 멘탈 포커 진행(docs/42 4-2, 16절). `OnecardDeck`(섞기·뽑기·다시 섞기 사슬) 위에 방장 엔진을 잇는다.
@@ -188,6 +189,8 @@ abstract class OnecardSide<
     send: (message: FairWire) => void;
     onIncident: (incident: Incident) => void;
     restore?: Record<number, PartySnapshot>;
+    /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+    testRandom?: SeededTestRandom;
     clock?: Clock;
     /** 시험용 작은 덱 */
     cards?: readonly Card[];
@@ -203,6 +206,7 @@ abstract class OnecardSide<
       send: options.send,
       clock: this.clock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.deck = new OnecardDeck({
       device: this.device,
@@ -356,6 +360,8 @@ export class OnecardHostTable<
     group: GroupName;
     hooks: OnecardHostHooks<State, Action>;
     restore?: Record<number, PartySnapshot>;
+    /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+    testRandom?: SeededTestRandom;
     clock?: Clock;
     cards?: readonly Card[];
   }) {
@@ -676,6 +682,8 @@ export class OnecardGuestSeat<
       onSnapshot: (view: View, events: Event[]) => void;
       onVerify: (round: number, log: OnecardLogged<Action>[]) => void;
       restore?: Record<number, PartySnapshot>;
+      /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+      testRandom?: SeededTestRandom;
       clock?: Clock;
       cards?: readonly Card[];
     },
