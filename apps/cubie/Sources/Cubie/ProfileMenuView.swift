@@ -9,6 +9,7 @@ import CubieCore
 /// - 엠블럼은 메뉴가 열린 동안 천천히 좌우로 흔든다(docs/52 5-11, 티어표 진열과 같은 9초 왕복). 앱에 묶은 13각 띠
 ///   (`Emblems/sway/<티어>-menu.webp`)에서 이웃한 두 장을 두 층에 겹쳐 둔다(`MenuEmblemView`, 칸을 다시 그리지 않고 층 그림과
 ///   투명도만 바꾼다). 메뉴가 닫히면(창에서 떨어지면) 멈추고, 동작 줄이기면 정면 그림 그대로다.
+@MainActor
 final class ProfileMenuView: NSView {
   private let profile: Profile
   private let onPick: () -> Void
@@ -20,7 +21,7 @@ final class ProfileMenuView: NSView {
   private var last: CFTimeInterval = 0
   /// 재기·시험: 지금 흔드는지
   var swaying: Bool { timer != nil }
-  private var stats = MainActor.assumeIsolated { SwayStats(name: "menu") }
+  private var stats = SwayStats(name: "menu")
 
   static let height: CGFloat = 52
   private static let side: CGFloat = 14
@@ -36,9 +37,10 @@ final class ProfileMenuView: NSView {
   init(profile: Profile, onPick: @escaping () -> Void) {
     self.profile = profile
     self.onPick = onPick
-    swayView = MainActor.assumeIsolated {
-      guard let id = profile.emblemTier, let strip = EmblemArt.menuStrip(id).flatMap(EmblemArt.decode) else { return nil }
-      return MenuEmblemView(strip: strip, gain: EmblemArt.hdrMenuGain(id).flatMap(EmblemArt.decode))
+    if let id = profile.emblemTier, let strip = EmblemArt.menuStrip(id).flatMap(EmblemArt.decode) {
+      swayView = MenuEmblemView(strip: strip, gain: EmblemArt.hdrMenuGain(id).flatMap(EmblemArt.decode))
+    } else {
+      swayView = nil
     }
     let textW = max(
       Self.text(profile.name, size: 13, weight: .semibold).size().width,
@@ -96,19 +98,17 @@ final class ProfileMenuView: NSView {
   /// 메뉴가 뜬 화면이 HDR이면 반짝임을 흰색보다 밝게(docs/52 5-16). 메뉴 창이 붙은 뒤에야 화면에 놓일 수 있어 흔드는 동안에도
   /// 화면이 바뀌었는지만 본다(바뀌지 않으면 아무것도 하지 않는다)
   private func refreshHdr() {
-    MainActor.assumeIsolated {
-      guard let swayView, let id = profile.emblemTier, let window else { return }
-      let screen = window.screen.map(ObjectIdentifier.init)
-      guard !hdrDecided || screen != hdrScreen else { return }
-      hdrDecided = true
-      hdrScreen = screen
-      swayView.useHdr(EmblemArt.hdrOn(tier: id, screen: window.screen))
-    }
+    guard let swayView, let id = profile.emblemTier, let window else { return }
+    let screen = window.screen.map(ObjectIdentifier.init)
+    guard !hdrDecided || screen != hdrScreen else { return }
+    hdrDecided = true
+    hdrScreen = screen
+    swayView.useHdr(EmblemArt.hdrOn(tier: id, screen: window.screen))
   }
 
   /// 메뉴가 열려 있고(창에 붙어 있고) 동작 줄이기가 아니면 흔든다. 메뉴는 따로 도는 고리(event tracking)라 .common에 둔다
   private func updateSway() {
-    let move = MainActor.assumeIsolated { window != nil && swayView != nil && !ShowcaseMotion.reduce }
+    let move = window != nil && swayView != nil && !ShowcaseMotion.reduce
     if move, timer == nil {
       sway = .from(0)
       last = CACurrentMediaTime()
