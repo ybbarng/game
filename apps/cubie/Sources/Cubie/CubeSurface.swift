@@ -64,6 +64,8 @@ protocol CubeSurface: AnyObject {
   /// 연습 전에 메뉴에서 고른 방식(다음 상태 알림이 덮기 전까지)
   func setPracticeSee(_ on: Bool)
   func saveFrame()
+  /// 다른 앱 위 마우스 감시를 걸고 뗀다(큐브를 숨긴 동안은 뗀다, `FloatingWindow`)
+  func watchMouse(_ on: Bool)
   func setSide(_ side: CGFloat)
   func resetFrame()
   /// 확인용(CUBIE_DEBUG): 화면 상태를 찍는다

@@ -713,9 +713,37 @@ final class ReplayBoxView: FlippedView {
     }
     for v in [head, toggle, restart, closeButton, cube] as [NSView] { addSubview(v) }
     if let hints { addSubview(hints) }
-    toggle.action = { [weak self] in self?.player?.toggle() }
-    restart.action = { [weak self] in self?.player?.restart() }
+    toggle.action = { [weak self] in
+      self?.autoPause.forget()
+      self?.player?.toggle()
+    }
+    restart.action = { [weak self] in
+      self?.autoPause.forget()
+      self?.player?.restart()
+    }
     closeButton.action = { [weak self] in self?.onClose?() }
+  }
+
+  /// 창이 가려지거나 최소화되면 재생을 멈췄다가 다시 보이면 이어 간다(사람이 멈춘 것은 그대로)
+  private let watch = MotionWatch()
+  private var autoPause = AutoPause()
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    guard window != nil else {
+      watch.stop()
+      return
+    }
+    watch.watch(window) { [weak self] in self?.visibilityChanged() }
+  }
+
+  private func visibilityChanged() {
+    guard let player else { return }
+    switch autoPause.update(visible: ShowcaseMotion.visible(window), playing: player.status == .playing) {
+    case .pause: player.pause()
+    case .resume: player.play()
+    case .none: break
+    }
   }
 
   required init?(coder: NSCoder) { fatalError("코드로만 만든다") }
@@ -740,11 +768,13 @@ final class ReplayBoxView: FlippedView {
         onStatus: { [weak self] s in self?.setStatus(s) }))
     player = p
     p.play()
+    visibilityChanged()
   }
 
   func stop() {
     player?.stop()
     player = nil
+    watch.stop()
   }
 
   var played: Int { player?.played ?? 0 }

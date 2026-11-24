@@ -370,6 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     // 단축키는 사용자가 누른 것이니 예전 방식으로 바로 앞으로 온다
     NSApp.activate(ignoringOtherApps: true)
     cube.panel.makeKeyAndOrderFront(nil)
+    cube.watchMouse(true)
     cube.takeKeys()
     showUpdateNoticeIfDue()
   }
@@ -575,8 +576,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       bubble.hide()
       hideKeys()
       cube.panel.orderOut(nil)
+      cube.watchMouse(false)
     } else {
       cube.panel.orderFrontRegardless()
+      cube.watchMouse(true)
     }
     cube.sendFocus()
   }

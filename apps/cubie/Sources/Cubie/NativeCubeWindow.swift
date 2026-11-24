@@ -223,6 +223,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     let practicing = state.practice != nil
     clock.setFocused(f && !practicing)
     practiceClock.setFocused(f && practicing)
+    updatePracticeTimer()
     idle.setActive(!f && visible && !reducedMotion && !practicing)
     updateMirror()
     if Config.debug { dump("focus=\(f) visible=\(visible)") }
@@ -465,19 +466,33 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     state.practice = id
     state.practiceSee = see
     view.showJump(solved: false)
-    practiceTimer?.invalidate()
-    let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
-      MainActor.assumeIsolated {
-        guard let self, self.state.practice != nil else { return }
-        cubie_game_practice_tick(self.cube.game, self.practiceClock.now())
-        self.practiceChanged()
-      }
-    }
-    RunLoop.main.add(t, forMode: .common)
-    practiceTimer = t
     sendFocus()
     practiceChanged(force: true)
     onState?()
+  }
+
+  /// 연습 시계(0.1초)는 연습 중이고 큐브에 포커스가 있을 때만 돈다. 연습 시간은 포커스가 있을 때만 흘러(`practiceClock`)
+  /// 포커스 없이 돌려도 바뀌는 것이 없다. 포커스가 돌아오면 바로 한 번 센다
+  private func updatePracticeTimer() {
+    let want = PracticeTick.runs(practicing: state.practice != nil, focused: focused)
+    if !want {
+      practiceTimer?.invalidate()
+      practiceTimer = nil
+      return
+    }
+    guard practiceTimer == nil else { return }
+    let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated { self?.practiceTick() }
+    }
+    RunLoop.main.add(t, forMode: .common)
+    practiceTimer = t
+    practiceTick()
+  }
+
+  private func practiceTick() {
+    guard state.practice != nil else { return }
+    cubie_game_practice_tick(cube.game, practiceClock.now())
+    practiceChanged()
   }
 
   /// 연습 끝내기: 맞추던 판으로 돌아간다(Esc·메뉴·섞기·크기)

@@ -112,6 +112,31 @@ final class KeymapEditorView: FlippedView {
     }
   }
 
+  /// 키 지정 중 창을 닫거나 보기가 창에서 빠지면 키 감시를 뗀다(남으면 다음에 연 창의 키를 먹을 수 있다)
+  private var closeWatch: NSObjectProtocol?
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    if let closeWatch { NotificationCenter.default.removeObserver(closeWatch) }
+    closeWatch = nil
+    guard let window else {
+      stopCapture()
+      return
+    }
+    closeWatch = NotificationCenter.default.addObserver(
+      forName: NSWindow.willCloseNotification, object: window, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self, self.capturing != nil else { return }
+        self.stopCapture()
+        self.reload()
+      }
+    }
+  }
+
+  /// 시험·재기: 키 감시가 걸려 있는지
+  var watchingKeys: Bool { monitor != nil }
+
   /// 키 지정 중 키 누름(사이트 `onKey`: Esc는 그만두기, 조합 키만이면 계속 기다림, 겹치면 묻기)
   private func captured(_ ev: NSEvent) {
     guard let action = capturing else { return }

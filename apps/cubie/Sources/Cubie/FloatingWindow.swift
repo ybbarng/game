@@ -175,9 +175,7 @@ class FloatingWindow: NSObject, NSWindowDelegate {
 
     // 마우스가 움직일 때마다: 큐브·거울(과 손잡이) 위면 창이 받고, 아니면 아래 앱으로 지나가게.
     // 다른 앱 위에서의 움직임(전역)과 이 창 위의 움직임(로컬)을 함께 본다. 마우스 감시는 손쉬운 사용 권한이 필요 없다
-    let global = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseUp]) { [weak self] _ in
-      MainActor.assumeIsolated { self?.updateMouse() }
-    }
+    watchMouse(true)
     let local = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseUp]) { [weak self] e in
       self?.updateMouse()
       return e
@@ -195,7 +193,23 @@ class FloatingWindow: NSObject, NSWindowDelegate {
       guard let self else { return e }
       return self.handleZoom(e)
     }
-    monitors = [global, local, drag, zoom].compactMap { $0 }
+    monitors = [local, drag, zoom].compactMap { $0 }
+  }
+
+  /// 다른 앱 위 마우스 움직임 감시(전역). 큐브를 숨긴 동안은 볼 일이 없어 뗀다(마우스가 움직일 때마다 앱이 깨지 않게)
+  private var globalMouse: Any?
+
+  func watchMouse(_ on: Bool) {
+    if Config.measure { return }
+    if on, globalMouse == nil {
+      globalMouse = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseUp]) { [weak self] _ in
+        MainActor.assumeIsolated { self?.updateMouse() }
+      }
+    } else if !on, let m = globalMouse {
+      NSEvent.removeMonitor(m)
+      globalMouse = nil
+    }
+    if Config.debug { print("[cubie] global mouse watch=\(globalMouse != nil)"); fflush(stdout) }
   }
 
   // MARK: 하위 클래스가 바꾸는 것
@@ -445,7 +459,11 @@ class FloatingWindow: NSObject, NSWindowDelegate {
     resignedKey()
   }
 
-  func windowDidChangeOcclusionState(_ notification: Notification) { occlusionChanged() }
+  func windowDidChangeOcclusionState(_ notification: Notification) {
+    // 숨겼던 창이 다른 길(⌃⌥⌘C 등)로 다시 나와도 마우스 감시를 건다
+    if panel.isVisible { watchMouse(true) }
+    occlusionChanged()
+  }
   func windowDidMove(_ notification: Notification) { updateMouse() }
   func windowDidResize(_ notification: Notification) { chrome.needsDisplay = true }
 }
