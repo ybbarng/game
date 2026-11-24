@@ -150,9 +150,9 @@ function PromotionChooser({
         <button
           type="button"
           onClick={onCancel}
-          className="text-white/70 text-xs underline"
+          className="rounded-lg bg-white/10 px-3 py-1 text-sm"
         >
-          그만두기
+          취소
         </button>
       </fieldset>
     </div>

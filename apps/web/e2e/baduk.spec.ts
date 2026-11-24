@@ -136,8 +136,8 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await page.screenshot({ path: info.outputPath("baduk-hint.png") });
 
   await page.getByRole("button", { name: "기권" }).click();
-  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
-  await page.getByRole("button", { name: "계속 두기" }).click();
+  // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
+  await page.getByRole("button", { name: "계속하기" }).click();
   await expect(page.getByRole("button", { name: "쉬기" })).toBeVisible();
   await expect(stones(page)).toHaveCount(2);
   await page.getByRole("button", { name: "기권" }).click();

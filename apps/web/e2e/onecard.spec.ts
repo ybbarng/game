@@ -137,9 +137,10 @@ test("원카드: 들어가 단계를 고르고 7·먹기·더미 치기를 한 �
   await expect(hand(page).getByRole("button")).toHaveCount(count + 1);
   await page.screenshot({ path: info.outputPath("onecard-bubble.png") });
 
-  // 판 끝 화면은 그만두기로(docs/21 10절). 판을 끝까지 두지 않는다.
-  await page.getByRole("button", { name: "그만두기" }).click();
-  await page.getByRole("button", { name: "그만두기" }).click();
+  // 판 끝 화면은 기권으로(docs/21 10절). 판을 끝까지 두지 않는다.
+  await page.getByRole("button", { name: "기권", exact: true }).click();
+  await expect(page.getByText("정말 기권할까요?")).toBeVisible();
+  await page.getByRole("button", { name: "기권하기" }).click();
   // 결과 띠가 먼저 뜨고, 띠가 사라진 뒤에야 결과 상자가 뜬다(한꺼번에 뜨지 않는다)
   await expect(page.locator("[data-result-banner]")).toBeVisible();
   await expect(page.locator("[data-outcome]")).toHaveCount(0);

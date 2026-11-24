@@ -555,7 +555,6 @@ export function BaseballGame({
                     resetKey={view.guesses.length}
                     onResign={() => submit({ type: "resign" })}
                     className={SMALL_BUTTON}
-                    keepLabel="계속 하기"
                   />
                 )}
               </>

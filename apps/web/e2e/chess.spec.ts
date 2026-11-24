@@ -130,9 +130,9 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   await page.getByRole("button", { name: "무르기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례");
 
-  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
+  // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
-  await page.getByRole("button", { name: "계속 두기" }).click();
+  await page.getByRole("button", { name: "계속하기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례");
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();

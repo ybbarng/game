@@ -250,12 +250,12 @@ test(
       .press("ArrowRight");
     const placeHere = page.getByRole("button", { name: "여기 두기" });
     await expect(placeHere).toBeVisible();
-    // 기권은 한 번 더 묻는다. 물을 때 겨눈 자리를 푼다. 「계속 두기」면 판이 그대로다.
+    // 기권은 한 번 더 묻는다. 물을 때 겨눈 자리를 푼다. 「계속하기」면 판이 그대로다.
     await page.getByRole("button", { name: "기권" }).click();
     await expect(page.getByText("정말 기권할까요?")).toBeVisible();
     await expect(placeHere).toBeHidden();
     await page.screenshot({ path: info.outputPath("omok-resign-confirm.png") });
-    await page.getByRole("button", { name: "계속 두기" }).click();
+    await page.getByRole("button", { name: "계속하기" }).click();
     await expect(page.getByRole("status")).toContainText("내 차례");
     await expect(placeHere).toBeHidden();
     await page.getByRole("button", { name: "기권" }).click();

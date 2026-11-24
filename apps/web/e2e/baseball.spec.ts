@@ -522,9 +522,9 @@ test(
     await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
       timeout: 15_000,
     });
-    // 기권은 한 번 더 묻는다. 「계속 하기」면 판이 그대로다.
+    // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
     await page.getByRole("button", { name: "기권" }).click();
-    await page.getByRole("button", { name: "계속 하기" }).click();
+    await page.getByRole("button", { name: "계속하기" }).click();
     await expect(status(page)).toContainText(/내 차례|마지막 기회/);
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();

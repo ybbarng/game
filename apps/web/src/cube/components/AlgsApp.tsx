@@ -3,6 +3,7 @@
 import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { cn } from "@/lib/cn";
 import { ro } from "@/lib/josa";
 import { type Candidate, candidatesOf, dataAlgTags } from "../algs/candidates";
@@ -614,12 +615,15 @@ function CaseDetail({
                   링크
                 </RowButton>
                 {kind === "mine" && (
-                  <RowButton
-                    onClick={() => onBook(removeMine(book, c, alg))}
+                  <ConfirmButton
+                    question="정말 지울까요?"
+                    confirmLabel="지우기"
+                    onConfirm={() => onBook(removeMine(book, c, alg))}
                     data-alg-remove
+                    className="rounded-md bg-white/10 px-2 py-0.5 hover:bg-white/15"
                   >
                     지우기
-                  </RowButton>
+                  </ConfirmButton>
                 )}
               </span>
             </li>

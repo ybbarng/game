@@ -15,7 +15,7 @@ export function LeaveConfirm() {
 
   useEffect(() => {
     if (!open) return;
-    // 실수로 나가지 않게 "계속 하기"에 먼저 초점을 둔다
+    // 실수로 나가지 않게 "계속하기"에 먼저 초점을 둔다
     stay.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -44,7 +44,7 @@ export function LeaveConfirm() {
             onClick={close}
             className="rounded-xl bg-white/10 px-3 py-2.5 hover:bg-white/15"
           >
-            계속 하기
+            계속하기
           </button>
           <button
             type="button"

@@ -39,6 +39,7 @@ import { useHandControls } from "@/components/hand-controls";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
 import { ActionButton, Panel } from "@/components/panels/common";
+import { ResignConfirm } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { useRelayoutFade } from "@/components/relayout";
@@ -805,7 +806,7 @@ export function OnecardGame({
                 onClick={() => setConfirmResign(true)}
                 className="shrink-0 rounded-lg bg-white/10 px-1.5 py-1 text-xs hover:bg-white/20"
               >
-                그만두기
+                기권
               </button>
             )}
             <button
@@ -1001,7 +1002,7 @@ export function OnecardGame({
             </div>
           )}
 
-          {/* 손패 바로 위: 차례 안내, 7 무늬 고르기, 터치로 겨눈 카드 내기, 그만두기 묻기 */}
+          {/* 손패 바로 위: 차례 안내, 7 무늬 고르기, 터치로 겨눈 카드 내기, 기권 묻기 */}
           {!over && (
             <div
               className="pointer-events-none absolute z-[240] flex flex-col items-center justify-end gap-1.5"
@@ -1045,26 +1046,14 @@ export function OnecardGame({
                 </fieldset>
               )}
               {confirmResign && canResign && (
-                <span className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-black/75 px-3 py-1.5 text-sm shadow-xl">
-                  정말 그만둘까요?
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmResign(false);
-                      resign();
-                    }}
-                    className="rounded-xl bg-rose-600 px-3 py-1.5"
-                  >
-                    그만두기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmResign(false)}
-                    className="rounded-xl bg-white/10 px-3 py-1.5"
-                  >
-                    계속하기
-                  </button>
-                </span>
+                <ResignConfirm
+                  onResign={() => {
+                    setConfirmResign(false);
+                    resign();
+                  }}
+                  onKeep={() => setConfirmResign(false)}
+                  className="pointer-events-auto w-fit rounded-2xl bg-black/75 px-3 py-1.5 shadow-xl"
+                />
               )}
               {myTurn && selected && (
                 <button

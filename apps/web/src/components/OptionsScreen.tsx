@@ -11,7 +11,7 @@ import { BOT_LEVELS } from "@/game/bots";
 import { botName, SPEEDS, useSettings } from "@/game/settings";
 import { previewVolume } from "@/game/sound";
 import { cn } from "@/lib/cn";
-
+import { ConfirmButton } from "./ConfirmButton";
 import { CardArt } from "./card-art/CardArt";
 import {
   CARD_BACKS,
@@ -100,14 +100,15 @@ export function OptionsScreen({ onBack }: { onBack: () => void }) {
                   >
                     {r.name}
                   </button>
-                  <button
-                    type="button"
+                  <ConfirmButton
                     aria-label={`${r.name} 지우기`}
-                    onClick={() => settings.removeCustomRule(r.name)}
+                    question="정말 지울까요?"
+                    confirmLabel="지우기"
+                    onConfirm={() => settings.removeCustomRule(r.name)}
                     className="opacity-50 hover:opacity-100"
                   >
                     ×
-                  </button>
+                  </ConfirmButton>
                 </span>
               ))}
             </div>

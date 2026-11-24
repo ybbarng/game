@@ -21,7 +21,7 @@ describe("공통 기권 단추", () => {
     render(<ResignButton resetKey={3} onResign={onResign} onAsk={onAsk} />);
     fireEvent.click(screen.getByRole("button", { name: "기권" }));
     expect(onAsk).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "계속 두기" }));
+    fireEvent.click(screen.getByRole("button", { name: "계속하기" }));
     expect(onResign).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "기권" }));
     fireEvent.click(screen.getByRole("button", { name: "기권하기" }));
