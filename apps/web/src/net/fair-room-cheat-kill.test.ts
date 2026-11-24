@@ -54,10 +54,17 @@ describe("멘탈 포커 온라인 대전", () => {
       };
       await playRounds(host, guests, 1, incidents, killer);
       expect(lied).toBe(true);
-      await until(() => incidents.length > 0);
-      const own = incidents.filter((i) => i.own);
-      expect(own[0]?.seat).toBe(guests[0]?.seat);
-      expect(own[0]?.reason).toMatch(/없다고 했어요/);
+      // 방장 기기는 자리 표로 진행할 때 나온 걸음별 사건과 진짜 카드로 다시 계산한 사건을 견주어 짚고, 참가자
+      // 기기는 걸음별 사건 없이 짚는다(audit.ts). 거짓말 프로그램도 검증 코드는 그대로라 참가자 길은 그 기기가 본다.
+      const liar = guests[0]?.seat as number;
+      for (const reporter of [0, liar]) {
+        await until(() =>
+          incidents.some((i) => i.own && i.reporter === reporter),
+        );
+        const found = incidents.filter((i) => i.own && i.reporter === reporter);
+        expect(found.map((i) => i.seat)).toEqual(found.map(() => liar));
+        for (const i of found) expect(i.reason).toMatch(/없다고 했어요/);
+      }
     });
   });
 });
