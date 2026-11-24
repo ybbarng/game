@@ -1,19 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BadukReplay } from "@/baduk/components/BadukReplay";
-import { BaseballReplay } from "@/baseball/components/BaseballReplay";
-import { ChessReplay } from "@/chess/components/ChessReplay";
+import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { GalaxyReplay } from "@/galaxy/components/GalaxyReplay";
-import { botName } from "@/game/bot-names";
-import { useSettings } from "@/game/settings";
-import { GostopReplay } from "@/gostop/components/GostopReplay";
-import { JanggiReplay } from "@/janggi/components/JanggiReplay";
-import { MinhwatuReplay } from "@/minhwatu/components/MinhwatuReplay";
-import { NyrongppongReplay } from "@/nyrongppong/components/NyrongppongReplay";
-import { OmokReplay } from "@/omok/components/OmokReplay";
-import { YutReplay } from "@/yut/components/YutReplay";
+import { ScreenLoading } from "@/components/ScreenLoading";
 
 import {
   deleteArchive,
@@ -23,35 +13,13 @@ import {
   listArchives,
   loadArchive,
 } from "./archive";
-import { ReplayView } from "./ReplayView";
-import { replayArchive } from "./replay";
-import type { ReplayTable } from "./replay-table";
-import { replayTableFor } from "./replay-tables";
+import { GAME_NAME, when } from "./labels";
 
-const GAME_NAME: Record<string, string> = {
-  mighty: "♠ 마이티",
-  hearts: "♥ 하트",
-  omok: "● 오목",
-  janggi: "楚 장기",
-  baduk: "⚫ 바둑",
-  chess: "♞ 체스",
-  gostop: "🎴 고스톱",
-  minhwatu: "🎴 민화투",
-  nyrongppong: "🎴 나이롱뽕",
-  baseball: "⚾ 숫자야구",
-  yut: "🪵 윷놀이",
-  galaxy: "✶ 은하 한 바퀴",
-  onecard: "🃏 원카드",
-};
-
-function when(at: number): string {
-  return new Date(at).toLocaleString("ko-KR", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+/** 게임 하나 다시 보기는 목록에서 고를 때 불러온다(게임마다 다시 보기 화면을 첫 화면 묶음에서 뺀다) */
+const ArchiveView = dynamic(
+  () => import("./ArchiveView").then((m) => m.ArchiveView),
+  { loading: () => <ScreenLoading /> },
+);
 
 /**
  * 복기: 이 기기에 남긴 게임 목록 → 판마다 한눈에 보기(주공·공약·돈·턴 표) → 다시 보기(게임 화면으로 한 걸음씩).
@@ -230,152 +198,6 @@ export function ReviewPage() {
             ))}
           </ul>
         )}
-      </div>
-    </main>
-  );
-}
-
-function ArchiveView({
-  archive,
-  onBack,
-}: {
-  archive: GameArchive;
-  onBack: () => void;
-}) {
-  // 마이티·하트·원카드는 게임 화면 위에서 다시 본다. 그 밖의 게임은 게임마다 다시 보기 화면을 쓴다.
-  const table = replayTableFor(archive.game);
-  if (table)
-    return <CardArchiveView archive={archive} table={table} onBack={onBack} />;
-  return <BoardArchiveView archive={archive} onBack={onBack} />;
-}
-
-/** 판 게임(오목·장기) 다시 보기 */
-function BoardArchiveView({
-  archive,
-  onBack,
-}: {
-  archive: GameArchive;
-  onBack: () => void;
-}) {
-  const name = (seat: number) =>
-    seat === archive.seat ? "나" : (archive.seatNames?.[seat] ?? "컴퓨터");
-  return (
-    <main className="min-h-dvh bg-[#1c1917] px-4 py-6 text-white">
-      <div className="mx-auto flex max-w-xl flex-col gap-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="self-start rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
-        >
-          ← 목록
-        </button>
-        <h1 className="font-black text-xl">
-          {GAME_NAME[archive.game] ?? archive.game} ·{" "}
-          {archive.mode === "solo" ? "혼자" : "친구와"} ·{" "}
-          {when(archive.startedAt)}
-        </h1>
-        {archive.game === "janggi" ? (
-          <JanggiReplay archive={archive} name={name} />
-        ) : archive.game === "baduk" ? (
-          <BadukReplay archive={archive} name={name} />
-        ) : archive.game === "chess" ? (
-          <ChessReplay archive={archive} name={name} />
-        ) : archive.game === "gostop" ? (
-          <GostopReplay archive={archive} name={name} />
-        ) : archive.game === "minhwatu" ? (
-          <MinhwatuReplay archive={archive} name={name} />
-        ) : archive.game === "nyrongppong" ? (
-          <NyrongppongReplay archive={archive} name={name} />
-        ) : archive.game === "baseball" ? (
-          <BaseballReplay archive={archive} name={name} />
-        ) : archive.game === "yut" ? (
-          <YutReplay archive={archive} name={name} />
-        ) : archive.game === "galaxy" ? (
-          <GalaxyReplay archive={archive} name={name} />
-        ) : (
-          <OmokReplay archive={archive} name={name} />
-        )}
-      </div>
-    </main>
-  );
-}
-
-/** 판 위 다시 보기(마이티·하트·원카드): 판마다 한눈에 보기 → 게임 화면 위에서 한 걸음씩 */
-function CardArchiveView({
-  archive,
-  table,
-  onBack,
-}: {
-  archive: GameArchive;
-  table: ReplayTable;
-  onBack: () => void;
-}) {
-  const botNames = useSettings((s) => s.botNames);
-  const replayed = useMemo(
-    () => replayArchive(table.kit, archive),
-    [table, archive],
-  );
-  const spans = useMemo(() => table.spans(replayed), [table, replayed]);
-  const Round = table.Round;
-  const [replayAt, setReplayAt] = useState<number | null>(null);
-  const name = (seat: number) =>
-    seat === archive.seat
-      ? "나"
-      : (archive.seatNames?.[seat] ?? botName(botNames, seat));
-
-  if (replayAt !== null)
-    return (
-      <ReplayView
-        table={table}
-        replayed={replayed}
-        seat={archive.seat}
-        seatNames={archive.seatNames}
-        spans={spans}
-        startIndex={replayAt}
-        name={name}
-        log={archive.log}
-        onExit={() => setReplayAt(null)}
-      />
-    );
-
-  return (
-    <main className="min-h-dvh bg-slate-950 px-4 py-6 text-white">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
-          >
-            ← 목록
-          </button>
-          <button
-            type="button"
-            onClick={() => setReplayAt(0)}
-            className="rounded-lg bg-amber-300 px-3 py-1 font-semibold text-black text-sm"
-          >
-            ▶ 처음부터 다시 보기
-          </button>
-        </div>
-        <h1 className="font-black text-xl">
-          {GAME_NAME[archive.game] ?? archive.game} ·{" "}
-          {archive.mode === "solo" ? "혼자" : "친구와"} ·{" "}
-          {when(archive.startedAt)}
-        </h1>
-        {replayed.error && (
-          <p className="text-sm text-rose-300">{replayed.error}</p>
-        )}
-        {[...spans].reverse().map((span) => (
-          <Round
-            key={span.start}
-            span={span}
-            states={replayed.states}
-            events={replayed.events}
-            seat={archive.seat}
-            name={name}
-            onReplay={setReplayAt}
-          />
-        ))}
       </div>
     </main>
   );

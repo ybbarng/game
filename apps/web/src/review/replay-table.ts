@@ -6,6 +6,17 @@ import type { Replayed } from "./replay";
 import type { ReplayHost } from "./replay-host";
 import type { RoundSpan } from "./rounds";
 
+/**
+ * 판 위에서 다시 보는 카드 게임(`replay-tables.tsx`의 TABLES와 같은 목록). 복기 화면이 어느 갈래로 그릴지
+ * 정할 때 표 묶음(마이티·하트·원카드 게임 화면)을 불러오지 않고 고르려고 이름만 따로 둔다.
+ * 어긋나지 않는지 `replay-tables.test.ts`가 본다
+ */
+export const CARD_REPLAY_GAMES: readonly string[] = [
+  "mighty",
+  "hearts",
+  "onecard",
+];
+
 export type AnyKit = GameKit<
   unknown,
   unknown,
