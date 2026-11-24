@@ -368,14 +368,16 @@ export function RoomScreen<
     const trimmed = name.trim() || (isHost ? "방장" : "손님");
     setPlayerName(trimmed);
     setPhase("connecting");
+    const pressedAt = performance.now();
     try {
-      // 마이티·하트의 멘탈 포커 판은 따로 불러온다. 연결을 열기 전에 불러 두어, 연결과 방 만들기 사이에
+      // 카드 게임의 멘탈 포커 판은 따로 불러온다. 연결을 열기 전에 불러 두어, 연결과 방 만들기 사이에
       // 기다림이 끼지 않게 한다(방은 판을 바로 꺼내 쓴다).
       const roomKit = await withFairTable(kit);
-      const transport = await openTransport(roomCode, {
-        role: isHost ? "host" : "guest",
-        game: gameId,
-      });
+      const transport = await openTransport(
+        roomCode,
+        { role: isHost ? "host" : "guest", game: gameId },
+        { mentalPoker: roomKit.fairTable !== undefined, pressedAt },
+      );
       if (isHost) {
         const level = game.botLevel?.() ?? DEFAULT_BOT_LEVEL;
         const hostRules = game.hostRules ? game.hostRules(rules) : rules;

@@ -16,7 +16,10 @@ const MAX_BATCH = 20;
 export interface DiagContext {
   role: "host" | "guest";
   game: string;
-  /** 들어가기를 누른 뒤 기록을 시작하기 전까지 걸린 시간(ms): 암호 라이브러리·WebRTC 코드 받기 */
+  /**
+   * 들어가기를 누른 뒤 기록을 시작하기 전까지 걸린 시간(ms): 멘탈 포커 판·암호 라이브러리(카드 게임만)·WebRTC 코드 받기.
+   * 판 게임은 멘탈 포커를 쓰지 않아 WebRTC 코드 받기만 든다
+   */
   beforeMs?: number;
 }
 

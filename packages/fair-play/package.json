@@ -7,7 +7,8 @@
   "description": "멘탈 포커 — 아무도 혼자 덱을 볼 수 없게 섞고 나누고 내기(SRA). 마이티·하트·화투",
   "exports": {
     ".": "./src/index.ts",
-    "./clock": "./src/clock.ts"
+    "./clock": "./src/clock.ts",
+    "./group": "./src/group.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

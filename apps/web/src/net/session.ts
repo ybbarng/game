@@ -1,4 +1,3 @@
-import { prepareGroup } from "@game/fair-play";
 import { type GameId, track } from "@/stats/track";
 import type { DiagContext } from "./diag";
 import type { FairSaved, GuestRoom } from "./guest-room";
@@ -34,9 +33,17 @@ export function testVoteDelayMs():
   return value > 0 ? { voteDelayMs: value } : {};
 }
 
+export interface OpenTransportOptions {
+  /** 멘탈 포커 판을 쓰는 방인가(킷에 `loadFairTable`이 있다). 그때만 잠그기 군과 libsodium을 받는다 */
+  mentalPoker: boolean;
+  /** 들어가기를 누른 시각(`performance.now()`). 진단 값 `beforeMs`를 여기서부터 잰다 */
+  pressedAt: number;
+}
+
 export async function openTransport(
   roomCode: string,
   context: DiagContext,
+  options: OpenTransportOptions,
 ): Promise<Transport> {
   track("game-start", {
     game: context.game as GameId,
@@ -44,14 +51,17 @@ export async function openTransport(
     role: context.role,
   });
   // 멘탈 포커 잠그기 군(타원곡선)을 미리 불러 둔다. 방장이 고른 군은 대기실에서 알게 된다.
-  const started = performance.now();
-  await prepareGroup("r255");
+  // 판 게임 방은 멘탈 포커를 쓰지 않으니 군도 libsodium도 받지 않는다(docs/54 4절).
+  if (options.mentalPoker) {
+    const { prepareGroup } = await import("@game/fair-play/group");
+    await prepareGroup("r255");
+  }
   if (isLocalNet()) return joinBroadcast(roomCode);
   // WebRTC 라이브러리는 친구와 할 때만 받는다.
   const { joinP2P } = await import("./p2p-transport");
   return joinP2P(roomCode, {
     ...context,
-    beforeMs: Math.round(performance.now() - started),
+    beforeMs: Math.round(performance.now() - options.pressedAt),
   });
 }
 

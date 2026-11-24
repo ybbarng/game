@@ -1,10 +1,5 @@
-import {
-  type Clock,
-  type GroupName,
-  type Incident,
-  type PartySnapshot,
-  realClock,
-} from "@game/fair-play";
+import type { GroupName, Incident, PartySnapshot } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 import type {
   Action,
   GameEvent,
