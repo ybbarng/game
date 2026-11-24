@@ -278,20 +278,21 @@ export function RoomScreen<
   /**
    * 판 끝 검증 결과를 채팅에 남긴다. 게임을 무효로 표시하는 것은 **내 기기의 검증**뿐이다.
    * 다른 사람의 실패 알림은 그 사람의 주장으로만 보여 준다. 판 끝 기록은 모두 같은 것을 받으므로,
-   * 남이 거짓으로 "실패"라고 알려 게임을 무효로 만드는 것을 막는다(모의 침투 B3).
+   * 남이 거짓으로 "실패"라고 알려 게임을 무효로 만드는 것을 막는다(모의 침투 B3). 내 검증인지는 `own`으로만 가린다
+   * (이름 「나」로 가리면 이름을 「나」로 지은 참가자의 주장이 내 검증이 된다).
    */
   const onAuditReport = (
     who: string,
+    own: boolean,
     ok: boolean,
     reason?: string,
     unchecked?: string,
   ) => {
-    const own = who === "나";
     useChat.getState().receive({
       id: randomId(8),
       seat: -1,
       name: "검증",
-      text: auditChatText(who, ok, reason, unchecked),
+      text: auditChatText(who, own, ok, reason, unchecked),
     });
     if (own) {
       const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
@@ -399,7 +400,7 @@ export function RoomScreen<
         useChat.getState().reset();
         useChat.setState({ send: (text) => host.chat(text) });
         host.onChat((m) => useChat.getState().receive(m));
-        host.onReport((r) => onAuditReport(r.name, r.ok, r.reason));
+        host.onReport((r) => onAuditReport(r.name, false, r.ok, r.reason));
         if (game.fair)
           host.onIncident((n) => reportIncident(n, seatNamesOf(host.lobby())));
         host.onOwnError((e) => useStore.setState({ notice: e }));
@@ -485,13 +486,14 @@ export function RoomScreen<
           });
           onAuditReport(
             "나",
+            true,
             result.ok,
             result.ok ? undefined : result.reason,
             result.ok ? result.unchecked : undefined,
           );
         });
         guest.on("report", (r) =>
-          onAuditReport(r.name, r.ok, r.reason, r.unchecked),
+          onAuditReport(r.name, false, r.ok, r.reason, r.unchecked),
         );
         if (game.fair) {
           guest.on("incident", (n) =>
