@@ -61,7 +61,11 @@ final class NativeCubeWindow: FloatingWindow {
     practiceClock = FocusClock(base: realClock)
     if !Config.measure {
       let r = WebStorageMigration.run(
-        store: store, websiteData: WebStorageMigration.websiteData(), host: Config.miniURL.host ?? "game.byb.kr")
+        store: store,
+        // 번들 id를 바꾼 시험 사본은 제 웹 저장소만 본다(설치된 앱의 기록을 옮겨 오지 않는다). 실행 파일만 띄우면 번들 id가
+        // 없어 기본(kr.byb.cubie)
+        websiteData: WebStorageMigration.websiteData(bundleID: Bundle.main.bundleIdentifier ?? "kr.byb.cubie"),
+        host: Config.miniURL.host ?? "game.byb.kr")
       if Config.debug { print("[cubie] migrate \(r)"); fflush(stdout) }
     }
     let n = book.n
