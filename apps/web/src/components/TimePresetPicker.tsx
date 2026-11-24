@@ -6,7 +6,7 @@ import {
   type TimePreset,
 } from "@game/mighty-engine";
 
-import { cn } from "@/lib/cn";
+import { Chips } from "./options/Chip";
 
 const ORDER: readonly TimePreset[] = ["none", "fast", "normal"];
 
@@ -37,24 +37,14 @@ export function TimePresetPicker({
 }) {
   return (
     <>
-      <div className="flex flex-wrap gap-1.5">
-        {ORDER.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            aria-pressed={value === preset}
-            onClick={() => onChange(preset)}
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs",
-              value === preset
-                ? "border-amber-300 bg-white text-black"
-                : "border-white/15 bg-white/5",
-            )}
-          >
-            {TIME_PRESET_NAMES[preset]}
-          </button>
-        ))}
-      </div>
+      <Chips
+        options={ORDER.map((preset) => ({
+          value: preset,
+          label: TIME_PRESET_NAMES[preset],
+        }))}
+        value={value}
+        onChange={onChange}
+      />
       <p className="text-xs opacity-60">{timePresetHelp(value)}</p>
     </>
   );
