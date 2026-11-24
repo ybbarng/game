@@ -192,17 +192,32 @@ final class KeymapEditorView: FlippedView {
 
   private static let rowH: CGFloat = 28
 
-  private func chip(_ title: String, fill: NSColor, text: NSColor = .white, size: CGFloat = 12, bold: Bool = false, action: @escaping () -> Void)
-    -> Chip
-  {
+  /// `focus`: 다시 만들어도 같은 칩을 알아볼 이름(키보드 포커스를 돌려줄 때 쓴다, `rebuild`)
+  private func chip(
+    _ title: String, focus: String, fill: NSColor, text: NSColor = .white, size: CGFloat = 12, bold: Bool = false,
+    action: @escaping () -> Void
+  ) -> Chip {
     let c = Chip(
       title, look: Chip.Look(fill: fill, text: text, radius: 4, size: size, weight: bold ? .bold : .regular, padX: 6, padY: 2))
     c.action = action
+    c.identifier = NSUserInterfaceItemIdentifier(focus)
     return c
   }
 
-  /// 지금 상태로 보기들을 새로 놓는다(동작이 100개 남짓이라 통째로 새로 만든다)
+  /// 지난번에 만든 칩마다, 그 칩이 사라졌을 때 대신 포커스를 줄 칩(키를 빼면 그 동작의 「키 지정」)
+  private var focusFallback: [String: String] = [:]
+
+  /// 지금 상태로 보기들을 새로 놓는다(동작이 100개 남짓이라 통째로 새로 만든다). 키보드 포커스가 안에 있었으면 같은 칩에
+  /// 돌려준다(`keepingFocus`)
   private func rebuild() {
+    let fallback = focusFallback
+    keepingFocus(fallback: fallback) {
+      focusFallback = [:]
+      build()
+    }
+  }
+
+  private func build() {
     subviews.forEach { $0.removeFromSuperview() }
     let w = bounds.width
     lastWidth = w
@@ -215,6 +230,7 @@ final class KeymapEditorView: FlippedView {
     let mouse = NSButton(checkboxWithTitle: SettingsSheet.mouseRotate, target: self, action: #selector(mouseToggled(_:)))
     mouse.font = NUI.font(14, mono: false)
     mouse.state = model.mouseRotate ? .on : .off
+    mouse.identifier = NSUserInterfaceItemIdentifier("mouse")
     mouse.frame = NSRect(x: pad, y: y, width: inner, height: 20)
     addSubview(mouse)
     y += 20 + 12
@@ -229,10 +245,11 @@ final class KeymapEditorView: FlippedView {
     pop.target = self
     pop.action = #selector(sizePicked(_:))
     pop.font = NUI.font(13, mono: false)
+    pop.identifier = NSUserInterfaceItemIdentifier("size")
     addSubview(pop)
     var right = pad + inner
     for (id, label) in SettingsSheet.presets.filter({ $0.id != "custom" }).reversed() {
-      let c = chip(label, fill: NUI.white(0.1)) { [weak self] in
+      let c = chip(label, focus: "preset:\(id)", fill: NUI.white(0.1)) { [weak self] in
         guard let self else { return }
         let e = self.edit("customFrom", id)
         self.message = e.message
@@ -256,16 +273,23 @@ final class KeymapEditorView: FlippedView {
       box.fill = NUI.color(NUI.Hex.amber200, 0.1)
       box.border = NUI.color(NUI.Hex.amber200, 0.4)
       box.radius = 16
-      let yes = chip(SettingsSheet.conflictYes, fill: NUI.color(NUI.Hex.amber200), text: .black, size: 14, bold: true) {
+      let yes = chip(
+        SettingsSheet.conflictYes, focus: "conflict-yes", fill: NUI.color(NUI.Hex.amber200), text: .black, size: 14, bold: true
+      ) {
         [weak self] in self?.apply(p.action, code: p.code, mods: p.mods)
       }
       yes.look.radius = 8
       yes.look.padX = 12
-      let no = chip(SettingsSheet.conflictNo, fill: .clear, text: NUI.color(NUI.Hex.amber100, 0.8), size: 14) { [weak self] in
+      let no = chip(
+        SettingsSheet.conflictNo, focus: "conflict-no", fill: .clear, text: NUI.color(NUI.Hex.amber100, 0.8), size: 14
+      ) { [weak self] in
         self?.pending = nil
         self?.reload()
       }
       no.look.padX = 12
+      // 답하면 묻는 상자가 사라진다: 그 동작의 「키 지정」으로
+      focusFallback["conflict-yes"] = "assign:\(p.action)"
+      focusFallback["conflict-no"] = "assign:\(p.action)"
       let yf = yes.fit
       let nf = no.fit
       let qw = inner - 16 - yf.width - nf.width - 16 - 8
@@ -317,6 +341,7 @@ final class KeymapEditorView: FlippedView {
         head.addSubview(badge)
       }
       let toggle = Chip("", look: Chip.Look(padX: 0))
+      toggle.identifier = NSUserInterfaceItemIdentifier("group:\(g.id)")
       toggle.setAccessibilityLabel(g.label)
       toggle.setAccessibilityExpanded(open)
       toggle.action = { [weak self] in
@@ -364,17 +389,19 @@ final class KeymapEditorView: FlippedView {
     let name = NUI.label(a.label, size: 12)
     name.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
     let waiting = capturing == a.id
+    let assignFocus = "assign:\(a.id)"
     let assign = chip(
-      waiting ? SettingsSheet.waiting : SettingsSheet.assign, fill: waiting ? NUI.color(NUI.Hex.amber400) : NUI.white(0.1),
-      text: waiting ? .black : .white
+      waiting ? SettingsSheet.waiting : SettingsSheet.assign, focus: assignFocus,
+      fill: waiting ? NUI.color(NUI.Hex.amber400) : NUI.white(0.1), text: waiting ? .black : .white
     ) { [weak self] in self?.startCapture(a.id) }
     var tail: [Chip] = [assign]
     if !a.keys.isEmpty {
-      let clear = chip(SettingsSheet.clear, fill: .clear, text: NUI.white(0.4)) { [weak self] in
+      let clear = chip(SettingsSheet.clear, focus: "clear:\(a.id)", fill: .clear, text: NUI.white(0.4)) { [weak self] in
         _ = self?.edit("clear", a.id)
         self?.reload()
       }
       clear.toolTip = SettingsSheet.clearTip
+      focusFallback["clear:\(a.id)"] = assignFocus
       tail.append(clear)
     }
     var keys: [Chip] = []
@@ -385,11 +412,12 @@ final class KeymapEditorView: FlippedView {
           look: Chip.Look(fill: NUI.color(NUI.Hex.rose500, 0.2), text: NUI.color(NUI.Hex.rose200), radius: 4, size: 12, padX: 6)))
     }
     for k in a.keys {
-      let c = chip("\(k.label) ×", fill: NUI.white(0.15)) { [weak self] in
+      let c = chip("\(k.label) ×", focus: "unbind:\(k.id)", fill: NUI.white(0.15)) { [weak self] in
         _ = self?.edit("unbind", k.id)
         self?.reload()
       }
       c.toolTip = SettingsSheet.unbindTip
+      focusFallback["unbind:\(k.id)"] = assignFocus
       keys.append(c)
     }
     // 이름 112 · 키들(줄 바꿈) · 뒤 단추들
@@ -497,7 +525,12 @@ final class KeymapPortView: FlippedView {
     if abs(bounds.width - lastWidth) > 0.5 { rebuild() }
   }
 
+  /// 다시 놓는다. 키보드 포커스(펼침 단추·복사·가져오기·글 칸)는 그대로 둔다(`keepingFocus`)
   private func rebuild() {
+    keepingFocus(fallback: [:]) { build() }
+  }
+
+  private func build() {
     subviews.forEach { $0.removeFromSuperview() }
     let w = bounds.width
     lastWidth = w
@@ -508,6 +541,7 @@ final class KeymapPortView: FlippedView {
     marker.frame = NSRect(x: pad, y: pad + 4, width: NUI.width(marker), height: 14)
     title.frame = NSRect(x: marker.frame.maxX + 4, y: pad, width: NUI.width(title), height: 20)
     let toggle = Chip("", look: Chip.Look(padX: 0))
+    toggle.identifier = NSUserInterfaceItemIdentifier("port-toggle")
     toggle.setAccessibilityLabel(SettingsSheet.port)
     toggle.setAccessibilityExpanded(open)
     toggle.action = { [weak self] in self?.setOpen(!(self?.open ?? false)) }
@@ -533,6 +567,7 @@ final class KeymapPortView: FlippedView {
         let b = Chip(
           i == 0 ? SettingsSheet.copy : SettingsSheet.importButton,
           look: Chip.Look(fill: NUI.white(0.1), radius: 4, size: 12, padX: 8, padY: 4))
+        b.identifier = NSUserInterfaceItemIdentifier(i == 0 ? "port-copy" : "port-import")
         let bf = b.fit
         b.frame = NSRect(x: x, y: y + 20 + 108 + 6, width: bf.width, height: 24)
         if i == 0 {

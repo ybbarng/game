@@ -187,6 +187,35 @@ class FlippedView: NSView {
   }
 }
 
+extension NSView {
+  /// `body`가 하위 보기를 지우고 다시 만들어도 키보드 포커스를 돌려준다. 포커스가 이 보기 안에 있었으면: 그 보기가 다시
+  /// 붙었으면(글 칸처럼 들고 있다가 다시 붙이는 보기) 그것, 아니면 같은 이름(`identifier`)의 새 보기, 그것도 없으면 `fallback`이
+  /// 정한 이름(`FocusKeep`). 포커스가 밖에 있었으면 아무것도 하지 않는다
+  func keepingFocus(fallback: [String: String], _ body: () -> Void) {
+    let was = window?.firstResponder as? NSView
+    let inside = was.map { $0.isDescendant(of: self) } ?? false
+    body()
+    guard inside, let was, let window else { return }
+    if was.isDescendant(of: self), was.window === window {
+      window.makeFirstResponder(was)
+      return
+    }
+    var named: [String: NSView] = [:]
+    func walk(_ v: NSView) {
+      for s in v.subviews {
+        if let id = s.identifier?.rawValue, s.acceptsFirstResponder, named[id] == nil { named[id] = s }
+        walk(s)
+      }
+    }
+    walk(self)
+    if let id = FocusKeep.pick(saved: was.identifier?.rawValue, fallback: fallback, available: Set(named.keys)),
+      let v = named[id]
+    {
+      window.makeFirstResponder(v)
+    }
+  }
+}
+
 /// 문서 보기를 늘 내용 폭(스크롤 막대 몫을 뺀 `contentView` 폭)에 맞추는 스크롤 보기. 막대가 내용 폭을 차지하는 꼴(macOS
 /// 「스크롤 막대 보기: 항상」·마우스를 이은 맥)에서 막대가 생기거나 사라지면(내용이 길어짐·설정이 바뀜·창 크기) AppKit이
 /// `tile()`로 내용 칸을 다시 나누는데, 문서 보기는 폭만 바뀌고 다시 배치되지 않아 오른쪽 끝이 막대 밑에 가려졌다(2026-11-20
