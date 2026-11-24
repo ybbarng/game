@@ -1242,7 +1242,6 @@ export class GuestRoom<
     }
   }
 
-  /** 판 끝 기록을 검증하고 결과를 알린다(통과하면 복기용 기록도) */
   /** 방장이 공개한 비밀 값으로 시드를 확인해 둔다 */
   private async acceptSeed(
     message: Extract<HostMessage<View, Event, ActionT>, { t: "seed" }>,
@@ -1259,6 +1258,7 @@ export class GuestRoom<
     if (this.kit.fairTable?.seeded) this.ensureFair();
   }
 
+  /** 판 끝 기록을 검증하고 결과를 알린다(통과하면 복기용 기록도) */
   private async finishAudit(
     message: Extract<HostMessage<View, Event, ActionT>, { t: "audit" }>,
   ): Promise<void> {
