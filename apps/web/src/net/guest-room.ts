@@ -35,7 +35,11 @@ import { botCheckFor, lobbyBotPlan } from "./bot-plan";
 import type { ClaimsResolved } from "./claim";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
-import { type FairReplayGame, verifyFairLog } from "./fair-verify";
+import {
+  endsWithRetire,
+  type FairReplayGame,
+  verifyFairLog,
+} from "./fair-verify";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
 import { verifyHostProof, welcomeStatement } from "./identity";
 import {
@@ -907,7 +911,7 @@ export class GuestRoom<
     for (const l of this.listeners.match) l(this.match);
   }
 
-  /** 이 기기가 받은 첫 화면의 판 번호(화투). 그보다 앞 판은 이 기기에서 검증할 수 없다 */
+  /** 이 기기가 받은 첫 화면의 판 번호(판 번호가 있는 게임). 그보다 앞 판은 이 기기에서 검증할 수 없다 */
   private firstRound: number | null = null;
   /** 새로고침 전에 남긴 멘탈 포커 진행에서 되살렸다(판 중간에 다시 들어왔다) */
   private resumedFair = false;
@@ -942,6 +946,13 @@ export class GuestRoom<
       unchecked,
       sent: this.match.sent,
       seen: this.match.seen,
+      // 새로고침해 판 중간에 다시 들어왔으면 그 판은 처음부터 지켜보지 않았다.
+      watchedFrom:
+        this.firstRound === null
+          ? 1
+          : this.resumedFair
+            ? this.firstRound + 1
+            : this.firstRound,
     };
   }
 
@@ -987,6 +998,8 @@ export class GuestRoom<
             deviceOf: (seat) => fair.deviceOf(seat),
           },
           flipCount,
+          // 그만둔 게임은 덱을 열지 않는다(끝까지 치지 않은 판, 결과 없음).
+          { retired: endsWithRetire(log) },
         ) as never,
       viewOf: (state, seat) =>
         spec.refreshView(spec.viewOf(state as State, seat)),
@@ -1460,8 +1473,12 @@ export class GuestRoom<
         : this.fair instanceof OnecardGuestSeat
           ? 1
           : null;
-    if (isCardSeat(this.fair) && round !== null && !view?.retired)
-      await this.fair.whenOpened(round);
+    if (isCardSeat(this.fair) && round !== null) {
+      if (!view?.retired) await this.fair.whenOpened(round);
+      // 그만둔 게임: 마지막 판은 끝까지 치지 않아 열리지 않지만, 바로 앞 판(끝낸 판)은 판 끝 열쇠가 다 닿아 열린
+      // 뒤에 본다. 열리지 않은 끝낸 판은 게임 끝 검증이 잡는다(`unopenedRoundProblem`).
+      else if (round > 1) await this.fair.whenOpened(round - 1);
+    }
     // 마이티·하트도 마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다. 열쇠를 공개한 판이 다 열리길 기다린다
     // (화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다, `whenRevealedOpened`).
     if (

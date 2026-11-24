@@ -56,7 +56,7 @@ describe("판 끝 검증은 다시 섞은 덱 조각을 처음 덱부터 끝까�
     expect(asked).toHaveLength(12);
     const ok = audit(log, deal, asked);
     expect(ok).toMatchObject({ ok: true, upTo: log.length });
-    if (ok.ok) expect(ok.state.reshuffles).toBe(3);
+    if (ok.ok) expect(ok.state?.reshuffles).toBe(3);
   });
 
   it("세 번째 다시 섞기 입력에서 한 장을 빼고 알렸으면 그 걸음에서 방장을 짚는다", () => {

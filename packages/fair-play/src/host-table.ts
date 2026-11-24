@@ -270,8 +270,8 @@ export class FairHostTable {
       return;
     }
     // 앞 판(모두 포기 등) 패가 아직 다 열리지 않았으면 열릴 때 다시 한다.
-    if (checked.upTo < this.hooks.log().length) return;
     const truth = checked.state;
+    if (checked.upTo < this.hooks.log().length || truth === null) return;
     this.hooks.patch(() => truth);
     const open = this.openGate;
     this.openGate = null;

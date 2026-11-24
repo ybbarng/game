@@ -194,7 +194,7 @@ describe("판 도중 다시 섞기(기기 둘, 메시지)", () => {
       requests(asked),
     );
     expect(ok.ok && ok.upTo).toBe(log.length);
-    if (ok.ok) expect(ok.state.discard.at(-1)).toBe(c(11));
+    if (ok.ok) expect(ok.state?.discard.at(-1)).toBe(c(11));
 
     // 방장이 1번이 뽑을 카드를 자기 기기로 열었다.
     const stolen = asked.map((r, i) => (i === 0 ? { ...r, to: 0 } : r));

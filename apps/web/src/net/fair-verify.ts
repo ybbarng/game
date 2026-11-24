@@ -86,6 +86,64 @@ export interface FairVerifyInput {
   seen: readonly string[];
   /** 게임 중 검증: 기록 뒤에 보낸 내 행동이 더 있을 수 있다 */
   inFlight?: boolean;
+  /**
+   * 이 기기가 처음부터 지켜본 첫 판(없으면 1). 새로고침해 판 중간에 다시 들어왔으면 그다음 판이다.
+   * 게임 끝 검증에서 패를 모르는 판이 끝난 판인지 따질 때 이 판부터만 본다(`unopenedRoundProblem`)
+   */
+  watchedFrom?: number;
+}
+
+/**
+ * 그만둔 게임인가: 기록 끝이 끝내기(`GameKit.retireAction`, 멘탈 포커 카드 게임은 모두 `{ type: "retire" }`)다.
+ * 「그만하기」 단추와 끝내기 투표 모두 `LocalMatch.end()`로 이 행동을 기록에 넣는다
+ */
+export function endsWithRetire(log: readonly { action: unknown }[]): boolean {
+  const action = log.at(-1)?.action as { type?: unknown } | undefined;
+  return action?.type === "retire";
+}
+
+/** 받은 화면(JSON)의 판 번호. 판 번호가 없는 게임(원카드)이면 null */
+function roundOfView(view: string): number | null {
+  try {
+    const round = (JSON.parse(view) as { roundNumber?: unknown }).roundNumber;
+    return typeof round === "number" ? round : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 게임 끝 검증에서 다시 계산이 패를 모르는 판에서 멈췄을 때, 그 판이 정말 끝까지 치지 않은 판인지 본다.
+ * 문제가 있으면 까닭.
+ *
+ * 그만둔 게임(기록 끝이 끝내기 `retire`)의 마지막 판만 패를 몰라도 된다: 끝까지 치지 않은 판이라 결과가 없다.
+ * 그보다 앞 판이거나, 끝까지 친 게임의 마지막 판인데 패를 모르면 끝난 판의 카드가 다 열리지 않은 것이다
+ * (누군가 판 끝에 열쇠를 다 공개하지 않아 그 판을 다시 계산하지 못하게 했다). 방장이 불리한 판을 끝낸 뒤
+ * 열쇠를 숨기고 다음 판에서 그만둬도 여기서 걸린다. 판은 받은 화면의 판 번호로 센다(방장이 이미 보낸 화면은
+ * 거둘 수 없다). 이 기기가 처음부터 지켜본 판(`watchedFrom`부터)만 따진다. 새로고침 앞 판은 이 기기가 다시
+ * 계산할 수 없다(`GuestRoom.verifyRound`).
+ * 판 번호가 없는 게임(원카드, 한 게임이 한 판)은 그 게임의 다시 계산이 본다(`checkOnecardTable`)
+ */
+export function unopenedRoundProblem(input: {
+  deals: ReadonlyMap<number, unknown>;
+  log: readonly { action: unknown }[];
+  seen: readonly string[];
+  watchedFrom: number;
+}): string | null {
+  let last: number | null = null;
+  for (const view of input.seen) {
+    const round = roundOfView(view);
+    if (round !== null && (last === null || round > last)) last = round;
+  }
+  if (last === null) return null;
+  // 다시 계산은 판 차례대로 돌다가 패를 모르는 첫 판에서 멈춘다.
+  let stopped = 1;
+  while (input.deals.has(stopped)) stopped++;
+  if (stopped < input.watchedFrom) return null;
+  const retired = endsWithRetire(input.log);
+  if (stopped < last || (stopped === last && !retired))
+    return `${stopped}판은 끝났는데 카드가 다 열리지 않아 다시 계산하지 못했어요.`;
+  return null;
 }
 
 function idle(): Promise<void> {
@@ -112,6 +170,16 @@ export async function verifyFairLog(
   const { states } = checked;
   const partial = checked.upTo < log.length;
   const done = log.slice(0, checked.upTo);
+  // 게임 끝: 다시 계산이 멈춘 판은 그만둔 게임의 마지막 판(끝까지 치지 않은 판)이어야 한다.
+  if (partial && !input.inFlight) {
+    const problem = unopenedRoundProblem({
+      deals,
+      log,
+      seen: input.seen,
+      watchedFrom: input.watchedFrom ?? 1,
+    });
+    if (problem) return { ok: false, seat: null, reason: problem };
+  }
 
   // 사람이 보낸 것이 아닌 기록(방장 시계·방장 기기가 넣은 것)은 게임이 따로 본다(지어낸 청구, 뺀 발표 등)
   if (game.unsigned)

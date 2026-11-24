@@ -557,8 +557,8 @@ export class HeartsHostTable {
       this.coordinator.incident({ seat: checked.seat, reason: checked.reason });
       return;
     }
-    if (checked.upTo < this.hooks.log().length) return;
     const truth = checked.state;
+    if (checked.upTo < this.hooks.log().length || truth === null) return;
     this.hooks.patch(() => truth);
     const open = this.openGate;
     this.openGate = null;
