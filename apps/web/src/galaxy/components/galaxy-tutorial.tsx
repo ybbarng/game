@@ -16,7 +16,7 @@ import { EMPTY_TIMELINE } from "../fx";
 import { useGalaxyTutorialProgress } from "../progress";
 import { skyArt } from "../sky-art";
 import { magScale, starRgb } from "../star-color";
-import { useGalaxy } from "../store";
+import { galaxyPractice, useGalaxy } from "../store";
 import {
   type BoardScene,
   boardGroup,
@@ -185,25 +185,19 @@ export const galaxyTutorial: TutorialKit<
   startMission(scenario) {
     if (scenario && scenario.kind !== "board")
       throw new Error("미션 장면은 판이어야 한다");
-    if (scenario)
-      useGalaxy
-        .getState()
-        .startPractice(
-          sceneState(scenario),
-          GALAXY_TUTORIAL_LEVEL,
-          scenario.dice,
-        );
-    else
-      useGalaxy
-        .getState()
-        .startPractice(
-          createMatch(
-            GALAXY_REAL_RULES,
-            Math.floor(Math.random() * 2 ** 31),
-            TUTORIAL_BOARD,
-          ).state,
-          GALAXY_TUTORIAL_LEVEL,
-        );
+    const state = scenario
+      ? sceneState(scenario)
+      : createMatch(
+          GALAXY_REAL_RULES,
+          Math.floor(Math.random() * 2 ** 31),
+          TUTORIAL_BOARD,
+        ).state;
+    useGalaxy
+      .getState()
+      .startPractice(
+        state,
+        galaxyPractice(state, GALAXY_TUTORIAL_LEVEL, scenario?.dice),
+      );
   },
   subscribe: (listener) =>
     useGalaxy.subscribe((state, prev) => {

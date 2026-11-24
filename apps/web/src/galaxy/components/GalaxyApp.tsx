@@ -39,7 +39,13 @@ import {
   rulesFromSettings,
   useGalaxySettings,
 } from "../settings";
-import { clearGalaxy, type GalaxySaved, loadGalaxy, useGalaxy } from "../store";
+import {
+  clearGalaxy,
+  type GalaxySaved,
+  galaxyPractice,
+  loadGalaxy,
+  useGalaxy,
+} from "../store";
 import { GALAXY_LESSONS } from "../tutorial";
 import { GALAXY_BG, GalaxyGame } from "./GalaxyGame";
 import { GalaxyStarQuiz } from "./GalaxyStarQuiz";
@@ -521,14 +527,13 @@ export function GalaxyApp() {
         if (saved) useGalaxy.getState().resume(saved);
         else if (scene) {
           const { level, dice, ...options } = scene;
-          useGalaxy.getState().startPractice(
-            createGalaxyScenario({
-              ...options,
-              board: boardOfSky(scene.rules.sky),
-            }),
-            level,
-            dice,
-          );
+          const state = createGalaxyScenario({
+            ...options,
+            board: boardOfSky(scene.rules.sky),
+          });
+          useGalaxy
+            .getState()
+            .startPractice(state, galaxyPractice(state, level, dice));
         } else startSolo(hooks.__galaxySeed);
         setScreen({ kind: "playing" });
       }}
