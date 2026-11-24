@@ -109,7 +109,7 @@ jobs:
           BASE: ${{ steps.base.outputs.base }}
         run: |
           set -euo pipefail
-          pattern='^(native/|\.github/workflows/ci\.yml$|packages/(cube-engine|cube-solver|cube-scramble|cube-ai|cube-reduction|puzzle-core)/|packages/engine/src/rng\.ts$|apps/web/src/cube/(native/|solve-session\.ts$|flow/combo\.ts$|practice/|keys/(move-keys|reach|key-colors|layout)\.ts$|hero/(methods|present|loop|highlight)\.ts$|piece-marks\.ts$|view/geometry\.ts$|settings\.ts$|mini/practice\.ts$|algs/(check|spot|transform|store)\.ts$|learn/(judge|judge-methods|alg-sets|algs-[a-z0-9-]+|bld|types|beginner-path|big-path)\.ts$|tiers/(rank|table)\.ts$|timer/stats\.ts$|records\.ts$|replay-player\.ts$|mini/hint(-pick)?\.ts$|input/(actions|interpreter|keymaps|storage)\.ts$|keymap-editor\.ts$))'
+          pattern='^(native/|apps/cubie/Sources/CubieNativeC/|\.github/workflows/ci\.yml$|packages/(cube-engine|cube-solver|cube-scramble|cube-ai|cube-reduction|puzzle-core)/|packages/engine/src/rng\.ts$|apps/web/src/cube/(native/|solve-session\.ts$|flow/combo\.ts$|practice/|keys/(move-keys|reach|key-colors|layout)\.ts$|hero/(methods|present|loop|highlight)\.ts$|piece-marks\.ts$|view/geometry\.ts$|settings\.ts$|mini/practice\.ts$|algs/(check|spot|transform|store)\.ts$|learn/(judge|judge-methods|alg-sets|algs-[a-z0-9-]+|bld|types|beginner-path|big-path)\.ts$|tiers/(rank|table)\.ts$|timer/stats\.ts$|records\.ts$|replay-player\.ts$|mini/hint(-pick)?\.ts$|input/(actions|interpreter|keymaps|storage)\.ts$|keymap-editor\.ts$))'
           if [ -z "$BASE" ]; then
             rust=true
           elif git diff --name-only "$BASE" HEAD | grep -qE "$pattern"; then
@@ -188,6 +188,10 @@ jobs:
       - run: rustc --version && cargo --version
       - run: cargo fmt --check
       - run: cargo test --locked
+      # Cubie C 머리 파일(cubie_native.h)과 Rust C ABI(ffi_*.rs)가 어긋나지 않는지(docs/52 5-20). 머리 파일만 읽어 견준다
+      - name: Cubie 머리 파일 ↔ Rust ABI
+        working-directory: native/cubie-native
+        run: cargo test --locked --test header_abi
 
   # 사이트 미니 큐브 화면과 Cubie 네이티브 큐브 창을 함께 고쳤는지(2026-11-12, docs/52 5-7). PR에서만 돈다.
   # 미니 화면이 쓰는 코드(scripts/native-parity.mjs WATCHED)가 바뀌었는데 apps/cubie/·native/가 그대로면 실패하고,
