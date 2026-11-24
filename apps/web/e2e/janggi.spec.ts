@@ -983,6 +983,71 @@ test(
 );
 
 test(
+  "장기 수 배우기: 묶인 기물·비켜 부르는 장군을 풀고, 차 둘로 외통을 방법대로 끝까지 둔다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 문제 풀이 진행은 크기와 상관없다(공통 문제 화면의 배치는 장기 외통 문제가 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/janggi");
+    await page.getByRole("button", { name: /장기 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+
+    // 묶인 기물: 차 48 → 18로 궁(15) 앞의 마(16)를 묶으며 노린다.
+    await page
+      .getByRole("region", { name: "묶인 기물" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText("묶인 기물을 노리세요.");
+    await tapPoint(page, "48", touch);
+    await tapPoint(page, "18", touch);
+    await expect(page.getByRole("status")).toHaveText("묶었어요!");
+    await expect(page.getByText(/같은 가로줄에 서 있어요/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("janggi-pin.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 비켜 부르는 장군: 상 35가 비키며 마(99)를 노리고, 열린 길로 차(55)가 장군을 부른다.
+    await page
+      .getByRole("region", { name: "비켜 부르는 장군" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await tapPoint(page, "35", touch);
+    await tapPoint(page, "67", touch);
+    await expect(page.getByRole("status")).toHaveText("비켜 장군!");
+    await expect(page.getByText(/장군을 불러요/)).toBeVisible();
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 차 둘로 외통 1번: 방법과 다른 수(2번 가로줄을 막던 차를 옮김)는 틀리고, 다른 차를 1번 가로줄로 올리면 외통이다.
+    const rooks = page.getByRole("region", { name: "차 둘로 외통" });
+    await expect(rooks.getByText("0/5")).toBeVisible();
+    await rooks.getByRole("button", { name: "풀기 시작" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "차 둘로 외통을 만드세요.",
+    );
+    await tapPoint(page, "29", touch);
+    await tapPoint(page, "19", touch);
+    await expect(page.getByRole("status")).toHaveText("방법과 다른 수예요.");
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await tapPoint(page, "71", touch);
+    await tapPoint(page, "11", touch);
+    await expect(page.getByRole("status")).toHaveText("외통!");
+
+    // 2번: 장군(98 → 28)에 한의 궁이 1번 가로줄로 올라가면, 3번 가로줄을 막던 차(31)를 1번 가로줄로 올려 외통.
+    await page.getByRole("button", { name: "다음 문제" }).click();
+    await tapPoint(page, "98", touch);
+    await tapPoint(page, "28", touch);
+    await expect(page.getByRole("status")).toHaveText("방법대로 이어 두세요.", {
+      timeout: 10_000,
+    });
+    await tapPoint(page, "31", touch);
+    await tapPoint(page, "11", touch);
+    await expect(page.getByRole("status")).toHaveText("외통!");
+    await page.screenshot({ path: info.outputPath("janggi-rooks.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+    await expect(rooks.getByText("2/5")).toBeVisible();
+  },
+);
+
+test(
   "장기 개인 시간: 상차림 뒤부터 시계가 가고, 다 쓰면 시간패다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
