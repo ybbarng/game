@@ -445,6 +445,12 @@ export class GuestRoom<
   } = { snapshots: [], history: null };
   /** 멘탈 포커 판: 시작하자마자 공개된 시드 */
   private fairSeed: number | null = null;
+  /**
+   * 받은 시드를 확인하는 중(해시 계산이 비동기다). 메시지는 서로 기다리지 않고 처리되므로, 마이티·하트처럼 첫
+   * 화면 뒤에 시드가 오는 판에서 방장이 곧바로 그만두면 판 끝 기록 검증이 시드 확인보다 먼저 돌 수 있다. 검증은
+   * 이것을 먼저 기다린다
+   */
+  private seedCheck: Promise<void> | null = null;
   /** 진행 중인 판에 내가 보낸 섞기 증명 약속 */
   private ownCommits: Extract<FairMessage, { k: "sproof" }>[] = [];
   /** 일반 판: 게임 끝 검증 중인 복기용 기록 */
@@ -958,7 +964,9 @@ export class GuestRoom<
     // 그리고 되살아난 판(새로고침 전 더미 요청은 방장이 다시 보내 주는데, 판 끝 기록이 그보다 먼저 닿을 수 있다)은
     // 이 기기에서 지금 검증할 수 없으니 건너뛴다(시드가 없다거나 화면·더미가 다르다고 거짓으로 알리지 않는다).
     // 게임 끝 검증이 그때까지 받은 것으로 기록 전체를 다시 본다
-    if (!this.match) return;
+    const gen = this.gameNo;
+    await this.seedCheck;
+    if (gen !== this.gameNo || !this.match) return;
     if (
       this.kit.fairTable?.seeded &&
       this.firstRound !== null &&
@@ -973,7 +981,6 @@ export class GuestRoom<
       });
       return;
     }
-    const gen = this.gameNo;
     const verdict = await verifyFairLog({ ...input, inFlight: true });
     // 계산하는 사이 한 판 더로 새 게임이 시작했으면 앞 게임 결과로 새 게임을 건드리지 않는다.
     if (gen !== this.gameNo) return;
@@ -1040,19 +1047,9 @@ export class GuestRoom<
       }
       case "seed": {
         if (from !== this.hostId) return;
-        // 바로 앞의 "started"가 먼저 처리되게 같은 값을 기다린다(메시지 처리가 비동기다).
-        await this.commitHash;
-        const checked = await this.checkSeed(
-          message.reveals,
-          message.commitments,
-        );
-        if (!checked.ok) {
-          this.raiseIncident({ seat: 0, reason: checked.reason });
-          return;
-        }
-        this.fairSeed = checked.seed;
-        // 판을 시드로 정하는 판(화투 셋·원카드): 시드가 정해지면 첫 판 섞기에 낀다(방장은 모두가 나눠 받은 뒤에 대국을 만든다).
-        if (this.kit.fairTable?.seeded) this.ensureFair();
+        const task = this.acceptSeed(message);
+        this.seedCheck = task;
+        await task;
         break;
       }
       case "fpHistory": {
@@ -1245,6 +1242,22 @@ export class GuestRoom<
     }
   }
 
+  /** 방장이 공개한 비밀 값으로 시드를 확인해 둔다 */
+  private async acceptSeed(
+    message: Extract<HostMessage<View, Event, ActionT>, { t: "seed" }>,
+  ): Promise<void> {
+    // 바로 앞의 "started"가 먼저 처리되게 같은 값을 기다린다(메시지 처리가 비동기다).
+    await this.commitHash;
+    const checked = await this.checkSeed(message.reveals, message.commitments);
+    if (!checked.ok) {
+      this.raiseIncident({ seat: 0, reason: checked.reason });
+      return;
+    }
+    this.fairSeed = checked.seed;
+    // 판을 시드로 정하는 판(화투 셋·원카드): 시드가 정해지면 첫 판 섞기에 낀다(방장은 모두가 나눠 받은 뒤에 대국을 만든다).
+    if (this.kit.fairTable?.seeded) this.ensureFair();
+  }
+
   /** 판 끝 기록을 검증하고 결과를 알린다(통과하면 복기용 기록도) */
   private async finishAudit(
     message: Extract<HostMessage<View, Event, ActionT>, { t: "audit" }>,
@@ -1301,6 +1314,7 @@ export class GuestRoom<
     this.fair = null;
     this.seedEarly = { snapshots: [], history: null };
     this.fairSeed = null;
+    this.seedCheck = null;
     this.ownCommits = [];
     this.pendingArchive = null;
     this.fairEarly.length = 0;
@@ -1334,6 +1348,7 @@ export class GuestRoom<
   /** 멘탈 포커 판 끝: 다 열린 판까지 기록 전체를 다시 계산한다 */
   private async verifyFairEnd(log: FairLogged[]): Promise<AuditResult> {
     if (this.startProblem) return { ok: false, reason: this.startProblem };
+    await this.seedCheck;
     const fairTable = this.kit.fairTable;
     // 판을 시드로 정하는 판(화투): 게임이 시작하자마자 끝나면(한 판짜리 첫 판 총통) 게임 끝 기록이 첫 화면보다 먼저
     // 올 수 있다(첫 화면은 보일 카드를 다 연 뒤에 넘긴다). 대국이 없으면 검증할 수 없으니 첫 화면을 기다린다.

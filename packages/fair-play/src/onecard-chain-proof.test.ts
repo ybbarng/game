@@ -53,5 +53,10 @@ describe("다시 섞기 사슬·섞기 증명을 꾸민 참가자(세 번째 다
       reason: "섞기 증명이 맞지 않아요(섞을 때 카드를 바꿨어요).",
     });
     expect(net.incidents[1]).toEqual([]);
+    // 조작이 드러났을 때 범인을 찾는 길(shuffleCulprit)도 틀린 증명을 낸 기기를 짚는다(응답은 냈으니 「안 낸 기기」로는 못 찾는다).
+    expect(await net.devices[0]?.shuffleCulprit(SEG3)).toEqual({
+      device: 1,
+      reason: "섞기 증명이 맞지 않아요(섞을 때 카드를 바꿨어요).",
+    });
   });
 });

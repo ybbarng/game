@@ -6,6 +6,7 @@ import {
   HAND_SIZE,
   type HeartsRules,
   heartsDeck,
+  leadSuit,
   type MatchState,
   PLAYER_COUNT,
   type PlayerView,
@@ -15,7 +16,7 @@ import {
   type Trick,
   TWO_OF_CLUBS,
 } from "@game/hearts-engine";
-import type { Card } from "@game/mighty-engine";
+import { type Card, suitOf } from "@game/mighty-engine";
 import { obj, subj } from "@game/mighty-engine/josa";
 
 import { cardText, slotOfToken, tokenOf } from "./blind";
@@ -170,7 +171,7 @@ export class HeartsRenegeWatch {
       if (!allowed.includes(past.card))
         return {
           seat: play.seat,
-          reason: `${past.trickIndex + 1}번째 턴에 ${obj(cardText(past.card))} 냈는데, 그때 ${subj(cardText(play.card))} 손에 있었어요. ${describeHearts(past)}`,
+          reason: `${past.trickIndex + 1}번째 턴에 ${obj(cardText(past.card))} 냈는데, 그때 ${subj(cardText(play.card))} 손에 있었어요. ${describeHearts(past, play.card)}`,
         };
     }
     this.plays.push(play);
@@ -178,9 +179,13 @@ export class HeartsRenegeWatch {
   }
 }
 
-function describeHearts(past: PastPlay): string {
+/** 위반 까닭. `held`는 그때 손에 있었다고 드러난 카드 */
+function describeHearts(past: PastPlay, held: Card): string {
   if (past.before.plays.length > 0)
-    return "선 무늬가 있었는데 따라 내지 않았어요.";
+    // 따라 내는 자리: 드러난 카드가 선 무늬면 따라 내지 않은 것, 아니면(따라 낼 무늬가 없었다) 첫 턴 점수 카드다.
+    return suitOf(held) === leadSuit(past.before)
+      ? "선 무늬가 있었는데 따라 내지 않았어요."
+      : "첫 턴에 다른 카드가 있었는데 점수 카드를 냈어요.";
   if (past.trickIndex === 0) return "첫 선은 ♣2로 해야 해요.";
   return "하트가 깨지기 전에 다른 무늬가 있었는데 하트로 선을 잡았어요.";
 }

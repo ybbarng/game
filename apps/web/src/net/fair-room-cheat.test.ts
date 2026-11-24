@@ -54,9 +54,14 @@ describe("멘탈 포커 온라인 대전", () => {
       expect(done).toBe(true);
       await until(() => incidents.length > 0);
       const own = incidents.filter((i) => i.own);
-      expect(own.length).toBeGreaterThan(0);
       expect(own.every((i) => i.seat === cheater)).toBe(true);
-      expect(own[0]?.reason).toMatch(/무늬|조커|규칙에 맞지 않는/);
+      // 모든 기기(방장·참가자 둘)가 스스로 찾았다.
+      expect([...new Set(own.map((i) => i.reporter))].sort()).toEqual(
+        [0, ...guests.map((g) => g.seat)].sort(),
+      );
+      // 드러나는 순간 잡는 감시(RenegeWatch)의 문구다. 판 끝 다시 계산이 잡으면 「규칙에 맞지 않는 행동」이 된다.
+      for (const i of own)
+        expect(i.reason).toMatch(/선 무늬가 있었는데 따라 내지 않았어요\./);
       // 방장 대국도 멈췄다.
       expect(host.match?.halted).not.toBeNull();
     });
