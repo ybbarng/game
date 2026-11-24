@@ -545,7 +545,8 @@ final class TierCell: FlippedView {
       topText = RecordsSheet.tierCellTop(size: size, ms: nil)
       NUI.set(name, RecordsSheet.tierPending, color: NUI.white(0.4))
     }
-    setAccessibilityLabel("\(topText) \(name.stringValue)")
+    // 「3×3 23.45 브론즈 II」, 기록이 없으면 「3×3 5판 뒤에」(위 글 끝의 빈칸은 뺀다)
+    setAccessibilityLabel("\(topText.trimmingCharacters(in: .whitespaces)) \(name.stringValue)")
     setAccessibilitySelected(on)
     needsLayout = true
     needsDisplay = true

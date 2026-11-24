@@ -295,7 +295,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   }
 
   /// 확인용(CUBIE_DEBUG): 다른 프로세스가 보낸 알림으로 메뉴와 같은 일을 한다(메뉴를 마우스로 누르지 않고 확인).
-  /// 알림 이름 `kr.byb.cubie.debug`, object는 "scramble"·"mirror"·"size:4"·"records"·"keys"·"frame:x,y,w,h"·"dump"
+  /// 알림 이름 `kr.byb.cubie.debug`, object는 "scramble"·"mirror"·"size:4"·"records"·"tiers"·"settings"·"site-settings"(「모든 설정…」)·
+  /// "visible"(숨기기·보이기)·"reload"·"practice:<단계 id>"(비우면 끝내기)·"keys"·"frame:x,y,w,h"·"dump"
   private func listenDebug() {
     DistributedNotificationCenter.default().addObserver(
       forName: Notification.Name("kr.byb.cubie.debug"), object: nil, queue: .main
@@ -310,6 +311,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         case "mirror": self.menuMirror()
         case "size": self.cube.send(.size(Int(parts.last ?? "") ?? 3))
         case "records": self.menuRecords()
+        case "tiers": self.menuTiers()
+        case "settings": self.menuSettings()
+        case "site-settings": self.openWebWindow(.settings)
+        case "visible": self.menuToggleVisible()
+        case "reload": self.menuReload()
+        case "practice": self.cube.send(.practice(stage: parts.count > 1 ? parts[1] : nil, see: false))
         case "keys": self.menuKeys()
         case "frame":
           let v = (parts.last ?? "").split(separator: ",").compactMap { Double($0) }
@@ -318,7 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             let h = max(Config.minSize.height, v[3])
             self.cube.panel.setFrame(NSRect(x: v[0], y: v[1], width: w, height: h), display: true)
           }
-        default: self.cube.dump("dump frame=\(self.cube.panel.frame)")
+        default: self.cube.dump("dump frame=\(self.cube.panel.frame) bubble=\(self.bubble.isShown)")
         }
       }
     }
