@@ -22,11 +22,7 @@ export function NyrongppongStats({ book }: { book: StatsBook }) {
           value={pct(s.gameWins, s.games)}
           sub={`${s.games}게임 가운데 ${s.gameWins}번`}
         />
-        <StatTile
-          label="판 평균 점수"
-          value={s.averageScore.toFixed(1)}
-          sub="낮을수록 좋아요."
-        />
+        <StatTile label="판 평균 점수" value={s.averageScore.toFixed(1)} />
         <StatTile
           label="판 평균 뽕"
           value={s.averagePpongs.toFixed(1)}

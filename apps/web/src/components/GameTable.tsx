@@ -566,10 +566,7 @@ export function GameTable({
               {shuffling && !dealing && !incident ? (
                 <FairStatus shuffling={shuffling} />
               ) : (
-                <span
-                  className="shrink-0 tabular-nums opacity-80"
-                  title="턴 진행과 아직 나오지 않은 점수 카드 수"
-                >
+                <span className="shrink-0 tabular-nums opacity-80">
                   {view.phase === "play"
                     ? compactHud
                       ? `${view.trickIndex + 1}/${lastTrickIndex(rules) + 1} · ${20 - pointsTaken}점`

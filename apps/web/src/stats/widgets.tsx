@@ -33,7 +33,7 @@ export function StatTile({
     <div className="flex min-w-0 flex-col gap-0.5 rounded-2xl bg-white/[0.06] px-4 py-3">
       <div className="truncate text-white/60 text-xs">{label}</div>
       <div className="font-semibold text-2xl text-white">{value}</div>
-      {sub && <div className="truncate text-white/55 text-xs">{sub}</div>}
+      {sub && <div className="truncate text-white/75 text-xs">{sub}</div>}
     </div>
   );
 }

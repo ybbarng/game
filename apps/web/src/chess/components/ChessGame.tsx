@@ -91,7 +91,7 @@ function PlayerPlate({
       score={`${view.wins[seat] ?? 0}승`}
       token={<PieceIcon piece={`${side}K`} className="block size-7" />}
       detail={
-        <span className="flex h-4 items-center" title="잡은 기물">
+        <span className="flex h-4 items-center">
           {captured.map((k, i) => (
             <PieceIcon
               // biome-ignore lint/suspicious/noArrayIndexKey: 같은 기물이 여럿이다
@@ -399,7 +399,6 @@ export function ChessGame({
           )}
           <p
             ref={list}
-            title="기보"
             className="w-full overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs"
           >
             {view.played.length === 0

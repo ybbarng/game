@@ -22,17 +22,13 @@ export function ChessStats({ book }: { book: StatsBook }) {
           value={pct(s.wins, s.rounds)}
           sub={`${s.wins}승 ${s.draws}무 ${s.losses}패`}
         />
-        <StatTile
-          label="평균 수"
-          value={(s.averageMoves / 2).toFixed(0)}
-          sub="판마다 백·흑 한 번씩을 한 수로"
-        />
+        <StatTile label="평균 수" value={(s.averageMoves / 2).toFixed(0)} />
         <StatTile
           label="체크메이트로 이김"
           value={s.byCheckmate}
           sub={`시간승 ${s.byTime}판`}
         />
-        <StatTile label="기권승" value={s.byResign} sub="상대가 기권한 판" />
+        <StatTile label="기권승" value={s.byResign} />
       </div>
       <Card title="색별 승률">
         <RateBar label="백(먼저)" won={s.white.won} n={s.white.n} />

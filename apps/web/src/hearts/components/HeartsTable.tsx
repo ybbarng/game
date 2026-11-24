@@ -364,10 +364,7 @@ export function HeartsTable({
                     : "판 끝"}
               </span>
             )}
-            <span
-              className="shrink-0 tabular-nums opacity-90"
-              title="내 이번 판 점수와 합계"
-            >
+            <span className="shrink-0 tabular-nums opacity-90">
               나{" "}
               <span
                 className={cn(

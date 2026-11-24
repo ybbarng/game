@@ -136,7 +136,6 @@ export function SeatPlate(props: SeatPlateProps) {
           : !props.mine && (
               <span
                 className="ml-auto shrink-0 whitespace-nowrap tabular-nums opacity-80"
-                title="남은 손패"
                 data-count={props.seat}
               >
                 {props.dead ? "탈락" : `${props.handCount}장`}

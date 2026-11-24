@@ -21,11 +21,7 @@ export function GostopStats({ book }: { book: StatsBook }) {
           value={pct(s.wins, s.rounds)}
           sub={`${s.wins}승 ${s.losses}패 · 나가리 ${s.nagari}`}
         />
-        <StatTile
-          label="판마다 점수"
-          value={signed(s.average)}
-          sub="이긴 판 +, 진 판 −"
-        />
+        <StatTile label="판마다 점수" value={signed(s.average)} />
         <StatTile label="가장 크게 이긴 판" value={`${s.best}점`} />
         <StatTile
           label="고 부른 판"

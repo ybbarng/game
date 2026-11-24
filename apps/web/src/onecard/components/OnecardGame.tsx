@@ -773,10 +773,7 @@ export function OnecardGame({
                 ? `배우기 · ${mission.title}`
                 : `${n}명 · ${view.rules.handSize}장 · ${replay ? "다시 보기" : online ? "친구와" : `컴퓨터(${levelName})`}`}
             </span>
-            <span
-              className="shrink-0 tabular-nums opacity-90"
-              title="내 남은 카드"
-            >
+            <span className="shrink-0 tabular-nums opacity-90">
               나 {hand.length}장
             </span>
             {online && (

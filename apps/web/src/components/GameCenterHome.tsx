@@ -22,7 +22,7 @@ const SHARED_LINKS = [
     href: "/profile",
     icon: "📊",
     title: "내 기록",
-    detail: "이 기기에 쌓인 판과 승률",
+    detail: "판과 승률",
   },
 ] as const;
 

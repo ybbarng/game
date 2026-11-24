@@ -202,7 +202,6 @@ function SeatPlate({
         {!mine && (
           <span
             className="shrink-0 tabular-nums text-white/70"
-            title="남은 손패"
             data-hand-count={seat}
           >
             {view.handCounts[seat] ?? 0}장
