@@ -191,6 +191,7 @@ export function YutSticks({
   nak = null,
   throwKey,
   tossing,
+  over = false,
 }: {
   sticks: Sticks | null;
   value: ThrowValue | null;
@@ -199,6 +200,8 @@ export function YutSticks({
   throwKey: number;
   /** 던졌는데 아직 결과가 나오지 않았다(모두의 고리를 기다린다) */
   tossing: boolean;
+  /** 게임이 끝났다(던지기 전에 그만둔 게임이면 「윷을 던져 보세요.」를 띄우지 않는다) */
+  over?: boolean;
 }) {
   // 떨어진 던지기 번호. 새 던지기(`throwKey`)를 받은 첫 그림부터 굴리는 중으로 본다(효과에서 늦게 내리면
   // 굴리기 전에 결과 면이 한 번 깜빡여 결과를 미리 알린다)
@@ -258,7 +261,7 @@ export function YutSticks({
               : "낙"
             : showFaces && value !== null
               ? `${throwName(value)}${value === 4 || value === 5 ? "! 한 번 더" : ""}`
-              : sticks === null && nak === null
+              : sticks === null && nak === null && !over
                 ? "윷을 던져 보세요."
                 : ""}
       </p>

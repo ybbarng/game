@@ -38,6 +38,7 @@ import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { piecesInDanger } from "../danger";
+import { janggiKit } from "../kit";
 import { planText } from "../plan-text";
 import { BIKJANG_INFO, JANGGI_LEVELS, useJanggiSettings } from "../settings";
 import { useJanggi } from "../store";
@@ -246,6 +247,7 @@ export function JanggiGame({
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
+  else if (view.retired) status = "게임을 끝냈어요.";
   else if (result?.seat === me)
     status =
       result.kind === "checkmate"
@@ -284,7 +286,11 @@ export function JanggiGame({
       ? { won: ended.result.seat === me, detail: detailOf(ended.result) }
       : null;
   const outcome: Outcome | null =
-    result === null ? null : result.seat === me ? "win" : "loss";
+    result === null || view.retired
+      ? null
+      : result.seat === me
+        ? "win"
+        : "loss";
 
   const gameOver = view.phase === "gameOver";
   const bikjangLabel = BIKJANG_INFO.find(
@@ -323,6 +329,11 @@ export function JanggiGame({
               useStore={useJanggiSettings}
               levels={JANGGI_LEVELS}
               solo={!online && !mission}
+              onQuit={
+                !gameOver && !online && !mission
+                  ? () => submit(janggiKit.quitAction ?? janggiKit.retireAction)
+                  : undefined
+              }
             />
           }
         />

@@ -179,10 +179,13 @@ function FlatMat({
   thrown,
   tossing,
   animateKey,
+  over = false,
 }: {
   thrown: LastThrow | null;
   tossing: boolean;
   animateKey: number;
+  /** 게임이 끝났다 */
+  over?: boolean;
 }) {
   return (
     <div
@@ -195,6 +198,7 @@ function FlatMat({
         nak={thrown?.nak ?? null}
         throwKey={animateKey}
         tossing={tossing}
+        over={over}
       />
     </div>
   );
@@ -396,6 +400,7 @@ export function TossMat({
       thrown={thrown}
       tossing={waiting}
       animateKey={thrown ? thrown.index + 1 : 0}
+      over={view.phase === "gameOver"}
     />
   );
   if (threeD === false || threeD === null) return flat;

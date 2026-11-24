@@ -27,6 +27,7 @@ import {
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { useAutoClear } from "@/lib/use-auto-clear";
+import { baseballKit } from "../kit";
 import { mySecret, randomSecret, type SecretBook } from "../secret";
 import { baseballSession } from "../session";
 import { BASEBALL_LEVELS, useBaseballSettings } from "../settings";
@@ -232,8 +233,11 @@ export function BaseballGame({
   const result = view.result;
   const playing = view.phase === "play" || view.phase === "answer";
 
+  // 그만둔 게임: 끝내기로 정해진 결과(기다리던 사람의 기권패)가 아니면 마지막 판 결과로 승패를 보이지 않는다.
+  const quit = view.retired && result?.kind !== "forfeit";
   let status: string;
-  if (result) status = resultText(result, me, view);
+  if (quit) status = "게임을 끝냈어요.";
+  else if (result) status = resultText(result, me, view);
   else if (view.phase === "setup")
     status =
       decision?.kind === "commit"
@@ -267,7 +271,7 @@ export function BaseballGame({
       ? bannerOf(ended.result, me, view)
       : null;
   const outcome =
-    result === null
+    result === null || quit
       ? null
       : result.kind === "draw" ||
           (result.kind === "cheat" && result.seat === null)
@@ -442,6 +446,12 @@ export function BaseballGame({
             useStore={useBaseballSettings}
             levels={BASEBALL_LEVELS}
             solo={!online && !mission && !puzzle}
+            onQuit={
+              !gameOver && !online && !mission
+                ? () =>
+                    submit(baseballKit.quitAction ?? baseballKit.retireAction)
+                : undefined
+            }
           />
         }
       />
@@ -510,7 +520,8 @@ export function BaseballGame({
           </div>
         )}
 
-        {roundOver && (
+        {/* 혼자 하기에서 그만두면 아무도 공개하지 않았으니 공개 확인 상자를 두지 않는다(부정 알림처럼 읽힌다) */}
+        {roundOver && !(quit && !online) && (
           <RevealPanel view={view} me={me} opponent={opponent} book={secrets} />
         )}
 
