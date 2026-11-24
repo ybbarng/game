@@ -151,8 +151,9 @@ test("게임 중에 참가자가 새로고침해도 같은 자리로 돌아온�
   });
 
   // 같은 탭이라 토큰이 남아 있어, 다시 들어가면 같은 자리로 게임을 이어 간다.
-  const join = guest.getByRole("button", { name: "들어가기" });
-  if (await join.isVisible()) await join.click();
+  // 참가자는 새로고침하면 늘 이름 화면으로 돌아온다(바로 다시 여는 것은 방장뿐). 방 화면은 따로 불러와
+  // 단추가 늦게 뜰 수 있으니 그 순간 보이는지(`isVisible`)로 고르지 않고 뜰 때까지 기다려 누른다.
+  await guest.getByRole("button", { name: "들어가기" }).click();
   await expect(guest.getByRole("button", { name: "점수판" })).toBeVisible();
   await expect(host.getByText("연결 끊김 · 기다리는 중")).toBeHidden();
 });
