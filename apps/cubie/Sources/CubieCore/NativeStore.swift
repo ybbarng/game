@@ -6,6 +6,8 @@ public protocol KeyValueStore: AnyObject {
   func string(_ key: String) -> String?
   /// 저장했으면 true(자리가 모자라면 false, 사이트 `setItem`이 던지는 것과 같다)
   @discardableResult func set(_ value: String, for key: String) -> Bool
+  /// 지운다(사이트 `removeItem`)
+  func remove(_ key: String)
   /// 저장된 키 전부
   var keys: [String] { get }
 }
@@ -25,6 +27,8 @@ public final class DefaultsStore: KeyValueStore {
     defaults.set(value, forKey: prefix + key)
     return true
   }
+
+  public func remove(_ key: String) { defaults.removeObject(forKey: prefix + key) }
 
   public var keys: [String] {
     defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
@@ -52,6 +56,8 @@ public final class MemoryStore: KeyValueStore {
     values[key] = value
     return true
   }
+
+  public func remove(_ key: String) { values[key] = nil }
 
   public var keys: [String] { values.keys.sorted() }
 }

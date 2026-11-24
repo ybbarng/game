@@ -43,6 +43,8 @@ final class NativeTiersWindow: NativeSheetWindow {
     page.needsLayout = true
   }
 
+  /// 기록이 바뀌었다(큐브 창이 한 판 더함): 지금 보는 크기로 다시 그린다
+  func reload() { show(n) }
   override func becameKey() { show(n) }
 }
 

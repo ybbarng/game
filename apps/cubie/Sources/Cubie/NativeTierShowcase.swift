@@ -705,6 +705,10 @@ final class LadderCellView: NSView, ShotPicture {
     guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
     onPick?(tier)
   }
+  override func accessibilityPerformPress() -> Bool {
+    onPick?(tier)
+    return onPick != nil
+  }
   override var acceptsFirstResponder: Bool { true }
   override var canBecomeKeyView: Bool { true }
   override func keyDown(with event: NSEvent) {

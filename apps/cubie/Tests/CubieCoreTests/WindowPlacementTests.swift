@@ -260,4 +260,33 @@ struct WindowPlacementTests {
     let e = WindowPlacement.keysFrame(cube: edge, panel: keysPanel, visible: visible)
     #expect(e.maxX == visible.maxX)
   }
+
+  // MARK: 보통 창(기록·티어표·설정)
+
+  @Test func 보통_창은_기억한_자리가_보이면_그_자리() {
+    let saved = CGRect(x: 100, y: 200, width: 500, height: 400)
+    let f = WindowPlacement.normalWindowFrame(
+      saved: saved, size: CGSize(width: 380, height: 600), cubeScreen: visible, screens: [visible])
+    #expect(f == saved)
+  }
+
+  @Test func 보통_창을_처음_열면_큐브_창이_있는_화면_가운데() {
+    let right = CGRect(x: 1512, y: 0, width: 1920, height: 1050)
+    let f = WindowPlacement.normalWindowFrame(
+      saved: nil, size: CGSize(width: 380, height: 600), cubeScreen: right, screens: [visible, right])
+    #expect(f == CGRect(x: 1512 + 960 - 190, y: 525 - 300, width: 380, height: 600))
+  }
+
+  @Test func 기억한_자리의_화면을_떼면_큐브_창_화면_가운데로() {
+    let gone = CGRect(x: 3000, y: 0, width: 500, height: 400)
+    let f = WindowPlacement.normalWindowFrame(
+      saved: gone, size: CGSize(width: 400, height: 300), cubeScreen: visible, screens: [visible])
+    #expect(f == CGRect(x: 756 - 200, y: 70 + 439.5 - 150, width: 400, height: 300))
+  }
+
+  @Test func 화면보다_큰_보통_창은_화면_안으로_줄인다() {
+    let f = WindowPlacement.normalWindowFrame(
+      saved: nil, size: CGSize(width: 2000, height: 1200), cubeScreen: visible, screens: [visible])
+    #expect(f == visible)
+  }
 }

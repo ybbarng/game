@@ -153,9 +153,14 @@ final class SettingsPageView: FlippedView {
 
   /// 저장소에서 지금 값을 읽어 칸마다 보인다
   func reload() {
-    let s = CubeSettings.parse(settingsText)
     editor.reload()
     refreshKeymap()
+    refreshSettings()
+  }
+
+  /// 설정 칸(색·보기와 소리)만 저장소 값으로. 키 배치 편집기는 다시 만들지 않는다(슬라이더를 끄는 동안 불린다)
+  private func refreshSettings() {
+    let s = CubeSettings.parse(settingsText)
     let scheme = SettingsSheet.scheme(settingsText)
     for (i, (id, _)) in SettingsSheet.schemes.enumerated() {
       schemeChips[i].look = Self.chipLook(scheme == id)
@@ -210,7 +215,7 @@ final class SettingsPageView: FlippedView {
 
   private func write(settings: String) {
     store.set(settings, for: CubeSettings.key)
-    reload()
+    refreshSettings()
     onChange?()
   }
 

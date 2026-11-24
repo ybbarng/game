@@ -2,7 +2,7 @@
 
 쓰는 사람을 위한 안내는 [README](README.md)에 있다. 이 문서는 빌드, 새 판 내기, README 그림 만들기를 다룬다. 설계와 결정은 [docs/47 15절](../../docs/47-cube-design.md)에 있다.
 
-앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정 창도 앱이 그린다(docs/52 5-8). 사이트 화면을 WKWebView 창으로 여는 것은 설정 창의 「사용자 배치 편집…」·「모든 설정…」뿐이고, `CUBIE_WEB_WINDOWS=1`이면 세 창 모두 예전처럼 사이트 창이다. 예전 웹 큐브 창(사이트 미니 모드 `https://game.byb.kr/cube/mini`)은 되돌림 스위치 `CUBIE_WEB=1`로만 뜬다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
+앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정 창도 앱이 그린다(docs/52 5-8). 사용자 키 배치 편집기와 내보내기·가져오기도 설정 창 안에서 앱이 그린다(2026-11-16, docs/52 5-9). 사이트 화면을 WKWebView 창으로 여는 것은 설정 창의 「모든 설정…」뿐이고, `CUBIE_WEB_WINDOWS=1`이면 세 창 모두 예전처럼 사이트 창이다. 예전 웹 큐브 창(사이트 미니 모드 `https://game.byb.kr/cube/mini`)은 되돌림 스위치 `CUBIE_WEB=1`로만 뜬다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
 
 ## 빌드·실행
 
@@ -17,7 +17,7 @@ apps/cubie/test.sh                        # 화면 없는 단위 시험(포커�
 
 직접 빌드한 앱을 쓰려면 `apps/cubie/build.sh --universal` 뒤 `apps/cubie/Cubie.app`을 `/Applications`로 복사한다. 이 맥에서 만든 앱은 첫 실행이 막히지 않는다.
 
-사이트 창(설정 창의 사용자 배치 편집·모든 설정, `CUBIE_WEB_WINDOWS=1`이면 기록·티어표·설정, `CUBIE_WEB=1`이면 큐브 창도)이 로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
+사이트 창(설정 창의 「모든 설정…」, `CUBIE_WEB_WINDOWS=1`이면 기록·티어표·설정, `CUBIE_WEB=1`이면 큐브 창도)이 로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
 
 ```sh
 CUBIE_URL=http://localhost:4392/cube/mini apps/cubie/Cubie.app/Contents/MacOS/Cubie
@@ -53,7 +53,7 @@ apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # �
 큐브 창(`Sources/Cubie/NativeCubeWindow.swift`)은 Rust 코어 한 판(C ABI) + Core Animation 3D 층 트리(`NativeCube.swift`)로 그린다. 코어가 키 해석·섞기·판정·한 판 기록(시간·다시 보기 글·구간·콤보)·힌트(사람 해법)·공식 연습 진행기·티어를 맡고(사이트와 공통 시험 자료로 어긋남 0), 앱은 시계·저장·창·말풍선·단축키 표(`NativeKeysView`)·소리·떠 있을 때 움직임을 맡는다. 창 다루기는 웹 화면과 함께 쓰는 `FloatingWindow`, 앱 껍데기는 `CubeSurface` 약속만 본다.
 
 - 저장: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글(`cube.mini.v1` 등, `CubieCore/NativeStore.swift`·`MiniBook.swift`). 처음 띄울 때 웹 저장소(WebKit localStorage sqlite)의 `cube.*`를 한 번 옮긴다(`WebStorageMigration`, 지우지 않음, 표시 `cubie.migrated.v1`).
-- 사이트 창(설정 창이 여는 사용자 배치 편집·모든 설정, `CUBIE_WEB_WINDOWS=1`·`CUBIE_WEB=1`의 창)에는 앱 저장소 글을 문서 시작 때 넣고, 설정 창을 닫으면 키 배치·색·설정(`cube.mini.*` 빼고)을 읽어 온다(`AppDelegate.storeScript`).
+- 사이트 창(설정 창이 여는 「모든 설정…」, `CUBIE_WEB_WINDOWS=1`·`CUBIE_WEB=1`의 창)에는 앱 저장소 글을 문서 시작 때 넣고, 설정 창을 닫으면 연 때 넣은 글과 견주어 사이트에서 바뀐 키만(`cube.mini.*` 빼고) 읽어 온다(`AppDelegate.storeScript`, `CubieCore/WebStoreMerge.swift`). 그 사이 네이티브 설정 창에서 바꾼 값은 그대로 남는다.
 - 티어 엠블럼은 앱에 묶은 PNG(`Resources/Emblems` 32pt·64px, `Emblems/big` 64pt·128px). 사이트 3D 엠블럼을 정면에서 찍은 정지 그림이고 `apps/web/scripts/render-emblem-posters.mjs`(`ONLY=cubie`)가 만든다.
 
 ```sh

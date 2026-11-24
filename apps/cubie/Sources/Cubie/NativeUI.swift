@@ -223,10 +223,37 @@ final class Chip: NSView {
     super.init(frame: .zero)
     addSubview(label)
     apply()
+    // 손쉬운 사용: 누를 수 있는 칩은 단추, 이름은 제목(사이트 `<button>`). 글 칸은 따로 읽히지 않게 칩 하나로 읽는다
+    setAccessibilityElement(true)
+    label.setAccessibilityElement(false)
+    if !title.isEmpty { setAccessibilityLabel(title) }
   }
 
   override func draw(_ dirtyRect: NSRect) {
     NUI.drawBox(bounds, fill: look.fill, border: look.border, radius: look.radius)
+  }
+
+  /// 누를 수 있으면(동작이 있고 켜져 있으면) 단추, 아니면 글(배지)
+  private var pressable: Bool { action != nil && enabled }
+  override func accessibilityRole() -> NSAccessibility.Role? { action != nil ? .button : .staticText }
+  override func isAccessibilityEnabled() -> Bool { enabled }
+  override func accessibilityPerformPress() -> Bool {
+    guard pressable else { return false }
+    action?()
+    return true
+  }
+
+  // 키보드: Tab으로 오고 Space·Return·숫자판 Enter로 누른다(티어 사다리 칸 `LadderCellView`와 같은 방식)
+  override var acceptsFirstResponder: Bool { pressable && !isHiddenOrHasHiddenAncestor }
+  override var canBecomeKeyView: Bool { pressable && !isHiddenOrHasHiddenAncestor }
+  override func keyDown(with event: NSEvent) {
+    if pressable, Self.pressKeys.contains(event.keyCode) { action?() } else { super.keyDown(with: event) }
+  }
+  /// Space(49)·Return(36)·숫자판 Enter(76)
+  static let pressKeys: Set<UInt16> = [49, 36, 76]
+  override var focusRingMaskBounds: NSRect { bounds }
+  override func drawFocusRingMask() {
+    NSBezierPath(roundedRect: bounds, xRadius: look.radius, yRadius: look.radius).fill()
   }
 
   required init?(coder: NSCoder) { fatalError("코드로만 만든다") }
@@ -235,6 +262,7 @@ final class Chip: NSView {
     get { label.stringValue }
     set {
       label.stringValue = newValue
+      setAccessibilityLabel(newValue)
       apply()
     }
   }
@@ -276,6 +304,43 @@ final class Chip: NSView {
   }
 }
 
+/// 보통 창(기록·티어표·설정·사이트 창)의 크기·자리 기억. 창마다 이름으로 UserDefaults `CubieWindowFrame.<이름>`에
+/// 화면 좌표 글(`NSStringFromRect`)로 둔다. AppKit의 `setFrameAutosaveName`·`setFrameUsingName`은 화면이 둘 이상일 때
+/// 저장한 화면이 아닌 주 화면 쪽으로 옮겨 되살려(내장 화면 300,219에 둔 창이 LG 화면 -2002,109로 떴다) 쓰지 않는다
+@MainActor
+enum FrameMemory {
+  static let prefix = "CubieWindowFrame."
+  private static var tokens: [ObjectIdentifier: [NSObjectProtocol]] = [:]
+
+  /// 기억한 자리(없으면 nil)
+  static func saved(_ name: String) -> CGRect? {
+    guard let s = UserDefaults.standard.string(forKey: prefix + name) else { return nil }
+    let r = NSRectFromString(s)
+    return r.width > 0 && r.height > 0 ? r : nil
+  }
+
+  /// 창이 옮겨지거나 크기가 바뀌거나 닫힐 때마다 그 자리를 저장한다(닫히면 감시를 뗀다)
+  static func remember(_ w: NSWindow, name: String) {
+    let id = ObjectIdentifier(w)
+    forget(id)
+    let c = NotificationCenter.default
+    tokens[id] = [NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.willCloseNotification].map { n in
+      let closing = n == NSWindow.willCloseNotification
+      return c.addObserver(forName: n, object: w, queue: .main) { [weak w] _ in
+        MainActor.assumeIsolated {
+          guard let w else { return }
+          if !w.isMiniaturized { UserDefaults.standard.set(NSStringFromRect(w.frame), forKey: prefix + name) }
+          if closing { forget(id) }
+        }
+      }
+    }
+  }
+
+  private static func forget(_ id: ObjectIdentifier) {
+    tokens.removeValue(forKey: id)?.forEach { NotificationCenter.default.removeObserver($0) }
+  }
+}
+
 extension SheetSize {
   var initial: NSSize { NSSize(width: width, height: height) }
   var minimum: NSSize { NSSize(width: minWidth, height: minHeight) }
@@ -300,6 +365,8 @@ class NativeSheetWindow: NSObject, NSWindowDelegate {
     window.isReleasedWhenClosed = false
     window.delegate = self
     window.appearance = NSAppearance(named: .darkAqua)
+    // Tab 차례를 칸이 바뀔 때마다 다시 셈한다(칩·티어 칸을 창이 새로 만든다)
+    window.autorecalculatesKeyViewLoop = true
     window.center()
   }
 
