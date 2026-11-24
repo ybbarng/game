@@ -33,6 +33,11 @@ export interface GameArchive {
   /** 끝난 판 수와 게임이 끝났는지(목록에 보인다) */
   rounds: number;
   over: boolean;
+  /**
+   * 온라인 참가자: 이 기기의 게임 끝 검증이 실패한 사유(이 게임은 무효). 복기는 증거로 남기고 목록에 「무효」를 붙인다.
+   * 내 기록에는 넣지 않는다(stats/pending.ts)
+   */
+  invalid?: string;
 }
 
 const DB = "mighty-review";
@@ -86,11 +91,16 @@ export async function loadArchive(id: string): Promise<GameArchive | null> {
   return ((await run("readonly", (s) => s.get(id))) as GameArchive) ?? null;
 }
 
-/** 같은 대국이면 덮어쓴다. 많아지면 오래된 것부터 지운다 */
+/** 같은 대국이면 덮어쓴다(무효 표시는 지우지 않는다). 많아지면 오래된 것부터 지운다 */
 export async function saveArchive(archive: GameArchive): Promise<void> {
   const before = await loadArchive(archive.id);
+  const invalid = archive.invalid ?? before?.invalid;
   await run("readwrite", (s) =>
-    s.put({ ...archive, startedAt: before?.startedAt ?? archive.startedAt }),
+    s.put({
+      ...archive,
+      startedAt: before?.startedAt ?? archive.startedAt,
+      ...(invalid ? { invalid } : {}),
+    }),
   );
   const all = await listArchives();
   for (const old of all.slice(KEEP_GAMES))
@@ -121,6 +131,16 @@ export async function importArchives(text: string): Promise<number | null> {
     count++;
   }
   return count;
+}
+
+/** 그 대국의 복기 기록에 무효 표시를 단다(기록이 없으면 아무것도 하지 않는다) */
+export async function markArchiveInvalid(
+  id: string,
+  reason: string,
+): Promise<void> {
+  const before = await loadArchive(id);
+  if (!before || before.invalid) return;
+  await run("readwrite", (s) => s.put({ ...before, invalid: reason }));
 }
 
 export async function deleteArchive(id: string): Promise<void> {

@@ -45,6 +45,7 @@ import {
   sessionHostStore,
   setHostingRoom,
 } from "@/net/host-store";
+import { settleOwnAudit } from "@/net/own-audit";
 import type { LobbyState } from "@/net/protocol";
 import { roomGameKey, useRematch } from "@/net/rematch-store";
 import { endRoomSession } from "@/net/room-session";
@@ -297,7 +298,10 @@ export function RoomScreen<
     if (own) {
       const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
       if (failure) useStore.setState({ invalid: failure });
-      recordAudit(roomGameKey(roomCode, session.guest?.gameNo ?? 1), failure);
+      const gameNo = session.guest?.gameNo ?? 1;
+      recordAudit(roomGameKey(roomCode, gameNo), failure);
+      // 기다리던 내 기록을 확정하거나(통과) 버린다(실패, 복기에는 무효 표시).
+      void settleOwnAudit(statsFor(gameNo).key, failure);
     }
   };
 
@@ -520,7 +524,8 @@ export function RoomScreen<
           started.current = true;
           game.attach(match, {
             seatNames: seatNamesOf(guest.lobby ?? EMPTY_LOBBY),
-            stats: statsFor(guest.gameNo),
+            // 참가자의 내 기록은 이 기기의 게임 끝 검증을 통과한 뒤에 넣는다.
+            stats: { ...statsFor(guest.gameNo), hold: true },
             claims: guest.claims,
           });
           if (game.fair)

@@ -134,6 +134,7 @@
 ## 7. 기록과 복기
 
 - [ ] 혼자 하기와 방장은 `StatsRecorder`·`ArchiveRecorder`로 남긴다
+  - 온라인 참가자 기록은 공통 방 화면(`RoomScreen`)이 맡아 게임마다 할 일은 없다(2026-11-25): 판·게임 기록을 이 기기의 게임 끝 검증 결과까지 탭 저장소에 두고(`StatsTarget.hold`, `stats/pending.ts`), 통과하면 내 기록에 넣고 실패하면(무효 게임) 버린다. 검증 전에 창을 닫으면 확인하지 못한 기록은 남지 않는다. 복기는 증거로 남기되 무효 표시(`GameArchive.invalid`, 목록 꼬리표 「무효」)를 단다(`net/own-audit.ts`). docs/13 4절
 - [ ] `stats/ProfilePage.tsx`에 탭과 통계 화면을 더한다(`KIT_STATS`에도 그 게임 `stats`를 넣는다), 온라인 화면의 기록 대상에 `people: sessionPeople(세션)`
 - [ ] `review/ReviewPage.tsx`
   - `GAME_NAME`에 더한다
