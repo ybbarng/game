@@ -8,7 +8,7 @@ test(
     const res = await page.goto("/stardraw/no-such-page");
     expect(res?.status()).toBe(404);
     await expect(
-      page.getByRole("heading", { name: "찾을 수 없는 페이지입니다." }),
+      page.getByRole("heading", { name: "찾을 수 없는 페이지예요." }),
     ).toBeVisible();
     await expect(page).toHaveTitle(/찾을 수 없는 페이지/);
     const toStardraw = page.locator("[data-not-found-stardraw]");
