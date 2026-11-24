@@ -19,7 +19,6 @@ import { useJanggiStudyProgress } from "@/study/progress";
 import { useJanggiTutorialProgress } from "@/tutorial/progress";
 import { janggiOnline } from "../online";
 import { PIECE_GLYPH_CREDIT } from "../piece-glyphs";
-import { JANGGI_PUZZLE_SETS } from "../puzzles";
 import { endJanggiSession } from "../session";
 import {
   BIKJANG_INFO,
@@ -30,6 +29,7 @@ import {
   useJanggiSettings,
 } from "../settings";
 import { clearJanggi, type JanggiSaved, loadJanggi, useJanggi } from "../store";
+import { ORDERED_JANGGI_SETS } from "../study-order";
 import { JANGGI_LESSONS } from "../tutorial";
 import { JanggiGame } from "./JanggiGame";
 import { JanggiPuzzleScreen } from "./JanggiPuzzleScreen";
@@ -340,8 +340,8 @@ type Screen =
 /** 「오늘 복습」으로 연 문제의 복습 줄(없으면 보통으로 연 문제) */
 type Review = readonly string[] | undefined;
 
-/** 수 배우기 목록에 보일 문제 묶음 */
-const STUDY_SETS = JANGGI_PUZZLE_SETS.map((s) => ({
+/** 수 배우기 목록에 보일 문제 묶음(배우는 차례 `JANGGI_STUDY_ORDER`대로) */
+const STUDY_SETS = ORDERED_JANGGI_SETS.map((s) => ({
   id: s.id,
   title: s.title,
   summary: s.summary,
@@ -427,7 +427,7 @@ export function JanggiApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `외통·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
+          detail: `외통·상대 기물 얻기 문제와 끝내기 연습 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개가 있어요.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

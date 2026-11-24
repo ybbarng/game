@@ -83,6 +83,27 @@ const TEXT: Record<
     wrongHint:
       "궁성 안에는 대각선 길이 있어요. 차·포·졸이 그 길로 장군을 부르거나 기물을 잡을 수 있는지 봐요.",
   },
+  pin: {
+    prompt: "묶인 기물을 노리세요.",
+    solved: "묶었어요!",
+    wrong: "그 수로는 얻는 게 없어요.",
+    wrongHint:
+      "내 차와 한의 궁 사이를 막고 있어 비키면 궁이 잡히는 기물을 찾아요. 그 기물을 노리면 도망가지 못해요.",
+  },
+  discover: {
+    prompt: "비켜 부르는 장군으로 기물을 얻으세요.",
+    solved: "비켜 장군!",
+    wrong: "그 수로는 얻는 게 없어요.",
+    wrongHint:
+      "내 차 앞을 막고 있는 내 기물을 찾아요. 그 기물이 비키며 한의 기물을 잡거나 노리면, 열린 길로 차가 장군을 불러요.",
+  },
+  rooks: {
+    prompt: "차 둘로 외통을 만드세요.",
+    solved: "외통!",
+    wrong: "방법과 다른 수예요.",
+    wrongHint:
+      "한의 궁이 3번 가로줄에 있으면 어느 차든, 차 하나가 궁 바로 아래 가로줄에 있으면 다른 차로 궁이 있는 가로줄에 장군을 불러요. 아니면 차 하나를 궁 바로 아래 가로줄로 먼저 옮겨요.",
+  },
   block: {
     prompt: "멱을 막아 기물을 지키세요.",
     solved: "멱을 막았어요!",
@@ -173,13 +194,17 @@ function JanggiPuzzleRun({
 
   const legal = status === "play" ? legalFor(state, 0) : [];
   const prompt =
-    puzzle.kind !== "mate" || puzzle.mateIn === 1
-      ? text.prompt
-      : run.step === 0
-        ? `${COUNT[puzzle.mateIn]} 수 만에 외통: 첫 수를 두세요.`
-        : run.step < puzzle.mateIn - 1
-          ? `외통까지 ${COUNT[puzzle.mateIn - run.step]} 수 남았어요.`
-          : "이제 외통을 만드세요.";
+    puzzle.kind === "rooks"
+      ? run.step === 0
+        ? text.prompt
+        : "방법대로 이어 두세요."
+      : puzzle.kind !== "mate" || puzzle.mateIn === 1
+        ? text.prompt
+        : run.step === 0
+          ? `${COUNT[puzzle.mateIn]} 수 만에 외통: 첫 수를 두세요.`
+          : run.step < puzzle.mateIn - 1
+            ? `외통까지 ${COUNT[puzzle.mateIn - run.step]} 수 남았어요.`
+            : "이제 외통을 만드세요.";
 
   return (
     <PuzzleScreen
@@ -205,7 +230,8 @@ function JanggiPuzzleRun({
           }}
           lastMove={run.lastMove}
           checkedKing={
-            status === "solved" && puzzle.kind === "mate"
+            status === "solved" &&
+            (puzzle.kind === "mate" || puzzle.kind === "rooks")
               ? kingOf(state.board, "h")
               : null
           }

@@ -2,15 +2,19 @@ import { janggiExpertBot } from "@game/janggi-ai";
 import {
   type Action,
   applyMove,
+  attacked,
   type Board,
   createJanggiScenario,
   forcesMateAfter,
+  inCheck,
   isCheckmate,
   type JanggiState,
   KIND_NAMES,
   type Kind,
+  legalMoves,
   type Move,
   PIECE_VALUE,
+  palaceOf,
   pointAt,
   pointName,
   pseudoTargets,
@@ -22,6 +26,7 @@ import { topic } from "@/lib/josa";
 
 import { threatenedPieces } from "./danger";
 import type { JanggiPuzzle } from "./puzzles";
+import { ladderMoves } from "./rook-ladder";
 
 /** 문제 장면에서 시작하는 판. 늘 초(나, 0번 자리)가 둘 차례다 */
 export function puzzleState(puzzle: JanggiPuzzle): JanggiState {
@@ -47,6 +52,12 @@ export function judgeMove(
   move: Move,
   step: number,
 ): "solved" | "next" | "wrong" {
+  if (puzzle.kind === "rooks") {
+    // 끝내기 「차 둘로 외통」: 방법이 고르는 수면 맞다(여럿이면 어느 것이든). 외통이 되면 푼 것이다
+    if (!ladderMoves(state.board).moves.some((m) => sameMove(m, move)))
+      return "wrong";
+    return isCheckmate(applyMove(state.board, move), "h") ? "solved" : "next";
+  }
   if (puzzle.kind !== "mate")
     return sameMove(move, parseMove(puzzle.solution)) ? "solved" : "wrong";
   const after = applyMove(state.board, move);
@@ -168,7 +179,7 @@ export function explainFork(board: Board, move: Move): string[] {
   return [
     `${obj(KIND_NAMES[mover[1] as Kind])} ${ro(pointName(move.to))}: ${list} 함께 노려요.`,
     check
-      ? "장군이라 한은 궁부터 피해야 하고, 그사이 다른 기물을 잡아요."
+      ? "장군이라 한은 장군부터 풀어야 해요. 그사이 함께 노린 다른 기물을 잡을 수 있어요."
       : "한이 하나를 지키거나 피하면 다른 하나를 잡아요.",
   ];
 }
@@ -371,7 +382,12 @@ export function explainSolved(
     case "block":
       return explainBlock(board, move);
     case "mate":
+    case "rooks":
       return explainMate(board, move);
+    case "pin":
+      return explainPin(board, move);
+    case "discover":
+      return explainDiscovered(board, move);
     case "escape":
       return explainEscape(board, move);
     case "palace":
@@ -479,6 +495,170 @@ export function explainCannon(board: Board, move: Move): string[] {
     after[open.target] === "hK"
       ? "포 장군이에요. 한은 궁부터 지켜야 해서 그사이 다른 기물을 얻어요."
       : "포는 꼭 하나를 넘어야 움직여요. 다리를 놓거나 치우면 길이 열려요.",
+  ];
+}
+
+/**
+ * 묶인 기물: 이 수 뒤 초가 노리는 한 큰 기물(차·포·마) 가운데, 갈 곳은 있는데 비키면 한 궁이 잡혀
+ * 한 칸도 움직일 수 없는 것. `pinner`는 그 기물이 비키면 궁을 잡게 되는 초 기물
+ */
+export function pinnedTarget(
+  board: Board,
+  move: Move,
+): { pinned: number; pinner: number } | null {
+  const after = applyMove(board, move);
+  // 장군이면 어느 기물이든 장군을 풀어야 해서, 묶여서 못 움직이는 것과 가를 수 없다.
+  if (inCheck(after, "h")) return null;
+  const king = after.indexOf("hK");
+  const legal = legalMoves(after, "h");
+  for (let at = 0; at < after.length; at++) {
+    const cell = after[at] ?? "";
+    if (!cell.startsWith("h") || !isBig(cell) || cell === "hK") continue;
+    if (!attacked(after, at, "c")) continue;
+    if (pseudoTargets(after, at).length === 0) continue;
+    if (legal.some((m) => m.from === at)) continue;
+    const lifted = [...after];
+    lifted[at] = "";
+    const pinner = lifted.findIndex(
+      (c, from) =>
+        c.startsWith("c") && pseudoTargets(lifted, from).includes(king),
+    );
+    if (pinner >= 0) return { pinned: at, pinner };
+  }
+  return null;
+}
+
+/** 묶인 기물 노리기를 말로 풀어 준다. 장면에서 엔진으로 만든다 */
+export function explainPin(board: Board, move: Move): string[] {
+  const pin = pinnedTarget(board, move);
+  if (!pin) return [];
+  const after = applyMove(board, move);
+  const king = after.indexOf("hK");
+  const mover = KIND_NAMES[(after[move.to] as string)[1] as Kind];
+  const pinnedKind = (after[pin.pinned] as string)[1] as Kind;
+  const pinnedName = KIND_NAMES[pinnedKind];
+  const pinnerName = KIND_NAMES[(after[pin.pinner] as string)[1] as Kind];
+  const line = xyOf(king)[0] === xyOf(pin.pinned)[0] ? "세로줄" : "가로줄";
+  const lines = [
+    `${obj(mover)} ${ro(pointName(move.to))}: 한의 ${pieceAt(after, pin.pinned, "을")} 노려요.`,
+    `${pieceAt(after, pin.pinned, "")}${hasBatchim(pinnedName) ? "은" : "는"} 초 ${pinnerName}(${pointName(pin.pinner)})${hasBatchim(pinnerName) ? "과" : "와"} 한의 궁(${pointName(king)}) 사이, 같은 ${line}에 서 있어요. 비키면 궁이 잡혀서 움직일 수 없어요.`,
+  ];
+  // 그 판의 사실: 한이 어떻게 받아도 잡은 뒤 다시 잡히지 않는지(문제는 그런 판만 고른다), 궁성 밖이라 궁·사가 못 오는지
+  if (safeAfterEveryReply(after, pin.pinned)) {
+    const [px, py] = xyOf(pin.pinned);
+    const at = (kinds: string[]) =>
+      after.flatMap((c, i) =>
+        kinds.includes(c) && i !== pin.pinned ? [pointName(i)] : [],
+      );
+    const advisors = at(["hA"]);
+    const others = after.flatMap((c, i) =>
+      c.startsWith("h") && c !== "hK" && c !== "hA" && i !== pin.pinned
+        ? [`${KIND_NAMES[c[1] as Kind]}(${pointName(i)})`]
+        : [],
+    );
+    // 그 판에서 지키러 오지 못하는 한의 기물을 짚는다(궁성 밖이면 궁·사, 그 밖의 기물은 이름과 자리)
+    const why = [
+      palaceOf(px, py) !== "h"
+        ? `${topic(pinnedName)} 궁성 밖이라 한의 ${advisors.length > 0 ? `궁과 사(${advisors.join("·")})가` : "궁이"} 지키러 오지 못해요.`
+        : "",
+      others.length > 0
+        ? `한의 다른 기물 ${others.join("·")}도 한 수 만에 지키러 오지 못해요.`
+        : "",
+    ].filter((s) => s !== "");
+    lines.push(
+      `${why.join(" ")}${why.length > 0 ? " " : ""}그래서 한이 무엇을 두어도 다음 수에 ${obj(pinnedName)} 다시 잡히지 않고 잡아요(${PIECE_VALUE[pinnedKind]}점).`,
+    );
+  }
+  return lines;
+}
+
+/**
+ * 이 칸에 초 기물이 서면 한 기물이 잡을 수 있나(지키는 기물). 자기 편이 선 칸은 `pseudoTargets`에 나오지 않아
+ * 초 기물을 놓아 보고 센다
+ */
+function guarded(board: Board, at: number): boolean {
+  const probe = [...board];
+  probe[at] = "cP";
+  return attacked(probe, at, "h");
+}
+
+/** 한이 어떻게 받아도(쉬기 포함) 이 자리의 한 기물이 남고, 초가 그것을 잡아도 다시 잡히지 않나 */
+export function safeAfterEveryReply(after: Board, at: number): boolean {
+  const piece = after[at];
+  const next: Board[] = legalMoves(after, "h").map((m) => applyMove(after, m));
+  if (!inCheck(after, "h")) next.push(after);
+  return next.every(
+    (b) =>
+      b[at] === piece &&
+      legalMoves(b, "c").some((m) => m.to === at) &&
+      !guarded(b, at),
+  );
+}
+
+/**
+ * 비켜 부르는 장군: 이 수로 옮긴 기물은 장군을 부르지 않고, 그 기물이 막고 있던 초 차가 한 궁을 노린다.
+ * 옮긴 기물은 한 큰 기물을 잡았거나 새로 노린다. `checker`는 길이 열린 차, `gain`은 잡거나 노리는 한 기물 자리
+ */
+export function discoveredCheck(
+  board: Board,
+  move: Move,
+): { checker: number; gain: number; captured: boolean } | null {
+  const after = applyMove(board, move);
+  const king = after.indexOf("hK");
+  if (pseudoTargets(after, move.to).includes(king)) return null;
+  const checker = after.findIndex(
+    (c, from) =>
+      c === "cR" &&
+      from !== move.to &&
+      pseudoTargets(after, from).includes(king) &&
+      !pseudoTargets(board, from).includes(king),
+  );
+  if (checker < 0) return null;
+  const taken = board[move.to] ?? "";
+  if (taken !== "" && isBig(taken))
+    return { checker, gain: move.to, captured: true };
+  const gain = pseudoTargets(after, move.to).find(
+    (t) => after[t]?.startsWith("h") && after[t] !== "hK" && isBig(after[t]),
+  );
+  return gain === undefined ? null : { checker, gain, captured: false };
+}
+
+/** 비켜 부르는 장군을 말로 풀어 준다. 장면에서 엔진으로 만든다 */
+export function explainDiscovered(board: Board, move: Move): string[] {
+  const found = discoveredCheck(board, move);
+  if (!found) return [];
+  const after = applyMove(board, move);
+  const moverKind = (after[move.to] as string)[1] as Kind;
+  const mover = KIND_NAMES[moverKind];
+  const gainKind = (found.captured ? board : after)[found.gain]?.[1] as Kind;
+  const gain = KIND_NAMES[gainKind];
+  // 그 판의 사실: 한이 장군을 푸는 길(궁 비키기·사이 막기·장군 부른 차 잡기)
+  const king = after.indexOf("hK");
+  const ways = new Set<number>(
+    legalMoves(after, "h").map((m) =>
+      m.from === king ? 0 : m.to === found.checker ? 2 : 1,
+    ),
+  );
+  // 길마다 이어 쓰는 꼴과 끝 꼴: 「궁을 옮기거나 사이를 막아」
+  const WAYS = [
+    ["궁을 옮기거나", "궁을 옮겨"],
+    ["사이를 막거나", "사이를 막아"],
+    ["장군 부른 차를 잡거나", "장군 부른 차를 잡아"],
+  ] as const;
+  const open = [0, 1, 2].filter((w) => ways.has(w));
+  const answer = open
+    .map((w, i) => WAYS[w]?.[i === open.length - 1 ? 1 : 0])
+    .join(" ");
+  return [
+    found.captured
+      ? `${ro(mover)} ${pieceAt(board, found.gain, "을")} 잡으며 비켜요(${PIECE_VALUE[gainKind]}점).`
+      : `${obj(mover)} ${ro(pointName(move.to))} 비켜 한의 ${pieceAt(after, found.gain, "을")} 노려요.`,
+    `${pieceAt(board, move.from, "이")} 막고 있던 길이 열려 ${pieceAt(after, found.checker, "이")} 장군을 불러요.`,
+    found.captured
+      ? `한은 ${answer} 장군부터 풀어야 해서, ${obj(mover)} 다시 잡을 틈이 없어요.`
+      : safeAfterEveryReply(after, found.gain)
+        ? `한은 ${answer} 장군부터 풀어야 해서, 그사이 ${obj(gain)} 공짜로 잡아요(${PIECE_VALUE[gainKind]}점).`
+        : `한은 ${answer} 장군부터 풀어야 해서, 그사이 ${obj(gain)} 잡아요. 다시 잡혀도 ${PIECE_VALUE[moverKind]}점짜리 ${obj(mover)} 주고 ${PIECE_VALUE[gainKind]}점짜리 ${obj(gain)} 얻어 이득이에요.`,
   ];
 }
 
