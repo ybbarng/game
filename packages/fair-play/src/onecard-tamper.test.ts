@@ -62,7 +62,11 @@ describe("다시 섞은 사슬을 조작하면 드러난다", () => {
     net.draw(1, 3);
     for (const d of net.decks) d.revealAll(1);
     await passWaits(net);
-    expect(settled(net.incidents[1])).toMatchObject({ seat: 0 });
+    // 참가자는 알린 카드를 입력으로 방장 섞기 증명을 확인한다.
+    expect(settled(net.incidents[1])).toEqual({
+      seat: 0,
+      reason: "섞기 증명이 맞지 않아요(섞을 때 카드를 바꿨어요).",
+    });
     expect(net.decks[1]?.roundDeal(1)).toBeNull();
   });
 });
