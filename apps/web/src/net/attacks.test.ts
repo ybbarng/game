@@ -81,7 +81,18 @@ async function playRounds(host: HostRoom, guest: GuestRoom, rounds: number) {
 }
 
 describe("방장이 고친 경우", () => {
-  it("A1: 참가자 약속을 빼고 자기 값만으로 시드를 정하면 잡힌다", async () => {
+  /** 방장이 참가자가 낸 비밀 값을 받지 않은 것처럼 시드에서 뺀다(자기 값만으로 시드를 정한다) */
+  function dropGuestSecrets(host: HostRoom) {
+    const internals = host as unknown as {
+      waitForReveals(): Promise<void>;
+      guests: Map<number, { secret: string | null }>;
+    };
+    internals.waitForReveals = async () => {
+      for (const g of internals.guests.values()) g.secret = null;
+    };
+  }
+
+  it("A1: 시작을 알릴 때 참가자 약속을 빼고 자기 값만으로 시드를 정하면 참가자가 시작 때 잡는다", async () => {
     const { host, a } = await room();
     const audits: AuditResult[] = [];
     a.on("audit", (r) => audits.push(r));
@@ -96,19 +107,30 @@ describe("방장이 고친 경우", () => {
         );
       else send(message, to);
     };
-    const internals = host as unknown as {
-      waitForReveals(): Promise<void>;
-      guests: Map<number, { secret: string | null }>;
-    };
-    internals.waitForReveals = async () => {
-      for (const g of internals.guests.values()) g.secret = null;
-    };
+    dropGuestSecrets(host);
     await host.start();
     await until(() => a.match !== null);
-    await playRounds(host, a, 1);
     host.finish();
     await until(() => audits.length === 1);
-    expect(audits[0]?.ok).toBe(false);
+    expect(audits[0]).toEqual({
+      ok: false,
+      reason: "방장이 시작할 때 내 약속을 빼거나 바꿨어요.",
+    });
+  });
+
+  it("A1: 시작 알림은 그대로 두고 시드를 셀 때만 참가자 값을 빼면 판 끝 검증이 잡는다", async () => {
+    const { host, a } = await room();
+    const audits: AuditResult[] = [];
+    a.on("audit", (r) => audits.push(r));
+    dropGuestSecrets(host);
+    await host.start();
+    await until(() => a.match !== null);
+    host.finish();
+    await until(() => audits.length === 1);
+    expect(audits[0]).toEqual({
+      ok: false,
+      reason: "방장이 내 값을 시드에서 뺐어요.",
+    });
   });
 
   it("A3: 참가자가 낸 카드를 다른 카드로 바꿔 넣으면 잡힌다", async () => {
@@ -140,7 +162,10 @@ describe("방장이 고친 경우", () => {
     host.finish();
     await until(() => audits.length === 1);
     expect(swapped).toBe(true);
-    expect(audits[0]?.ok).toBe(false);
+    expect(audits[0]).toEqual({
+      ok: false,
+      reason: "기록 속 내 행동이 내가 보낸 것과 달라요.",
+    });
   });
 
   it("A2: 판 끝 기록을 공개하지 않고 나가면 검증 못 함으로 알린다", async () => {
@@ -151,7 +176,10 @@ describe("방장이 고친 경우", () => {
     await until(() => a.match !== null);
     host.close(); // finish() 없이 닫는다
     await until(() => audits.length === 1);
-    expect(audits[0]?.ok).toBe(false);
+    expect(audits[0]).toEqual({
+      ok: false,
+      reason: "방장이 판 끝 기록을 공개하지 않고 나가 검증하지 못했어요.",
+    });
   });
 });
 
@@ -229,7 +257,11 @@ describe("컴퓨터 자리", () => {
     expect(rigs).toBeGreaterThan(0);
     host.finish();
     await until(() => audits.length === 1);
-    expect(audits[0]?.ok).toBe(false);
+    expect(audits[0]).toEqual({
+      ok: false,
+      reason:
+        "기록 8번째: 컴퓨터가 둘 수와 달라요(방장이 컴퓨터를 조종했어요).",
+    });
   });
 });
 
