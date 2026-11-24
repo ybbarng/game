@@ -167,6 +167,17 @@ describe("차 둘로 외통: 연습", () => {
     },
   );
 
+  it("궁이 3번 가로줄이면 궁 바로 아래 가로줄에 선 차로 장군을 불러도 맞다(소개의 「어느 차든」)", () => {
+    const p = rookPuzzles.find((q) => q.pieces["35"] === "hK");
+    if (!p) throw new Error("문제 없음");
+    const state = puzzleState(p);
+    expect(ladderMoves(state.board).moves.map(name).sort()).toEqual([
+      "08-38",
+      "42-32",
+    ]);
+    expect(judgeMove(p, state, parseMove("42-32"), 0)).toBe("next");
+  });
+
   it("방법이 고르지 않는 수는 틀린 것이다", () => {
     const p = rookPuzzles[0];
     if (!p) throw new Error("문제 없음");

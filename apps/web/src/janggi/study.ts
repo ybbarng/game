@@ -14,6 +14,7 @@ import {
   legalMoves,
   type Move,
   PIECE_VALUE,
+  palaceOf,
   pointAt,
   pointName,
   pseudoTargets,
@@ -178,7 +179,7 @@ export function explainFork(board: Board, move: Move): string[] {
   return [
     `${obj(KIND_NAMES[mover[1] as Kind])} ${ro(pointName(move.to))}: ${list} 함께 노려요.`,
     check
-      ? "장군이라 한은 궁부터 피해야 하고, 그사이 다른 기물을 잡아요."
+      ? "장군이라 한은 장군부터 풀어야 해요. 그사이 함께 노린 다른 기물을 잡을 수 있어요."
       : "한이 하나를 지키거나 피하면 다른 하나를 잡아요.",
   ];
 }
@@ -542,21 +543,56 @@ export function explainPin(board: Board, move: Move): string[] {
     `${obj(mover)} ${ro(pointName(move.to))}: 한의 ${pieceAt(after, pin.pinned, "을")} 노려요.`,
     `${pieceAt(after, pin.pinned, "")}${hasBatchim(pinnedName) ? "은" : "는"} 초 ${pinnerName}(${pointName(pin.pinner)})${hasBatchim(pinnerName) ? "과" : "와"} 한의 궁(${pointName(king)}) 사이, 같은 ${line}에 서 있어요. 비키면 궁이 잡혀서 움직일 수 없어요.`,
   ];
-  // 그 판의 사실: 묶인 기물을 지키는 한 기물이 있는지, 있으면 가장 싼 초 기물로 잡아 바꿔도 이득인지
-  const defenders = attackers(after, pin.pinned, "h");
-  const takers = attackers(after, pin.pinned, "c").sort(
-    (a, b) => PIECE_VALUE[a] - PIECE_VALUE[b],
-  );
-  const cheapest = takers[0];
-  if (defenders.length === 0)
-    lines.push(
-      `${obj(pinnedName)} 지키는 한의 기물이 없어 다음 수에 공짜로 잡아요(${PIECE_VALUE[pinnedKind]}점).`,
+  // 그 판의 사실: 한이 어떻게 받아도 잡은 뒤 다시 잡히지 않는지(문제는 그런 판만 고른다), 궁성 밖이라 궁·사가 못 오는지
+  if (safeAfterEveryReply(after, pin.pinned)) {
+    const [px, py] = xyOf(pin.pinned);
+    const at = (kinds: string[]) =>
+      after.flatMap((c, i) =>
+        kinds.includes(c) && i !== pin.pinned ? [pointName(i)] : [],
+      );
+    const advisors = at(["hA"]);
+    const others = after.flatMap((c, i) =>
+      c.startsWith("h") && c !== "hK" && c !== "hA" && i !== pin.pinned
+        ? [`${KIND_NAMES[c[1] as Kind]}(${pointName(i)})`]
+        : [],
     );
-  else if (cheapest && PIECE_VALUE[cheapest] < PIECE_VALUE[pinnedKind])
+    // 그 판에서 지키러 오지 못하는 한의 기물을 짚는다(궁성 밖이면 궁·사, 그 밖의 기물은 이름과 자리)
+    const why = [
+      palaceOf(px, py) !== "h"
+        ? `${topic(pinnedName)} 궁성 밖이라 한의 ${advisors.length > 0 ? `궁과 사(${advisors.join("·")})가` : "궁이"} 지키러 오지 못해요.`
+        : "",
+      others.length > 0
+        ? `한의 다른 기물 ${others.join("·")}도 한 수 만에 지키러 오지 못해요.`
+        : "",
+    ].filter((s) => s !== "");
     lines.push(
-      `한의 ${subj(names(defenders))} 지켜도, ${ro(KIND_NAMES[cheapest])} 잡고 바꾸면 이득이에요.`,
+      `${why.join(" ")}${why.length > 0 ? " " : ""}그래서 한이 무엇을 두어도 다음 수에 ${obj(pinnedName)} 다시 잡히지 않고 잡아요(${PIECE_VALUE[pinnedKind]}점).`,
     );
+  }
   return lines;
+}
+
+/**
+ * 이 칸에 초 기물이 서면 한 기물이 잡을 수 있나(지키는 기물). 자기 편이 선 칸은 `pseudoTargets`에 나오지 않아
+ * 초 기물을 놓아 보고 센다
+ */
+function guarded(board: Board, at: number): boolean {
+  const probe = [...board];
+  probe[at] = "cP";
+  return attacked(probe, at, "h");
+}
+
+/** 한이 어떻게 받아도(쉬기 포함) 이 자리의 한 기물이 남고, 초가 그것을 잡아도 다시 잡히지 않나 */
+export function safeAfterEveryReply(after: Board, at: number): boolean {
+  const piece = after[at];
+  const next: Board[] = legalMoves(after, "h").map((m) => applyMove(after, m));
+  if (!inCheck(after, "h")) next.push(after);
+  return next.every(
+    (b) =>
+      b[at] === piece &&
+      legalMoves(b, "c").some((m) => m.to === at) &&
+      !guarded(b, at),
+  );
 }
 
 /**
@@ -603,9 +639,9 @@ export function explainDiscovered(board: Board, move: Move): string[] {
       m.from === king ? 0 : m.to === found.checker ? 2 : 1,
     ),
   );
-  // 길마다 이어 쓰는 꼴과 끝 꼴: 「궁을 비키거나 사이를 막아」
+  // 길마다 이어 쓰는 꼴과 끝 꼴: 「궁을 옮기거나 사이를 막아」
   const WAYS = [
-    ["궁을 비키거나", "궁을 비켜"],
+    ["궁을 옮기거나", "궁을 옮겨"],
     ["사이를 막거나", "사이를 막아"],
     ["장군 부른 차를 잡거나", "장군 부른 차를 잡아"],
   ] as const;
@@ -620,7 +656,9 @@ export function explainDiscovered(board: Board, move: Move): string[] {
     `${pieceAt(board, move.from, "이")} 막고 있던 길이 열려 ${pieceAt(after, found.checker, "이")} 장군을 불러요.`,
     found.captured
       ? `한은 ${answer} 장군부터 풀어야 해서, ${obj(mover)} 다시 잡을 틈이 없어요.`
-      : `한은 ${answer} 장군부터 풀어야 해서, 그사이 ${obj(gain)} 잡아요.`,
+      : safeAfterEveryReply(after, found.gain)
+        ? `한은 ${answer} 장군부터 풀어야 해서, 그사이 ${obj(gain)} 공짜로 잡아요(${PIECE_VALUE[gainKind]}점).`
+        : `한은 ${answer} 장군부터 풀어야 해서, 그사이 ${obj(gain)} 잡아요. 다시 잡혀도 ${PIECE_VALUE[moverKind]}점짜리 ${obj(mover)} 주고 ${PIECE_VALUE[gainKind]}점짜리 ${obj(gain)} 얻어 이득이에요.`,
   ];
 }
 

@@ -1,5 +1,6 @@
 // 장기 전술 묶음 「묶인 기물」·「비켜 부르는 장군」이 그 주제의 모양인지 본다(docs/23 「장기 전술 묶음 더하기」).
-// 정답이 하나뿐인지는 두 수 앞(여기)과 네 수 앞(study-deep.test.ts)을 읽어 본다.
+// 정답이 하나뿐인지는 두 수 앞(여기)과 네 수 앞(study-deep-tactics.test.ts)을 읽어 본다.
+// 해설이 말하는 「다시 잡히지 않고」·「다시 잡을 틈이 없어요」는 고수의 받는 수 하나가 아니라 한의 모든 받는 수로 본다.
 import { negamax } from "@game/janggi-ai";
 import {
   applyMove,
@@ -9,19 +10,18 @@ import {
   type Move,
   pointName,
   pseudoTargets,
-  step,
 } from "@game/janggi-engine";
 import { describe, expect, it } from "vitest";
 
 import { JANGGI_PUZZLE_SETS, type JanggiPuzzle } from "./puzzles";
 import {
-  defenseFor,
   discoveredCheck,
   explainDiscovered,
   explainPin,
   parseMove,
   pinnedTarget,
   puzzleState,
+  safeAfterEveryReply,
 } from "./study";
 
 const all = JANGGI_PUZZLE_SETS.flatMap((s) => s.puzzles);
@@ -41,18 +41,6 @@ function bestAndRunnerUp(board: Board) {
     .map((m) => ({ m: name(m), s: scoreOf(board, m) }))
     .sort((a, b) => b.s - a.s);
   return { best: scored[0]?.m, gap: (scored[0]?.s ?? 0) - (scored[1]?.s ?? 0) };
-}
-
-/** 정답을 두고 고수가 받은 판 */
-function afterDefense(p: JanggiPuzzle): Board {
-  const first = step(puzzleState(p), 0, {
-    type: "move",
-    ...parseMove(p.solution),
-  });
-  if (!first.ok) throw new Error(first.error);
-  const reply = step(first.state, 1, defenseFor(first.state));
-  if (!reply.ok) throw new Error(reply.error);
-  return reply.state.board;
 }
 
 describe("묶인 기물 문제", () => {
@@ -81,15 +69,16 @@ describe("묶인 기물 문제", () => {
   );
 
   it.each(rows("pin"))(
-    "%s: 고수가 받아도 묶인 기물은 그 자리에 남고 초가 잡을 수 있다",
+    "%s: 한이 어떻게 받아도(쉬기 포함) 묶인 기물은 그 자리에 남고, 초가 잡아도 다시 잡히지 않는다",
     (_id, p) => {
       const board = puzzleState(p).board;
-      const pin = pinnedTarget(board, parseMove(p.solution));
-      const at = pin?.pinned ?? -1;
-      const piece = applyMove(board, parseMove(p.solution))[at];
-      const next = afterDefense(p);
-      expect(next[at]).toBe(piece);
-      expect(legalMoves(next, "c").some((m) => m.to === at)).toBe(true);
+      const move = parseMove(p.solution);
+      const pin = pinnedTarget(board, move);
+      expect(
+        safeAfterEveryReply(applyMove(board, move), pin?.pinned ?? -1),
+      ).toBe(true);
+      // 해설의 「다시 잡히지 않고 잡아요」는 이 조건일 때만 나온다.
+      expect(explainPin(board, move)[2]).toMatch(/다시 잡히지 않고 잡아요/);
     },
   );
 
@@ -125,17 +114,23 @@ describe("비켜 부르는 장군 문제", () => {
   );
 
   it.each(rows("discover"))(
-    "%s: 고수가 받은 뒤, 잡은 기물은 다시 잡히지 않았고 노린 기물은 초가 잡을 수 있다",
+    "%s: 한이 어떻게 받아도, 잡은 기물은 다시 잡히지 않고 노린 기물은 그 자리에 남아 초가 잡을 수 있다",
     (_id, p) => {
       const board = puzzleState(p).board;
       const move = parseMove(p.solution);
       const found = discoveredCheck(board, move);
-      const next = afterDefense(p);
-      if (found?.captured) expect(next[move.to]).toBe(board[move.from]);
-      else
-        expect(legalMoves(next, "c").some((m) => m.to === found?.gain)).toBe(
-          true,
-        );
+      const after = applyMove(board, move);
+      const replies = legalMoves(after, "h").map((m) => applyMove(after, m));
+      expect(replies.length).toBeGreaterThan(0);
+      for (const next of replies) {
+        if (found?.captured) expect(next[move.to]).toBe(board[move.from]);
+        else {
+          expect(next[found?.gain ?? -1]).toBe(after[found?.gain ?? -1]);
+          expect(legalMoves(next, "c").some((m) => m.to === found?.gain)).toBe(
+            true,
+          );
+        }
+      }
     },
   );
 

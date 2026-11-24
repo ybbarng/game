@@ -992,16 +992,16 @@ test(
     await page.getByRole("button", { name: /장기 배우기/ }).click();
     await page.getByRole("button", { name: /수 배우기/ }).click();
 
-    // 묶인 기물: 차 48 → 18로 궁(15) 앞의 마(16)를 묶으며 노린다.
+    // 묶인 기물: 차 66 → 64로 궁(34)과 같은 세로줄의 마(54)를 묶으며 노린다.
     await page
       .getByRole("region", { name: "묶인 기물" })
       .getByRole("button", { name: "풀기 시작" })
       .click();
     await expect(page.getByRole("status")).toHaveText("묶인 기물을 노리세요.");
-    await tapPoint(page, "48", touch);
-    await tapPoint(page, "18", touch);
+    await tapPoint(page, "66", touch);
+    await tapPoint(page, "64", touch);
     await expect(page.getByRole("status")).toHaveText("묶었어요!");
-    await expect(page.getByText(/같은 가로줄에 서 있어요/)).toBeVisible();
+    await expect(page.getByText(/같은 세로줄에 서 있어요/)).toBeVisible();
     await page.screenshot({ path: info.outputPath("janggi-pin.png") });
     await page.getByRole("button", { name: "← 목록" }).click();
 

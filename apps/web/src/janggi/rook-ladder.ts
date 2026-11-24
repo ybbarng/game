@@ -38,10 +38,11 @@ export function ladderMoves(board: Board): { step: LadderStep; moves: Move[] } {
   if (rooks.length !== 2 || king < 0) return { step: 2, moves: [] };
   const row = rowOf(king);
   const below = rooks.filter((r) => rowOf(r) === row + 1);
-  // 1. 궁이 3번 가로줄(궁성 맨 아래)에 있거나, 차 하나가 궁 바로 아래 가로줄을 막고 있으면 → 다른 차로 궁이 있는 가로줄에 장군
+  // 1. 궁이 3번 가로줄(궁성 맨 아래)에 있으면 어느 차든, 차 하나가 궁 바로 아래 가로줄을 막고 있으면 그 차 말고
+  //    다른 차로 → 궁이 있는 가로줄에 장군
   if (row === 3 || below.length > 0) {
     const others = rooks.filter((r) => !below.includes(r));
-    const movers = others.length > 0 ? others : rooks;
+    const movers = row === 3 || others.length === 0 ? rooks : others;
     return {
       step: 1,
       moves: movers.map((from) => ({ from, to: toRow(from, row) })),
