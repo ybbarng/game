@@ -292,6 +292,8 @@ final class KeymapEditorView: FlippedView {
         head.addSubview(badge)
       }
       let toggle = Chip("", look: Chip.Look(padX: 0))
+      toggle.setAccessibilityLabel(g.label)
+      toggle.setAccessibilityExpanded(open)
       toggle.action = { [weak self] in
         guard let self else { return }
         if self.openGroups.contains(g.id) { self.openGroups.remove(g.id) } else { self.openGroups.insert(g.id) }
@@ -481,6 +483,8 @@ final class KeymapPortView: FlippedView {
     marker.frame = NSRect(x: pad, y: pad + 4, width: NUI.width(marker), height: 14)
     title.frame = NSRect(x: marker.frame.maxX + 4, y: pad, width: NUI.width(title), height: 20)
     let toggle = Chip("", look: Chip.Look(padX: 0))
+    toggle.setAccessibilityLabel(SettingsSheet.port)
+    toggle.setAccessibilityExpanded(open)
     toggle.action = { [weak self] in self?.setOpen(!(self?.open ?? false)) }
     toggle.frame = NSRect(x: 0, y: 0, width: w, height: pad + 20 + 4)
     [marker, title, toggle].forEach(addSubview)

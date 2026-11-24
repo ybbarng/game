@@ -493,8 +493,28 @@ final class TierCell: FlippedView {
     super.init(frame: .zero)
     radius = 4
     emblem.imageScaling = .scaleProportionallyUpOrDown
-    for v in [emblem, top, name] as [NSView] { addSubview(v) }
+    for v in [emblem, top, name] as [NSView] {
+      addSubview(v)
+      v.setAccessibilityElement(false)
+    }
+    // 손쉬운 사용: 단추 하나(이름은 칸 글 「3×3 23.45 브론즈 II」), 누르면 그 크기
+    setAccessibilityElement(true)
+    setAccessibilityRole(.button)
   }
+
+  override func accessibilityPerformPress() -> Bool {
+    action?()
+    return action != nil
+  }
+
+  // 키보드: Tab으로 오고 Space·Return·숫자판 Enter로 누른다(티어 사다리 칸과 같은 방식)
+  override var acceptsFirstResponder: Bool { true }
+  override var canBecomeKeyView: Bool { true }
+  override func keyDown(with event: NSEvent) {
+    if Chip.pressKeys.contains(event.keyCode) { action?() } else { super.keyDown(with: event) }
+  }
+  override var focusRingMaskBounds: NSRect { bounds }
+  override func drawFocusRingMask() { NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill() }
 
   private var emblemRect: NSRect { NSRect(x: 6, y: (bounds.height - 28) / 2, width: 28, height: 28) }
 
@@ -525,6 +545,8 @@ final class TierCell: FlippedView {
       topText = RecordsSheet.tierCellTop(size: size, ms: nil)
       NUI.set(name, RecordsSheet.tierPending, color: NUI.white(0.4))
     }
+    setAccessibilityLabel("\(topText) \(name.stringValue)")
+    setAccessibilitySelected(on)
     needsLayout = true
     needsDisplay = true
   }

@@ -223,10 +223,37 @@ final class Chip: NSView {
     super.init(frame: .zero)
     addSubview(label)
     apply()
+    // 손쉬운 사용: 누를 수 있는 칩은 단추, 이름은 제목(사이트 `<button>`). 글 칸은 따로 읽히지 않게 칩 하나로 읽는다
+    setAccessibilityElement(true)
+    label.setAccessibilityElement(false)
+    if !title.isEmpty { setAccessibilityLabel(title) }
   }
 
   override func draw(_ dirtyRect: NSRect) {
     NUI.drawBox(bounds, fill: look.fill, border: look.border, radius: look.radius)
+  }
+
+  /// 누를 수 있으면(동작이 있고 켜져 있으면) 단추, 아니면 글(배지)
+  private var pressable: Bool { action != nil && enabled }
+  override func accessibilityRole() -> NSAccessibility.Role? { action != nil ? .button : .staticText }
+  override func isAccessibilityEnabled() -> Bool { enabled }
+  override func accessibilityPerformPress() -> Bool {
+    guard pressable else { return false }
+    action?()
+    return true
+  }
+
+  // 키보드: Tab으로 오고 Space·Return·숫자판 Enter로 누른다(티어 사다리 칸 `LadderCellView`와 같은 방식)
+  override var acceptsFirstResponder: Bool { pressable && !isHiddenOrHasHiddenAncestor }
+  override var canBecomeKeyView: Bool { pressable && !isHiddenOrHasHiddenAncestor }
+  override func keyDown(with event: NSEvent) {
+    if pressable, Self.pressKeys.contains(event.keyCode) { action?() } else { super.keyDown(with: event) }
+  }
+  /// Space(49)·Return(36)·숫자판 Enter(76)
+  static let pressKeys: Set<UInt16> = [49, 36, 76]
+  override var focusRingMaskBounds: NSRect { bounds }
+  override func drawFocusRingMask() {
+    NSBezierPath(roundedRect: bounds, xRadius: look.radius, yRadius: look.radius).fill()
   }
 
   required init?(coder: NSCoder) { fatalError("코드로만 만든다") }
@@ -235,6 +262,7 @@ final class Chip: NSView {
     get { label.stringValue }
     set {
       label.stringValue = newValue
+      setAccessibilityLabel(newValue)
       apply()
     }
   }
@@ -300,6 +328,8 @@ class NativeSheetWindow: NSObject, NSWindowDelegate {
     window.isReleasedWhenClosed = false
     window.delegate = self
     window.appearance = NSAppearance(named: .darkAqua)
+    // Tab 차례를 칸이 바뀔 때마다 다시 셈한다(칩·티어 칸을 창이 새로 만든다)
+    window.autorecalculatesKeyViewLoop = true
     window.center()
   }
 
