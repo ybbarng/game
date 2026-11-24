@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { dealCues } from "@/game/cues";
-import { CUE_LABELS, CUE_ROLE, type Cue, play, renderCue } from "@/game/sound";
+import { type Cue, play, renderCue } from "@/game/sound";
+import { CUE_LABELS, CUE_ROLE } from "@/game/sound/render";
 import { SHUFFLE_MS } from "@/game/timing";
 import { starOf } from "@/stardraw/sky";
 

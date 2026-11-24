@@ -20,9 +20,10 @@ import {
 import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
 
 import type { BotLevel } from "./bots";
-import { setVolume as setSoundVolume } from "./sound";
 import type { SuitStyle } from "./suit-style";
 import { setSlangTerms as applySlangTerms } from "./terms";
+// 소리 파일은 부르지 않는다. 소리(`sound.ts`)가 이 크기를 따라간다
+import { setVolume as setSoundVolume } from "./volume";
 
 /** 원작의 rule.txt처럼 이름을 붙여 둔 내 규칙 */
 export interface CustomRule {

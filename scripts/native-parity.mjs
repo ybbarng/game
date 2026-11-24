@@ -69,6 +69,11 @@ export const WATCHED = [
   { path: `${WEB}cube/game-sounds.ts`, why: "큐브 소리" },
   {
     path: `${WEB}game/sound.ts`,
+    why: "소리 상자(울림·잡음, 네이티브는 같은 모양을 PCM으로)",
+  },
+  // 2026-11-25 소리 짜기를 첫 화면 묶음에서 빼며 sound.ts에서 옮겼다
+  {
+    path: `${WEB}game/sound/render.ts`,
     why: "소리 모양(네이티브는 같은 모양을 PCM으로)",
   },
   { path: `${WEB}cube/replay-player.ts`, why: "다시 보기" },
