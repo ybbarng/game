@@ -40,6 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
   enum WebWindow { case records, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:] { didSet { updatePresence() } }
+  /// 사이트 창을 열 때 넣은 앱 저장소 글(닫을 때 사이트에서 바뀐 키만 가려낸다, `WebStoreMerge`)
+  private var webOpened: [WebWindow: [String: String]] = [:]
   /// 네이티브 화면일 때의 같은 창들(docs/52 5-8). WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 위 사이트 창을 쓴다
   private var sheets: [WebWindow: NativeSheetWindow] = [:] { didSet { updatePresence() } }
   /// 지금 활성화 정책(docs/52 5-18). 처음은 `main.swift`가 둔 `.accessory`, 재기 모드는 `.prohibited`라 nil(바꾸지 않음)
@@ -705,11 +707,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       switch kind {
       case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
       case .tiers: (Self.tiersPath(cube.state.n), "Cubie 티어표", NSSize(width: 760, height: 760))
-      case .settings: ("/cube/settings", "Cubie 키 배치·색", NSSize(width: 760, height: 720))
+      // 네이티브 설정 창(「Cubie 키 배치·색」)과 Dock·⌘Tab에서 갈리게 다른 이름
+      case .settings: ("/cube/settings", "Cubie 모든 설정", NSSize(width: 760, height: 720))
       }
     let config = WKWebViewConfiguration()
     config.websiteDataStore = Config.measure ? .nonPersistent() : .default()
-    if let script = storeScript() { config.userContentController.addUserScript(script) }
+    // 문서가 뜰 때마다 같은 글(연 때의 앱 저장소)을 넣는다. 닫을 때 이 글과 견주어 사이트에서 바뀐 키만 읽어 온다
+    let snapshot = storeSnapshot()
+    webOpened[kind] = snapshot
+    if let script = storeScript(snapshot) { config.userContentController.addUserScript(script) }
     let web = WKWebView(frame: NSRect(origin: .zero, size: size), configuration: config)
     web.load(URLRequest(url: Config.site(path), cachePolicy: PageFreshness.load))
     let w = NSWindow(
@@ -802,13 +808,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       let kind = webWindows.first(where: { $0.value === w })?.key
     else { return }
     webWindows[kind] = nil
+    let opened = webOpened.removeValue(forKey: kind)
     guard kind == .settings else { return }
-    guard let native = cube as? NativeCubeWindow, let web = w.contentView as? WKWebView else {
+    guard let native = cube as? NativeCubeWindow, let web = w.contentView as? WKWebView, let opened else {
       cube.reload()
       keys.reload()
       return
     }
-    // 네이티브 화면: 설정 창이 저장한 키 배치·색·설정을 앱 저장소로 읽어 온다(앱이 쓰는 미니 기록 `cube.mini.*`는 빼고).
+    // 네이티브 화면: 사이트 설정 화면에서 바뀐 키만 앱 저장소로 옮긴다(앱이 쓰는 미니 기록 `cube.mini.*`는 빼고). 통째로
+    // 덮으면 창이 열린 동안 네이티브 설정 창에서 바꾼 값이 열 때 값으로 되돌아간다(`WebStoreMerge`).
     // 창을 닫는 중이라도 웹 화면은 이 응답이 올 때까지 붙들어 둔다
     web.evaluateJavaScript(Self.readStoreJS) { [weak self] result, _ in
       MainActor.assumeIsolated {
@@ -816,7 +824,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if let text = result as? String, let data = text.data(using: .utf8),
           let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: String]
         {
-          for (k, v) in d where !k.hasPrefix("cube.mini.") { native.store.set(v, for: k) }
+          let c = WebStoreMerge.changes(opened: opened, closed: d)
+          for (k, v) in c.set { native.store.set(v, for: k) }
+          for k in c.removed { native.store.remove(k) }
+          if Config.debug { print("[cubie] site settings closed set=\(c.set.keys.sorted()) removed=\(c.removed)"); fflush(stdout) }
         }
         self?.cube.reload()
         self?.keys.reload()
@@ -840,11 +851,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 네이티브 화면이면: 앱 저장소의 큐브 글(기록·프로필·키 배치·설정)을 사이트 창의 localStorage에 문서 시작 때 넣는다.
   /// 기록 창·티어표·설정 화면·단축키 표는 사이트 코드 그대로 이 글을 읽는다(docs/52 5-6). 웹 화면이면 넣지 않는다
   func storeScript() -> WKUserScript? {
+    storeScript(storeSnapshot())
+  }
+
+  private func storeScript(_ d: [String: String]?) -> WKUserScript? {
+    guard let d, let js = Self.setItemsJS(d) else { return nil }
+    return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+  }
+
+  /// 앱 저장소의 큐브 글 전부(네이티브 화면일 때만)
+  private func storeSnapshot() -> [String: String]? {
     guard let native = cube as? NativeCubeWindow else { return nil }
     var d: [String: String] = [:]
     for k in native.store.keys where k.hasPrefix("cube.") { d[k] = native.store.string(k) }
-    guard let js = Self.setItemsJS(d) else { return nil }
-    return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+    return d
   }
 
   /// 기록이 바뀌었을 때 열려 있는 기록 창·티어표에도 넣는다(그 창은 앞으로 올 때 다시 읽는다)
