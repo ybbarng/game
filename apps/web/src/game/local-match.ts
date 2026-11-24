@@ -1,15 +1,15 @@
 // 시계만 쓰므로 멘탈 포커 전체(index) 대신 시계 파일만 부른다(모든 게임 저장소가 이 파일을 싣는다)
+
+import { createRng, type RngState } from "@game/core/rng";
 import { type Clock, realClock } from "@game/fair-play/clock";
-import {
-  type Action,
-  createRng,
-  type GameEvent,
-  type LoggedAction,
-  type MatchState,
-  type PlayerView,
-  type PresetDeal,
-  type RngState,
-  type RuleSet,
+// 마이티 형은 제네릭 기본값으로만 쓴다(값은 부르지 않는다)
+import type {
+  Action,
+  GameEvent,
+  MatchState,
+  PlayerView,
+  PresetDeal,
+  RuleSet,
 } from "@game/mighty-engine";
 
 import type { BotRunner } from "./bot-runner";
