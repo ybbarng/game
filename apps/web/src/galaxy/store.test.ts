@@ -1,8 +1,10 @@
+// @vitest-environment jsdom
+
 import { asState } from "@game/galaxy-ai";
 import { debtPlan, SHORT_RULES } from "@game/galaxy-engine";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useGalaxy } from "./store";
+import { loadGalaxy, useGalaxy } from "./store";
 
 /** 내 결정 하나를 한다(굴리기·사기·입찰은 내지 않기·차례 마치기·빚 정리·사들이지 않기). 할 것이 없으면 false */
 function actOnce(): boolean {
@@ -31,7 +33,10 @@ function actOnce(): boolean {
 }
 
 describe("은하 한 바퀴 혼자 하기 진행", () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    localStorage.clear();
+  });
   afterEach(() => {
     useGalaxy.getState().leave();
     vi.useRealTimers();
@@ -63,6 +68,28 @@ describe("은하 한 바퀴 혼자 하기 진행", () => {
     expect(log.some((l) => l.seat === 0 && l.action.type === "reveal")).toBe(
       true,
     );
+  });
+
+  it("봉투에 낸 값은 이어하기 저장본에 실리고, 이어하면 그 값을 다시 쥔다", () => {
+    useGalaxy.getState().newGame({
+      rules: { ...SHORT_RULES, players: 3 },
+      level: 1,
+      seed: 11,
+    });
+    for (let i = 0; i < 400 && !useGalaxy.getState().bid; i++) {
+      vi.runOnlyPendingTimers();
+      actOnce();
+    }
+    const bid = useGalaxy.getState().bid;
+    expect(bid).not.toBeNull();
+    const saved = loadGalaxy();
+    expect(saved?.bid).toEqual(bid);
+    if (!saved) throw new Error("저장본이 없어요.");
+
+    useGalaxy.getState().leave();
+    expect(useGalaxy.getState().bid).toBeNull();
+    useGalaxy.getState().resume(saved);
+    expect(useGalaxy.getState().bid).toEqual(bid);
   });
 
   it("기권하면 판이 끝나고 내가 꼴찌다", () => {

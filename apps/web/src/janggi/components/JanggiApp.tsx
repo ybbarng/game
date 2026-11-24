@@ -12,6 +12,7 @@ import {
   timePresetLabel,
 } from "@/components/TimePresetPicker";
 import { useScreenHistory } from "@/game/screen-history";
+import { soloStarter } from "@/game/solo-start";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useJanggiTutorialProgress } from "@/tutorial/progress";
 import { janggiOnline } from "../online";
@@ -385,18 +386,14 @@ export function JanggiApp() {
 
   const backToStart = () => setScreen({ kind: "start" });
   /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
-  const startSolo = () => {
-    const s = useJanggiSettings.getState();
-    useJanggi.getState().newGame({
-      rules: {
-        bikjang: s.bikjang,
-        winsToFinish: s.winsToFinish,
-        ...(s.time !== "none" ? { time: s.time } : {}),
-      },
-      level: s.level,
-      pick: s.pick,
-    });
-  };
+  const startSolo = soloStarter(useJanggi, useJanggiSettings, (s) => ({
+    rules: {
+      bikjang: s.bikjang,
+      winsToFinish: s.winsToFinish,
+      ...(s.time !== "none" ? { time: s.time } : {}),
+    },
+    pick: s.pick,
+  }));
   if (screen.kind === "online")
     return (
       <RoomScreen
@@ -409,7 +406,7 @@ export function JanggiApp() {
       />
     );
   if (screen.kind === "playing")
-    return <JanggiGame onExit={backToStart} onRestart={startSolo} />;
+    return <JanggiGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (isLearn(screen))
     return (
       <JanggiLearn screen={screen} setScreen={setScreen} onBack={backToStart} />

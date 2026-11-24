@@ -12,6 +12,7 @@ import {
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
+import { soloStarter } from "@/game/solo-start";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { canVibrate } from "../haptics";
 import { YutIconArt } from "../icon-art";
@@ -340,13 +341,9 @@ export function YutApp() {
 
   const backToStart = () => setScreen({ kind: "start" });
   /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
-  const startSolo = () => {
-    const s = useYutSettings.getState();
-    useYut.getState().newGame({
-      rules: rulesFromSettings(s),
-      level: s.level,
-    });
-  };
+  const startSolo = soloStarter(useYut, useYutSettings, (s) => ({
+    rules: rulesFromSettings(s),
+  }));
 
   if (screen.kind === "online")
     return (
@@ -360,7 +357,7 @@ export function YutApp() {
       />
     );
   if (screen.kind === "playing")
-    return <YutGame onExit={backToStart} onRestart={startSolo} />;
+    return <YutGame onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome

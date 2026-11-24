@@ -12,6 +12,7 @@ import {
   timePresetLabel,
 } from "@/components/TimePresetPicker";
 import { useScreenHistory } from "@/game/screen-history";
+import { soloStarter } from "@/game/solo-start";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { badukOnline } from "../online";
 import { useBadukTutorialProgress } from "../progress";
@@ -355,20 +356,15 @@ export function BadukApp() {
    * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
    * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
    */
-  const startSolo = (seed?: number) => {
-    const s = useBadukSettings.getState();
-    useBaduk.getState().newGame({
-      rules: {
-        size: s.size,
-        komi: s.komi,
-        winsToFinish: s.winsToFinish,
-        ...(s.time !== "none" ? { time: s.time } : {}),
-      },
-      level: s.level,
-      pick: s.pick,
-      ...(seed !== undefined ? { seed } : {}),
-    });
-  };
+  const startSolo = soloStarter(useBaduk, useBadukSettings, (s) => ({
+    rules: {
+      size: s.size,
+      komi: s.komi,
+      winsToFinish: s.winsToFinish,
+      ...(s.time !== "none" ? { time: s.time } : {}),
+    },
+    pick: s.pick,
+  }));
   if (screen.kind === "online")
     return (
       <RoomScreen
