@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-11-17T04:30:00Z",
+  "updatedAt": "2026-11-24T12:00:00Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -815,12 +815,29 @@
       "parent": "boards",
       "status": "done",
       "size": 1,
-      "summary": "오목·장기·체스·바둑의 온라인 화면을 공통 BoardOnlineScreen 하나로 묶었다. 게임마다 다른 것은 <게임>/online.ts 설정 객체로 넘긴다",
+      "summary": "오목·장기·체스·바둑의 온라인 화면을 공통 BoardOnlineScreen 하나로 묶었다. 게임마다 다른 것은 <게임>/online.ts 설정 객체로 넘긴다. 2026-11-24 카드 게임까지 공통 RoomScreen으로 넓혔다(구역 「공통 조각 정리」)",
       "since": "2026-10-29",
       "found": "2026-10-29",
       "links": [
         {
           "label": "체크리스트 상태 표",
+          "path": "docs/21-new-game-checklist.md"
+        }
+      ]
+    },
+    {
+      "id": "platform-shared-pieces",
+      "title": "공통 조각 정리(모든 게임 같은 화면·같은 낱말)",
+      "parent": "platform",
+      "status": "building",
+      "size": 3,
+      "summary": "게임마다 복사해 둔 화면 조각을 공통으로 모은다. 끝난 단계: 온라인 대기실 하나로(RoomScreen, 카드 게임 6개 포함)와 멘탈 포커 화면 상태 하나로(net/fair-bar.ts useFairBar), 판 끝 「다시 하기」(혼자 하기는 같은 설정 새 게임·「처음으로」, 온라인은 「처음으로」, RoundEndButtons), 덧붙임 글 셋 지우기, 게임 전체 끝내기 낱말 「그만하기」, 큐브 타이머 기록 지우기 ConfirmButton, 오목·바둑 문제 화면 「여기 두기」",
+      "next": "1. 온라인 같은 방 한 판 더(판 끝에 방을 닫지 않고 같은 사람끼리 새 게임) 2. 옵션·설정 조각 공통화: 칩 11벌·설정 메뉴 3벌을 하나로, 모든 게임 효과음 끄기, 누르는 자리 44px, 대화 상자 Esc로 닫기 3. 게임 저장소 공통 틀(판 게임 넷부터: 오목·장기·체스·바둑) 4. 첫 화면 가볍게: 묶음 크기 재기, 게임별 동적 불러오기, sound.ts 나누기, sideEffects, packages/core 5. 공통 방 코드에서 마이티·하트 분기 걷기(kit fairTable) 6. Cubie 구조 정리: AppDelegate 나누기, 웹 되돌림 스위치 지우기, 시험 빈틈, readme-shots 프로필 그림 컴파일 고침",
+      "since": "2026-11-24",
+      "found": "2026-11-24",
+      "links": [
+        {
+          "label": "체크리스트(온라인 화면·판 끝 단추·낱말)",
           "path": "docs/21-new-game-checklist.md"
         }
       ]
