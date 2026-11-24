@@ -176,8 +176,16 @@ function missText(
       status: `흑 킹이 ${obj(word)} 잡을 수 있어요.`,
       hint: `흑 킹 바로 옆에는 내 킹이 지킬 때만 ${obj(word)} 둬요. 킹 둘만 남으면 비겨요.`,
     };
+  if (miss === "draw")
+    return {
+      status: "흑이 바르게 받으면 비기는 판이 됐어요.",
+      hint: "방법을 1번부터 차례로 보고, 처음 맞는 단계의 수를 둬요.",
+    };
   return {
-    status: `${limit}수 안에 메이트하지 못했어요.`,
+    status:
+      word === "폰"
+        ? `${limit}수 안에 퀸을 만들지 못했어요.`
+        : `${limit}수 안에 메이트하지 못했어요.`,
     hint: "방법을 1번부터 차례로 보고, 처음 맞는 단계의 수를 둬요.",
   };
 }
@@ -201,6 +209,8 @@ function EndgamePractice({
   review?: ReviewRun | undefined;
 }) {
   const piece = drill.piece;
+  /** 킹과 폰: 메이트 대신 폰을 무사히 퀸으로 바꾸면 성공 */
+  const pawn = piece === "P";
   const word = PIECE_WORD[piece];
   const limit = ENDGAME_LIMIT[piece];
   const coordinates = useChessSettings((s) => s.coordinates);
@@ -238,7 +248,9 @@ function EndgamePractice({
     explain: (): string[] => {
       const best = drillBest(piece, start);
       return [
-        `${played.current}수 만에 메이트했어요.`,
+        pawn
+          ? `${played.current}수 만에 퀸을 만들었어요.`
+          : `${played.current}수 만에 메이트했어요.`,
         ...(best ? [`이 시작 판은 가장 빠르면 ${best}수예요.`] : []),
       ];
     },
@@ -283,16 +295,22 @@ function EndgamePractice({
           onMove={play}
           lastMove={run.lastMove}
           checkedKing={
-            status === "solved" ? kingOf(drillCells(piece, state), "b") : null
+            status === "solved" && !pawn
+              ? kingOf(drillCells(piece, state), "b")
+              : null
           }
           coordinates={coordinates}
           hint={shown ? { from: shown.from, to: shown.to } : null}
         />
       }
       status={status}
-      prompt={`흑 킹을 ${limit}수 안에 메이트하세요. 지금 ${run.step + 1}수째예요.`}
+      prompt={
+        pawn
+          ? `폰을 ${limit}수 안에 퀸으로 만드세요. 지금 ${run.step + 1}수째예요.`
+          : `흑 킹을 ${limit}수 안에 메이트하세요. 지금 ${run.step + 1}수째예요.`
+      }
       waitingText="흑 킹이 받는 중…"
-      solvedText="체크메이트!"
+      solvedText={pawn ? "퀸이 됐어요!" : "체크메이트!"}
       wrongText={failed.status}
       wrongHint={failed.hint}
       shown={helped.current}

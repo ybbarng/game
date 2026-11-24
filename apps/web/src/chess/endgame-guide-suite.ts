@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   blackReply,
+  type DrillMiss,
   drillBoard,
   ENDGAME_LIMIT,
   ENDGAME_SETS,
@@ -26,7 +27,7 @@ import {
 
 type Ending =
   | { result: "mate"; moves: number }
-  | { result: "stalemate" | "lost" | "limit" | "stuck"; moves: number };
+  | { result: DrillMiss | "stuck"; moves: number };
 
 /** 방법대로 끝까지 둔다(흑은 가장 오래 버틴다). 판정은 연습 화면과 같은 `judgeDrill` */
 export function playGuide(piece: KxkPiece, start: KxkBoard, tie: Tie): Ending {

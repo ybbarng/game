@@ -8,8 +8,15 @@
 import { TACTIC_NAMES, type Tactic } from "./tactics";
 
 /**
+ * 메이트 문제의 주제(묶음 「뒷줄 메이트」·「빗나가게 하기」).
+ * - back-rank: 흑 킹이 자기 폰에 막혀 8번째 가로줄을 벗어나지 못할 때 그 가로줄로 체크해 메이트
+ * - deflection: 메이트할 칸을 지키는 흑 기물을 첫 수로 다른 칸에 끌어내고, 다음 수에 그 칸에서 메이트
+ */
+export type MateTheme = "back-rank" | "deflection";
+
+/**
  * 문제 하나. 늘 백이 둘 차례다.
- * - mate: `mateIn`수 만에 메이트. 마지막 수는 메이트면 어느 수든 정답이다
+ * - mate: `mateIn`수 만에 메이트. 마지막 수는 메이트면 어느 수든 정답이다. 주제(`theme`)가 있으면 해설에 한 줄 더한다
  * - tactic: 포크·핀·스큐어·발견 공격으로 기물을 얻는 수. 정답 수 하나뿐
  * - endgame: 킹과 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹+폰 대 킹 승패표 `@game/chess-ai`의 `kpk.ts`로 확인)
  * - outside: 바깥 패스 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹과 폰 판 끝까지 읽기 `@game/chess-ai`의 `pawn-ending.ts`로 확인)
@@ -20,7 +27,7 @@ export type ChessPuzzle = {
   /** 첫 정답 수(SAN) */
   solution: string;
 } & (
-  | { kind: "mate"; mateIn: 1 | 2 | 3 }
+  | { kind: "mate"; mateIn: 1 | 2 | 3; theme?: MateTheme }
   | { kind: "tactic"; tactic: Tactic }
   | { kind: "endgame" }
   | { kind: "outside" }
@@ -127,7 +134,7 @@ const OUTSIDE_PAWN: readonly Raw[] = [
 ];
 
 const KING_AND_PAWN: readonly Raw[] = [
-  // 맞서기(옵포지션): 킹끼리 한 칸 띄우고 마주 서서 흑 킹을 비키게 한다
+  // 마주 보기(옵포지션): 킹끼리 한 칸 띄우고 마주 서서 흑 킹을 비키게 한다
   { fen: "3k4/8/8/2K1P3/8/8/8/8 w - - 0 50", solution: "Kd6" },
   { fen: "8/8/3k4/8/8/3PK3/8/8 w - - 0 50", solution: "Kd4" },
   { fen: "8/8/5k2/8/8/4PK2/8/8 w - - 0 50", solution: "Kf4" },
@@ -139,11 +146,11 @@ const KING_AND_PAWN: readonly Raw[] = [
   { fen: "8/3k4/8/5P2/5K2/8/8/8 w - - 0 50", solution: "Kg5" },
   { fen: "8/8/8/4k3/8/6P1/7K/8 w - - 0 50", solution: "Kh3" },
   // 2026-11-17 더함(승패표로 찾아 고름, 직접 만든 판)
-  // 옆으로 맞서기: 같은 가로줄에서 한 칸 띄우고 마주 선다
+  // 옆으로 마주 보기: 같은 가로줄에서 한 칸 띄우고 마주 선다
   { fen: "8/8/4k3/2K5/3P4/8/8/8 w - - 0 50", solution: "Kc6" },
-  // 맞서기: 폰이 멀리 앞서 있어도 킹끼리 먼저 마주 선다
+  // 마주 보기: 폰이 멀리 앞서 있어도 킹끼리 먼저 마주 선다
   { fen: "3k4/8/2P1K3/8/8/8/8/8 w - - 0 50", solution: "Kd6" },
-  // 먼 맞서기: 킹끼리 세 칸 띄우고 마주 선다. 흑 킹이 다가오면 백도 다가가 한 칸 띄운 맞서기가 된다
+  // 먼 마주 보기: 킹끼리 세 칸 띄우고 마주 선다. 흑 킹이 다가오면 백도 다가가 한 칸 띄운 마주 보기가 된다
   { fen: "5k2/8/8/8/8/3P2K1/8/8 w - - 0 50", solution: "Kf4" },
   { fen: "8/4k3/8/8/8/8/2P2K2/8 w - - 0 50", solution: "Ke3" },
   { fen: "8/4k3/8/8/8/8/3K2P1/8 w - - 0 50", solution: "Ke3" },
@@ -151,6 +158,81 @@ const KING_AND_PAWN: readonly Raw[] = [
   { fen: "8/4k3/8/8/1K1P4/8/8/8 w - - 0 50", solution: "Kc5" },
   { fen: "8/3k4/8/8/K1P5/8/8/8 w - - 0 50", solution: "Kb5" },
   { fen: "8/8/6k1/8/4KP2/8/8/8 w - - 0 50", solution: "Ke5" },
+];
+
+/*
+ * 메이트 주제 묶음(2026-11-24): 흑 킹을 구석에 자기 폰과 함께 두고 나머지 기물을 무작위로 놓은 판에서
+ * 엔진으로 "메이트 수가 하나뿐인 판"을 찾아 골랐다(`mateInOneMoves`·`mateInTwoMoves`, 남의 문제집에서 옮긴 것은 없다).
+ * study.test.ts가 정답 유일성을, puzzle-themes.test.ts가 주제 모양을 다시 확인한다.
+ */
+type ThemedRaw = Raw & { mateIn: 1 | 2 };
+
+/** 뒷줄 메이트: 한 수 둘로 모양을 익히고, 뒷줄을 지키는 흑 기물을 먼저 떼어 내는 두 수로 */
+const BACK_RANK: readonly ThemedRaw[] = [
+  // 한 수: 흑 킹 앞 가로줄이 자기 폰으로 막혔다
+  {
+    fen: "1k6/ppp5/3p3R/4p3/4P3/1P6/K7/4N2N w - - 0 30",
+    solution: "Rh8#",
+    mateIn: 1,
+  },
+  {
+    fen: "7k/6pp/2n2R2/3n3p/8/4P3/2P3K1/1BQ5 w - - 0 30",
+    solution: "Rf8#",
+    mateIn: 1,
+  },
+  // 두 수: 체크로 끝줄을 막게 한 뒤 막은 기물을 잡으며 메이트
+  {
+    fen: "r1n3k1/5ppp/6p1/1p6/4r1P1/2NR4/8/6K1 w - - 0 30",
+    solution: "Rd8+",
+    mateIn: 2,
+  },
+  {
+    fen: "7k/3n2pp/8/2Q5/2P4R/8/5K2/8 w - - 0 30",
+    solution: "Qc8+",
+    mateIn: 2,
+  },
+  {
+    fen: "6k1/2B2ppp/q2p4/8/1R2P3/8/6PK/8 w - - 0 30",
+    solution: "Rb8+",
+    mateIn: 2,
+  },
+  // 두 수: 뒷줄을 지키는 흑 룩을 잡아 없앤다
+  {
+    fen: "r5k1/1R3ppp/8/Qp1r4/1n1p4/8/NK4P1/8 w - - 0 30",
+    solution: "Qxa8+",
+    mateIn: 2,
+  },
+  {
+    fen: "k4r2/pp2B3/1q6/8/8/8/K7/5R2 w - - 0 30",
+    solution: "Rxf8+",
+    mateIn: 2,
+  },
+  {
+    fen: "4r2k/6pp/5r2/4Q3/8/7B/1R4P1/2K5 w - - 0 30",
+    solution: "Qxe8+",
+    mateIn: 2,
+  },
+];
+
+/**
+ * 빗나가게 하기(모두 두 수): 첫 수로 기물을 내주면 지키던 흑 기물이 잡으러 와 자리를 비운다.
+ * 같은 칸에서 되잡는 판(Qf8+ Rxf8 Qxf8#)은 「지키는 기물 없애기」라 뺐다
+ */
+const DEFLECTION: readonly Raw[] = [
+  // 8번째 가로줄을 지키는 룩을 7번째 가로줄로 끌어낸다
+  { fen: "6rk/6pp/8/Q7/3B4/8/8/Q4K2 w - - 0 30", solution: "Bxg7+" },
+  { fen: "kr6/pp6/2B5/5p2/2P5/Q4B2/K7/8 w - - 0 30", solution: "Bxb7+" },
+  { fen: "kr6/pp6/1Q2R3/8/2p5/8/4P1B1/3K4 w - - 0 30", solution: "Qxb7+" },
+  { fen: "kr4b1/pp4Q1/2Q5/8/8/8/3P2P1/2K2R2 w - - 0 30", solution: "Qgxb7+" },
+  { fen: "6rk/b5pp/6Q1/6p1/6P1/P7/1QR5/2K5 w - - 0 30", solution: "Qgxg7+" },
+  // 킹 앞 폰을 지키는 퀸을 8번째 가로줄로 끌어낸다
+  { fen: "3r3k/6pp/3QN3/6q1/6Q1/6P1/8/K7 w - - 0 30", solution: "Qxd8+" },
+  { fen: "k2r4/pp6/1q3Q2/2Q3n1/8/R6P/8/7K w - - 0 30", solution: "Qxd8+" },
+  // 8번째 가로줄의 룩을 지키는 퀸을 g7로 끌어낸다
+  {
+    fen: "4r1k1/3Q1ppp/6RQ/p3q3/1P1b2P1/8/3K4/8 w - - 0 30",
+    solution: "Qxg7+",
+  },
 ];
 
 /*
@@ -166,7 +248,8 @@ const TACTIC_SETS: readonly {
 }[] = [
   {
     tactic: "fork",
-    summary: "한 기물로 두 곳을 함께 노려요. 흑은 하나만 지킬 수 있어요.",
+    summary:
+      "한 기물로 두 곳을 함께 노려요. 흑은 하나만 지킬 수 있어요. 이런 수를 포크라고 해요.",
     puzzles: [
       { fen: "7k/8/8/Pp1Q4/8/1K1n4/3p4/5b2 w - - 0 30", solution: "Qh1+" },
       { fen: "8/7k/7r/1N6/5b2/2K2B2/Q7/8 w - - 0 30", solution: "Qf7+" },
@@ -181,7 +264,7 @@ const TACTIC_SETS: readonly {
   {
     tactic: "pin",
     summary:
-      "앞 기물 뒤에 값이 더 높은 기물이 있으면 앞 기물이 비킬 때 뒤 기물이 잡혀요. 뒤가 킹이면 앞 기물은 아예 비킬 수 없어요.",
+      "기물은 퀸, 룩, 비숍과 나이트, 폰 차례로 값이 높아요. 내 룩·비숍·퀸이 한 줄로 흑 기물을 노리는데 그 너머 같은 줄에 값이 더 높은 흑 기물이 있으면, 앞 기물이 비킬 때 뒤 기물이 잡혀요. 뒤가 킹이면 앞 기물은 아예 비킬 수 없어요. 이렇게 앞 기물을 그 자리에 묶는 수를 핀이라고 해요.",
     puzzles: [
       { fen: "8/2b4k/8/3b4/8/R4p2/5R2/2K5 w - - 0 30", solution: "Ra7" },
       { fen: "3bk3/5b2/8/8/8/6K1/8/2RR4 w - - 0 30", solution: "Rc8" },
@@ -195,7 +278,8 @@ const TACTIC_SETS: readonly {
   },
   {
     tactic: "skewer",
-    summary: "앞의 킹이나 퀸을 노려 비키게 하고, 뒤에 있던 기물을 잡아요.",
+    summary:
+      "내 룩·비숍·퀸으로 흑 킹이나 퀸을 한 줄로 노려 비키게 하고, 그 너머 같은 줄에 있던 흑 기물을 잡아요. 핀과 반대로 앞에 값이 더 높은 기물이 있어요. 이런 수를 스큐어라고 해요.",
     puzzles: [
       { fen: "3kq3/8/3p2PQ/3P4/8/8/1R6/3K4 w - - 0 30", solution: "Rb8+" },
       { fen: "3r4/1p6/3k4/7Q/8/4P3/2R5/6K1 w - - 0 30", solution: "Rd2+" },
@@ -209,7 +293,7 @@ const TACTIC_SETS: readonly {
   {
     tactic: "discovered",
     summary:
-      "앞을 막던 기물이 비키며 뒤 기물의 길을 열어요. 흑은 두 노림을 한 번에 막지 못해요.",
+      "내 룩·비숍·퀸의 길을 막고 있던 내 기물이 비키면, 그 길이 열려 흑 기물을 노리게 돼요. 비킨 기물도 다른 곳을 노려서, 흑은 두 노림을 한 번에 막지 못해요. 이런 수를 발견 공격이라고 해요.",
     puzzles: [
       { fen: "8/k7/8/8/7p/r1B1RR2/8/3K4 w - - 0 30", solution: "Bd4+" },
       { fen: "8/1k6/1P2R3/2q2B1R/2p4n/8/8/7K w - - 0 30", solution: "Be4+" },
@@ -261,7 +345,7 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
     id: "king-pawn",
     title: "킹과 폰",
     summary:
-      "킹과 폰 하나가 킹 하나를 이기는 판이에요. 폰부터 밀면 비겨요. 킹을 먼저 앞세우는 한 수를 찾아요.",
+      "킹과 폰 하나가 킹 하나를 이기는 판이에요. 폰부터 밀면 비겨요. 폰보다 킹을 먼저 움직여 이기는 한 수를 찾아요.",
     puzzles: KING_AND_PAWN.map((p, i) => ({
       id: `king-pawn-${i + 1}`,
       kind: "endgame" as const,
@@ -290,4 +374,30 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
       ...p,
     })),
   })),
+  {
+    id: "back-rank",
+    title: "뒷줄 메이트",
+    summary:
+      "흑 킹이 흑 쪽 끝 가로줄(8번째 가로줄)에 있고, 킹 바로 아래 7번째 가로줄 칸들을 흑 폰이 막고 있으면 킹은 8번째 가로줄을 벗어나지 못해요. 그때 룩이나 퀸으로 8번째 가로줄을 따라 체크하면 킹이 피할 곳이 없어요. 흑 쪽에서 보면 맨 뒷줄이라 이런 메이트를 뒷줄 메이트라고 해요. 처음 두 문제는 한 수로 메이트해요. 나머지는 두 수 메이트예요. 8번째 가로줄을 지키는 흑 기물을 첫 수로 잡거나, 체크로 막으러 오게 한 뒤 다음 수에 그 기물을 잡으며 메이트해요.",
+    puzzles: BACK_RANK.map(({ mateIn, ...p }, i) => ({
+      id: `back-rank-${i + 1}`,
+      kind: "mate" as const,
+      mateIn,
+      theme: "back-rank" as const,
+      ...p,
+    })),
+  },
+  {
+    id: "deflection",
+    title: "빗나가게 하기",
+    summary:
+      "흑 기물 하나가 메이트할 칸을 지키고 있으면 그 칸에서 메이트할 수 없어요. 그 기물이 잡거나 막으러 갈 수밖에 없는 수를 먼저 두면, 그 기물은 다른 칸으로 끌려가고 지키던 칸이 비어요. 이렇게 지키는 기물을 제자리에서 끌어내는 수를 빗나가게 하기라고 해요. 모두 두 수 메이트예요. 첫 수로 지키는 기물을 끌어내고, 다음 수에 그 기물이 지키던 칸에서 메이트해요.",
+    puzzles: DEFLECTION.map((p, i) => ({
+      id: `deflection-${i + 1}`,
+      kind: "mate" as const,
+      mateIn: 2 as const,
+      theme: "deflection" as const,
+      ...p,
+    })),
+  },
 ];

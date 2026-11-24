@@ -7,11 +7,17 @@
  * - 연습: 시작 판(FEN)에서 흑 킹(컴퓨터)이 메이트 거리 표로 가장 오래 버틴다. 정해진 수 안에 메이트하면 성공,
  *   스테일메이트·퀸(룩)을 내줌·수를 넘김은 실패
  * 시험: `endgame-guide.test.ts`(방법이 정해진 수 안에 메이트, 그림의 수가 그 단계의 수), `endgame-terms.test.ts`(용어 순서)
+ * 킹과 폰(P)은 메이트 대신 폰을 무사히 퀸으로 바꾸면 성공이다. 방법은 `pawn-guide.ts`, 글은 `pawn-lesson.ts`,
+ * 흑 킹은 킹+폰 대 킹 승급 거리 표로 가장 오래 버틴다(`@game/chess-ai` `kpk.ts`의 `kpkDefense`).
  */
 
 import {
   type KrrkBoard,
   type KxkPiece,
+  kpkBlackMoves,
+  kpkDefense,
+  kpkWhiteDistance,
+  kpkWins,
   krrkBlackMoves,
   krrkBlackPlayed,
   krrkDefense,
@@ -39,21 +45,33 @@ import {
 } from "./endgame-guide";
 import { type LadderRule, ladderMove } from "./ladder-guide";
 import { ladderPages, ladderSteps } from "./ladder-lesson";
+import {
+  type PawnRule,
+  pawnGuide,
+  pawnPlayed,
+  pawnStalemate,
+  pawnWhiteMoves,
+  safeQueen,
+} from "./pawn-guide";
+import { pawnPages, pawnSteps } from "./pawn-lesson";
 
-/** 연습 기물: 퀸 하나(Q), 룩 하나(R), 룩 둘(RR) */
-export type EndgamePiece = KxkPiece | "RR";
+/** 연습 기물: 퀸 하나(Q), 룩 하나(R), 룩 둘(RR), 폰 하나(P, 퀸으로 만들기) */
+export type EndgamePiece = KxkPiece | "RR" | "P";
 
-/** 방법의 단계 이름(퀸·룩 하나와 룩 둘) */
-export type MethodRule = GuideRule | LadderRule;
+/** 방법의 단계 이름(퀸·룩 하나, 룩 둘, 폰) */
+export type MethodRule = GuideRule | LadderRule | PawnRule;
 
 /**
  * 기물마다 연습에서 메이트해야 하는 수(백의 수). 방법대로 두면 모든 판에서 퀸 22수·룩 27수 안에 끝난다.
- * 룩 둘은 흑이 어떻게 받아도 표본 8만여 판에서 18수 안에 끝났다(ladder-guide.test.ts)
+ * 룩 둘은 흑이 어떻게 받아도 표본 8만여 판에서 18수 안에 끝났다(ladder-guide.test.ts).
+ * 폰은 퀸이 될 때까지의 수다. 방법이 쓰는 범위의 판 모두에서 흑이 어떻게 받아도 8수 안에 퀸이 됐다(pawn-guide.test.ts).
+ * 단계를 하나씩 빼 보면 「쉬기」 60판·「옆에서 밀기」 196판·「스테일메이트 피하기」 10판이 실패한다
  */
 export const ENDGAME_LIMIT: Record<EndgamePiece, number> = {
   Q: 25,
   R: 35,
   RR: 20,
+  P: 10,
 };
 
 /** 기물 이름. 뒤 조사는 조사 도우미로 고른다(룩 둘의 「잡을 수 있는 룩」도 「룩」) */
@@ -61,6 +79,7 @@ export const PIECE_WORD: Record<EndgamePiece, string> = {
   Q: "퀸",
   R: "룩",
   RR: "룩",
+  P: "폰",
 };
 
 /** 연습 판: 백 킹·흑 킹·퀸이나 룩 자리. 룩 둘이면 둘째 룩(`q`)과, 방법이 지금 미는 쪽(`frame`)도 둔다 */
@@ -90,6 +109,7 @@ export interface MethodStep {
 /** 방법의 단계들. 위에서부터 차례로 보고, 처음 맞는 단계의 수를 둔다 */
 export function methodSteps(piece: EndgamePiece): MethodStep[] {
   if (piece === "RR") return ladderSteps(ENDGAME_LIMIT.RR);
+  if (piece === "P") return pawnSteps();
   const P = PIECE_WORD[piece];
   const far = `막는 줄을 따라 흑 킹에서 가장 먼 칸`;
   const steps: MethodStep[] = [
@@ -136,6 +156,7 @@ export function methodSteps(piece: EndgamePiece): MethodStep[] {
 /** 단원: 맥락 → 낱말 → 늘 지킬 것 → 방법 → 그림으로 보기 → 연습 */
 export function endgamePages(piece: EndgamePiece): EndgamePage[] {
   if (piece === "RR") return ladderPages(ENDGAME_LIMIT.RR);
+  if (piece === "P") return pawnPages(ENDGAME_LIMIT.P);
   const P = PIECE_WORD[piece];
   const K = piece;
   const limit = ENDGAME_LIMIT[piece];
@@ -280,6 +301,19 @@ export const ENDGAME_SETS: readonly EndgameSet[] = [
       "R6R/8/8/8/3k4/8/8/4K3 w - - 0 1",
     ]),
   },
+  {
+    id: "end-pawn",
+    piece: "P",
+    // 문제 묶음 「킹과 폰」과 헷갈리지 않게 하는 일로 부른다
+    title: "폰을 퀸으로 만들기",
+    summary: `킹과 폰 하나로 흑 킹을 피해 폰을 ${ENDGAME_LIMIT.P}수 안에 퀸으로 바꿔요. 처음 열면 방법부터 읽어요.`,
+    // 사각형 밖 → 이기는 칸에서 마주 보기 → 판 가장자리 옆 세로줄(g) 폰
+    drills: drills("P", [
+      "8/8/8/8/3P4/7k/8/K7 w - - 0 1",
+      "4k3/8/4K3/8/4P3/8/8/8 w - - 0 1",
+      "6k1/8/6K1/6P1/8/8/8/8 w - - 0 1",
+    ]),
+  },
 ];
 
 /** 연습 id로 묶음과 차례를 찾는다 */
@@ -319,7 +353,10 @@ export function drillCells(piece: EndgamePiece, b: DrillBoard): Cell[] {
   cells[b.bk] = "bK";
   if (piece === "RR") {
     for (const r of [b.p, b.q ?? -1]) if (r >= 0) cells[r] = "wR";
-  } else cells[b.p] = `w${piece}`;
+  } else if (piece === "P")
+    // 끝줄에 닿은 폰은 퀸으로 그린다
+    cells[b.p] = b.p < 8 ? "wQ" : "wP";
+  else cells[b.p] = `w${piece}`;
   return cells;
 }
 
@@ -329,6 +366,7 @@ export function drillMoves(
   b: DrillBoard,
 ): { from: number; to: number }[] {
   if (piece === "RR") return krrkWhiteMoves(rr(b));
+  if (piece === "P") return pawnWhiteMoves(b);
   return kxkWhiteMoves(piece, b.wk, b.bk, b.p).map((m) => ({
     from: m.from,
     to: m.to,
@@ -342,6 +380,7 @@ export function drillGuide(
   tie: Tie = "first",
 ): { from: number; to: number; rule: MethodRule } | null {
   if (piece === "RR") return ladderMove(rr(b), tie, b.frame ?? null);
+  if (piece === "P") return pawnGuide(b, tie);
   return guideMove(piece, b, tie);
 }
 
@@ -353,6 +392,7 @@ export function drillPlayed(
   b: DrillBoard,
   move: { from: number; to: number },
 ): DrillBoard {
+  if (piece === "P") return pawnPlayed(b, move);
   if (piece !== "RR") return whitePlayed(b, move);
   const frame = ladderMove(rr(b), "first", b.frame ?? null)?.frame;
   return {
@@ -361,19 +401,45 @@ export function drillPlayed(
   };
 }
 
-/** 이 시작 판을 가장 빨리 메이트하는 수(메이트 거리 표가 있는 퀸·룩 하나만). 모르면 null */
+/**
+ * 이 시작 판을 가장 빨리 끝내는 수(메이트 거리 표가 있는 퀸·룩 하나는 메이트까지, 폰은 무사히 퀸이 될 때까지). 모르면 null
+ */
 export function drillBest(piece: EndgamePiece, b: DrillBoard): number | null {
   if (piece === "RR") return null;
+  if (piece === "P") return kpkWhiteDistance(b.wk, b.bk, b.p);
   return kxkWhiteDistance(piece, b.wk, b.bk, b.p);
 }
 
-/** 실패한 까닭 */
-export type DrillMiss = "stalemate" | "lost" | "limit";
+/** 실패한 까닭(draw: 폰 연습에서 이길 수 없는 판이 됨) */
+export type DrillMiss = "stalemate" | "lost" | "limit" | "draw";
+
+/** 폰 연습 판정: 무사히 퀸이 되면 성공, 폰(퀸)을 잡힐 자리·스테일메이트·비기는 판은 실패 */
+function judgePawn(
+  before: DrillBoard,
+  move: { from: number; to: number },
+): { verdict: "solved" | "next" } | { verdict: "wrong"; miss: DrillMiss } {
+  if (move.from === before.p && move.to < 8) {
+    if (safeQueen(before, move.to)) return { verdict: "solved" };
+    const near =
+      Math.max(
+        Math.abs((move.to & 7) - (before.bk & 7)),
+        Math.abs((move.to >> 3) - (before.bk >> 3)),
+      ) <= 1;
+    return { verdict: "wrong", miss: near ? "lost" : "stalemate" };
+  }
+  const a = pawnPlayed(before, move);
+  if (kpkBlackMoves(a.wk, a.bk, a.p).some((m) => m.capture))
+    return { verdict: "wrong", miss: "lost" };
+  if (pawnStalemate(a)) return { verdict: "wrong", miss: "stalemate" };
+  if (!kpkWins(1, a.wk, a.bk, a.p)) return { verdict: "wrong", miss: "draw" };
+  return { verdict: "next" };
+}
 
 /**
  * 연습에서 내 수 하나를 판정한다. `step`은 이 수 앞에 둔 내 수의 개수(0부터).
- * - 메이트면 성공
- * - 스테일메이트, 흑 킹이 퀸·룩을 잡을 수 있게 됨, 정해진 수를 다 쓰고도 메이트가 아님은 실패
+ * - 메이트면 성공(폰은 무사히 퀸이 되면 성공)
+ * - 스테일메이트, 흑 킹이 퀸·룩(폰)을 잡을 수 있게 됨, 정해진 수를 다 쓰고도 끝내지 못함은 실패.
+ *   폰은 비기는 판이 되는 수도 실패
  * - 그 밖에는 흑이 받는다
  */
 export function judgeDrill(
@@ -382,7 +448,10 @@ export function judgeDrill(
   move: { from: number; to: number },
   step: number,
 ): { verdict: "solved" | "next" } | { verdict: "wrong"; miss: DrillMiss } {
-  if (piece === "RR") {
+  if (piece === "P") {
+    const verdict = judgePawn(before, move);
+    if (verdict.verdict !== "next") return verdict;
+  } else if (piece === "RR") {
     const a = krrkWhitePlayed(rr(before), move);
     if (krrkMated(a)) return { verdict: "solved" };
     if (krrkStalemate(a)) return { verdict: "wrong", miss: "stalemate" };
@@ -403,12 +472,18 @@ export function judgeDrill(
 
 /**
  * 흑 킹이 받는 수를 둔 판. 둘 수가 없으면 null.
- * 퀸·룩 하나는 메이트 거리 표로 가장 오래 버티는 수, 룩 둘은 짧은 깊이 탐색(`krrkDefense`)
+ * 퀸·룩 하나는 메이트 거리 표로 가장 오래 버티는 수, 룩 둘은 짧은 깊이 탐색(`krrkDefense`),
+ * 폰은 승급 거리 표로 가장 오래 버티는 수(`kpkDefense`)
  */
 export function blackReply(
   piece: EndgamePiece,
   b: DrillBoard,
 ): { board: DrillBoard; from: number; to: number } | null {
+  if (piece === "P") {
+    const reply = kpkDefense(b.wk, b.bk, b.p);
+    if (!reply) return null;
+    return { board: { ...b, bk: reply.to }, from: b.bk, to: reply.to };
+  }
   if (piece === "RR") {
     const reply = krrkDefense(rr(b));
     if (!reply) return null;

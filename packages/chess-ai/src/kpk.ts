@@ -177,3 +177,122 @@ export function kpkWinningMoves(
       wins.push(m.wk !== wk ? { from: wk, to: m.wk } : { from: p, to: m.p });
   return wins;
 }
+
+let distance: Uint8Array | null = null;
+
+/**
+ * 백이 이기는 판에서 무사히 승급하기까지 백의 수(승급하는 수까지 센다). 흑은 가장 오래 버틴다.
+ * 승패표와 같은 판 번호로, 승급 한 수 앞 판(1)부터 한 겹씩 넓혀 채운다. 비기는 판·놓일 수 없는 판은 0.
+ * 기본 엔드게임 「킹과 폰」 연습(docs/23)에서 흑 킹이 버티는 수와 「가장 빠르면 m수」에 쓴다(약 0.3초, 한 번만)
+ */
+export function kpkDistanceTable(): Uint8Array {
+  if (distance) return distance;
+  const t = kpkTable();
+  const d = new Uint8Array(t.length);
+  for (let n = 1; ; n++) {
+    let changed = false;
+    // 백 차례: 이번 겹(n)에 이기는 판
+    for (let wk = 0; wk < 64; wk++)
+      for (let bk = 0; bk < 64; bk++)
+        for (let p = 8; p < 56; p++) {
+          const wi = index(0, wk, bk, p);
+          if (t[wi] !== WIN || d[wi] !== 0) continue;
+          const { out, promotes } = whiteMoves(wk, bk, p);
+          let ok = promotes;
+          if (!ok)
+            for (const m of out)
+              if (d[index(1, m.wk, bk, m.p)] === n - 1 && n > 1) {
+                ok = true;
+                break;
+              }
+          if (ok) {
+            d[wi] = n;
+            changed = true;
+          }
+        }
+    // 흑 차례: 모든 받는 수가 이미 정해진 백 차례 판이면, 그 가운데 가장 먼 값(이번 겹)
+    for (let wk = 0; wk < 64; wk++)
+      for (let bk = 0; bk < 64; bk++)
+        for (let p = 8; p < 56; p++) {
+          const bi = index(1, wk, bk, p);
+          if (t[bi] !== WIN || d[bi] !== 0) continue;
+          let open = false;
+          for (const to of KING_STEPS[bk] ?? []) {
+            if (near(to, wk) || pawnAttacks(p, to)) continue;
+            if ((d[index(0, wk, to, p)] ?? 0) === 0) {
+              open = true;
+              break;
+            }
+          }
+          // 둘 수가 없는 판(폰의 체크로 메이트)도 여기서 정해진다
+          if (!open) {
+            d[bi] = n;
+            changed = true;
+          }
+        }
+    if (!changed) break;
+  }
+  distance = d;
+  return d;
+}
+
+/** 백 차례 판에서 무사히 승급하기까지 백의 수. 백이 이기지 못하면 null */
+export function kpkWhiteDistance(
+  wk: number,
+  bk: number,
+  p: number,
+): number | null {
+  if (p < 8 || p >= 56) return null;
+  return kpkDistanceTable()[index(0, wk, bk, p)] || null;
+}
+
+/** 흑 킹이 둘 수 있는 수(폰 잡기는 capture) */
+export function kpkBlackMoves(
+  wk: number,
+  bk: number,
+  p: number,
+): { to: number; capture: boolean }[] {
+  const out: { to: number; capture: boolean }[] = [];
+  for (const to of KING_STEPS[bk] ?? []) {
+    if (near(to, wk) || pawnAttacks(p, to)) continue;
+    out.push({ to, capture: to === p });
+  }
+  return out;
+}
+
+const fromCenter = (at: number) => {
+  const [x, y] = xy(at);
+  return Math.max(Math.abs(2 * x - 7), Math.abs(2 * y - 7));
+};
+
+/**
+ * 흑 킹이 받는 수: 폰을 잡을 수 있으면 잡고, 비기는 판으로 갈 수 있으면 가고, 아니면 승급까지 가장 먼 수.
+ * 같으면 가운데 쪽 칸, 그다음 칸 번호(늘 같은 수). 둘 수가 없으면 null
+ */
+export function kpkDefense(
+  wk: number,
+  bk: number,
+  p: number,
+): { to: number; capture: boolean } | null {
+  const moves = kpkBlackMoves(wk, bk, p);
+  const capture = moves.find((m) => m.capture);
+  if (capture) return capture;
+  let best: { to: number; capture: boolean } | null = null;
+  let bestScore = -1;
+  for (const m of moves) {
+    const score = kpkWins(0, wk, m.to, p)
+      ? (kpkWhiteDistance(wk, m.to, p) ?? 0)
+      : 1000;
+    if (
+      !best ||
+      score > bestScore ||
+      (score === bestScore &&
+        (fromCenter(m.to) < fromCenter(best.to) ||
+          (fromCenter(m.to) === fromCenter(best.to) && m.to < best.to)))
+    ) {
+      best = m;
+      bestScore = score;
+    }
+  }
+  return best;
+}

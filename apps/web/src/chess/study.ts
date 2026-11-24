@@ -19,10 +19,11 @@ import {
   viewOf,
 } from "@game/chess-engine";
 import { adviseWith } from "@/game/bot-runner";
-import { obj, ro, subj, topic } from "@/lib/josa";
+import { obj, ro, subj, topic, wa } from "@/lib/josa";
 
 import { chessAdvisor } from "./advisor";
 import type { ChessPuzzle } from "./puzzles";
+import { attacksFrom } from "./tactics";
 
 /** 문제 장면에서 시작하는 판. 늘 백(나, 0번 자리)이 둘 차례다 */
 export function puzzleState(puzzle: ChessPuzzle): ChessState {
@@ -104,6 +105,8 @@ export function explainMate(pos: Position, move: Move): string[] {
   const [kx, ky] = [king % 8, Math.floor(king / 8)];
   const blocked: string[] = [];
   const guarded = new Map<string, string[]>();
+  /** 킹 바로 옆의 백 기물: 킹이 잡으면 다른 백 기물이 노려서 잡을 수 없다 */
+  const covered: string[] = [];
   for (const dx of [-1, 0, 1])
     for (const dy of [-1, 0, 1]) {
       if (dx === 0 && dy === 0) continue;
@@ -122,16 +125,154 @@ export function explainMate(pos: Position, move: Move): string[] {
       moved[king] = "";
       const who = names(attackers(moved, to));
       if (!who) continue;
-      guarded.set(who, [...(guarded.get(who) ?? []), squareName(to)]);
+      if (cell.startsWith("w"))
+        covered.push(
+          `${topic(`${KIND_NAMES[cell[1] as Kind]}(${squareName(to)})`)} ${subj(who)} 지켜 킹이 잡을 수 없어요.`,
+        );
+      else guarded.set(who, [...(guarded.get(who) ?? []), squareName(to)]);
     }
   if (blocked.length > 0)
-    lines.push(
-      `킹 둘레 ${topic(blocked.join("·"))} 흑 자기 기물이 막고 있어요.`,
-    );
+    lines.push(`킹 둘레 ${topic(blocked.join("·"))} 흑 기물이 막고 있어요.`);
   for (const [who, squares] of guarded)
     lines.push(`킹이 피할 ${topic(squares.join("·"))} ${subj(who)} 노려요.`);
+  lines.push(...covered);
+  lines.push(...pinnedDefenders(board, king));
   lines.push("막거나 잡을 수도 없어 체크메이트예요.");
   return lines;
+}
+
+/**
+ * 메이트 판에서 체크를 막거나 체크한 기물을 잡을 수 있는 자리인데, 킹과 한 줄에 묶여 움직이지 못하는 흑 기물.
+ * 메이트 판이라 그런 수는 모두 둘 수 없는 수다(킹이 잡히게 되는 수). 체크가 둘이면 막아도 소용없어 보지 않는다
+ */
+function pinnedDefenders(board: Board, king: number): string[] {
+  const checkers = board.flatMap((c, i) =>
+    c.startsWith("w") && attacksFrom(board, i).includes(king) ? [i] : [],
+  );
+  if (checkers.length !== 1) return [];
+  const checker = checkers[0] as number;
+  const [kx, ky] = [king & 7, king >> 3];
+  const [cx, cy] = [checker & 7, checker >> 3];
+  const dx = Math.sign(cx - kx);
+  const dy = Math.sign(cy - ky);
+  const line =
+    (cx - kx) * dy === (cy - ky) * dx &&
+    "QRB".includes((board[checker] as string)[1] as string);
+  const between: number[] = [];
+  if (line)
+    for (let x = kx + dx, y = ky + dy; x !== cx || y !== cy; x += dx, y += dy)
+      between.push(y * 8 + x);
+  const out: string[] = [];
+  board.forEach((cell, at) => {
+    if (!cell.startsWith("b") || cell === "bK") return;
+    const hits = attacksFrom(board, at);
+    const block =
+      cell === "bP"
+        ? between.find((t) => t === at + 8 && board[t] === "")
+        : between.find((t) => hits.includes(t));
+    const take = hits.includes(checker);
+    if (block === undefined && !take) return;
+    // 킹에서 이 기물 쪽으로 가며 이 기물 너머 처음 만나는 기물이 묶는 백 기물
+    const [px, py] = [at & 7, at >> 3];
+    const sx = Math.sign(px - kx);
+    const sy = Math.sign(py - ky);
+    if ((px - kx) * sy !== (py - ky) * sx) return;
+    let pinner = -1;
+    for (
+      let x = px + sx, y = py + sy;
+      x >= 0 && x < 8 && y >= 0 && y < 8;
+      x += sx, y += sy
+    ) {
+      const c = board[y * 8 + x] ?? "";
+      if (c === "") continue;
+      if (c.startsWith("w") && attacksFrom(board, y * 8 + x).includes(at))
+        pinner = y * 8 + x;
+      break;
+    }
+    if (pinner < 0) return;
+    const name = (i: number) =>
+      `${KIND_NAMES[(board[i] as string)[1] as Kind]}(${squareName(i)})`;
+    const can = take
+      ? `체크한 ${obj(name(checker))} 잡을 수 있지만`
+      : `${squareName(block as number)}에서 체크를 막을 수 있지만`;
+    out.push(
+      `흑 ${topic(name(at))} ${can}, ${wa(name(pinner))} 킹 사이에 묶여 움직이면 킹이 잡혀요.`,
+    );
+  });
+  return out;
+}
+
+/** 뒷줄 메이트인가: 메이트 뒤 흑 킹이 8번째 가로줄에 있고, 룩·퀸이 8번째 가로줄에서 체크하며, 킹 앞 7번째 가로줄 칸은 모두 흑 기물이 막았다 */
+export function isBackRankMate(pos: Position, move: Move): boolean {
+  const after = applyMove(pos, move);
+  if (!isCheckmate(after)) return false;
+  const king = kingOf(after.board, "b");
+  const mover = after.board[move.to] ?? "";
+  if (king >> 3 !== 0 || move.to >> 3 !== 0) return false;
+  if (mover !== "wR" && mover !== "wQ") return false;
+  const kx = king & 7;
+  for (const x of [kx - 1, kx, kx + 1]) {
+    if (x < 0 || x > 7) continue;
+    if (!(after.board[8 + x] ?? "").startsWith("b")) return false;
+  }
+  return true;
+}
+
+/**
+ * 두 수 메이트에서 흑의 받는 수로 자리를 옮긴 흑 기물(처음 칸·옮긴 칸). 백의 첫 수 뒤 판과 흑이 받은 뒤 판을 견준다
+ */
+function blackMoved(
+  afterFirst: Position,
+  afterReply: Position,
+): { from: number; to: number } | null {
+  const from = afterFirst.board.findIndex(
+    (c, i) => c.startsWith("b") && afterReply.board[i] !== c,
+  );
+  if (from < 0) return null;
+  const piece = afterFirst.board[from] as string;
+  const to = afterReply.board.findIndex(
+    (c, i) => c === piece && afterFirst.board[i] !== piece,
+  );
+  return to < 0 ? null : { from, to };
+}
+
+/**
+ * 메이트 문제 해설: 주제가 있으면 그 줄을 먼저(장면에서 만든다), 그다음 메이트 판 풀이(`explainMate`).
+ * - 뒷줄 메이트: 마지막 수가 정말 뒷줄 메이트일 때만
+ * - 빗나가게 하기: 흑이 받으며 옮긴 기물이 첫 수 뒤 판에서 메이트 칸을 지켰고, 옮긴 칸에서는 지키지 못할 때만
+ */
+export function explainMatePuzzle(
+  puzzle: ChessPuzzle,
+  before: Position,
+  move: Move,
+): string[] {
+  const lines: string[] = [];
+  if (puzzle.kind === "mate" && puzzle.theme === "back-rank") {
+    if (isBackRankMate(before, move))
+      lines.push(
+        "흑 킹이 자기 기물에 막혀 8번째 가로줄을 벗어나지 못하는 뒷줄 메이트예요.",
+      );
+  }
+  if (puzzle.kind === "mate" && puzzle.theme === "deflection") {
+    const afterFirst = applyMove(
+      puzzleState(puzzle).position,
+      solutionMove(puzzle),
+    );
+    const moved = blackMoved(afterFirst, before);
+    if (moved) {
+      const piece =
+        KIND_NAMES[(afterFirst.board[moved.from] as string)[1] as Kind];
+      const guarded = attacksFrom(afterFirst.board, moved.from).includes(
+        move.to,
+      );
+      const still = attacksFrom(before.board, moved.to).includes(move.to);
+      if (guarded && !still && moved.to !== move.to)
+        lines.push(
+          `흑 ${topic(`${piece}(${squareName(moved.from)})`)} ${obj(squareName(move.to))} 지키고 있었는데, ${ro(squareName(moved.to))} 끌려가 더는 지키지 못해요.`,
+        );
+    }
+  }
+  return [...lines, ...explainMate(before, move)];
 }
 
 /**
@@ -156,11 +297,11 @@ export function explainEndgame(pos: Position, move: Move): string[] {
     (wy === by && Math.abs(wx - bx) === 4);
   if (facing)
     lines.push(
-      "킹끼리 한 칸 띄우고 마주 섰어요(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아가요.",
+      "킹끼리 한 칸 띄우고 마주 섰어요(마주 보기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아가요.",
     );
   else if (farFacing)
     lines.push(
-      "킹끼리 세 칸 띄우고 마주 섰어요(먼 맞서기). 흑 킹이 다가오면 백 킹도 마주 보며 다가가요. 그러면 한 칸 띄우고 마주 선 맞서기가 되고, 흑 킹이 비켜야 해요.",
+      "킹끼리 세 칸 띄우고 마주 섰어요(먼 마주 보기). 흑 킹이 다가오면 백 킹도 마주 보며 다가가요. 그러면 한 칸 띄우고 마주 서게 되고, 흑 킹이 비켜야 해요.",
     );
   else if (wy < Math.floor(pawn / 8))
     lines.push(

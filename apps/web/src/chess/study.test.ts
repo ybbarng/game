@@ -8,6 +8,8 @@ import {
   mateInOneMoves,
   mateInTwoMoves,
   moveToSan,
+  parseFen,
+  sanToMove,
   step,
 } from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
@@ -93,7 +95,22 @@ describe("메이트 문제", () => {
     const p = one[0] as ChessPuzzle;
     const lines = explainMate(puzzleState(p).position, solutionMove(p));
     expect(lines[0]).toBe("룩을 b8로(Rb8#): 체크!");
-    expect(lines.join(" ")).toContain("흑 자기 기물이 막고 있어요");
+    expect(lines.join(" ")).toContain("흑 기물이 막고 있어요");
     expect(lines.at(-1)).toBe("막거나 잡을 수도 없어 체크메이트예요.");
+  });
+
+  it("킹 바로 옆의 백 기물은 「피할 칸」이 아니라 「지켜 킹이 잡을 수 없다」고 말한다(Qxg7#, 나이트 e6이 지킴)", () => {
+    const pos = parseFen("3q3k/6pp/4N3/8/6Q1/6P1/8/K7 w - - 0 31");
+    const lines = explainMate(pos, sanToMove(pos, "Qxg7") as Move);
+    expect(lines).toContain("퀸(g7)은 나이트가 지켜 킹이 잡을 수 없어요.");
+    expect(lines.join(" ")).not.toContain("피할 g7");
+  });
+
+  it("체크를 막을 수 있지만 킹과 한 줄에 묶인 흑 기물을 말한다(Qa8#: 룩 g7은 g8에서 막을 수 있지만 a1 퀸에 묶임)", () => {
+    const pos = parseFen("7k/6rp/8/Q7/8/8/8/Q4K2 w - - 0 31");
+    const lines = explainMate(pos, sanToMove(pos, "Qa8") as Move);
+    expect(lines).toContain(
+      "흑 룩(g7)은 g8에서 체크를 막을 수 있지만, 퀸(a1)과 킹 사이에 묶여 움직이면 킹이 잡혀요.",
+    );
   });
 });

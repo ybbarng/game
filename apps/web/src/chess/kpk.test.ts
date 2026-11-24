@@ -49,16 +49,16 @@ describe("킹과 폰 해설", () => {
     return explainEndgame(pos, sanToMove(pos, puzzle.solution) as never)[1];
   };
 
-  it("맞서기·먼 맞서기·폰 앞 칸 차지·옆으로 돌아 나가기를 가려 말한다", () => {
-    expect(explain("king-pawn-1")).toContain("맞서기");
+  it("마주 보기·먼 마주 보기·폰 앞 칸 차지·옆으로 돌아 나가기를 가려 말한다", () => {
+    expect(explain("king-pawn-1")).toContain("(마주 보기)");
     expect(explain("king-pawn-6")).toContain("앞 칸을 먼저 차지");
     expect(explain("king-pawn-7")).toContain("돌아 나가요");
     expect(explain("king-pawn-8")).toContain("돌아 나가요");
-    // 옆으로 맞서기(같은 가로줄)와 폰이 앞서 있을 때의 맞서기
-    expect(explain("king-pawn-9")).toContain("(맞서기)");
-    expect(explain("king-pawn-10")).toContain("(맞서기)");
+    // 옆으로 마주 보기(같은 가로줄)와 폰이 앞서 있을 때의 마주 보기
+    expect(explain("king-pawn-9")).toContain("(마주 보기)");
+    expect(explain("king-pawn-10")).toContain("(마주 보기)");
     for (const id of ["king-pawn-11", "king-pawn-12", "king-pawn-13"])
-      expect(explain(id)).toContain("(먼 맞서기)");
+      expect(explain(id)).toContain("(먼 마주 보기)");
     for (const id of ["king-pawn-14", "king-pawn-15", "king-pawn-16"])
       expect(explain(id)).toContain("앞 칸을 먼저 차지");
   });
