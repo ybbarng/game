@@ -34,6 +34,9 @@ export function SettingRow({
   );
 }
 
+/** 메뉴를 띄울 자리(화면 위·오른쪽에서 px) */
+export type MenuAnchor = { top: number; right: number };
+
 /** 컴퓨터 단계 고르기(새 게임부터 바뀐다) */
 export type LevelSetting<T extends string | number> = {
   options: readonly { value: T; label: string }[];
@@ -56,6 +59,7 @@ export function GameSettingsMenu<T extends string | number>({
   extra,
   footer,
   onQuit,
+  anchor,
 }: {
   onClose: () => void;
   /** 상자 바탕(게임 판 색) */
@@ -66,6 +70,8 @@ export function GameSettingsMenu<T extends string | number>({
   extra?: ReactNode;
   footer?: ReactNode;
   onQuit?: (() => void) | undefined;
+  /** 연 단추 자리(없으면 카드 판 위 막대 오른쪽 아래) */
+  anchor?: MenuAnchor | undefined;
 }) {
   const speedValue = useSettings((s) => s.speed);
   const setSpeed = useSettings((s) => s.setSpeed);
@@ -76,6 +82,15 @@ export function GameSettingsMenu<T extends string | number>({
       label="설정"
       onClose={onClose}
       data-settings-menu
+      {...(anchor
+        ? {
+            style: {
+              top: anchor.top,
+              right: anchor.right,
+              maxHeight: `calc(100dvh - ${anchor.top + 12}px)`,
+            },
+          }
+        : {})}
       className={cn(
         "absolute top-[calc(3.5rem+env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] flex max-h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-64 flex-col gap-2 overflow-y-auto rounded-2xl border border-white/15 p-4 text-white shadow-2xl backdrop-blur",
         tone,
@@ -163,7 +178,8 @@ export function BoardSettingsButton<T extends string | number>({
   const set = useStore((s) => s.set);
   return (
     <GameSettingsButton
-      {...(tone ? { tone } : {})}
+      // 판 게임 바탕(짙은 돌색)에 맞춘 기본 상자 색
+      tone={tone ?? "bg-stone-900/95"}
       onQuit={onQuit}
       levels={
         solo
@@ -187,20 +203,33 @@ export function GameSettingsButton<T extends string | number>(
     className?: string;
   },
 ) {
-  const [open, setOpen] = useState(false);
+  // 연 자리: 메뉴를 단추 바로 아래, 단추 오른쪽 끝에 맞춰 띄운다
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   const { className, ...menu } = props;
   return (
     <>
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
+        aria-expanded={anchor !== null}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setAnchor({
+            top: r.bottom + 6,
+            right: Math.max(8, window.innerWidth - r.right),
+          });
+        }}
         className={cn(BAR_BUTTON, className)}
       >
         설정
       </button>
-      {open && <GameSettingsMenu {...menu} onClose={() => setOpen(false)} />}
+      {anchor && (
+        <GameSettingsMenu
+          {...menu}
+          anchor={anchor}
+          onClose={() => setAnchor(null)}
+        />
+      )}
     </>
   );
 }

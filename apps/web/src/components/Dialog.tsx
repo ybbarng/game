@@ -1,6 +1,12 @@
 "use client";
 
-import { type ReactNode, type RefObject, useEffect, useRef } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+} from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -34,6 +40,7 @@ export function Dialog({
   initialFocus,
   overlayClassName,
   className,
+  style,
   children,
   ...data
 }: {
@@ -49,6 +56,8 @@ export function Dialog({
   overlayClassName?: string;
   /** 상자 모양 */
   className?: string;
+  /** 상자 자리(연 단추에 맞춰 띄울 때) */
+  style?: CSSProperties;
   children: ReactNode;
   [data: `data-${string}`]: string | boolean | undefined;
 }) {
@@ -124,6 +133,7 @@ export function Dialog({
         aria-labelledby={labelledBy}
         tabIndex={-1}
         className={cn("outline-none", className)}
+        style={style}
         {...data}
       >
         {children}
