@@ -91,6 +91,63 @@ export interface FairVerifyInput {
    * 게임 끝 검증에서 패를 모르는 판이 끝난 판인지 따질 때 이 판부터만 본다(`unopenedRoundProblem`)
    */
   watchedFrom?: number;
+  /**
+   * 방장이 보낸 원본 화면(자리 표 그대로, 열기 전)에서 본 판(`HostRounds`). 없으면 받은 화면(`seen`)의 판 번호로
+   * 가장 큰 판만 센다
+   */
+  hostRounds?: HostRounds;
+}
+
+/**
+ * 방장이 보낸 원본 화면에서 본 판. 내 카드로 바꾼 화면(`seen`)은 카드가 다 열려야 생기므로, 열쇠가 모자라 열리지
+ * 않은 판의 끝 화면은 거기에 없다. 그래서 받는 즉시 원본으로 센다(`GuestRoom.noteHostRound`)
+ */
+export interface HostRounds {
+  /** 가장 큰 판 번호(판 번호가 없는 게임이면 null) */
+  last: number | null;
+  /** 판 끝(정산)까지 간 판(`finishedRoundOf`) */
+  finished: ReadonlySet<number>;
+}
+
+/** 판 끝 신호를 읽을 원본 화면 모양(게임마다 쓰는 칸만) */
+interface RoundOverView {
+  roundNumber?: unknown;
+  phase?: unknown;
+  retired?: unknown;
+  /** 마이티: 정산한 판의 결과 */
+  result?: unknown;
+  /** 하트: 정산한 판의 점수 */
+  roundPoints?: unknown;
+}
+
+/**
+ * 방장이 보낸 원본 화면이 판 끝(정산)까지 간 판이면 그 판 번호. 게임마다 엔진이 판을 끝냈다고 보이는 신호:
+ * - 마이티 `phase: "roundEnd"`, 또는 정산한 뒤의 게임 끝(`gameOver`이고 `result`가 있다. 정산 뒤 그만둬도 남는다)
+ * - 하트 `phase: "roundEnd"`, 또는 정산한 뒤의 게임 끝(`roundPoints`가 있다)
+ * - 화투 셋 `viewRoundOver`(그만둔 화면 `retired`는 빼고)
+ * - 원카드(한 게임이 한 판, 판 번호 1) `phase: "over"`이고 그만둔 것이 아님
+ */
+export function finishedRoundOf(
+  kind:
+    | "mighty"
+    | "hearts"
+    | "onecard"
+    | { viewRoundOver(view: never): boolean },
+  view: unknown,
+): number | null {
+  if (typeof view !== "object" || view === null) return null;
+  const v = view as RoundOverView;
+  if (kind === "onecard")
+    return v.phase === "over" && v.retired !== true ? 1 : null;
+  const round = typeof v.roundNumber === "number" ? v.roundNumber : null;
+  if (round === null) return null;
+  if (typeof kind === "object")
+    return kind.viewRoundOver(view as never) && v.retired !== true
+      ? round
+      : null;
+  if (v.phase === "roundEnd") return round;
+  const scored = kind === "hearts" ? v.roundPoints != null : v.result != null;
+  return v.phase === "gameOver" && scored ? round : null;
 }
 
 /**
@@ -112,37 +169,48 @@ function roundOfView(view: string): number | null {
   }
 }
 
+/** 받은 화면(JSON)들에서 가장 큰 판 번호(원본 화면을 따로 세지 않은 호출용) */
+function lastRoundOf(seen: readonly string[]): number | null {
+  let last: number | null = null;
+  for (const view of seen) {
+    const round = roundOfView(view);
+    if (round !== null && (last === null || round > last)) last = round;
+  }
+  return last;
+}
+
 /**
  * 게임 끝 검증에서 다시 계산이 패를 모르는 판에서 멈췄을 때, 그 판이 정말 끝까지 치지 않은 판인지 본다.
  * 문제가 있으면 까닭.
  *
- * 그만둔 게임(기록 끝이 끝내기 `retire`)의 마지막 판만 패를 몰라도 된다: 끝까지 치지 않은 판이라 결과가 없다.
- * 그보다 앞 판이거나, 끝까지 친 게임의 마지막 판인데 패를 모르면 끝난 판의 카드가 다 열리지 않은 것이다
- * (누군가 판 끝에 열쇠를 다 공개하지 않아 그 판을 다시 계산하지 못하게 했다). 방장이 불리한 판을 끝낸 뒤
- * 열쇠를 숨기고 다음 판에서 그만둬도 여기서 걸린다. 판은 받은 화면의 판 번호로 센다(방장이 이미 보낸 화면은
- * 거둘 수 없다). 이 기기가 처음부터 지켜본 판(`watchedFrom`부터)만 따진다. 새로고침 앞 판은 이 기기가 다시
- * 계산할 수 없다(`GuestRoom.verifyRound`).
- * 판 번호가 없는 게임(원카드, 한 게임이 한 판)은 그 게임의 다시 계산이 본다(`checkOnecardTable`)
+ * 패를 몰라도 되는 판은 그만둔 게임(기록 끝이 끝내기 `retire`)의 마지막 판이면서, 판 끝(정산)까지 가지 않은
+ * 판뿐이다: 끝까지 치지 않은 판이라 결과가 없다. 그 밖에 패를 모르면 끝난 판의 카드가 다 열리지 않은 것이다
+ * (누군가 판 끝에 열쇠를 다 공개하지 않아 그 판을 다시 계산하지 못하게 했다).
+ * - 그보다 앞 판: 방장이 불리한 판을 끝낸 뒤 열쇠를 숨기고 다음 판에서 그만두기
+ * - 판 끝까지 간 판(`finished`): 판을 끝까지 친 직후, 다음 판 화면을 보내기 전에 그만두기. 판 중에 열리지 않는
+ *   카드(마이티 바닥 패·버린 카드, 화투 남은 더미 등)를 끝까지 숨길 수 있다
+ * - 끝까지 친 게임(그만두지 않음)의 마지막 판
+ * 판과 판 끝은 방장이 보낸 원본 화면으로 센다(이미 보낸 화면은 거둘 수 없다). 이 기기가 처음부터 지켜본
+ * 판(`watchedFrom`부터)만 따진다. 새로고침 앞 판은 이 기기가 다시 계산할 수 없다(`GuestRoom.verifyRound`).
+ * 판 번호가 없는 게임(원카드, 한 게임이 한 판)은 판 끝 신호만 보고, 나머지는 그 게임의 다시 계산이 본다
+ * (`checkOnecardTable`)
  */
 export function unopenedRoundProblem(input: {
   deals: ReadonlyMap<number, unknown>;
   log: readonly { action: unknown }[];
-  seen: readonly string[];
+  rounds: HostRounds;
   watchedFrom: number;
 }): string | null {
-  let last: number | null = null;
-  for (const view of input.seen) {
-    const round = roundOfView(view);
-    if (round !== null && (last === null || round > last)) last = round;
-  }
-  if (last === null) return null;
   // 다시 계산은 판 차례대로 돌다가 패를 모르는 첫 판에서 멈춘다.
   let stopped = 1;
   while (input.deals.has(stopped)) stopped++;
   if (stopped < input.watchedFrom) return null;
+  const problem = `${stopped}판은 끝났는데 카드가 다 열리지 않아 다시 계산하지 못했어요.`;
+  if (input.rounds.finished.has(stopped)) return problem;
+  const last = input.rounds.last;
+  if (last === null) return null;
   const retired = endsWithRetire(input.log);
-  if (stopped < last || (stopped === last && !retired))
-    return `${stopped}판은 끝났는데 카드가 다 열리지 않아 다시 계산하지 못했어요.`;
+  if (stopped < last || (stopped === last && !retired)) return problem;
   return null;
 }
 
@@ -175,7 +243,10 @@ export async function verifyFairLog(
     const problem = unopenedRoundProblem({
       deals,
       log,
-      seen: input.seen,
+      rounds: input.hostRounds ?? {
+        last: lastRoundOf(input.seen),
+        finished: new Set(),
+      },
       watchedFrom: input.watchedFrom ?? 1,
     });
     if (problem) return { ok: false, seat: null, reason: problem };
@@ -228,7 +299,9 @@ export async function verifyFairLog(
     }
   }
 
-  const mine = done
+  // 다시 계산하지 못한 뒤쪽(끝까지 치지 않은 판)의 내 행동도 내가 보낸 차례 그대로여야 한다. 방장이 내 수를
+  // 지어내 판을 끝까지 친 것처럼 꾸미지 못한다(보냈는데 그만두기에 밀려 빠진 끝쪽 행동은 괜찮다).
+  const mine = log
     .filter((e) => e.seat === seat && !game.byClock?.(e.action))
     .map((e) =>
       JSON.stringify(game.sentForm ? game.sentForm(e.action) : e.action),

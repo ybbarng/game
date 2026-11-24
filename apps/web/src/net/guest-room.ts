@@ -38,6 +38,7 @@ import { watchFairDevice } from "./diag";
 import {
   endsWithRetire,
   type FairReplayGame,
+  finishedRoundOf,
   verifyFairLog,
 } from "./fair-verify";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
@@ -916,6 +917,32 @@ export class GuestRoom<
   /** 새로고침 전에 남긴 멘탈 포커 진행에서 되살렸다(판 중간에 다시 들어왔다) */
   private resumedFair = false;
 
+  /** 방장이 보낸 원본 화면에서 본 판(`HostRounds`, 게임 끝 검증이 끝난 판을 가린다) */
+  private readonly hostRounds = {
+    last: null as number | null,
+    finished: new Set<number>(),
+  };
+
+  /** 받은 원본 화면(자리 표 그대로)의 판 번호와 판 끝을 센다. 카드가 다 열리길 기다리지 않는다 */
+  private noteHostRound(view: unknown): void {
+    const round = (view as { roundNumber?: unknown } | null)?.roundNumber;
+    if (
+      typeof round === "number" &&
+      (this.hostRounds.last === null || round > this.hostRounds.last)
+    )
+      this.hostRounds.last = round;
+    const table = this.kit.cardTable;
+    const kind = !table
+      ? this.kit.id === "hearts"
+        ? "hearts"
+        : "mighty"
+      : "kind" in table && table.kind === "onecard"
+        ? "onecard"
+        : (table as { viewRoundOver(view: never): boolean });
+    const finished = finishedRoundOf(kind, view);
+    if (finished !== null) this.hostRounds.finished.add(finished);
+  }
+
   private fairInput(log: readonly FairLogged[], complete = true) {
     const lobby = this.lobby;
     if (!lobby || this.seat === null || !this.match || !this.fair) return null;
@@ -953,6 +980,7 @@ export class GuestRoom<
           : this.resumedFair
             ? this.firstRound + 1
             : this.firstRound,
+      hostRounds: this.hostRounds,
     };
   }
 
@@ -1298,6 +1326,7 @@ export class GuestRoom<
             this.match?.resendLost(message.mine);
         }
         const snapshot = { view: message.view, events: message.events };
+        this.noteHostRound(message.view);
         // 화면마다 온 기록 속 내 행동 수. 멘탈 포커 자리는 화면을 받은 차례대로 하나씩 넘기므로 같은 차례로 짝짓는다
         this.mineQueue.push(
           typeof message.mine === "number" ? message.mine : undefined,
@@ -1474,9 +1503,11 @@ export class GuestRoom<
           ? 1
           : null;
     if (isCardSeat(this.fair) && round !== null) {
-      if (!view?.retired) await this.fair.whenOpened(round);
-      // 그만둔 게임: 마지막 판은 끝까지 치지 않아 열리지 않지만, 바로 앞 판(끝낸 판)은 판 끝 열쇠가 다 닿아 열린
-      // 뒤에 본다. 열리지 않은 끝낸 판은 게임 끝 검증이 잡는다(`unopenedRoundProblem`).
+      // 그만둔 게임: 마지막 판이 판 끝까지 가지 않았으면 열리지 않으니 바로 앞 판(끝낸 판)이 열린 뒤에 본다.
+      // 판 끝까지 간 판(정산 직후 그만둠)은 판 끝 열쇠가 다 닿아 열린 뒤에 본다. 열리지 않은 끝낸 판은 게임 끝
+      // 검증이 잡는다(`unopenedRoundProblem`).
+      if (!view?.retired || this.hostRounds.finished.has(round))
+        await this.fair.whenOpened(round);
       else if (round > 1) await this.fair.whenOpened(round - 1);
     }
     // 마이티·하트도 마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다. 열쇠를 공개한 판이 다 열리길 기다린다

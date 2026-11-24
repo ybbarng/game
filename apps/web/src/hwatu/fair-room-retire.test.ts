@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import { minhwatuKit } from "@/minhwatu/kit";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { neverOpens } from "@/net/unopened-round-fixture";
 
 import {
   type AnyGuest,
@@ -54,6 +55,44 @@ describe("화투 암호화방: 첫 판 도중에 그만하기", () => {
     await until(() => audits.length === 2, "게임 끝 검증");
     expect(audits).toEqual([{ ok: true }, { ok: true }]);
     expect(incidents).toEqual([]);
+  });
+
+  it("첫 판을 끝까지 쳐 정산한 직후 다음 판 전에 그만두면, 그 판 패가 열리지 않은 참가자는 게임 끝 검증에서 그 판을 짚는다", async () => {
+    const { host, guests, incidents, audits, clock } = await setupHwatu({
+      kit: minhwatuKit,
+      rules: { ...STANDARD_RULES, rounds: 2 },
+      guests: 1,
+      bot: minhwatuIntermediateBot,
+      botLevel: 1,
+      HostRoom: HostRoom as never,
+      GuestRoom: GuestRoom as never,
+    });
+    await host.start();
+    await until(() => guests.every((g) => g.fair !== null), "참가자 진행");
+    // 방장이 판 끝 열쇠를 숨긴 것과 같다: 참가자 기기에서 첫 판 패가 끝내 열리지 않는다.
+    neverOpens(guests[0] as AnyGuest, 1);
+    const view = () => host.match?.current() as MinhwatuView | undefined;
+    await playHwatu({
+      host,
+      guests,
+      bot: minhwatuBeginnerBot,
+      incidents,
+      done: () => view()?.phase === "roundEnd",
+    });
+    expect(view()?.roundNumber).toBe(1);
+    host.abandon();
+    // 참가자는 판 끝까지 간 판이 열리길(상한 30초) 기다린 뒤 검증한다.
+    await until(() => {
+      if (audits.length === 1) return true;
+      clock.advance(1_000);
+      return false;
+    }, "게임 끝 검증");
+    expect(audits).toEqual([
+      {
+        ok: false,
+        reason: "1판은 끝났는데 카드가 다 열리지 않아 다시 계산하지 못했어요.",
+      },
+    ]);
   });
 
   it("그만한 첫 판에서도 낸다고 한 카드와 열쇠로 연 카드가 다르면 그 자리를 짚고, 끝내도 그 알림은 남는다", async () => {
