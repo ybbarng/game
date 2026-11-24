@@ -304,7 +304,8 @@ export const ENDGAME_SETS: readonly EndgameSet[] = [
   {
     id: "end-pawn",
     piece: "P",
-    title: "킹과 폰으로 퀸 만들기",
+    // 문제 묶음 「킹과 폰」과 헷갈리지 않게 하는 일로 부른다
+    title: "폰을 퀸으로 만들기",
     summary: `킹과 폰 하나로 흑 킹을 피해 폰을 ${ENDGAME_LIMIT.P}수 안에 퀸으로 바꿔요. 처음 열면 방법부터 읽어요.`,
     // 사각형 밖 → 이기는 칸에서 마주 보기 → 판 가장자리 옆 세로줄(g) 폰
     drills: drills("P", [

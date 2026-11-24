@@ -1059,3 +1059,88 @@ test(
     await page.screenshot({ path: info.outputPath("chess-ladder-mate.png") });
   },
 );
+
+test(
+  "체스 수 배우기: 킹과 폰은 방법을 먼저 읽고, 「수 보기」대로 두면 흑이 버텨도 정해진 수 안에 퀸이 된다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 흑이 받기 전 잠깐 기다리는 시간(600ms)을 시계로 건너뛴다
+    await page.clock.install();
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const pawn = page.getByRole("region", { name: "폰을 퀸으로 만들기" });
+    await expect(pawn.getByText("0/3")).toBeVisible();
+    await pawn.getByRole("button", { name: "풀기 시작" }).click();
+
+    // 처음 여는 연습은 단원부터: 맥락 → 폰의 사각형(그림의 초록 고리) → … → 연습
+    const lesson = page.getByRole("region", { name: "방법" });
+    await expect(lesson.getByRole("heading")).toHaveText("폰을 퀸으로 만들기");
+    await expect(page.getByText("폰을 퀸으로 만들기 방법 1/10")).toBeVisible();
+    await page.getByRole("button", { name: "다음" }).click();
+    await expect(lesson.getByRole("heading")).toHaveText("폰의 사각형");
+    // 그림에서 방법이 고르는 수(c4 → c5)를 초록 고리로 보인다
+    await expect(page.locator("[data-hint]")).toHaveCount(2);
+    await page.screenshot({ path: info.outputPath("chess-pawn-square.png") });
+    for (let i = 2; i < 10; i++)
+      await page.getByRole("button", { name: "다음" }).click();
+    await expect(lesson.getByRole("heading")).toHaveText(
+      "그림으로 보기: 퀸 되기",
+    );
+    await page.getByRole("button", { name: "연습 시작" }).click();
+
+    const status = page.getByRole("status");
+    await expect(status).toHaveText(
+      "폰을 10수 안에 퀸으로 만드세요. 지금 1수째예요.",
+    );
+    let shot = false;
+    for (let move = 1; move <= 10; move++) {
+      await page.getByRole("button", { name: "수 보기" }).click();
+      await expect(page.getByTestId("endgame-step")).toBeVisible();
+      if (!shot) {
+        await page.screenshot({ path: info.outputPath("chess-pawn-show.png") });
+        shot = true;
+      }
+      const hint = page.locator("[data-hint]");
+      const to = (await hint.nth(1).getAttribute("data-hint")) as string;
+      await tapSquare(page, to, false);
+      await expect(status).toHaveText(/흑 킹이 받는 중…|퀸이 됐어요!/);
+      if ((await status.textContent()) === "퀸이 됐어요!") break;
+      await page.clock.fastForward(700);
+      await expect(status).toHaveText(
+        `폰을 10수 안에 퀸으로 만드세요. 지금 ${move + 1}수째예요.`,
+      );
+    }
+    await expect(status).toHaveText("퀸이 됐어요!");
+    await expect(page.getByText(/수 만에 퀸을 만들었어요\./)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("chess-pawn-queen.png") });
+  },
+);
+
+test(
+  "체스 수 배우기: 빗나가게 하기는 첫 수로 지키는 룩을 끌어내고, 해설이 끌려간 기물을 말한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.goto("/chess");
+    await page.getByRole("button", { name: /체스 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const set = page.getByRole("region", { name: "빗나가게 하기" });
+    await expect(set.getByText("0/8")).toBeVisible();
+    await set.getByRole("button", { name: "풀기 시작" }).click();
+    const status = page.getByRole("status");
+    await expect(status).toHaveText("두 수 만에 메이트: 첫 수를 두세요.");
+    // 정답: 비숍 d4 → g7(룩 g8이 잡으러 온다), 그다음 퀸 a5 → a8
+    await tapSquare(page, "d4", false);
+    await tapSquare(page, "g7", false);
+    await expect(status).toHaveText("이제 체크메이트하세요.");
+    await tapSquare(page, "a5", false);
+    await tapSquare(page, "a8", false);
+    await expect(status).toHaveText("체크메이트!");
+    await expect(
+      page.getByText(
+        "흑 룩(g8)은 a8을 지키고 있었는데, g7로 끌려가 더는 지키지 못해요.",
+      ),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath("chess-deflection.png") });
+  },
+);
