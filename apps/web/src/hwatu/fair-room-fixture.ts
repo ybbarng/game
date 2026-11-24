@@ -42,6 +42,9 @@ export function memoryFairStore() {
     save: (s: FairSaved) => {
       saved = JSON.parse(JSON.stringify(s));
     },
+    clear: () => {
+      saved = null;
+    },
   };
 }
 

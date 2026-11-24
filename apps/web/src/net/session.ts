@@ -102,6 +102,7 @@ export function saveSeatToken(
 export function fairStoreFor(room: string): {
   load(): FairSaved | null;
   save(saved: FairSaved): void;
+  clear(): void;
 } {
   const key = `mighty-fair-${room}`;
   return {
@@ -118,6 +119,13 @@ export function fairStoreFor(room: string): {
         sessionStorage.setItem(key, JSON.stringify(saved));
       } catch {
         // 저장하지 못하면 새로고침 뒤 이 판을 이어 가지 못한다.
+      }
+    },
+    clear() {
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        // 저장소를 쓸 수 없으면 지울 것도 없다.
       }
     },
   };

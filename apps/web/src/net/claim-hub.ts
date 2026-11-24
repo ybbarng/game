@@ -146,6 +146,7 @@ export class ClaimHub<View = unknown> {
 
   constructor(options: ClaimHubOptions<View>) {
     this.options = options;
+    this.resumed = options.resumed === true;
     this.rules = { ...CLAIM_RULES, ...(options.spec.rules ?? {}) };
     this.race = options.spec.race ?? null;
     options.transport.onMessage((message, from) => {
@@ -311,6 +312,32 @@ export class ClaimHub<View = unknown> {
     this.pending = [];
     for (const r of this.received.values()) r.cancel?.();
   }
+
+  /**
+   * 같은 방에서 새 게임을 시작할 때(한 판 더) 앞 게임의 판·청구 기억을 모두 지우고 다시 받는다.
+   * 새 게임은 처음부터 이 통로로 보므로 「새로고침 뒤 모름」도 없다. 묶음 번호도 0부터
+   */
+  reopen(): void {
+    this.close();
+    this.boards.clear();
+    this.shownAt.clear();
+    this.latest = null;
+    this.first = null;
+    this.seenIds.clear();
+    this.pending = [];
+    this.batch = 0;
+    this.received.clear();
+    this.announced.clear();
+    this.mine.clear();
+    this.objected.clear();
+    this.arrivals.clear();
+    this.resumed = false;
+    this.closed = false;
+    if (this.race) this.schedulePing();
+  }
+
+  /** 새로고침 뒤 다시 들어온 통로인가(`ClaimHubOptions.resumed`, 한 판 더 뒤에는 아니다) */
+  private resumed: boolean;
 
   private isBody = (body: unknown) => this.options.spec.isBody(body);
 
@@ -640,7 +667,7 @@ export class ClaimHub<View = unknown> {
    * 판 번호는 줄지 않으므로 처음 본 판보다 뒤의 판에 대한 내 청구는 모두 이 통로가 낸 것이다
    */
   private unknownMine(claim: ClaimMessage): boolean {
-    if (!this.options.resumed) return false;
+    if (!this.resumed) return false;
     return this.first === null || claim.seen <= this.first;
   }
 
