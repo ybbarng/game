@@ -200,6 +200,12 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     if state.practice != nil { practiceChanged(force: true) }
   }
 
+  /// 설정 창이 값을 바꿨다: 설정·키 배치만 다시 읽어 큐브에 넣는다(프로필·말풍선은 그대로, 끄는 동안 여러 번 불린다)
+  func applyStoredSettings() {
+    readSettings()
+    applySettings()
+  }
+
   func takeKeys() { panel.makeFirstResponder(cube) }
   func setPracticeSee(_ on: Bool) { state.practiceSee = on }
 

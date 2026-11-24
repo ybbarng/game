@@ -48,6 +48,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   private var presence: AppPresence? = Config.measure ? nil : .menuBarOnly
   /// 보통 창이 열린 동안만 거는 앱 메뉴(Cubie 끝내기 ⌘Q, 창 닫기 ⌘W·최소화 ⌘M)
   private lazy var appMainMenu: NSMenu = buildMainMenu()
+  /// 네이티브 설정 창이 값을 바꿨다: 다음 차례에 한 번만 큐브 창(설정·키 배치만)과 단축키 표가 다시 읽는다
+  private lazy var settingsReload = Coalescer(schedule: { f in DispatchQueue.main.async { f() } }) { [weak self] in
+    guard let self else { return }
+    if let native = self.cube as? NativeCubeWindow { native.applyStoredSettings() } else { self.cube.reload() }
+    self.keys.reload()
+  }
 
   /// 메모리 재기 모드(`Config.measure`)일 때만
   private var measure: Measure?
@@ -649,13 +655,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     case .tiers:
       s = NativeTiersWindow(store: native.store, math: RustTierMath(), n: n ?? cube.state.n)
     case .settings:
-      // 바꾸면 바로 큐브 창(색·회전 시간·스티커·소리·섞기 연출·키 배치)과 단축키 표가 다시 읽는다
+      // 바꾸면 바로 큐브 창(색·회전 시간·스티커·소리·섞기 연출·키 배치)과 단축키 표가 다시 읽는다. 슬라이더·색 칸을 끄는
+      // 동안은 바뀔 때마다 불리니 한 차례에 한 번으로 모은다(`settingsReload`)
       s = NativeSettingsWindow(
         store: native.store,
-        onChange: { [weak self] in
-          self?.cube.reload()
-          self?.keys.reload()
-        },
+        onChange: { [weak self] in self?.settingsReload.request() },
         openWeb: { [weak self] in self?.openWebWindow(.settings) })
     }
     s.onClose = { [weak self] in self?.sheets[kind] = nil }
