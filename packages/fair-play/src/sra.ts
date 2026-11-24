@@ -27,6 +27,12 @@ export interface SraGroup {
   one: bigint;
   /** 섞기·자리 열쇠 길이(비트). null이면 1 ≤ k < q 전체에서 고른다 */
   keyBits: number | null;
+  /**
+   * 거듭제곱 비용이 지수 길이와 상관없는가(타원곡선의 상수 시간 곱하기). 그러면 짧은 가중치로 묶어
+   * 확인하는 것보다 하나씩 보는 쪽이 싸다(shuffle-proof.ts 도전 0 확인, proof.ts 증명 만들기).
+   * 곱셈군은 64비트 지수가 전체 길이 지수보다 몇십 배 싸서 묶는다.
+   */
+  flatPow: boolean;
   /** x^e (타원곡선: e·X) */
   pow(x: bigint, e: bigint): bigint;
   /** a·b (타원곡선: A + B) */
@@ -55,6 +61,7 @@ function group(name: string, hex: string): ModGroup {
     one: 1n,
     // 짧은 지수도 이 군에서는 안전하다(찾는 데 2^160번쯤, RFC 3526 권장 크기)
     keyBits: 320,
+    flatPow: false,
     pow: (x, e) => modPow(x, e, p),
     mul: (a, b) => (a * b) % p,
     isElement: (x) => x > 0n && x < p && jacobi(x, p) === 1,

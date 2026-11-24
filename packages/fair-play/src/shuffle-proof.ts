@@ -308,6 +308,52 @@ export async function weights(
   );
 }
 
+/** 도전 0인 회: 공개한 σ·t로 Z_j = X_σ(j)^t인지 본다. σ는 순열, t는 1 ≤ t < q, Z는 군의 원소로 확인한 뒤 */
+export interface ZeroRound {
+  l: ShuffleLabel;
+  r: number;
+  t: bigint;
+  sigma: readonly number[];
+  zText: readonly string[];
+  z: readonly bigint[];
+  input: readonly bigint[];
+}
+
+/** 가중치로 묶어 본다: Π Z_j^w_j = (Π X_σ(j)^w_j)^t. 64비트 지수가 싼 곱셈군에 */
+export async function zeroRoundBatched(
+  g: SraGroup,
+  { l, r, t, sigma, zText, z, input }: ZeroRound,
+): Promise<boolean> {
+  const n = input.length;
+  const w = await weights(
+    ["zero", ...labelParts(l), r, t, ...sigma, ...zText],
+    n,
+  );
+  let left = g.one;
+  let right = g.one;
+  for (let j = 0; j < n; j++) {
+    left = g.mul(left, g.pow(z[j] as bigint, w[j] as bigint));
+    right = g.mul(
+      right,
+      g.pow(input[sigma[j] as number] as bigint, w[j] as bigint),
+    );
+  }
+  return left === g.pow(right, t);
+}
+
+/**
+ * 하나씩 본다: 모든 j에서 Z_j = X_σ(j)^t. 곱하기 비용이 지수 길이와 상관없는 군(flatPow)에서는
+ * 묶음(곱하기 2n+1번, 더하기 2n번, 해시 n+1번)보다 곱하기 n번이 싸다. 묶음이 2^-64 확률로 놓치는
+ * 틀린 Z도 잡아 더 엄격하다. 군 밖의 X가 있으면 묶음처럼 던지도록 모두 계산한 뒤 견준다.
+ */
+export function zeroRoundDirect(
+  g: SraGroup,
+  { t, sigma, z, input }: ZeroRound,
+): boolean {
+  const expected = sigma.map((from) => g.pow(input[from] as bigint, t));
+  return expected.every((x, j) => x === z[j]);
+}
+
 /**
  * 섞기 증명을 확인한다. 약속·응답 모양이 틀려도 false.
  * `input`은 그 기기가 받은 덱, `output`은 그 기기가 넘긴 덱
@@ -358,20 +404,19 @@ export async function verifyShuffle(
         return false;
       }
       if (t <= 0n || t >= g.q) return false;
-      const w = await weights(
-        ["zero", ...labelParts(l), r, t, ...answer.sigma, ...zText],
-        n,
-      );
-      let left = g.one;
-      let right = g.one;
-      for (let j = 0; j < n; j++) {
-        left = g.mul(left, g.pow(z[j] as bigint, w[j] as bigint));
-        right = g.mul(
-          right,
-          g.pow(input[answer.sigma[j] as number] as bigint, w[j] as bigint),
-        );
-      }
-      if (left !== g.pow(right, t)) return false;
+      const round: ZeroRound = {
+        l,
+        r,
+        t,
+        sigma: answer.sigma,
+        zText,
+        z,
+        input,
+      };
+      const holds = g.flatPow
+        ? zeroRoundDirect(g, round)
+        : await zeroRoundBatched(g, round);
+      if (!holds) return false;
     } else {
       if (!isPermutation(answer.tau, n)) return false;
       const st = linkStatement(l, r, z, output, answer.tau, D);
