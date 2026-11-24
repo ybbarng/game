@@ -105,7 +105,7 @@ final class ChromeView: NSView {
   }
 }
 
-/// 큐브 창의 화면 쪽 동작(웹 화면·네이티브 화면이 함께 쓴다): 투명한 빈 곳의 누르기 넘기기, 끌어 옮기기·클릭·핀치,
+/// 큐브 창의 화면 쪽 동작(창 다루기만 `NativeCubeWindow`와 갈라 둔다): 투명한 빈 곳의 누르기 넘기기, 끌어 옮기기·클릭·핀치,
 /// 화면 구성마다 자리 기억하기(docs/47 15-3·15-18·15-24). 큐브를 그리는 화면은 하위 클래스가 `host`에 넣는다.
 @MainActor
 class FloatingWindow: NSObject, NSWindowDelegate {
@@ -214,15 +214,11 @@ class FloatingWindow: NSObject, NSWindowDelegate {
 
   // MARK: 하위 클래스가 바꾸는 것
 
-  /// 누르기를 모두 받을 때(연결 없음 화면 등)
-  var takesAllClicks: Bool { false }
-  /// 큐브 위 오른쪽 클릭·Control + 클릭에 띄울 메뉴. nil이면 화면에 그대로 넘긴다(웹 화면은 `WKWebView`가 스스로 띄운다)
+  /// 큐브 위 오른쪽 클릭·Control + 클릭에 띄울 메뉴. nil이면 화면에 그대로 넘긴다
   func contextMenu() -> NSMenu? { nil }
   func becameKey() {}
   func resignedKey() {}
   func occlusionChanged() {}
-  /// 재기 모드에서 화면 밖 창도 그리게(웹은 가려짐 감지를 끈다)
-  func prepareForMeasure() {}
 
   // MARK: 메모리 재기(`Config.measure`)
 
@@ -328,7 +324,7 @@ class FloatingWindow: NSObject, NSWindowDelegate {
 
   /// 창 안 점(아래 왼쪽 기준)이 큐브·거울·보이는 손잡이 위인가
   private func isHot(_ p: NSPoint) -> Bool {
-    if takesAllClicks || hitRects.isEmpty { return true }
+    if hitRects.isEmpty { return true }
     let h = panel.frame.height
     for r in hitRects where NSRect(x: r.minX, y: h - r.maxY, width: r.width, height: r.height).contains(p) {
       return true

@@ -103,14 +103,32 @@ public final class MiniBook {
     return out
   }
 
+  /// 마지막으로 푼 저장 글과 그 책. 값을 꺼낼 때마다 JSON 전체를 다시 풀었다(기록 창 `show` 한 번에 약 20번, 크기마다 100판이
+  /// 꽉 찬 250KB 책이면 한 번에 약 2ms라 `show` 한 번에 약 40ms, docs/52 5-20). 저장 글이 같으면 푼 책을 그대로 쓴다.
+  /// 글을 견주므로 이 책이 아닌 곳이 저장소를 고쳐도(다른 `MiniBook`, 사이트 설정 창 닫기 합치기, 기록 옮기기) 바로 다시 푼다
+  private var cached: (text: String, book: Book)?
+  /// 저장 글을 JSON으로 푼 횟수(시험용)
+  private(set) var parses = 0
+
   private func read() -> Book {
     let empty = Book(raw: [:], n: Self.defaultSize, mirror: true, records: [:], best5: [:])
-    guard let text = store.string(Self.key), let data = text.data(using: .utf8),
+    guard let text = store.string(Self.key) else {
+      cached = nil
+      return empty
+    }
+    if let c = cached, c.text == text { return c.book }
+    parses += 1
+    guard let data = text.data(using: .utf8),
       let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-    else { return empty }
+    else {
+      cached = (text, empty)
+      return empty
+    }
     let n = (d["n"] as? NSNumber).map(\.intValue).flatMap { Self.sizes.contains($0) ? $0 : nil } ?? Self.defaultSize
     let mirror = (d["mirror"] as? NSNumber).flatMap { CFGetTypeID($0) == CFBooleanGetTypeID() ? $0.boolValue : nil }
-    return Book(raw: d, n: n, mirror: mirror ?? true, records: Self.lists(d["records"]), best5: Self.lists(d["best5"]))
+    let book = Book(raw: d, n: n, mirror: mirror ?? true, records: Self.lists(d["records"]), best5: Self.lists(d["best5"]))
+    cached = (text, book)
+    return book
   }
 
   @discardableResult

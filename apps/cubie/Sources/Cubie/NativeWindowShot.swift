@@ -120,8 +120,8 @@ enum NativeWindowShot {
     let rows = TierInfo.ids.enumerated().reversed().map { i, id in
       ProfileMenuView(
         profile: Profile(
-          name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[i])", emblem: NativeCubeWindow.emblem(id)),
-        onPick: {})
+          name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[i])", emblem: EmblemArt.stillData(id)),
+        sway: nil, onPick: {})
     }
     let w = rows.map(\.frame.width).max() ?? 240
     let h = ProfileMenuView.height * CGFloat(rows.count)
@@ -151,11 +151,10 @@ enum NativeWindowShot {
     for (r, t) in tiers.enumerated() {
       for (c, yaw) in yaws.enumerated() {
         let id = TierInfo.ids[t]
-        let v = ProfileMenuView(
-          profile: Profile(
-            name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[t]) · \(yaw)", emblem: NativeCubeWindow.emblem(id),
-            emblemTier: id),
-          onPick: {})
+        let p = Profile(
+          name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[t]) · \(yaw)", emblem: EmblemArt.stillData(id),
+          emblemTier: id)
+        let v = ProfileMenuView(profile: p, sway: MenuEmblemSway.make(p), onPick: {})
         v.toolTip = String(yaw)
         v.frame = NSRect(x: CGFloat(c) * w, y: CGFloat(r) * ProfileMenuView.height, width: w, height: ProfileMenuView.height)
         box.addSubview(v)

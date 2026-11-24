@@ -13,8 +13,8 @@
 - (2026-11-11 연구, 5-3) 돌리는 동안의 메모리는 맥 드라이버가 GPU로 그리는 프로세스에 붙이는 고정 몫(약 108MB)이라 웹이든 wgpu든 줄지 않는다. 크게 줄이려면 연출을 시스템 합성기에 맡겨야 한다. 지금 웹 앱에서 미니 큐브만 CSS 3D로 그리면 시안 기준 돌리는 동안 265~296MB → 75MB(실제 미니 추정 약 120MB)라 이것을 먼저 권한다. 전환한다면 wgpu 대신 Core Animation 3D(약 25~30MB, 용량 +0.6MB)다.
 - (2026-11-11 실험, 5-4) 실제 미니 화면에 CSS 3D 그리기를 실험 주소 `?render=css`로 넣어 쟀다. 돌리는 동안 260MB → 139MB(거울 숨김 261 → 130), 가만히 243 → 98MB, 최고치 합 약 375 → 282MB. GPU 프로세스에 108MB가 붙지 않는다. 대신 돌리는 동안 CPU가 27.6% → 40.1%로 는다(거울 숨김 21.0 → 25.5%).
 - (2026-11-12, 5-5) wgpu 대신 Core Animation 3D로 실제 앱 전체(섞기 연출·거울 판·윤곽·2×2~7×7)를 그려 쟀다. 모든 상태 10~17MB(웹 130~300MB), 최고치 17.6MB(웹 약 400MB), 앱 쪽 CPU 돌리는 동안 0.4~0.6%(웹 12~17%, 대신 WindowServer가 약 +10%p), 설치 용량 zip +0.5MB(wgpu는 +3MB). 사용자가 걸린다고 한 설치 용량·최대 메모리가 모두 풀려 **4단계를 이 그리기로 가기를 권한다.** wgpu 경로는 앱에서 뺐다.
-- (2026-11-12 4단계, 5-6) 큐브 창을 완전 네이티브로 옮겼다(기본, 되돌림 `CUBIE_WEB=1`). 기록·힌트(사람 해법 포함)·공식 연습·F1 표·다시 보기·축하·소리·기록 옮기기까지 네이티브이고, 기록 창·티어표·설정만 사이트 창이다(5-8에서 이것도 옮김). 측정 모드 모든 상태 11~32MB(웹 135~291MB), 돌리는 중 CPU 5%(웹 22%, 대부분 소리), 유니버설 zip 2.83MB(0.1.10 1.7MB).
-- (2026-11-12, 5-8) 기록 창·티어표·설정 창도 네이티브로 옮겼다(되돌림 `CUBIE_WEB_WINDOWS=1`). 세 창을 연 동안 353MB(사이트 창) → 39MB, 기록 창 103 → 32MB. 사용자 배치 편집만 사이트 창으로 남겼다.
+- (2026-11-12 4단계, 5-6) 큐브 창을 완전 네이티브로 옮겼다(기본, 되돌림 `CUBIE_WEB=1`은 2026-11-25 지움, 5-20). 기록·힌트(사람 해법 포함)·공식 연습·F1 표·다시 보기·축하·소리·기록 옮기기까지 네이티브이고, 기록 창·티어표·설정만 사이트 창이다(5-8에서 이것도 옮김). 측정 모드 모든 상태 11~32MB(웹 135~291MB), 돌리는 중 CPU 5%(웹 22%, 대부분 소리), 유니버설 zip 2.83MB(0.1.10 1.7MB).
+- (2026-11-12, 5-8) 기록 창·티어표·설정 창도 네이티브로 옮겼다(되돌림 `CUBIE_WEB_WINDOWS=1`은 2026-11-25 지움, 5-20). 세 창을 연 동안 353MB(사이트 창) → 39MB, 기록 창 103 → 32MB. 사용자 배치 편집만 사이트 창으로 남겼다.
 - 윈도우판은 두 길이 있다. 웹 화면을 그대로 쓰는 Tauri로 빨리 내거나, 위 네이티브 구조를 윈도우부터 쓰는 것이다.
 
 ## 2. 지금 얼마나 쓰나(2026-11-11, 이 맥, Cubie 0.1.9가 떠 있을 때)
@@ -564,7 +564,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 동작 줄이기(떠 있을 때 움직임 없음·축하 줄임·섞기 연출 바로·거울 바로) | `prefers-reduced-motion` | 시스템 설정(`accessibilityDisplayShouldReduceMotion`) | 옮김 |
 | Esc: 표 닫기 → 연습 끝내기 → 이전 앱 | 앱 | 앱(같은 코드) | 옮김 |
 | 자리·모니터·크기·끌어 옮기기·핀치·손잡이·빈 곳 누르기 넘기기 | `CubeWindow` | `FloatingWindow`(웹과 함께 씀), 누르는 자리는 `CubeGeometry.hitRects` | 옮김 |
-| 메뉴 전체(`MenuLayout`)·⌃⌥⌘C·업데이트 | `AppDelegate` | 같은 코드(`CubeSurface`만 봄) | 옮김 |
+| 메뉴 전체(`MenuLayout`)·⌃⌥⌘C·업데이트 | `AppDelegate` | 같은 코드(`AppDelegate+Menu`) | 옮김 |
 | 큐브 위 오른쪽 클릭 메뉴(오른쪽 단추·두 손가락 클릭·Control + 클릭) | `CubieWebView.willOpenMenu`(`WKWebView`가 띄움) | `FloatingWindow.handleDrag` → `NativeCubeWindow.contextMenu`(같은 `buildMenu(forWindow: true)`, 판단은 `WindowGesture.opensMenu`) | 옮김(2026-11-16. 0.2.0~0.3.0에서 빠져 있었다: 웹 뷰가 저절로 해 주던 일이라 기능 표에 줄이 없었다) |
 | 키 출처(공정함 확인) | `KeySource`·`key` 메시지 | 앱이 판에 바로 모음 | 옮김 |
 | 기록 옮기기(웹 저장소 → 앱 저장소, 한 번, 지우지 않음) | — | `WebStorageMigration` | 옮김 |
@@ -572,11 +572,11 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 
 #### 짜임
 
-- **스위치**: 기본이 네이티브 화면이다. 되돌림은 `CUBIE_WEB=1`(예전 웹 큐브 창 그대로, 사이트 판 비교·연결 없음 화면까지). 예전 확인용 `CUBIE_NATIVE=1`은 이제 기본과 같다.
-- **앱 껍데기**: `AppDelegate`(메뉴·단축키·말풍선·단축키 표·업데이트·사이트 창)는 `CubeSurface` 약속만 본다. 창 다루기(자리 기억·끌기·핀치·빈 곳 넘기기)는 두 화면이 `FloatingWindow`를 함께 쓴다.
+- **스위치**: 기본이 네이티브 화면이다. 되돌림 스위치 `CUBIE_WEB=1`(예전 웹 큐브 창)은 2026-11-25 지웠다(5-20, 마지막 판은 git 태그 `cubie-web-fallback-last`). 앱 저장소를 읽지 않아 켜면 옛 WebKit 기록이 보이고 맞춘 판이 네이티브 기록에 들어가지 않아 되돌림 구실을 못 했다.
+- **앱 껍데기**: `AppDelegate`(단축키·말풍선·단축키 표·업데이트), 메뉴는 `AppDelegate+Menu`, 보통 창·Dock 노출·앱 메뉴는 `SheetWindows`, 재기 모드 연결은 `MeasureWiring`(2026-11-25 나눔, 5-20. 그 전에는 웹·네이티브 두 화면이 `CubeSurface` 약속을 따랐다). 창 다루기(자리 기억·끌기·핀치·빈 곳 넘기기)는 `FloatingWindow`.
 - **네이티브 화면**(`NativeCubeWindow`): 포커스 시계·기록 책·힌트 제한·떠 있을 때 움직임·축하·소리·프로필. 계산은 모두 코어 C ABI(`native/cubie-native/src/ffi_game.rs`·`ffi_records.rs`, 머리 파일 `cubie_native.h`).
 - **코어 이식**(`native/cube-core`, 브랜치 `cubie-core-human`을 합침): 한 판 세션 `session.rs`(이정표 `progress.rs`, 흐름 콤보 `combo.rs`), 사람 해법 `human.rs`(`solve_cfop`·`solve_advanced2`), 힌트 고르기 `hint.rs`, 키캡 `keys/route.rs`, 공식 연습 진행기 `practice.rs`. 공통 시험 자료 `fixtures/session.json`(13판·467차례), `hint.json`(124), `keycaps.json`(2,019수), `practice.json`(1,329) 모두 어긋남 0. CI `rust` 작업의 조건에 새 기준 파일(`packages/cube-ai/`, `solve-session.ts`, `flow/combo.ts`, `practice/`, `keys/move-keys·reach.ts`, `mini/practice.ts`, `algs/store.ts`)을 더했다.
-- **저장**: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글. 기록 창·티어표·설정·(`CUBIE_WEB=1`의) 단축키 표 같은 사이트 창에는 문서 시작 때 그 글을 넣고(`AppDelegate.storeScript`), 설정 창을 닫으면 그 창의 `cube.*` 글(앱이 쓰는 `cube.mini.*` 빼고)을 읽어 온다. 기록을 남기면 열린 기록 창·티어표에도 넣는다.
+- **저장**: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글. 앱이 여는 사이트 창(지금은 설정 창의 「모든 설정…」 하나)에는 문서 시작 때 그 글을 넣고(`WebStoreSync`), 그 창을 닫으면 사이트에서 바뀐 `cube.*` 키(앱이 쓰는 `cube.mini.*` 빼고)만 읽어 온다(5-19).
 - **기록 옮기기**: 처음 띄울 때 `~/Library/WebKit/kr.byb.cubie/WebsiteData/Default/<출처>/<출처>/LocalStorage/localstorage.sqlite3`를 읽기 전용으로 열어(출처 파일에 사이트 호스트가 든 폴더만) `cube.`로 시작하는 키를 같은 글 그대로 옮긴다. 웹 저장소는 지우지 않고, 표시 `cubie.migrated.v1`(옮긴 때·키)을 남겨 다시 하지 않는다. 네이티브에 이미 있는 키는 덮지 않는다. 이 맥의 웹 저장소에는 `cube.mini.v1`(40KB)·`cube.mini.profile.v1`·`cube.mini.practice.v1`이 있었다(키 이름과 길이만 봄).
 
 #### 웹과 다르게 한 것(일부러)
@@ -648,10 +648,10 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 apps/cubie/build.sh                                   # 이 폴더 안에 Cubie.app(설치하지 않음)
 # 메뉴 막대의 Cubie를 먼저 끈다. 처음 띄우면 지금 앱(0.1.10)의 기록을 한 번 옮겨 온다(웹 저장소는 그대로 남음)
 apps/cubie/Cubie.app/Contents/MacOS/Cubie
-CUBIE_WEB=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie # 되돌림: 예전 웹 큐브 창
-apps/cubie/scripts/measure-memory.sh --native         # 네이티브 재기(화면에 뜨지 않음, 약 5분)
-apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 같은 시나리오로 웹 화면
+apps/cubie/scripts/measure-memory.sh                  # 재기(화면에 뜨지 않음, 약 5분)
 ```
+
+(그때는 `CUBIE_WEB=1`로 예전 웹 큐브 창을, `measure-memory.sh --url …`로 웹 화면을 쟀다. 2026-11-25 지웠고 git 태그 `cubie-web-fallback-last`에 남았다, 5-20.)
 
 #### 판을 내기 전에 사용자가 볼 것
 
@@ -696,7 +696,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 
 - 메뉴 「기록 보기」·「티어표」·「키 배치·색…」이 앱이 직접 그린 창(AppKit)을 연다. WebKit 프로세스가 뜨지 않는다. 사이트 화면과 같은 글·같은 차례·같은 동작이고, 계산은 코어 C ABI다(요약 평균은 새로 `summary.rs`, 사이트와 공통 시험 자료 어긋남 0).
 - 메모리(측정 모드, 같은 앱 빌드): 기록 창을 연 동안 102.6MB(사이트 창) → **32.0MB**, 세 창을 함께 연 동안 353.0 → **39.2MB**(다시 보기 중 353.8 → 39.9), 세 창을 닫은 뒤 60.8(GPU 프로세스 24MB가 남음) → **34.8MB**. 앱이 끌 때까지 쓰는 최고치는 Cubie 40.3MB 하나다(사이트 창이면 Cubie 37.4 + WebKit GPU 최고 233.3 + WebContent 셋). 큐브 창만 쓰는 상태(11~30MB)는 그대로다.
-- 되돌림: `CUBIE_WEB=1`이면 큐브 창까지 예전 웹, `CUBIE_WEB_WINDOWS=1`이면 큐브 창은 네이티브인 채 세 창만 예전 사이트 창이다.
+- 되돌림: 처음에는 `CUBIE_WEB_WINDOWS=1`이면 세 창만 예전 사이트 창이었다. 「모든 설정…」 말고 쓰는 곳이 없어 2026-11-25 지웠다(5-20, git 태그 `cubie-web-fallback-last`).
 - 설정 창의 사용자 배치 편집(키 지정·겹친 키 묻기·내보내기·가져오기)은 이때 옮기지 않았다가 2026-11-16 옮겼다(5-9). 이제 「모든 설정…」만 사이트 창을 연다.
 
 **만든 것**(브랜치 `cubie-native-windows`, 커밋만)
@@ -710,7 +710,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 | 엠블럼 | `Resources/Emblems/<티어>.png`(32pt·64px), `Resources/Emblems/big/<티어>.png`(64pt·128px), 찍기 `apps/web/scripts/render-emblem-posters.mjs`(`ONLY=cubie`) | 메뉴 프로필 칸·기록 창 티어 칸·티어표 줄과 티어표 「내 티어」 상자. 2026-11-13부터 사이트 3D 엠블럼을 정면에서 찍은 정지 그림(docs/47 14-7 「열째 시안 확정」), 20장 298KB → 353KB |
 | 스크린샷·견주기 | `NativeWindowShot.swift`(`CUBIE_WINDOW_SHOT=<폴더> CUBIE_WINDOW_SHOT_STORE=<JSON>`), `scripts/window-compare.mjs` | 창을 화면에 띄우지 않고 그린다(글·바탕은 AppKit 그리기, 다시 보기·미리 보기 큐브는 `CARenderer`). 같은 저장소로 사이트 화면을 WebKit으로 찍어 나란히 |
 | 글 어긋남 막기 | 웹 시험 `apps/web/src/cube/native/native-windows-text.test.ts` | 사이트 화면 글(기록 창·티어표·설정)과 앱 글 파일에 같은 글이 있는지 본다. 사이트 글을 고치면 깨진다 |
-| 재기 | `measure-memory.sh --native`(세 창·다시 보기 상태 더함), `--native --web-windows`(세 창만 사이트 창) | 아래 표 |
+| 재기 | `measure-memory.sh --native`(세 창·다시 보기 상태 더함), `--native --web-windows`(세 창만 사이트 창, 2026-11-25 지움. 이제 네이티브가 기본) | 아래 표 |
 
 - 시험: `apps/cubie/test.sh` 113개(새로 `RecordsSheetTests` 4·`TierSheetTests` 3·`SettingsSheetTests` 3: 줄 글·DNF·입력 표시, 재생기 멈추기·이어 보기·끝난 뒤 처음부터를 `ManualClock`으로, 회전 시간 줄이기, 상한 글·WCA 칸·표 글 읽기, 혼자 맞추기 기록만 읽기, 색 묶음·면 색·기본 배치·사용자 배치 글이 큐브 창 읽기 규칙으로 되돌아오는지), 코어 `cargo test`(요약 46사례), 그리기 크레이트 `cargo test --release` 26개, 웹 `core-fixtures.test.ts`·`native-windows-text.test.ts`.
 
@@ -1038,7 +1038,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - **앱 메뉴에 「편집」**(보통 창이 열린 동안만 거는 메뉴, 5-18): 잘라내기 ⌘X·복사 ⌘C·붙여넣기 ⌘V·전체 선택 ⌘A, 표준 동작을 응답 사슬로(target nil). 되돌리기 ⌘Z는 큐브 되돌리기라 두지 않는다. 키 배치 가져오기 글 칸에 붙여넣기가 된다. 보통 창 Esc 닫기는 글 칸에 쓰는 중이면 닫지 않는다(`CubieCore/EscClose.swift`, 시험 `EscCloseTests`). 큐브 창이 키를 받는 동안 ⌘C 등은 메뉴가 먹지만 큐브 코어는 ⌘Z 말고 ⌘ 조합을 쓰지 않아 상관없다.
 - **한 판 맞추면 열린 티어표 창도** 지금 보는 크기로 다시 그린다(기록 창만 다시 읽었다).
 - **공식 연습 중 「다시 불러오기」**(`NativeCubeWindow.reload`)가 `onReady`로 말풍선을 숨긴 뒤 줄이 그대로라 다시 그리지 않던 것: reload 끝에 연습 말풍선을 다시 그린다.
-- **세 창의 칩(`Chip`)과 기록 창 티어 칸(`TierCell`)**: 손쉬운 사용 단추(이름은 제목, 누르기 동작은 칩 동작. 동작 없는 배지는 글), Tab으로 오고 Space·Return·숫자판 Enter로 누르기, 포커스 테두리. 티어 사다리 칸과 같은 방식이고 사다리 칸에도 손쉬운 사용 누르기를 더했다. 보통 창은 Tab 차례를 저절로 다시 셈한다(`autorecalculatesKeyViewLoop`). 남은 것: 키 배치 편집기는 바뀔 때마다 칩을 새로 만들어, 키보드로 누르면 포커스가 창으로 돌아간다.
+- **세 창의 칩(`Chip`)과 기록 창 티어 칸(`TierCell`)**: 손쉬운 사용 단추(이름은 제목, 누르기 동작은 칩 동작. 동작 없는 배지는 글), Tab으로 오고 Space·Return·숫자판 Enter로 누르기, 포커스 테두리. 티어 사다리 칸과 같은 방식이고 사다리 칸에도 손쉬운 사용 누르기를 더했다. 보통 창은 Tab 차례를 저절로 다시 셈한다(`autorecalculatesKeyViewLoop`). 남은 것이던 「키 배치 편집기는 바뀔 때마다 칩을 새로 만들어, 키보드로 누르면 포커스가 창으로 돌아간다」는 2026-11-25 고쳤다(5-20).
 - **보통 창이 크기·자리를 기억한다**(UserDefaults `CubieWindowFrame.<이름>`, 네이티브 `CubieWindow.<창>`·사이트 `CubieSite.<창>`, `FrameMemory`). 옮기거나 크기를 바꾸거나 닫을 때 저장한다. 처음 열거나 기억한 자리가 화면 밖이면 큐브 창이 있는 화면 가운데(`WindowPlacement.normalWindowFrame`, 시험 넷). AppKit `setFrameAutosaveName`·`setFrameUsingName`은 쓰지 않는다: 화면이 둘인 이 맥에서 내장 화면 (300, 219)에 두고 닫은 창이 다시 열 때 주 화면(LG) (-2002, 109)로 되살아났다. 재기 모드는 화면 밖에 두므로 기억하지 않는다.
 - **키 지정 중 설정 창을 닫으면** 편집기의 지역 키 감시를 뗀다(창 닫힘 알림·보기가 창에서 빠질 때).
 - **안 보일 때 도는 것 멈추기**: 공식 연습 0.1초 시계는 연습 중이고 포커스가 있을 때만(`PracticeTick`), 기록 창 다시 보기는 창이 가려지거나 최소화되면 멈췄다가 다시 보이면 이어 간다(`AutoPause`, 사람이 멈춘 것은 그대로, `MotionWatch`), 떠 있는 창의 전역 마우스 감시는 큐브를 숨기면 떼고 다시 나오면 건다. 시험 `AutoPauseTests`.
@@ -1047,6 +1047,22 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 확인용 디버그 명령(`CUBIE_DEBUG=1`, 알림 `kr.byb.cubie.debug`)에 `tiers`·`settings`·`site-settings`·`visible`·`reload`·`practice:<단계 id>`를 더했고 `dump`가 말풍선이 떠 있는지도 찍는다. 시험 앱 확인은 번들 id와 **프로세스 이름까지 바꾼** 사본으로 한다: System Events는 `whose unix id is …`로 고른 프로세스도 이름으로 되짚어, 이름이 같은 「Cubie」면 설치된 앱을 누른다(2026-11-24 이 확인 중 설치된 앱의 「키 배치·색…」이 한 번 눌렸다).
 - 실제 앱(시험 사본)에서 확인한 것: 「편집」 메뉴가 「Cubie」와 「창」 사이에 있음, 설정·기록·티어표 창이 큐브 창 화면(내장) 가운데에 처음 뜸, 옮기고 닫았다 다시 열면 그 자리, 사이트 창 제목 「Cubie 모든 설정」과 그 창이 열린 동안 네이티브에서 「색약 친화」로 바꾸고 사이트 창을 닫아도 남음(옮긴 키 0개), 칩·티어 칸이 손쉬운 사용 단추로 읽히고 누르기(AXPress)로 색 묶음·크기가 바뀜, 공식 연습 중 다시 불러와도 말풍선이 떠 있음, 숨기기·보이기에 전역 마우스 감시가 떼어지고 걸림. 확인 못 한 것: Esc·Tab·Space 같은 키 입력(앞 앱에 키를 보내지 않는다), 글 칸 붙여넣기, 한 판 맞춘 뒤 티어표 다시 그리기(맞추려면 키 입력), 다시 보기 저절로 멈춤(시험 기록 없음), 키 지정 중 닫기, 슬라이더 끄는 동안의 다시 읽기 횟수.
 - **Cubie 새 판이 필요하다**.
+
+### 5-20. 웹 되돌림 스위치 지우기와 앱 코드 정리(2026-11-25)
+
+사용자에게 보이는 동작은 바꾸지 않는 정리다.
+
+- **웹 되돌림 스위치 둘을 지웠다**: `CUBIE_WEB=1`(웹 큐브 창 `CubeWindow`·다리 `Bridge`·웹 재기 `Measure`)은 앱 저장소를 읽지 않아 켜면 옛 WebKit 기록이 보이고 맞춘 판이 네이티브 기록에 들어가지 않아 되돌림 구실을 못 했다. `CUBIE_WEB_WINDOWS=1`(기록·티어표·설정 사이트 창)은 「모든 설정…」 사이트 창 말고 쓰는 곳이 없었다. 지우기 전 마지막 커밋에 로컬 git 태그 `cubie-web-fallback-last`를 두었다(옛 앱으로 견줄 때 그 태그를 빌드한다). 단축키 표는 늘 앱이 그리고(`KeysPanel`의 웹 갈래 지움), 앱이 여는 사이트 창은 「모든 설정…」 하나다(Esc는 그 창에서 웹 화면 몫, `EscClose.siteSettings`). `PageFreshness`는 사이트 창의 캐시 정책(`load`)만 남겼다(실패 때 저장본·빌드 커밋 비교는 웹 큐브 창만 썼다). `measure-memory.sh`는 네이티브가 기본이고 `--url`·`--web`·`--query`·`--inject`·`--web-windows`를 지웠다(`--native`는 받아만 둔다).
+- **AppDelegate 나누기**(926줄 → 353줄): 메뉴 만들기와 고른 일 → `AppDelegate+Menu.swift`, 보통 창 열기·앞으로·자리 기억·Dock 노출·앱 메뉴와 「모든 설정…」 사이트 창 → `SheetWindows`, 저장소 동기화(넣을 글·넣는 스크립트·읽는 스크립트·닫을 때 합치기) → `CubieCore/WebStoreSync`(시험 `WebStoreSyncTests`), 재기 모드 연결 → `MeasureWiring`. 큐브 창은 `NativeCubeWindow`를 바로 두고 `CubeSurface` 약속은 지웠다(`CubeState`·`CubeCommand`만 남김).
+- **실행 파일 타깃에 있던 순수 판단을 CubieCore로 옮겨 시험한다**: 앱 안 키 감시의 갈 곳(새 판 말풍선 Enter·Esc, F1, Esc 차례, 보통 창 Esc 닫기) → `KeyRoute.route`(`KeyRouteTests`), 한 판 기록 꾸미기(키 출처 가장 나쁜 쪽·입력·힌트·`mode`·`inspection`) → `SolveRecord.compose`, 거울 보임 → `MirrorRule.shows`, 힌트·공식 연습 말풍선 줄 읽기 → `BubbleLines`, 프로필 이름 읽기·짓기와 티어 글 → `Profile.storedName`·`madeName`·`tierText`. 웹 다리 메시지를 읽던 `Profile.from(message:)`·`dataURL`은 웹 큐브 창과 함께 쓸 곳이 없어 지웠다.
+- **세 창 중복 줄이기**: 「← 큐브」 칩(설정·티어표) → `NUI.backChip`, 크기 단추 줄(기록·티어표) → `SizeChips`(고르기·같은 폭 줄·글 폭 줄), 한 쪽짜리 창 스크롤 보기 설정 → `NativeSheetWindow.pageScroll`, 엠블럼 정지 그림 읽기 셋(`NUI.emblem`·`NativeCubeWindow.emblem`·`EmblemArt`) → `EmblemArt.still`·`stillImage`·`stillData`.
+- **C 머리 파일 ↔ Rust C ABI 점검**: 손으로 쓰는 `cubie_native.h`를 Rust 시험 `native/cubie-native/tests/header_abi.rs`가 글로 읽어 `ffi_game.rs`·`ffi_records.rs`·`ffi_keymap.rs`와 견준다: 함수 이름 목록(양쪽 모두), 함수마다 돌려주는 타입·인자 타입 차례(C 타입을 `*const *const c_char` 같은 Rust 꼴로 바꿔), `#[repr(C)]` 구조체 필드 이름·타입·차례, `CUBIE_*` 상수 값. cbindgen은 들이지 않았다(의존 없음, 머리 파일 주석·차례를 그대로 둔다). `apps/cubie/test.sh`가 swift test 앞에 돌린다. 머리 파일의 인자 타입과 구조체 필드 타입을 하나씩 일부러 바꿔 실패하는 것을 확인했다. CI `rust` 작업은 `native/cube-core`만 돌아 이 시험은 이 맥에서만 돈다.
+- **기록 책 다시 풀기 줄이기**: `MiniBook.read()`가 값을 꺼낼 때마다 저장 글(JSON) 전체를 풀었다. 잰 값(release, 읽기 20번 = 기록 창 `show` 한 번쯤): 3×3 25판 22KB 책 3.5ms, 크기마다 100판이 꽉 찬 250KB 책 42.8ms. 마지막으로 푼 저장 글과 책을 두고, 저장 글이 같으면 그대로 쓴다: 각각 0.1ms·2.1ms(UserDefaults 저장소로도 0.2ms·2.3ms, 푼 횟수 1). 무효화는 쓰기 때가 아니라 읽을 때 저장 글을 견주어 한다: 다른 `MiniBook`(티어표가 따로 만드는 책)·사이트 설정 창 닫기 합치기·기록 옮기기처럼 이 책을 거치지 않고 저장소를 고쳐도 바로 다시 푼다. 시험 `MiniBookTests` 「repeatedReadsParseTheStoredTextOnce」·「readsAgainWhenSomethingElseChangesTheStore」.
+- **README 메뉴 프로필 칸 그림 컴파일 고침**: `readme-shots.mjs`는 `ProfileMenuView.swift`·`Profile.swift`·`profile-menu-shot.swift`만 묶어 컴파일하는데, 5-11 흔들기 뒤 칸이 `EmblemArt`·`MenuEmblemView`·`TierShowcase`·`SwayStats`를 불러 「cannot find in scope」로 실패했다(5-19에서 칸을 `@MainActor`로 둔 뒤로 그림 스크립트의 맨 위 코드도 걸렸다). 흔들기를 `MenuEmblemSway.swift`(`MenuEmblemSway`·`MenuEmblemView`)로 옮기고 칸은 `ProfileEmblemSway` 약속만 받는다(앱은 `MenuEmblemSway.make(profile)`, 그림은 `nil`). 그림 스크립트는 `@MainActor` 함수 안에서 그린다. 같은 세 파일을 임시 폴더에서 컴파일해 다크·라이트 그림이 나오는 것을 확인했다(웹 빌드가 필요한 `readme-shots.mjs` 전체는 돌리지 않았다).
+- **키 배치 편집기 키보드 포커스**: 편집기(`KeymapEditorView`)와 내보내기·가져오기 상자(`KeymapPortView`)는 바뀔 때마다 칩을 통째로 새로 만들어, 칩을 키보드(Tab → Space·Return)로 누르면 포커스가 창으로 돌아가 Tab을 처음부터 다시 쳐야 했다. 칩마다 다시 만들어도 같은 이름(`identifier`: `assign:<동작>`·`unbind:<키>`·`clear:<동작>`·`group:<묶음>`·`preset:<배치>`·`conflict-yes|no`·`port-*`)을 붙이고, 다시 만든 뒤 같은 이름의 칩에 포커스를 돌려준다(`NSView.keepingFocus`). 누른 칩이 사라지면(키를 빼서 그 키 칩이 없어짐, 겹친 키 묻기에 답함) 그 동작의 「키 지정」으로(`FocusKeep.pick`, 시험 `FocusKeepTests`). 다시 붙이는 글 칸(가져오기)은 그 칸 그대로. 칩을 다시 만들지 않고 고치는 길은 동작이 100개 남짓이고 줄 높이·묶음 펼침이 함께 바뀌어 고르지 않았다.
+- 확인: `test.sh`(머리 파일 시험 4개 + Swift 시험 237개). 화면 밖 스크린샷을 지우기 전 판(태그)과 견줬다: 보통 창 25장(기록·티어표·설정·메뉴 프로필 칸·흔들기)과 말풍선·단축키 표 그림은 바이트까지 같고, 3D 큐브 그림은 같은 판끼리도 몇 화소씩 달라(GPU 그리기 흔들림) 그만큼만 달랐다. 번들 id·프로세스 이름을 바꾼 시험 사본(`CUBIE_DEBUG=1`)에서 디버그 명령으로 기록·티어표·설정 창과 「모든 설정…」 사이트 창이 열리고(Dock 노출 `regular`), 사이트 창을 그 프로세스만 겨눈 닫기 단추 누르기로 닫으면 합치기가 돈다(`set=[] removed=[]`). 설정 창 「사용자」 편집기에서 「키 지정」 칩에 손쉬운 사용으로 포커스를 주고 누르면 다시 만든 뒤에도 같은 칩(「키 기다리는 중」)에 포커스가 남는다. 키 입력(Esc·F1·Tab)은 앞 앱에 키를 보내지 않으려고 보지 않았다(갈 곳은 `KeyRouteTests`).
+- 확인하다 찾은 것: 웹 저장소 옮기기가 번들 id를 `kr.byb.cubie`로 박아 두어, 번들 id를 바꾼 시험 사본도 처음 띄울 때 설치된 앱의 웹 저장소(사용자 기록)를 읽어 제 저장소로 옮겼다(읽기만 하고 지우지 않음, 시험 사본 저장소는 지웠다). 이제 지금 번들 id의 웹 저장소를 읽는다(실행 파일만 띄우면 번들 id가 없어 예전처럼 `kr.byb.cubie`).
+- **Cubie 새 판이 필요하다**(앱 코드가 바뀌었다, 사용자에게 보이는 동작은 같다).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

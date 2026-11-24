@@ -13,8 +13,7 @@ struct EscCloseTests {
   }
 
   @Test func siteSettingsWindowLeavesEscToPage() {
-    #expect(EscClose.closes(.site(settings: true), editingText: false) == false)
-    #expect(EscClose.closes(.site(settings: false), editingText: false) == true)
+    #expect(EscClose.closes(.siteSettings, editingText: false) == false)
   }
 
   @Test func otherWindowsNeverClose() {

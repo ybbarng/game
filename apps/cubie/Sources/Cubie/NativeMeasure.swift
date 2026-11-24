@@ -1,10 +1,9 @@
 import AppKit
 
-/// 네이티브 화면의 재기 모드(`CUBIE_MEASURE=1`, `scripts/measure-memory.sh --native`). 웹 쪽 `Measure`와 같은 표준 입력 명령을
-/// 받는다. 창은 `FloatingWindow`가 화면 밖에 투명하게 두고, 저장소는 메모리에만 둔다(사용자 기록에 손대지 않는다).
+/// 재기 모드(`CUBIE_MEASURE=1`, `scripts/measure-memory.sh`). 표준 입력 한 줄 명령을 받는다. 창은 `FloatingWindow`가 화면 밖에 투명하게 두고, 저장소는 메모리에만 둔다(사용자 기록에 손대지 않는다).
 ///
 /// 명령: `focus 1|0` · `scramble` · `mirror 1|0` · `size <n>` · `side <pt>` · `turns <개수>`(0.12초마다 손가락 자리 키) ·
-/// `show` · `hide` · `keys load|drop`(단축키 표) · `records|tiers|settings open|close`(기록 창·티어표·설정 창: 네이티브 창, `CUBIE_WEB_WINDOWS=1`이면 사이트 창, 화면 밖) ·
+/// `show` · `hide` · `keys load|drop`(단축키 표) · `records|tiers|settings open|close`(기록 창·티어표·설정 창, 화면 밖) ·
 /// `replay open`(기록 창에서 한 판 다시 보기, 판이 없으면 메모리 저장소에 하나 더함) · `practice start|stop`(공식 연습 첫 단계) ·
 /// `hero start|stop`(홈 시연) · `editor open|close`(「사용자」 배치로 두고 설정 창의 키 배치 편집기) ·
 /// `pick <0~9>`(티어표 사다리 칸 누르기) · `place tiers <화면 번호|off>`(티어표 창을 그 화면에 거의 투명하게, HDR 판정 확인) · `showcase hidden|shown`(진열을 가려진 창처럼) · `profile open|close`(메뉴 프로필 칸 흔들기) ·
@@ -24,7 +23,7 @@ final class NativeMeasure {
   var placeTiers: ((String) -> String)?
   private var profileWindow: NSWindow?
 
-  /// `Measure.turns`와 같은 손가락 자리 키(두 손 배치) J F I E K D H G L S의 맥 키 코드
+  /// `turns`가 돌아가며 누르는 손가락 자리 키(두 손 배치) J F I E K D H G L S의 맥 키 코드
   static let fingerKeys: [UInt16] = [38, 3, 34, 14, 40, 2, 4, 5, 37, 1]
 
   init(cube: NativeCubeWindow) {
@@ -134,9 +133,9 @@ final class NativeMeasure {
         var p = cube.profile
         if p.emblemTier == nil {
           p.emblemTier = "challenger"
-          p.emblem = NativeCubeWindow.emblem("challenger")
+          p.emblem = EmblemArt.stillData("challenger")
         }
-        let v = ProfileMenuView(profile: p) {}
+        let v = ProfileMenuView(profile: p, sway: MenuEmblemSway.make(p)) {}
         let w = NSWindow(contentRect: v.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.setFrameOrigin(NSPoint(x: -30000, y: -30000))

@@ -6,8 +6,8 @@ public enum EscClose {
   public enum Window: Sendable {
     /// 앱이 그린 기록·티어표·설정 창
     case native
-    /// 사이트 창(`settings`면 설정 화면: 웹 화면의 Esc를 그대로 둔다)
-    case site(settings: Bool)
+    /// 「모든 설정…」 사이트 창: 웹 화면의 Esc를 그대로 둔다
+    case siteSettings
     /// 큐브 창·다른 창
     case other
   }
@@ -16,8 +16,7 @@ public enum EscClose {
     if editingText { return false }
     switch window {
     case .native: return true
-    case .site(let settings): return !settings
-    case .other: return false
+    case .siteSettings, .other: return false
     }
   }
 }

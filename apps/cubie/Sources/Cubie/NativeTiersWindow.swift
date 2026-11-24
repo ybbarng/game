@@ -13,19 +13,14 @@ final class NativeTiersWindow: NativeSheetWindow {
   private let store: KeyValueStore
   private let math: TierMath
   let page = TiersPageView()
-  /// 막대가 생기면 내용 폭만큼 다시 배치한다(`ContentScrollView`)
-  private let scroll = ContentScrollView()
+  private let scroll: ContentScrollView
   private(set) var n: Int
 
   init(store: KeyValueStore, math: TierMath, n: Int) {
     self.store = store
     self.math = math
     self.n = TierSheet.sizes.contains(n) ? n : 3
-    scroll.drawsBackground = true
-    scroll.backgroundColor = NUI.color(NUI.Hex.neutral900)
-    scroll.hasVerticalScroller = true
-    scroll.autohidesScrollers = true
-    scroll.documentView = page
+    scroll = Self.pageScroll(page)
     super.init(title: "Cubie 티어표", size: Self.size, content: scroll)
     page.onSize = { [weak self] s in self?.show(s) }
     show(self.n)
@@ -61,11 +56,18 @@ final class TiersPageView: NSView {
   /// 사다리에서 고른 티어(nil이면 내 티어). 크기를 바꿔도 남는다(사이트와 같음)
   private(set) var picked: Int?
   private(set) var state: TierShowcase.State?
-  private let back = Chip(TierSheet.back, look: Chip.Look(text: NUI.white(0.7), size: 14, padX: 4))
+  private let back = NUI.backChip(TierSheet.back)
   private let title = NUI.label(TierSheet.title, size: 18, weight: .bold, mono: false)
   private let intro1 = NUI.paragraph(TierSheet.intro1, size: 14, color: NUI.white(0.8), lineHeight: 22.75)
   private let intro2 = NUI.paragraph(TierSheet.intro2, size: 14, color: NUI.white(0.8), lineHeight: 22.75)
-  private var sizeButtons: [Chip] = []
+  private lazy var sizeButtons = SizeChips(
+    TierSheet.sizes, label: { "\($0)×\($0)" },
+    look: { on in
+      Chip.Look(
+        fill: on ? NUI.color(NUI.Hex.sky500, 0.25) : NUI.white(0.05), text: .white,
+        border: on ? NUI.color(NUI.Hex.sky300, 0.7) : NUI.white(0.15), radius: 8, size: 14, weight: .semibold, padX: 0, padY: 8)
+    },
+    onPick: { [weak self] s in self?.onSize?(s) })
   // 진열: 위쪽 큰 칸
   private let heroBox = FlippedView()
   let hero = EmblemSwayView(frame: NSRect(x: 0, y: 0, width: TierShowcase.heroSize, height: TierShowcase.heroSize))
@@ -91,19 +93,13 @@ final class TiersPageView: NSView {
 
   init() {
     super.init(frame: NSRect(origin: .zero, size: NativeTiersWindow.size.initial))
-    back.action = { NUI.openSite("/cube") }
     for v in [
       back, title, heroBox, ladder, historyTitle, historyView, historyList, intro1, intro2, sizeTitle, note, grid,
       footLine, foot1, foot2,
     ] as [NSView] {
       addSubview(v)
     }
-    for s in TierSheet.sizes {
-      let b = Chip("\(s)×\(s)")
-      b.action = { [weak self] in self?.onSize?(s) }
-      sizeButtons.append(b)
-      addSubview(b)
-    }
+    sizeButtons.add(to: self)
     heroBox.radius = 16
     heroBox.border = NUI.white(0.1)
     // 테두리 상자는 넓다(736×312pt). 그리면 AppKit이 GPU 비동기 그리기로 돌려 창을 열 때 앱에 드라이버 메모리가 붙었다
@@ -157,13 +153,7 @@ final class TiersPageView: NSView {
     }
     let st = TierShowcase.state(table: table, mine: mine, picked: picked)
     state = st
-    for (i, s) in TierSheet.sizes.enumerated() {
-      let on = s == table.n
-      sizeButtons[i].pressed = on
-      sizeButtons[i].look = Chip.Look(
-        fill: on ? NUI.color(NUI.Hex.sky500, 0.25) : NUI.white(0.05), text: .white,
-        border: on ? NUI.color(NUI.Hex.sky300, 0.7) : NUI.white(0.15), radius: 8, size: 14, weight: .semibold, padX: 0, padY: 8)
-    }
+    sizeButtons.select(table.n)
     showHero(st, table: table)
     ladder.show(st)
     NUI.set(sizeTitle, "\(table.n)×\(table.n)", size: 16, weight: .semibold, color: .white)
@@ -272,10 +262,7 @@ final class TiersPageView: NSView {
     back.frame = NSRect(x: x0 - 4, y: y, width: bf.width, height: 32)
     title.frame = NSRect(x: back.frame.maxX + 8, y: y + 4, width: NUI.width(title), height: 24)
     y += 32 + 16
-    let bw = (w - 6 * 5) / 6
-    for (i, b) in sizeButtons.enumerated() {
-      b.frame = NSRect(x: x0 + CGFloat(i) * (bw + 6), y: y, width: bw, height: 38)
-    }
+    sizeButtons.layoutEven(x: x0, y: y, width: w, height: 38, gap: 6)
     y += 38 + 16
     // 위쪽 큰 칸(px-4 py-4, 왼쪽 엠블럼·구간 표시, 오른쪽 글 gap-3, 둘 다 가운데 맞춤)
     let hs = CGFloat(TierShowcase.heroSize)
@@ -412,7 +399,7 @@ final class InfoBox: FlippedView {
   }
 
   func show(emblem id: String, line1 a: NSAttributedString, line2 b: NSAttributedString?) {
-    emblem.image = NUI.emblem(id, big: true)
+    emblem.image = EmblemArt.stillImage(id, big: true)
     line1.attributedStringValue = Self.wrapping(a)
     line2.attributedStringValue = Self.wrapping(b ?? NSAttributedString())
     line2.isHidden = b == nil
@@ -500,7 +487,7 @@ final class TierGridView: FlippedView {
       add(bg, NSRect(x: 0, y: y, width: w, height: Self.rowH))
       let emb = NSImageView()
       emb.imageScaling = .scaleProportionallyUpOrDown
-      emb.image = NUI.emblem(TierInfo.ids[row.tier])
+      emb.image = EmblemArt.stillImage(TierInfo.ids[row.tier])
       add(emb, NSRect(x: 8, y: y + (Self.rowH - 28) / 2, width: 28, height: 28))
       let name = NUI.label(TierSheet.labels[row.tier], size: 14, weight: .semibold, color: NUI.color(NUI.tierTone[row.tier]))
       add(name, NSRect(x: 42, y: y + (Self.rowH - 20) / 2, width: tierW - 44, height: 20))

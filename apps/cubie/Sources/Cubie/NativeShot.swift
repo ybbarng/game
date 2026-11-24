@@ -197,7 +197,7 @@ enum NativeShot {
     } ?? ""
     if cubie_game_practice_start(practiceView.game, first, false, "", "", "", 7) {
       let lines = "Enter".withCString { a in NativeCore.string { cubie_game_practice_lines(practiceView.game, a, $0, $1) } }
-      let parsed = lines.split(separator: "\n").map { NativeCubeWindow.bubbleLine(String($0)) }
+      let parsed = lines.split(separator: "\n").map { BubbleLines.line(String($0)) }
       ok = shoot2D("native-practice", HintBubble().layoutForShot(lines: parsed)) && ok
     }
     // 공식 연습에서 틀린 장면(docs/47 4-4 「수 표기와 키」): `CUBIE_NATIVE_SHOT_PRACTICE=oll:20,oll:79`(단계:씨앗).
@@ -213,7 +213,7 @@ enum NativeShot {
       }
       let read = {
         "Enter".withCString { a in NativeCore.string { cubie_game_practice_lines(v.game, a, $0, $1) } }
-          .split(separator: "\n").map { NativeCubeWindow.bubbleLine(String($0)) }
+          .split(separator: "\n").map { BubbleLines.line(String($0)) }
       }
       let first = (read().first { $0["style"] as? String == "alg" }?["text"] as? String ?? "").split(separator: " ").first ?? ""
       // 「두 손」 D 키 = L, S 키 = D. 첫 수가 L이면 S를 친다

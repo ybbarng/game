@@ -347,7 +347,7 @@ test(
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 96, height: 96 });
     await fakeApp(page);
-    // 앱이 넣는 투명 바탕(CubeWindow.swift)을 흉내 내고, 그 아래 바탕화면은 `--desk`로 바꿔 끼운다
+    // 예전 앱 웹 큐브 창이 넣던 투명 바탕(git 태그 cubie-web-fallback-last의 CubeWindow.swift)을 흉내 내고, 그 아래 바탕화면은 `--desk`로 바꿔 끼운다
     await page.addInitScript(() => {
       const put = () => {
         const s = document.createElement("style");

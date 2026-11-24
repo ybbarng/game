@@ -6,7 +6,6 @@ import CubieNativeC
 /// - 위: 크기별 Cubie 티어(엠블럼·최고 Ao5·이름, 누르면 그 크기), 「티어표」(네이티브 티어표 창)
 /// - 아래: 크기 단추, 요약(최고·평균·5번·12번 평균, 코어 `summary.rs`), 판마다 줄(번호·때·시간·입력 표시·힌트·수·다시 보기)
 /// - 다시 보기 상자: 섞인 모양에서 그때 시각대로(멈춤은 1초까지), 큐브는 큐브 창과 같은 `CACubeView`와 거울
-/// 웹 창과 달리 WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 예전처럼 사이트 창을 연다(`AppDelegate`)
 @MainActor
 final class NativeRecordsWindow: NativeSheetWindow {
   static let size = SheetSize.records
@@ -105,7 +104,10 @@ final class RecordsRootView: FlippedView {
   private let tiersLine = FlippedView()
 
   private let title = NUI.label(RecordsSheet.title, size: 14, weight: .bold)
-  private var sizeButtons: [Chip] = []
+  private lazy var sizeButtons = SizeChips(
+    RecordsSheet.sizes, label: { "\($0)" },
+    look: { on in Chip.Look(fill: on ? NUI.white(0.2) : .clear, text: on ? .white : NUI.white(0.6), padX: 4) },
+    onPick: { [weak self] s in self?.owner?.pick(s) })
   private let summary = FlippedView()
   private var summaryValues: [NSTextField] = []
   private var summaryLabels: [NSTextField] = []
@@ -133,12 +135,7 @@ final class RecordsRootView: FlippedView {
       tiers.addSubview(cell)
     }
     addSubview(title)
-    for s in RecordsSheet.sizes {
-      let b = Chip("\(s)")
-      b.action = { [weak self] in self?.owner?.pick(s) }
-      sizeButtons.append(b)
-      addSubview(b)
-    }
+    sizeButtons.add(to: self)
     summary.fill = NUI.white(0.05)
     summary.radius = 4
     for t in RecordsSheet.summaryLabels {
@@ -172,10 +169,8 @@ final class RecordsRootView: FlippedView {
     self.n = n
     for (i, s) in RecordsSheet.sizes.enumerated() {
       tierButtons[i].show(tier: book.tier(s), on: s == n)
-      let b = sizeButtons[i]
-      b.pressed = s == n
-      b.look = Chip.Look(fill: s == n ? NUI.white(0.2) : .clear, text: s == n ? .white : NUI.white(0.6), padX: 4)
     }
+    sizeButtons.select(n)
     let records = book.records(n)
     let sum = NativeCore.summary(records)
     for (i, v) in [sum.best, sum.mean, sum.ao5, sum.ao12].enumerated() {
@@ -272,12 +267,7 @@ final class RecordsRootView: FlippedView {
     // 기록(p-2 gap-1.5)
     y += 8
     title.frame = NSRect(x: 8, y: y, width: NUI.width(title), height: 20)
-    var x = title.frame.maxX + 4
-    for b in sizeButtons {
-      let f = b.fit
-      b.frame = NSRect(x: x, y: y + 2, width: f.width, height: 16)
-      x += f.width + 2
-    }
+    sizeButtons.layoutFlow(x: title.frame.maxX + 4, y: y + 2, height: 16, gap: 2)
     y += 20 + 6
     let half = (inner - 12 - 8) / 2
     for i in 0..<summaryLabels.count {
@@ -337,7 +327,7 @@ final class TierBandView: FlippedView {
     var full: CGFloat = 0
     init() { icon.imageScaling = .scaleProportionallyUpOrDown }
     func show(tier: Int, text: String, strong: Bool) {
-      icon.image = NUI.emblem(TierInfo.ids[min(max(tier, 0), 9)])
+      icon.image = EmblemArt.stillImage(TierInfo.ids[min(max(tier, 0), 9)])
       if strong {
         NUI.set(name, text, weight: .semibold, color: .white)
       } else {
@@ -534,7 +524,7 @@ final class TierCell: FlippedView {
     self.on = on
     fill = on ? NUI.white(0.15) : NUI.white(0.05)
     if let tier {
-      emblem.image = NUI.emblem(tier.id)
+      emblem.image = EmblemArt.stillImage(tier.id)
       emblem.isHidden = false
       ring = false
       topText = RecordsSheet.tierCellTop(size: size, ms: tier.ao5)

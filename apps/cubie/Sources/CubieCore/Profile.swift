@@ -1,8 +1,7 @@
 import Foundation
 
-/// 메뉴 맨 위 프로필 칸에 보일 것(docs/47 15-20). 자료 꼴을 정하는 곳은 웹(`apps/web/src/cube/mini/profile.ts`)이고,
-/// 앱은 다리 메시지 `profile`을 받아 그리기만 한다. 나중에 사이트 패스키 로그인이 생겨 이름·사진이 바뀌어도
-/// 웹만 바뀌면 되게, 앱은 이름·사진·티어 글·엠블럼 그림을 받은 그대로 쓴다.
+/// 메뉴 맨 위 프로필 칸에 보일 것(docs/47 15-20). 저장 꼴은 사이트(`apps/web/src/cube/mini/profile.ts`)와 같고, 큐브 창
+/// (`NativeCubeWindow.refreshProfile`)이 저장소에서 읽어 이름·티어 글·엠블럼을 채운다.
 public struct Profile: Equatable, Sendable {
   public var name: String
   /// 프로필 사진(PNG 등 그림 자료). nil이면 무채색 사람 모양
@@ -27,27 +26,29 @@ public struct Profile: Equatable, Sendable {
     self.emblemTier = emblemTier
   }
 
-  /// 웹이 아직 알려 주지 않았을 때(화면이 뜨기 전, 프로필을 모르는 옛 웹). 번호는 웹이 정하므로 붙이지 않는다
+  /// 프로필을 읽기 전(큐브 창이 뜨기 전)
   public static let placeholder = Profile(name: "익명 큐버")
 
-  /// 다리 메시지 → 프로필. 이름이 없으면 nil. 모르는 칸은 버리고, 모양이 틀린 칸은 없는 것으로 본다
-  public static func from(message d: [String: Any]) -> Profile? {
-    guard let name = (d["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty
+  /// 저장소 키(사이트 `profile.ts`와 같은 키·같은 JSON 꼴 `{"version":1,"name":"…"}`)
+  public static let storeKey = "cube.mini.profile.v1"
+
+  /// 저장된 프로필 글에서 이름. 없거나 빈 이름·모양이 틀린 글이면 nil(새 이름을 지어 저장한다, `madeName`)
+  public static func storedName(_ text: String?) -> String? {
+    guard let data = text?.data(using: .utf8),
+      let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+      let s = d["name"] as? String, !s.trimmingCharacters(in: .whitespaces).isEmpty
     else { return nil }
-    let tierText = (d["tierText"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-    return Profile(
-      name: name,
-      photo: (d["photo"] as? String).flatMap(dataURL),
-      signedIn: d["signedIn"] as? Bool ?? false,
-      tierText: tierText,
-      emblem: (d["emblem"] as? String).flatMap(dataURL))
+    return s
   }
 
-  /// `data:image/png;base64,…` → 그림 자료. base64 그림 주소만 받는다(바깥 주소는 앱이 받으러 가지 않는다)
-  public static func dataURL(_ s: String) -> Data? {
-    guard s.hasPrefix("data:image/"), let comma = s.firstIndex(of: ",") else { return nil }
-    let head = s[..<comma]
-    guard head.hasSuffix(";base64") else { return nil }
-    return Data(base64Encoded: String(s[s.index(after: comma)...]))
+  /// 새로 짓는 이름: 「익명 큐버 #1000」~「#9999」(`pick`은 0..<9000 하나)와 그 저장 글
+  public static func madeName(_ pick: Int) -> (name: String, stored: String) {
+    let name = "익명 큐버 #\(1000 + pick)"
+    return (name, #"{"version":1,"name":"\#(name)"}"#)
+  }
+
+  /// 메뉴 프로필 칸 티어 글: 「3×3 골드 II」, 티어가 아직 없으면 「3×3 5판 뒤에」
+  public static func tierText(n: Int, tierName: String?) -> String {
+    "\(n)×\(n) \(tierName ?? "5판 뒤에")"
   }
 }
