@@ -61,11 +61,8 @@ export interface KeyStatement {
   }[];
 }
 
-/** A = Π (I^k)^w, B = Π O^w. 가중치는 공개한 값의 해시(64비트) */
-export async function combineStatement(
-  g: SraGroup,
-  st: KeyStatement,
-): Promise<{ A: bigint; B: bigint }> {
+/** 자리마다의 가중치: 공개한 값의 해시(64비트) */
+async function statementWeights(st: KeyStatement): Promise<bigint[]> {
   const seed = await hash([
     "w",
     st.device,
@@ -73,19 +70,44 @@ export async function combineStatement(
     ...st.items.flatMap((i) => [i.slot, i.input, i.output, i.key]),
   ]);
   // 가중치 해시는 서로 기대지 않아 한꺼번에 기다린다(하나씩 기다리면 그 사이 CPU가 논다)
-  const ws = await Promise.all(
+  return Promise.all(
     st.items.map(
       async (_, index) => (await hash([seed, index])) & 0xffff_ffff_ffff_ffffn,
     ),
   );
+}
+
+/** A = Π (I^k)^w */
+function combineInputs(
+  g: SraGroup,
+  st: KeyStatement,
+  ws: readonly bigint[],
+): bigint {
   let A = g.one;
+  for (const [index, item] of st.items.entries())
+    A = g.mul(A, g.pow(item.input, (item.key * (ws[index] as bigint)) % g.q));
+  return A;
+}
+
+/** B = Π O^w */
+function combineOutputs(
+  g: SraGroup,
+  st: KeyStatement,
+  ws: readonly bigint[],
+): bigint {
   let B = g.one;
-  for (const [index, item] of st.items.entries()) {
-    const w = ws[index] as bigint;
-    A = g.mul(A, g.pow(item.input, (item.key * w) % g.q));
-    B = g.mul(B, g.pow(item.output, w));
-  }
-  return { A, B };
+  for (const [index, item] of st.items.entries())
+    B = g.mul(B, g.pow(item.output, ws[index] as bigint));
+  return B;
+}
+
+/** A = Π (I^k)^w, B = Π O^w. 가중치는 공개한 값의 해시(64비트) */
+export async function combineStatement(
+  g: SraGroup,
+  st: KeyStatement,
+): Promise<{ A: bigint; B: bigint }> {
+  const ws = await statementWeights(st);
+  return { A: combineInputs(g, st, ws), B: combineOutputs(g, st, ws) };
 }
 
 async function challenge(
@@ -105,7 +127,12 @@ export async function proveKeys(
   st: KeyStatement,
   u: bigint,
 ): Promise<KeyProof> {
-  const { A, B } = await combineStatement(g, st);
+  const ws = await statementWeights(st);
+  const A = combineInputs(g, st, ws);
+  // 맞는 진술이면 O = I^(u·k)라 B = Π O^w = A^u다. 지수 길이와 상관없이 곱하기 비용이 같은 군은
+  // 곱하기 n번 대신 한 번으로 같은 B를 얻는다. 진술이 틀렸으면 B가 달라지지만, 그때는 예전처럼
+  // 참 B로 만들어도 확인을 통과하지 못한다(확인하는 쪽은 B를 O에서 직접 계산한다).
+  const B = g.flatPow ? g.pow(A, u) : combineOutputs(g, st, ws);
   const r = 1n + randomBelow(g.q - 1n);
   const a = g.pow(g.generator, r);
   const b = g.pow(A, r);

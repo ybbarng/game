@@ -49,9 +49,17 @@ function ascii(text: string): Uint8Array {
 
 function makeGroup(sodium: Sodium): SraGroup {
   const one = 0n;
+  const generator = fromBytes(
+    sodium.crypto_scalarmult_ristretto255_base(scalarBytes(1n)),
+  );
   const pow = (x: bigint, e: bigint): bigint => {
     const k = ((e % L) + L) % L;
     if (k === 0n || x === one) return one;
+    // 생성원 곱하기는 미리 만든 표를 쓰는 함수가 약 세 배 빠르다(같은 점이 나온다)
+    if (x === generator)
+      return fromBytes(
+        sodium.crypto_scalarmult_ristretto255_base(scalarBytes(k)),
+      );
     return fromBytes(
       sodium.crypto_scalarmult_ristretto255(scalarBytes(k), toBytes(x)),
     );
@@ -67,11 +75,10 @@ function makeGroup(sodium: Sodium): SraGroup {
     name: "ristretto255",
     q: L,
     bits: 256,
-    generator: fromBytes(
-      sodium.crypto_scalarmult_ristretto255_base(scalarBytes(1n)),
-    ),
+    generator,
     one,
     keyBits: null,
+    flatPow: true,
     pow,
     mul,
     // 표준 인코딩인 군의 원소만(항등원 제외). 다른 값은 증명을 속이는 데 쓸 수 있다.
