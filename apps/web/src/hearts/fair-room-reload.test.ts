@@ -15,7 +15,10 @@ describe("하트 멘탈 포커 온라인 대전: 새로고침·끊김·부정", 
   it("방장이 카드 넘기기와 첫 판 중간에 새로고침해도 이어 가고, 모두의 검증을 통과한다", async () => {
     const store = memoryHostStore();
     let tab = reloadTab(store);
-    const { net, host, guests, incidents, clock } = await setup(2, tab.store);
+    const { net, host, guests, incidents, clock, random } = await setup(
+      2,
+      tab.store,
+    );
     const audits: AuditResult[] = [];
     for (const g of guests) g.on("audit", (r) => audits.push(r));
     await host.start();
@@ -45,7 +48,7 @@ describe("하트 멘탈 포커 온라인 대전: 새로고침·끊김·부정", 
       const restore = store.load();
       current = new HostRoom({
         transport: net.join(`host${k + 1}`),
-        ...hostOptions(clock, tab.store),
+        ...hostOptions(clock, tab.store, undefined, random),
         ...(restore ? { restore } : {}),
       }) as never;
       current.onIncident((n) => incidents.push(n));

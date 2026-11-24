@@ -35,6 +35,7 @@ import {
   type AnyGuest,
   type AnyHost,
   expectHidden,
+  guestRandom,
   hwatuHostOptions,
   playHwatu,
   setupHwatu,
@@ -82,7 +83,7 @@ async function nyrongppongReloadScenario(): Promise<void> {
     bot: nyrongppongIntermediateBot,
     botLevel: 1,
   };
-  const { net, clock, host, guests, incidents, audits, store, tab } =
+  const { net, clock, host, guests, incidents, audits, store, tab, random } =
     await setupHwatu({
       ...options,
       guests: 1,
@@ -155,6 +156,7 @@ async function nyrongppongReloadScenario(): Promise<void> {
     secret: old.secret,
     fairStore: (old as unknown as { fairStore: never }).fairStore,
     clock,
+    testRandom: guestRandom(random, 0),
   });
   fresh.on("incident", (n) => incidents.push(n as never));
   // 새로고침 전 참가자 객체의 알림(방장이 기록 없이 나갔다)은 보지 않는다.
@@ -205,7 +207,12 @@ async function nyrongppongReloadScenario(): Promise<void> {
   const restore = store.load();
   current = new HostRoom({
     transport: net.join("host1"),
-    ...hwatuHostOptions({ ...options, clock, store: reloadTab(store).store }),
+    ...hwatuHostOptions({
+      ...options,
+      clock,
+      store: reloadTab(store).store,
+      random,
+    }),
     ...(restore ? { restore } : {}),
   } as never) as AnyHost;
   current.onIncident((n) => incidents.push(n));

@@ -56,7 +56,7 @@ export async function hostReloadCase(
   const rules = presetRules(preset);
   const store = memoryHostStore();
   let tab = reloadTab(store);
-  const { net, host, guests, incidents, clock } = await setup(
+  const { net, host, guests, incidents, clock, random } = await setup(
     rules,
     guestCount,
     tab.store,
@@ -82,7 +82,7 @@ export async function hostReloadCase(
     expect(restore?.saved.match).not.toBeNull();
     current = new HostRoom({
       transport: net.join(`host${k + 1}`),
-      ...hostOptions(rules, clock, tab.store),
+      ...hostOptions(rules, clock, tab.store, random),
       ...(restore ? { restore } : {}),
     });
     current.onIncident((n) => incidents.push(n));

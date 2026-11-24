@@ -19,3 +19,5 @@ export * from "./renege";
 export * from "./ristretto";
 export * from "./shuffle-proof";
 export * from "./sra";
+// 시험 전용 난수원은 타입만. 만드는 함수는 하위 경로 `@game/fair-play/test-random`으로만 내보낸다
+export type { SeededTestRandom } from "./test-random";

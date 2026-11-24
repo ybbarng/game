@@ -14,6 +14,7 @@ import type { GameArchive } from "@/review/archive";
 import type { ArchiveSource } from "@/review/recorder";
 import { replayArchive } from "@/review/replay";
 import {
+  guestRandom,
   hostBidsTop,
   type memoryStore,
   playRounds,
@@ -26,7 +27,7 @@ import { GuestRoom } from "./guest-room";
 describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
   // 새로고침·복기·방장 재접속은 참가자 한 명으로 같은 길을 본다(나머지 자리는 방장 기기의 컴퓨터)
   it("판 중간에 참가자가 새로고침해도 남겨 둔 열쇠로 같은 자리에서 이어 가고, 검증도 통과한다", async () => {
-    const { net, host, guests, incidents, clock } = await setup(
+    const { net, host, guests, incidents, clock, random } = await setup(
       presetRules("standard5"),
       1,
     );
@@ -68,6 +69,7 @@ describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
       secret,
       fairStore: store,
       clock,
+      testRandom: guestRandom(random, 0),
     });
     fresh.on("incident", (n) => incidents.push(n));
     await until(
@@ -85,7 +87,7 @@ describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
   });
 
   it("끊긴 사람을 기다리다 투표가 열리고, 남은 사람의 과반이 끝내기를 고르면 모두의 게임이 끝난다", async () => {
-    const { net, host, guests, clock } = await setup(
+    const { net, host, guests, clock, random } = await setup(
       presetRules("standard5"),
       3,
       undefined,
@@ -118,6 +120,7 @@ describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
         guests[0] as unknown as { fairStore: ReturnType<typeof memoryStore> }
       ).fairStore,
       clock,
+      testRandom: guestRandom(random, 0),
     });
     await until(() => back.seat !== null && g1.lobby?.endVote === undefined);
     // 다시 끊기면 기다렸다 다시 연다. 한 사람(3명 중 1명)의 끝내기로는 끝나지 않는다.

@@ -1,4 +1,9 @@
-import type { GroupName, Incident, PartySnapshot } from "@game/fair-play";
+import type {
+  GroupName,
+  Incident,
+  PartySnapshot,
+  SeededTestRandom,
+} from "@game/fair-play";
 import { type Clock, realClock } from "@game/fair-play/clock";
 import type {
   Action,
@@ -100,6 +105,11 @@ export interface HostRoomOptions<
   clock?: Clock;
   /** 시드에 넣을 방장 비밀 값. 시험이 정해진 판으로 돌릴 때만 넣는다(참가자 `secret`과 같이) */
   secret?: string;
+  /**
+   * 시험 전용: 방장 비밀 값(게임마다)과 멘탈 포커 섞기·열쇠를 씨앗으로 정한다(`@game/fair-play/test-random`).
+   * 판의 패가 실행마다 같아 운에 따른 흐름(0점 판, 총통 등)이 없다. 제품은 넘기지 않는다(Web Crypto)
+   */
+  testRandom?: SeededTestRandom;
   /** 한 판 더: 참가자가 앞 게임 검증을 마치고 새 약속을 낼 때까지 기다리는 시간 */
   recommitTimeoutMs?: number;
 }
@@ -223,7 +233,9 @@ export class HostRoom<
     this.fairOption = options.fair ?? null;
     this.store = options.store ?? null;
     const restore = options.restore?.saved ?? null;
-    this.hostSecret = restore?.hostSecret ?? options.secret ?? newSecret();
+    this.testRandom = options.testRandom ?? null;
+    this.hostSecret =
+      restore?.hostSecret ?? options.secret ?? this.newGameSecret(1);
     this.identity = restore
       ? restoreHostIdentity(restore.identity)
       : createHostIdentity();
@@ -275,6 +287,14 @@ export class HostRoom<
     this.transport.onMessage((message, from) => {
       if (isGuestMessage<ActionT>(message)) this.onMessage(message, from);
     });
+  }
+
+  /** 시험 전용 난수원(`HostRoomOptions.testRandom`). 제품은 null */
+  private readonly testRandom: SeededTestRandom | null;
+
+  /** 이 게임 시드에 넣을 방장 비밀 값. 제품은 Web Crypto, 시험 난수원이 있으면 게임 번호로 정한다 */
+  private newGameSecret(gameNo: number): string {
+    return this.testRandom?.secret(`host/g${gameNo}`) ?? newSecret();
   }
 
   private persistScheduled = false;
@@ -658,7 +678,7 @@ export class HostRoom<
       guest.secret = null;
     }
     this.commitments = [];
-    this.hostSecret = newSecret();
+    this.hostSecret = this.newGameSecret(this.gameNo);
     this.hostCommit = await commit(this.hostSecret);
     // 앞 게임 진행과 멘탈 포커 메시지를 남긴 것도 지우고 방만 다시 남긴다.
     this.store?.clear();
@@ -994,6 +1014,9 @@ export class HostRoom<
       group,
       clock: this.clock,
       ...(restore ? { restore } : {}),
+      ...(this.testRandom
+        ? { testRandom: this.testRandom.child(`g${this.gameNo}`) }
+        : {}),
       hooks: {
         patch: (fn) => {
           // 한 판 더 뒤 앞 게임 진행이 늦게 부르면 새 대국을 건드리지 않는다.

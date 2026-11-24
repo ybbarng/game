@@ -9,6 +9,7 @@ import { nothingOpened } from "./nothing-opened";
 import type { PartySnapshot } from "./protocol";
 import { slotOfToken, swapTokens, tokenOf } from "./slot-token";
 import { reportShuffleTamper } from "./tamper";
+import type { SeededTestRandom } from "./test-random";
 
 /*
  * 화투 멘탈 포커(docs/27 3절). 마이티·하트와 같은 섞기·열쇠(device.ts)에 48장 덱을 얹는다.
@@ -699,6 +700,8 @@ export class HwatuHostTable<
     group: GroupName;
     hooks: HwatuHostHooks<State, Action>;
     restore?: Record<number, PartySnapshot>;
+    /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+    testRandom?: SeededTestRandom;
     clock?: Clock;
   }) {
     this.spec = options.spec;
@@ -713,6 +716,7 @@ export class HwatuHostTable<
       send: (m) => this.hooks.broadcast(m),
       clock: this.clock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.coordinator = new HwatuCoordinator({
       spec: this.spec,
@@ -1114,6 +1118,8 @@ export class HwatuGuestSeat<
       onSnapshot: (view: View, events: Event[]) => void;
       onVerify: (round: number, log: HwatuLogged<Action>[]) => void;
       restore?: Record<number, PartySnapshot>;
+      /** 시험 전용 난수원(`FairDeviceOptions.testRandom`). 제품은 넘기지 않는다 */
+      testRandom?: SeededTestRandom;
       clock?: Clock;
     },
   ) {
@@ -1126,6 +1132,7 @@ export class HwatuGuestSeat<
       send: (m) => options.broadcast(m),
       clock: options.clock ?? realClock,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.testRandom ? { testRandom: options.testRandom } : {}),
     });
     this.coordinator = new HwatuCoordinator({
       spec: options.spec,

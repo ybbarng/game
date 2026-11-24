@@ -1,4 +1,9 @@
-import { ManualClock, prepareGroup } from "@game/fair-play";
+import {
+  ManualClock,
+  prepareGroup,
+  type SeededTestRandom,
+} from "@game/fair-play";
+import { seededTestRandom } from "@game/fair-play/test-random";
 import { heartsIntermediateBot, heartsNormalBot } from "@game/hearts-ai";
 import { WINDOWS_RULES } from "@game/hearts-engine";
 
@@ -46,13 +51,15 @@ export async function until(
 
 /**
  * 끝 점수 기본 10점(규칙 문자열이 받는 가장 작은 값): 한 판에 26점이 나뉘어 대개 한 판, 드물게 두 판에 끝난다
- * (새로고침·끊김·부정·복기는 한 판이면 된다). 판이 바뀌어도 이어 가는지는 fair-room-rounds 시험이 27점으로 두
+ * (새로고침·끊김·부정·복기는 한 판이면 된다). 판의 패는 시험 난수원 씨앗으로 정해져 몇 판에 끝나는지도 실행마다 같다. 판이 바뀌어도 이어 가는지는 fair-room-rounds 시험이 27점으로 두
  * 판을 둔 뒤 끝낸다(한 판에 나눠지는 점수가 26점이라 첫 판에는 게임이 끝나지 않는다)
  */
 export function hostOptions(
   clock: ManualClock,
   store?: HostStore,
   endScore = 10,
+  /** 시험 난수원(`setup`이 돌려준 `random`). 없으면 기본 씨앗 */
+  random: SeededTestRandom = seededTestRandom(DEFAULT_FAIR_SEED),
 ) {
   return {
     kit: heartsRoomKit,
@@ -63,22 +70,32 @@ export function hostOptions(
     revealTimeoutMs: 500,
     fair: { group: "r255" as const },
     clock,
+    testRandom: random.child("host"),
     ...(store ? { store } : {}),
   };
 }
+
+/**
+ * 시험의 멘탈 포커 난수원 씨앗. 섞기·열쇠·비밀 값을 씨앗으로 정해 판의 패가 실행마다 같다(docs/13 8절 「시험」).
+ * 방장은 `host`, 참가자는 `guest<i>` 아래 경로를 쓴다
+ */
+export const DEFAULT_FAIR_SEED = "hearts";
 
 export async function setup(
   guestCount: number,
   store?: HostStore,
   voteDelayMs?: number,
   endScore?: number,
+  /** 판을 정하는 씨앗(없으면 `DEFAULT_FAIR_SEED`) */
+  seed = DEFAULT_FAIR_SEED,
 ) {
   const net = new MemoryNetwork();
   // 제한 시간(투표 열기 등)은 시험이 이 시계를 옮길 때만 지난다.
   const clock = new ManualClock();
+  const random = seededTestRandom(seed);
   const host = new HostRoom({
     transport: net.join("host"),
-    ...hostOptions(clock, store, endScore),
+    ...hostOptions(clock, store, endScore, random),
     ...(voteDelayMs !== undefined ? { voteDelayMs } : {}),
   });
   const guests: GuestRoom<
@@ -96,6 +113,7 @@ export async function setup(
       name: `손님${i}`,
       token: null,
       clock,
+      testRandom: random.child(`guest${i}`),
     });
     await until(() => guest.seat !== null);
     guests.push(guest as never);
@@ -105,7 +123,7 @@ export async function setup(
   host.onIncident((n) => incidents.push(n));
   for (const g of guests) g.on("incident", (n) => incidents.push(n));
   closeWhenDone(host, guests);
-  return { net, host, guests, incidents, clock };
+  return { net, host, guests, incidents, clock, random };
 }
 
 /** 사람 자리도 중수 컴퓨터처럼 둔다. 같은 화면이면 다시 내지 않는다 */
