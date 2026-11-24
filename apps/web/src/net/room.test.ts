@@ -11,9 +11,12 @@ import { type AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import { memoryHostStore } from "./host-store";
 import type { AuditReport, HostMessage } from "./protocol";
+import { roomRandom } from "./room-random-fixture";
 import { MemoryNetwork, sdpFingerprint } from "./transport";
 
 const rules = presetRules("standard5");
+/** 방장·참가자 비밀 값을 정해 판이 실행마다 같다(철수 0, 영희 1) */
+const random = roomRandom("room");
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** 시험마다 새 시계. 제한 시간은 시험이 옮길 때만 지난다(기기가 느려도 결과가 같다) */
@@ -45,6 +48,7 @@ async function setup() {
     // 화면처럼 빈자리 컴퓨터의 단계를 알린다(알리지 않으면 참가자가 컴퓨터 수를 「확인 못 함」으로 본다)
     bot: intermediateBot,
     botLevel: 1,
+    testRandom: random.host,
   });
   const a = new GuestRoom({
     kit: mightyRoomKit,
@@ -52,6 +56,7 @@ async function setup() {
     clock,
     name: "철수",
     token: null,
+    testRandom: random.guest(0),
   });
   // 두 사람이 동시에 들어오면 앉는 순서가 그때그때 달라진다. 앞사람이 앉은 뒤에 들어온다.
   await until(() => a.seat !== null);
@@ -61,6 +66,7 @@ async function setup() {
     clock,
     name: "영희",
     token: null,
+    testRandom: random.guest(1),
   });
   await until(() => a.seat !== null && b.seat !== null);
   return { net, host, a, b };
@@ -140,6 +146,7 @@ describe("온라인 방", () => {
       botLevel: 1,
       store,
       clock,
+      testRandom: random.host,
     };
     const host = new HostRoom({
       kit: mightyRoomKit,
@@ -152,6 +159,7 @@ describe("온라인 방", () => {
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null);
     const audits: AuditResult[] = [];
@@ -202,6 +210,7 @@ describe("온라인 방", () => {
       botLevel: 1,
       store,
       clock,
+      testRandom: random.host,
     };
     const host = new HostRoom({
       kit: mightyRoomKit,
@@ -214,6 +223,7 @@ describe("온라인 방", () => {
       clock,
       name: "철수",
       token: null,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null);
     const audits: AuditResult[] = [];
@@ -336,6 +346,7 @@ describe("온라인 방", () => {
       rules,
       revealTimeoutMs: 500,
       bot: heuristicBot,
+      testRandom: random.host,
     });
     const a = new GuestRoom({
       kit: mightyRoomKit,
@@ -344,6 +355,7 @@ describe("온라인 방", () => {
       name: "철수",
       token: null,
       reconnectTimeoutMs: 20,
+      testRandom: random.guest(0),
     });
     await until(() => a.seat !== null);
     let left = false;
@@ -399,6 +411,7 @@ describe("온라인 방", () => {
       name: "철수",
       token,
       secret: a.secret,
+      testRandom: random.guest(0),
     });
     await until(() => back.match !== null);
     expect(back.seat).toBe(seat);

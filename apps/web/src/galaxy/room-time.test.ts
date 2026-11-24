@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
+import { roomRandom } from "@/net/room-random-fixture";
 import { MemoryNetwork } from "@/net/transport";
 
 import { galaxyOnlineKit } from "./online";
@@ -32,12 +33,15 @@ async function timeUpAfter(hostMs: number, guestMs: number) {
   const hostClock = new ManualClock();
   const guestClock = new ManualClock();
   const net = new MemoryNetwork();
+  // 방장·참가자 비밀 값을 정해 공동 시드가 실행마다 같다
+  const random = roomRandom("galaxy-time");
   const host = new HostRoom({
     kit: galaxyOnlineKit,
     transport: net.join("host"),
     clock: hostClock,
     hostName: "방장",
     rules: { ...SHORT_RULES, players: 2 },
+    testRandom: random.host,
   });
   const guest = new GuestRoom({
     kit: galaxyOnlineKit,
@@ -45,6 +49,7 @@ async function timeUpAfter(hostMs: number, guestMs: number) {
     clock: guestClock,
     name: "철수",
     token: null,
+    testRandom: random.guest(0),
   });
   await until(() => guest.seat !== null && guest.lobby !== null);
   const audits: AuditResult[] = [];

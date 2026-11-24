@@ -11,6 +11,7 @@ import { type MightyKit, mightyKit } from "@/game/mighty-kit";
 import { type AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import type { AuditReport, HostMessage } from "./protocol";
+import { roomRandom } from "./room-random-fixture";
 import { MemoryNetwork } from "./transport";
 
 /**
@@ -41,6 +42,9 @@ const kitWithPlan = (plan?: number): MightyKit => {
   return plan === undefined ? rest : { ...rest, botPlan: plan };
 };
 
+/** 판을 정하는 씨앗. 첫 판에 카드를 내고, 컴퓨터를 조종할 곳(고를 카드가 둘 이상인 수)이 생긴다 */
+const random = roomRandom("bot-plan");
+
 /** 방장 하나·참가자 하나·컴퓨터 셋(중수) */
 async function botRoom(options: {
   hostKit: MightyKit;
@@ -63,8 +67,7 @@ async function botRoom(options: {
     revealTimeoutMs: 300,
     bot: options.hostBot ?? intermediateBot,
     botLevel: 1,
-    // 비밀 값을 정해 두어 늘 같은 판이 나온다(첫 판에 카드를 내고, 컴퓨터를 조종할 곳이 생긴다)
-    secret: "bot-plan-host",
+    testRandom: random.host,
   });
   if (options.dropPlan) {
     const send = host.transport.send.bind(host.transport);
@@ -84,7 +87,7 @@ async function botRoom(options: {
     name: "철수",
     token: null,
     hostFingerprint,
-    secret: "bot-plan-guest",
+    testRandom: random.guest(0),
   });
   await until(() => a.seat !== null && a.lobby?.botLevel === 1);
   const audits: AuditResult[] = [];

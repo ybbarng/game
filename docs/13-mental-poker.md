@@ -198,6 +198,7 @@
 ### 시험
 
 - **멘탈 포커 방 시험은 시험 난수원을 넘긴다(2026-11-25).** 섞기 순서·섞기 열쇠·자리 열쇠가 진짜 난수면 판의 패가 실행마다 달라져, 운에 따라 흐름(첫 판 0점, 총통, 모두 포기)과 시간이 달라졌다(화투 그만두기 시험이 14번에 한 번쯤 떨어져 판 수를 늘려 덮었다). 이제 시험 틀(`net/fair-room-fixture.ts`·`hearts/fair-room-fixture.ts`·`hwatu/fair-room-fixture.ts`)이 `@game/fair-play/test-random`의 `seededTestRandom(씨앗)`을 방에 `testRandom`으로 넘긴다. 방은 방장·참가자 비밀 값(게임마다)과 판(`FairHostContext`·`FairGuestContext`의 `testRandom`, 게임 번호 아래)에 나눠 주고, 기기(`FairDeviceOptions.testRandom`)는 판 번호마다 `Party`에 준다. 값은 이름(참가자·게임·기기·판·열쇠 이름)만으로 정해져 기기들이 어떤 차례로 계산해도 같은 씨앗이면 같은 패다. 특정 상황이 필요한 시험은 그 상황이 나는 씨앗을 이름 붙인 상수로 둔다(예: 고스톱 총통 `CHONGTONG_SEED`, 민화투 첫 판 점수 `SCORED_FIRST_ROUND`). 새로고침한 방장·참가자를 새로 만들 때도 틀이 돌려준 `random`을 넘긴다.
+  - 일반방(멘탈 포커 아님) 시험도 같다: 방장·참가자 비밀 값이 진짜 난수면 공동 시드가 실행마다 달라, 마이티 일반방 공격 시험이 「모두 포기해 다시 나누는 판이 있을 수 있다」며 판 수를 늘려 가며 돌았다. 게임을 시작하는 일반방 시험은 `net/room-random-fixture.ts`의 `roomRandom(씨앗)`으로 방장(`host`)·i번째 참가자(`guest(i)`) 난수원을 넘긴다(새로고침한 참가자도 같은 i). 대기실·서명만 보는 시험과 시드를 쓰지 않는 시험 게임(`claim-fixture.ts`의 `buttonKit`)은 넘기지 않는다.
   - 제품 난수원은 그대로다: `testRandom`을 넘기지 않으면 `Party`는 `randomBelow`(Web Crypto), 방은 `newSecret`을 쓴다. 씨앗 난수원(splitmix64)은 암호용이 아니라, 만드는 함수는 하위 경로로만 내보내고 묶음 `@game/fair-play`에는 타입만 둔다. 점검: `scripts/fair-test-random.test.mjs`(늘 도는 묶음)가 제품 소스에서 그 경로를 부르지 않는지 본다, `packages/fair-play/src/test-random.test.ts`(이름만으로 정해짐, 넘기지 않으면 매번 다르게 섞음).
 - `packages/fair-play`: 메시지로 하는 섞기·나눠 주기(`device.test.ts`), 6마 다시 섞기(`protocol.test.ts`)
 - `apps/web/src/net/fair-room.test.ts`(메모리 네트워크, 1024비트):

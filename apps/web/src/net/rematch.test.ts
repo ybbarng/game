@@ -11,7 +11,11 @@ import { closeWhenDone } from "./close-when-done";
 import { type AuditResult, GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import { type Commitment, isHostMessage } from "./protocol";
+import { roomRandom } from "./room-random-fixture";
 import { MemoryNetwork } from "./transport";
+
+/** 방장·손님 비밀 값(게임마다)을 정해 한 판 더까지 실행마다 같다 */
+const random = roomRandom("rematch");
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -36,6 +40,7 @@ async function setup() {
     hostName: "방장",
     rules: STANDARD_RULES,
     revealTimeoutMs: 500,
+    testRandom: random.host,
   });
   const guest = new GuestRoom({
     kit: omokKit,
@@ -43,6 +48,7 @@ async function setup() {
     clock,
     name: "손님",
     token: null,
+    testRandom: random.guest(0),
   });
   closeWhenDone(host, [guest]);
   await until(() => guest.seat !== null);
