@@ -1,5 +1,4 @@
 import { type Clock, realClock } from "@game/fair-play";
-import { heuristicBot } from "@game/mighty-ai";
 import {
   type Action,
   createRng,
@@ -15,7 +14,14 @@ import {
 import type { BotRunner } from "./bot-runner";
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
 import type { GameKit, KitBot, KitLoggedAction, StepOutcome } from "./kit";
-import { mightyKit } from "./mighty-kit";
+
+/** 컴퓨터를 주지 않은 대국의 자리 채움. 컴퓨터 차례가 오면 까닭을 밝히고 멈춘다 */
+const NO_BOT: KitBot<unknown, unknown> = {
+  name: "없음",
+  decide() {
+    throw new Error("컴퓨터를 주지 않은 대국에 컴퓨터 차례가 왔다(bot 옵션)");
+  },
+};
 
 export interface LocalMatchOptions<
   Rules = RuleSet,
@@ -25,14 +31,18 @@ export interface LocalMatchOptions<
   Event = GameEvent,
   Extra = PresetDeal,
 > {
-  /** 어떤 게임인가. 없으면 마이티 */
-  kit?: GameKit<Rules, State, View, ActionT, Event, Extra>;
+  /**
+   * 어떤 게임인가. 마이티는 `MightyLocalMatch`(mighty-local-match.ts)가 채운다. 예전에는 없으면 마이티였지만,
+   * 그러면 모든 게임이 마이티 키트·컴퓨터를 실어 기본값을 걷었다(2026-11-25 첫 화면 가볍게)
+   */
+  kit: GameKit<Rules, State, View, ActionT, Event, Extra>;
   rules: Rules;
   seed: number;
   /** 이 화면의 자리 */
   humanSeat?: number;
   /** 사람이 앉은 자리 전부(온라인 대전에서 방장이 엔진을 돌릴 때). 나머지는 봇이 앉는다 */
   humanSeats?: number[];
+  /** 컴퓨터 자리와 끊긴 사람 자리를 맡을 컴퓨터. 없으면 컴퓨터 자리가 없는 대국이다(컴퓨터 차례가 오면 멈춘다) */
   bot?: KitBot<View, ActionT>;
   /** 그 게임만의 시작 조건(마이티의 정해진 패) */
   presetDeal?: Extra;
@@ -197,24 +207,14 @@ export class LocalMatch<
     options: LocalMatchOptions<Rules, State, View, ActionT, Event, Extra>,
     savedLog?: readonly KitLoggedAction<ActionT>[],
   ) {
-    this.kit =
-      options.kit ??
-      (mightyKit as unknown as GameKit<
-        Rules,
-        State,
-        View,
-        ActionT,
-        Event,
-        Extra
-      >);
+    this.kit = options.kit;
     this.seat = options.humanSeat ?? 0;
     this.humans = new Set(options.humanSeats ?? [this.seat]);
     this.humans.add(this.seat);
     this.rules = options.rules;
     this.seed = options.seed;
     this.presetDeal = options.presetDeal;
-    this.bot =
-      options.bot ?? (heuristicBot as unknown as KitBot<View, ActionT>);
+    this.bot = options.bot ?? (NO_BOT as KitBot<View, ActionT>);
     this.pace = options.pace ?? null;
     this.rng = createRng(options.seed ^ 0x2545f491);
     this.reactRng = createRng(options.seed ^ 0x5bd1e995);
@@ -315,22 +315,6 @@ export class LocalMatch<
 
   /** 대국을 만들 때 나온 사건(멘탈 포커 첫 섞기를 시작한다) */
   created: Event[] = [];
-
-  static restore(
-    saved: SavedMatch,
-    extra: Pick<LocalMatchOptions, "bot" | "pace" | "runBot"> = {},
-  ): LocalMatch {
-    return new LocalMatch(
-      {
-        rules: saved.rules,
-        seed: saved.seed,
-        humanSeat: saved.humanSeat,
-        ...extra,
-        ...(saved.presetDeal ? { presetDeal: saved.presetDeal } : {}),
-      },
-      saved.log as LoggedAction[],
-    );
-  }
 
   current(): View {
     return this.viewFor(this.seat);

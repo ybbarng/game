@@ -6,7 +6,7 @@ import {
 } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
-import { LocalMatch } from "@/game/local-match";
+import { MightyLocalMatch } from "@/game/mighty-local-match";
 
 import { GLOSSARY } from "./glossary";
 import { LESSONS, type Step, TUTORIAL_RULES } from "./lessons";
@@ -15,7 +15,7 @@ type Mission = Extract<Step, { kind: "mission" }>;
 
 function runMission(mission: Mission, actions: Action[]) {
   if (!mission.scenario) throw new Error("장면이 없는 미션");
-  const match = new LocalMatch({
+  const match = new MightyLocalMatch({
     rules: TUTORIAL_RULES,
     seed: 1,
     humanSeat: 0,

@@ -9,7 +9,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import type { BotRunner } from "./bot-runner";
-import { LocalMatch } from "./local-match";
+import { MightyLocalMatch } from "./mighty-local-match";
 
 const rules = presetRules("standard5");
 
@@ -49,9 +49,9 @@ async function settle(): Promise<void> {
 
 describe("LocalMatch 워커 계산(runBot)", () => {
   it("같은 시드면 워커 경로와 같은 스레드 경로가 같은 기록·같은 난수를 남긴다", async () => {
-    const direct = new LocalMatch({ rules, seed: 21, humanSeat: 2 });
+    const direct = new MightyLocalMatch({ rules, seed: 21, humanSeat: 2 });
     const { jobs, runBot } = manualRunner();
-    const offThread = new LocalMatch({
+    const offThread = new MightyLocalMatch({
       rules,
       seed: 21,
       humanSeat: 2,
@@ -75,13 +75,13 @@ describe("LocalMatch 워커 계산(runBot)", () => {
   });
 
   it("워커 계산이 실패해도(옛 봇 묶음 404 등) 판이 멈추지 않고 이 스레드로 이어 같은 기록을 남긴다", async () => {
-    const direct = new LocalMatch({ rules, seed: 21, humanSeat: 2 });
+    const direct = new MightyLocalMatch({ rules, seed: 21, humanSeat: 2 });
     const failing: BotRunner<PlayerView, Action> = () =>
       Promise.reject(new Error("봇 묶음을 불러오지 못함"));
     const errors = console.error;
     console.error = () => {};
     try {
-      const match = new LocalMatch({
+      const match = new MightyLocalMatch({
         rules,
         seed: 21,
         humanSeat: 2,
@@ -98,7 +98,12 @@ describe("LocalMatch 워커 계산(runBot)", () => {
 
   it("세는 동안 대국을 버리면(무르기·새 판·떠나기) 늦게 온 답을 두지 않는다", async () => {
     const { jobs, runBot } = manualRunner();
-    const match = new LocalMatch({ rules, seed: 21, humanSeat: 2, runBot });
+    const match = new MightyLocalMatch({
+      rules,
+      seed: 21,
+      humanSeat: 2,
+      runBot,
+    });
     const job = jobs.shift() as Job;
     match.dispose();
     expect(job.signal?.aborted).toBe(true);
@@ -113,7 +118,12 @@ describe("LocalMatch 워커 계산(runBot)", () => {
 
   it("세는 동안 판이 끝나면(기권) 답을 버리고 더 세지 않는다", async () => {
     const { jobs, runBot } = manualRunner();
-    const match = new LocalMatch({ rules, seed: 21, humanSeat: 2, runBot });
+    const match = new MightyLocalMatch({
+      rules,
+      seed: 21,
+      humanSeat: 2,
+      runBot,
+    });
     const job = jobs.shift() as Job;
     expect(match.end()).toEqual({ ok: true });
     expect(job.signal?.aborted).toBe(true);
@@ -128,7 +138,7 @@ describe("LocalMatch 워커 계산(runBot)", () => {
   it("대신 두던 자리에 사람이 돌아오면 그 답을 버린다", async () => {
     const { jobs, runBot } = manualRunner();
     // 다섯 자리 모두 사람(온라인 방)이라 처음에는 컴퓨터가 세지 않는다.
-    const match = new LocalMatch({
+    const match = new MightyLocalMatch({
       rules,
       seed: 21,
       humanSeat: 0,

@@ -20,6 +20,7 @@ beforeEach(() => localStorage.clear());
 describe("내 기록", () => {
   it("마이티: 혼자 두는 대국의 판마다 내 역할·승패·번 돈을 남기고, 지표가 기록과 맞는다", () => {
     const match = new LocalMatch({
+      kit: mightyKit,
       rules: presetRules("standard5"),
       seed: 31,
       bot: heuristicBot,
@@ -56,6 +57,7 @@ describe("내 기록", () => {
   it("마이티: 조커콜 턴마다 조커가 누구에게서 끌려 나왔고 어느 편이 먹었는지 남긴다", () => {
     // 5마, 나는 0번(야당), 주공 1번·프렌드 2번. 내가 조커콜로 선을 잡고 2번이 조커를 냈다.
     const match = new LocalMatch({
+      kit: mightyKit,
       rules: presetRules("standard5"),
       seed: 31,
       bot: heuristicBot,

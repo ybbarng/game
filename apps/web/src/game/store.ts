@@ -22,6 +22,7 @@ import { cuesFor, type DealTiming } from "./cues";
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
 import { LocalMatch, type SavedMatch } from "./local-match";
 import { mightyKit } from "./mighty-kit";
+import { MightyLocalMatch } from "./mighty-local-match";
 import { saveGame } from "./persistence";
 import { useSettings } from "./settings";
 import { play as playCue } from "./sound";
@@ -391,7 +392,7 @@ export const useGame = create<GameStore>((set, get) => {
     newGame(options) {
       track("game-start", { game: "mighty", mode: "solo" });
       const seed = options.seed ?? Math.floor(Math.random() * 2 ** 31);
-      const host = new LocalMatch({
+      const host = new MightyLocalMatch({
         rules: options.rules,
         seed,
         bot: botFor(useSettings.getState().botLevel),
@@ -413,7 +414,7 @@ export const useGame = create<GameStore>((set, get) => {
 
     resume(saved) {
       attach(
-        LocalMatch.restore(saved, {
+        MightyLocalMatch.restore(saved, {
           bot: botFor(useSettings.getState().botLevel),
           ...workerBotOption({
             game: "mighty",
