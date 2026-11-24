@@ -5,7 +5,8 @@
   "type": "module",
   "description": "원카드 컴퓨터 플레이어 — 입문·중수·고수, 외침·잡기 시간",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./levels": "./src/levels.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

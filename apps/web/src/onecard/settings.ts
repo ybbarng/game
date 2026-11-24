@@ -1,4 +1,5 @@
-import { ONECARD_LEVELS as AI_LEVELS } from "@game/onecard-ai";
+// 단계 이름표만 쓰므로 컴퓨터 전체(index) 대신 단계 파일만 부른다(설정은 첫 화면에서도 읽혀 가볍게 둔다)
+import { ONECARD_LEVELS as AI_LEVELS } from "@game/onecard-ai/levels";
 import {
   type OnecardRules,
   STANDARD_ONECARD_RULES,
