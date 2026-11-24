@@ -57,6 +57,29 @@ struct MiniBookTests {
     #expect(book.records(4).isEmpty)
   }
 
+  @Test func repeatedReadsParseTheStoredTextOnce() {
+    let store = MemoryStore()
+    MiniBook(store: store, math: FakeMath()).add(record(1000))
+    let book = MiniBook(store: store, math: FakeMath())
+    for s in MiniBook.sizes { _ = book.records(s) }
+    _ = book.bestFive(3)
+    _ = book.n
+    #expect(book.parses == 1)
+  }
+
+  @Test func readsAgainWhenSomethingElseChangesTheStore() {
+    let store = MemoryStore()
+    let book = MiniBook(store: store, math: FakeMath())
+    book.add(record(1000))
+    #expect(book.records(3).count == 1)
+    // 다른 책(기록 창·티어표가 따로 만든 책)이 더한 판
+    MiniBook(store: store, math: FakeMath()).add(record(2000))
+    #expect(book.records(3).count == 2)
+    // 저장소를 바로 고친 곳(사이트 설정 창 닫기 합치기 등)
+    store.remove(MiniBook.key)
+    #expect(book.records(3).isEmpty)
+  }
+
   @Test func capsAtHundredAndTrimsOldReplays() {
     let book = MiniBook(store: MemoryStore(), math: FakeMath())
     for i in 0..<105 { book.add(record(Double(10_000 + i), at: i)) }
