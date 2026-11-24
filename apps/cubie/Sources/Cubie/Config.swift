@@ -32,8 +32,8 @@ enum Config {
   /// 화면 가장자리에서 띄우는 거리
   static let margin: CGFloat = 16
 
-  /// 여는 주소. 차례: 환경 변수 `CUBIE_URL` → 설정 `defaults write kr.byb.cubie url <주소>` → 사이트.
-  /// 로컬 빌드를 볼 때: `CUBIE_URL=http://localhost:4391/cube/mini open Cubie.app` 대신
+  /// 사이트 주소의 기준(「모든 설정…」 사이트 창·대결·배우기, 웹 저장소 옮기기의 호스트). 차례: 환경 변수 `CUBIE_URL` →
+  /// 설정 `defaults write kr.byb.cubie url <주소>` → 사이트. 로컬 빌드를 볼 때는
   /// `CUBIE_URL=… ./Cubie.app/Contents/MacOS/Cubie`로 띄운다(`open`은 환경 변수를 넘기지 않는다).
   static var miniURL: URL {
     if let env = ProcessInfo.processInfo.environment["CUBIE_URL"], let u = URL(string: env) {
@@ -45,15 +45,15 @@ enum Config {
     return URL(string: "https://game.byb.kr/cube/mini")!
   }
 
-  /// `CUBIE_DEBUG=1`이면 포커스·다리 메시지와 웹 화면 상태를 표준 출력에 찍는다(동작 확인용)
+  /// `CUBIE_DEBUG=1`이면 포커스·키 출처와 큐브 화면 상태를 표준 출력에 찍는다(동작 확인용)
   static let debug = ProcessInfo.processInfo.environment["CUBIE_DEBUG"] != nil
 
   /// `CUBIE_REDUCE_MOTION=1`: 시스템 「동작 줄이기」처럼(티어표 진열·메뉴 프로필 칸 흔들기를 멈춘다, 확인·스크린샷용)
   static let reduceMotion = ProcessInfo.processInfo.environment["CUBIE_REDUCE_MOTION"] == "1"
 
-  /// `CUBIE_MEASURE=1`: 메모리 재기(`scripts/measure-memory.sh`, `Measure`). 사용자 화면·포커스를 건드리지 않는다:
+  /// `CUBIE_MEASURE=1`: 메모리 재기(`scripts/measure-memory.sh`, `NativeMeasure`). 사용자 화면·포커스를 건드리지 않는다:
   /// 앱은 앞으로 나올 수 없고(.prohibited) 창은 화면 밖에 투명하게 두며, 메뉴 막대 아이콘·전역 단축키·마우스 감시·
-  /// 업데이트를 켜지 않는다. 웹 저장소는 비영속이라 사용자 기록·설정에 손대지 않는다. 명령은 표준 입력으로만 받는다
+  /// 업데이트를 켜지 않는다. 저장소는 메모리에만 있어 사용자 기록·설정에 손대지 않는다. 명령은 표준 입력으로만 받는다
   static let measure = ProcessInfo.processInfo.environment["CUBIE_MEASURE"] != nil
   /// 재는 창 한 변(pt). 기본은 `defaultSize`
   static let measureSide: CGFloat = {
@@ -76,15 +76,7 @@ enum Config {
     return NSRect(x: -30000, y: -30000, width: side, height: side)
   }
 
-  /// `CUBIE_WEB=1`: 큐브 창을 예전 웹 화면(사이트 `/cube/mini`를 WKWebView로)으로 띄우는 되돌림 스위치(docs/52 5-6).
-  /// 기본은 네이티브 화면(Rust 코어 + Core Animation 3D, `NativeCubeWindow`)이라 WebKit 프로세스가 뜨지 않는다.
-  /// 예전 확인용 `CUBIE_NATIVE=1`은 이제 기본과 같다
-  static let web = ProcessInfo.processInfo.environment["CUBIE_WEB"] == "1"
-  /// `CUBIE_WEB_WINDOWS=1`: 큐브 창은 네이티브인 채 기록 창·티어표·설정 창만 예전 사이트 창으로 연다(docs/52 5-8, 견주기·되돌림).
-  /// `CUBIE_WEB=1`이면 이것과 상관없이 셋 다 사이트 창이다
-  static let webWindows = ProcessInfo.processInfo.environment["CUBIE_WEB_WINDOWS"] == "1"
-
-  /// 같은 사이트의 다른 화면(대결·설정)
+  /// 같은 사이트의 다른 화면(대결·배우기·「모든 설정…」 사이트 창)
   static func site(_ path: String) -> URL {
     URL(string: path, relativeTo: miniURL)!.absoluteURL
   }

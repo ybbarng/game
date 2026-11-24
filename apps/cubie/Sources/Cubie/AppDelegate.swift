@@ -19,12 +19,12 @@ final class RunningApp: FocusApp {
 /// - 메뉴 막대 아이콘과 창의 오른쪽 누르기 메뉴에서 섞기·큐브 크기·기록·대결·창·키 배치를 고른다(짜임은 `MenuLayout`).
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
-  /// 떠 있는 큐브 창: 네이티브(기본) 또는 웹(`CUBIE_WEB=1`, docs/52 5-6)
-  private let cube: CubeSurface = Config.web ? CubeWindow() : NativeCubeWindow()
+  /// 떠 있는 큐브 창(docs/52 5-6)
+  private let cube = NativeCubeWindow()
   /// 「공식 보기」 말풍선(큐브 창 옆)
   private let bubble = HintBubble()
   /// 큐브 옆 단축키 표(F1·메뉴 「단축키 보기」, docs/47 15-25)
-  private let keys = KeysPanel()
+  private lazy var keys = KeysPanel { [weak cube] n in cube?.keyBindings(n: n) ?? .empty }
   private var statusItem: NSStatusItem!
   private var hotKey: HotKey!
   private var hotKeyOK = false
@@ -37,13 +37,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   private var updateNoticeShown = false
   private var updateNoticeUp: Bool { updateNoticeShown && bubble.isShown }
 
-  /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
-  enum WebWindow { case records, tiers, settings }
-  private var webWindows: [WebWindow: NSWindow] = [:] { didSet { updatePresence() } }
+  /// 따로 여는 보통 창(투명 아님, 앱이 그린다, docs/52 5-8): 기록, 티어표, 키 배치·색
+  enum SheetKind { case records, tiers, settings }
+  private var sheets: [SheetKind: NativeSheetWindow] = [:] { didSet { updatePresence() } }
+  /// 설정 창의 「모든 설정…」이 여는 사이트 창(앱이 여는 사이트 창은 이것 하나)
+  private var siteSettings: NSWindow? { didSet { updatePresence() } }
   /// 사이트 창을 열 때 넣은 앱 저장소 글(닫을 때 사이트에서 바뀐 키만 가려낸다, `WebStoreMerge`)
-  private var webOpened: [WebWindow: [String: String]] = [:]
-  /// 네이티브 화면일 때의 같은 창들(docs/52 5-8). WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 위 사이트 창을 쓴다
-  private var sheets: [WebWindow: NativeSheetWindow] = [:] { didSet { updatePresence() } }
+  private var siteOpened: [String: String]?
   /// 지금 활성화 정책(docs/52 5-18). 처음은 `main.swift`가 둔 `.accessory`, 재기 모드는 `.prohibited`라 nil(바꾸지 않음)
   private var presence: AppPresence? = Config.measure ? nil : .menuBarOnly
   /// 보통 창이 열린 동안만 거는 앱 메뉴(Cubie 끝내기 ⌘Q, 창 닫기 ⌘W·최소화 ⌘M)
@@ -51,22 +51,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 네이티브 설정 창이 값을 바꿨다: 다음 차례에 한 번만 큐브 창(설정·키 배치만)과 단축키 표가 다시 읽는다
   private lazy var settingsReload = Coalescer(schedule: { f in DispatchQueue.main.async { f() } }) { [weak self] in
     guard let self else { return }
-    if let native = self.cube as? NativeCubeWindow { native.applyStoredSettings() } else { self.cube.reload() }
+    self.cube.applyStoredSettings()
     self.keys.reload()
   }
 
   /// 메모리 재기 모드(`Config.measure`)일 때만
-  private var measure: Measure?
   private var nativeMeasure: NativeMeasure?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     // 메모리 재기: 메뉴 막대 아이콘·전역 단축키·키 감시 없이 큐브 창만(화면 밖) 띄운다
     if Config.measure {
-      if let web = cube as? CubeWindow {
-        measure = Measure(cube: web)
-      } else if let native = cube as? NativeCubeWindow {
-        keys.storeScript = { [weak self] in self?.storeScript() }
-        keys.nativeSource = { [weak native] n in native?.keyBindings(n: n) ?? .empty }
+      do {
+        let native = cube
         let m = NativeMeasure(cube: native)
         // 단축키 표·기록 창도 화면 밖에서 띄워 잰다
         m.openKeys = { [weak self] in
@@ -79,9 +75,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
           self?.keys.reload()
           native.send(.keysPanel(false))
         }
-        // 기록 창·티어표·설정 창도 화면 밖에서 띄워 잰다(네이티브, `CUBIE_WEB_WINDOWS=1`이면 사이트 창)
+        // 기록 창·티어표·설정 창도 화면 밖에서 띄워 잰다
         m.window = { [weak self] name, open in
-          let kind: WebWindow? =
+          let kind: SheetKind? =
             switch name {
             case "records": .records
             case "tiers": .tiers
@@ -191,12 +187,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         return nil
       }
-      // 기록·티어표 창은 Esc로 닫는다(사이트 설정 창은 웹 화면의 Esc를 그대로 둔다). 네이티브 창은 셋 다 닫는다(설정 창의
-      // 키 지정 중에는 편집기 감시가 먼저 먹는다). 글 칸에 쓰는 중이면 Esc는 글 칸 몫이다(`EscClose`)
+      // 기록·티어표·설정 창은 Esc로 닫는다(설정 창의 키 지정 중에는 편집기 감시가 먼저 먹는다). 「모든 설정…」 사이트 창은
+      // 웹 화면의 Esc를 그대로 둔다. 글 칸에 쓰는 중이면 Esc는 글 칸 몫이다(`EscClose`)
       guard let w = event.window else { return event }
       let kind: EscClose.Window =
-        if let site = self.webWindows.first(where: { $0.value === w })?.key {
-          .site(settings: site == .settings)
+        if w === self.siteSettings {
+          .siteSettings
         } else if self.sheets.values.contains(where: { $0.window === w }) {
           .native
         } else {
@@ -209,12 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     if Config.debug { listenDebug() }
-    keys.storeScript = { [weak self] in self?.storeScript() }
-    if let native = cube as? NativeCubeWindow {
-      keys.nativeSource = { [weak native] n in native?.keyBindings(n: n) ?? .empty }
-    }
-    (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in
-      self?.pushStoreToWebWindows()
+    cube.onRecorded = { [weak self] in
       (self?.sheets[.records] as? NativeRecordsWindow)?.reload()
       // 티어표 창도 지금 보는 크기로 다시 그린다(내 티어·다음 판 목표·지난 티어가 바뀐다)
       (self?.sheets[.tiers] as? NativeTiersWindow)?.reload()
@@ -313,7 +304,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         case "records": self.menuRecords()
         case "tiers": self.menuTiers()
         case "settings": self.menuSettings()
-        case "site-settings": self.openWebWindow(.settings)
+        case "site-settings": self.openSiteSettings()
         case "visible": self.menuToggleVisible()
         case "reload": self.menuReload()
         case "practice": self.cube.send(.practice(stage: parts.count > 1 ? parts[1] : nil, see: false))
@@ -645,12 +636,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuQuit() { NSApp.terminate(nil) }
   @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
 
-  /// 기록·티어표·설정 창을 연다: 네이티브 화면이면 네이티브 창(docs/52 5-8), 아니면(`CUBIE_WEB=1`) 사이트 창
-  private func openWindow(_ kind: WebWindow, n: Int? = nil) {
-    guard let native = cube as? NativeCubeWindow, nativeSheet(kind) else {
-      openWebWindow(kind)
-      return
-    }
+  /// 기록·티어표·설정 창을 연다(앱이 그린 창, docs/52 5-8)
+  private func openWindow(_ kind: SheetKind, n: Int? = nil) {
+    let native = cube
     if let s = sheets[kind] {
       if let n { (s as? NativeTiersWindow)?.show(n) }
       present(s.window)
@@ -670,7 +658,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       s = NativeSettingsWindow(
         store: native.store,
         onChange: { [weak self] in self?.settingsReload.request() },
-        openWeb: { [weak self] in self?.openWebWindow(.settings) })
+        openWeb: { [weak self] in self?.openSiteSettings() })
     }
     s.onClose = { [weak self] in self?.sheets[kind] = nil }
     sheets[kind] = s
@@ -702,65 +690,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
   }
 
-  /// 재기 명령: 창 열기·닫기(네이티브 창이든 사이트 창이든)
-  func measureWindow(_ kind: WebWindow, open: Bool) {
+  /// 재기 명령: 창 열기·닫기
+  func measureWindow(_ kind: SheetKind, open: Bool) {
     if open {
       openWindow(kind)
     } else {
       sheets[kind]?.window.close()
-      webWindows[kind]?.close()
     }
   }
-
-  /// 그 창을 네이티브로 옮겼나(`CUBIE_WEB_WINDOWS=1`이면 셋 다 예전 사이트 창, 견주기·되돌림용)
-  private func nativeSheet(_ kind: WebWindow) -> Bool {
-    switch kind {
-    case .records, .tiers, .settings: !Config.webWindows
-    }
-  }
-
-  /// 사이트 티어표 창 주소: 앱의 기록 창·메뉴 프로필 칸과 같은 Cubie 기록으로 센다(`records=cubie`, 사이트 `basisFromSearch`)
-  static func tiersPath(_ n: Int) -> String { "/cube/tiers?n=\(n)&records=cubie" }
 
   /// 티어표를 크기 `n`으로(메뉴 「티어표」, 기록 창 「티어표」)
-  private func openTiers(n: Int) {
-    if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
-      web.load(URLRequest(url: Config.site(Self.tiersPath(n)), cachePolicy: PageFreshness.load))
-    }
-    openWindow(.tiers, n: n)
-  }
+  private func openTiers(n: Int) { openWindow(.tiers, n: n) }
 
-  /// 기록·티어표·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
-  private func openWebWindow(_ kind: WebWindow) {
-    if let w = webWindows[kind] {
+  /// 설정 창의 「모든 설정…」: 사이트 설정 화면을 보통 창(투명 아님)으로 연다. 앱 저장소의 큐브 글을 문서 시작 때 넣는다
+  private func openSiteSettings() {
+    if let w = siteSettings {
       present(w)
       return
     }
-    let (path, title, size): (String, String, NSSize) =
-      switch kind {
-      case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
-      case .tiers: (Self.tiersPath(cube.state.n), "Cubie 티어표", NSSize(width: 760, height: 760))
-      // 네이티브 설정 창(「Cubie 키 배치·색」)과 Dock·⌘Tab에서 갈리게 다른 이름
-      case .settings: ("/cube/settings", "Cubie 모든 설정", NSSize(width: 760, height: 720))
-      }
+    let size = NSSize(width: 760, height: 720)
     let config = WKWebViewConfiguration()
     config.websiteDataStore = Config.measure ? .nonPersistent() : .default()
     // 문서가 뜰 때마다 같은 글(연 때의 앱 저장소)을 넣는다. 닫을 때 이 글과 견주어 사이트에서 바뀐 키만 읽어 온다
     let snapshot = storeSnapshot()
-    webOpened[kind] = snapshot
-    if let script = storeScript(snapshot) { config.userContentController.addUserScript(script) }
+    siteOpened = snapshot
+    if let js = Self.setItemsJS(snapshot) {
+      config.userContentController.addUserScript(
+        WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    }
     let web = WKWebView(frame: NSRect(origin: .zero, size: size), configuration: config)
-    web.load(URLRequest(url: Config.site(path), cachePolicy: PageFreshness.load))
+    web.load(URLRequest(url: Config.site("/cube/settings"), cachePolicy: PageFreshness.load))
     let w = NSWindow(
       contentRect: web.frame, styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered,
       defer: false)
-    w.title = title
+    // 네이티브 설정 창(「Cubie 키 배치·색」)과 Dock·⌘Tab에서 갈리게 다른 이름
+    w.title = "Cubie 모든 설정"
     w.contentView = web
     w.isReleasedWhenClosed = false
     w.delegate = self
     w.center()
-    placeNormalWindow(w, name: "CubieSite.\(kind)")
-    webWindows[kind] = w
+    placeNormalWindow(w, name: "CubieSite.settings")
+    siteSettings = w
     present(w)
   }
 
@@ -768,9 +738,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   // 보통 창이 다른 앱 뒤로 가면 ⌘Tab으로 고를 수 없어 찾지 못했다. 보통 창이 하나라도 열린 동안만 보통 앱(`.regular`)으로
   // Dock·⌘Tab·앱 메뉴에 나오고, 모두 닫으면 메뉴 막대 아이콘만(`.accessory`)으로 돌아간다. 판단은 `CubieCore/AppPresence`
 
-  /// 열린 보통 창 수에 맞춰 정책을 바꾼다. `sheets`·`webWindows`가 바뀔 때마다 불린다
+  /// 열린 보통 창 수에 맞춰 정책을 바꾼다. `sheets`·`siteSettings`가 바뀔 때마다 불린다
   private func updatePresence() {
-    guard let want = AppPresence.forOpenWindows(sheets.count + webWindows.count, measuring: Config.measure),
+    let open = sheets.count + (siteSettings == nil ? 0 : 1)
+    guard let want = AppPresence.forOpenWindows(open, measuring: Config.measure),
       want != presence
     else { return }
     switch want {
@@ -783,7 +754,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     case .menuBarOnly:
       // 창을 닫는 중(`windowWillClose`)에 부르므로 닫기가 끝난 뒤 바꾼다. 그 사이 다시 열었으면 그대로 둔다
       DispatchQueue.main.async { [weak self] in
-        guard let self, self.sheets.isEmpty, self.webWindows.isEmpty, self.presence != .menuBarOnly else { return }
+        guard let self, self.sheets.isEmpty, self.siteSettings == nil, self.presence != .menuBarOnly else { return }
         self.presence = .menuBarOnly
         // 앱 메뉴를 걸어 둔 채면 큐브 창에서 ⌘Q가 앱을 끈다(예전처럼 큐브에 간다)
         NSApp.mainMenu = nil
@@ -832,7 +803,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 키를 받는 보통 창(기록·티어표·설정·사이트 창). 큐브 창·단축키 표·말풍선이면 nil(닫거나 줄이지 않는다)
   private var frontNormalWindow: NSWindow? {
     guard let w = NSApp.keyWindow else { return nil }
-    let normal = sheets.values.contains { $0.window === w } || webWindows.values.contains { $0 === w }
+    let normal = sheets.values.contains { $0.window === w } || w === siteSettings
     return normal ? w : nil
   }
 
@@ -848,20 +819,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     w.orderFrontRegardless()
   }
 
-  /// 창을 닫으면 놓아준다. 설정 창이면 미니 창을 다시 불러와 바뀐 키·색을 쓴다
+  /// 「모든 설정…」 사이트 창을 닫으면 놓아주고, 사이트에서 바꾼 키·색을 큐브 창·단축키 표·설정 창에 쓴다
   func windowWillClose(_ notification: Notification) {
-    guard let w = notification.object as? NSWindow,
-      let kind = webWindows.first(where: { $0.value === w })?.key
-    else { return }
-    webWindows[kind] = nil
-    let opened = webOpened.removeValue(forKey: kind)
-    guard kind == .settings else { return }
-    guard let native = cube as? NativeCubeWindow, let web = w.contentView as? WKWebView, let opened else {
+    guard let w = notification.object as? NSWindow, w === siteSettings else { return }
+    siteSettings = nil
+    let opened = siteOpened
+    siteOpened = nil
+    let native = cube
+    guard let web = w.contentView as? WKWebView, let opened else {
       cube.reload()
       keys.reload()
       return
     }
-    // 네이티브 화면: 사이트 설정 화면에서 바뀐 키만 앱 저장소로 옮긴다(앱이 쓰는 미니 기록 `cube.mini.*`는 빼고). 통째로
+    // 사이트 설정 화면에서 바뀐 키만 앱 저장소로 옮긴다(앱이 쓰는 미니 기록 `cube.mini.*`는 빼고). 통째로
     // 덮으면 창이 열린 동안 네이티브 설정 창에서 바꾼 값이 열 때 값으로 되돌아간다(`WebStoreMerge`).
     // 창을 닫는 중이라도 웹 화면은 이 응답이 올 때까지 붙들어 둔다
     web.evaluateJavaScript(Self.readStoreJS) { [weak self] result, _ in
@@ -894,33 +864,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     return "(function(d){for(var k in d){try{localStorage.setItem(k,d[k])}catch(e){}}})(" + json + ");"
   }
 
-  /// 네이티브 화면이면: 앱 저장소의 큐브 글(기록·프로필·키 배치·설정)을 사이트 창의 localStorage에 문서 시작 때 넣는다.
-  /// 기록 창·티어표·설정 화면·단축키 표는 사이트 코드 그대로 이 글을 읽는다(docs/52 5-6). 웹 화면이면 넣지 않는다
-  func storeScript() -> WKUserScript? {
-    storeScript(storeSnapshot())
-  }
-
-  private func storeScript(_ d: [String: String]?) -> WKUserScript? {
-    guard let d, let js = Self.setItemsJS(d) else { return nil }
-    return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
-  }
-
-  /// 앱 저장소의 큐브 글 전부(네이티브 화면일 때만)
-  private func storeSnapshot() -> [String: String]? {
-    guard let native = cube as? NativeCubeWindow else { return nil }
+  /// 앱 저장소의 큐브 글 전부(기록·프로필·키 배치·설정). 사이트 설정 화면은 사이트 코드 그대로 이 글을 읽는다
+  private func storeSnapshot() -> [String: String] {
     var d: [String: String] = [:]
-    for k in native.store.keys where k.hasPrefix("cube.") { d[k] = native.store.string(k) }
+    for k in cube.store.keys where k.hasPrefix("cube.") { d[k] = cube.store.string(k) }
     return d
-  }
-
-  /// 기록이 바뀌었을 때 열려 있는 기록 창·티어표에도 넣는다(그 창은 앞으로 올 때 다시 읽는다)
-  func pushStoreToWebWindows() {
-    guard let native = cube as? NativeCubeWindow else { return }
-    var d: [String: String] = [:]
-    for k in native.store.keys where k.hasPrefix("cube.mini.") { d[k] = native.store.string(k) }
-    guard let js = Self.setItemsJS(d) else { return }
-    for kind in [WebWindow.records, .tiers] {
-      (webWindows[kind]?.contentView as? WKWebView)?.evaluateJavaScript(js)
-    }
   }
 }

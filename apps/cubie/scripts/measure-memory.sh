@@ -1,23 +1,15 @@
 #!/bin/bash
 # Cubie 메모리 재기(docs/52 2절). 사용자 화면·포커스를 건드리지 않는다:
 #   앱을 측정 모드(CUBIE_MEASURE=1)로 띄운다. 앱은 앞으로 나올 수 없고(.prohibited), 창은 화면 밖에 투명하게 떠 있으며,
-#   메뉴 막대 아이콘·전역 단축키·업데이트를 켜지 않고, 웹 저장소는 비영속이다(사용자 기록에 손대지 않는다).
-#   상태는 표준 입력(이 스크립트만 쓰는 FIFO)으로 바꾼다. 끝나면 띄운 앱과 로컬 서버를 끈다.
+#   메뉴 막대 아이콘·전역 단축키·업데이트를 켜지 않고, 저장소는 메모리에만 있다(사용자 기록에 손대지 않는다).
+#   상태는 표준 입력(이 스크립트만 쓰는 FIFO)으로 바꾼다. 끝나면 띄운 앱을 끈다.
 #
-#   apps/cubie/build.sh && pnpm --filter @game/web build     # 먼저(재는 대상)
-#   apps/cubie/scripts/measure-memory.sh                      # 로컬 빌드(apps/web/out)를 로컬 서버로 열어 잰다
-#   apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
-#   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면(앱 기본, Core Animation + Rust 코어, docs/52 5-6)을 같은 시나리오로 잰다
-#   (--native가 없으면 웹 화면 CUBIE_WEB=1을 잰다: 0.1.10까지의 앱과 같은 화면)
-#   apps/cubie/scripts/measure-memory.sh --native --onscreen   # 창을 화면 왼쪽 아래 구석에 거의 투명하게(알파 0.01) 두고 WindowServer도 잰다
-#   apps/cubie/scripts/measure-memory.sh --query render=css   # 로컬 빌드의 미니 화면을 CSS 3D로 그려 잰다(docs/52 5-4)
+#   apps/cubie/build.sh                                       # 먼저(재는 대상)
+#   apps/cubie/scripts/measure-memory.sh                      # 큐브 창(Core Animation + Rust 코어, docs/52 5-6)과 보통 창을 잰다
+#   apps/cubie/scripts/measure-memory.sh --onscreen           # 창을 화면 왼쪽 아래 구석에 거의 투명하게(알파 0.01) 두고 WindowServer도 잰다
+#   예전 웹 큐브 창·사이트 창과 견주려면 git 태그 cubie-web-fallback-last의 앱과 이 스크립트(--url·--web-windows)를 쓴다(docs/52 5-20).
 #   옵션: --side <pt>(창 한 변, 기본 96) · --label <이름>(결과 줄 머리) · --out <파일>(결과 TSV를 덧붙인다) · --quick(가만히 1분을 10초로)
-#         --query <a=b&…>(로컬 빌드 주소 /cube/mini 뒤에 붙일 쿼리) ·
-#         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
-#         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
-#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않는다. 기록 창·티어표·설정 창도 네이티브 창이다) ·
-#         --web-windows(--native와 함께: 기록 창·티어표·설정 창만 예전 사이트 창 CUBIE_WEB_WINDOWS=1로 열어 견준다. --url이
-#           없으면 사이트 game.byb.kr를 연다) ·
+#         --detail(Cubie 자신의 메모리 갈래) · --native(예전 이름, 이제 기본이라 아무 일도 하지 않는다) ·
 #         --onscreen(재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로. 화면 밖 창은 WindowServer가 합성하지 않을 수
 #           있어서다. 마우스는 지나가고 앱은 앞으로 나오지 않는다. 메모리 줄에 WindowServer MEM(`top`, footprint는 관리자 권한이
 #           필요하다)을, CPU 줄에 WindowServer 몫을 더한다. 다른 앱 화면 변화도 WindowServer에 섞이므로 흔들림을 감안한다)
@@ -27,39 +19,27 @@
 #   읽어, 늘어난 CPU 시간 ÷ 지난 시간으로 평균 %를 낸다(100% = 코어 하나를 다 씀). 표본을 뽑지 않아 짧은 반짝임도 빠지지 않는다.
 #   --out을 주면 CPU 결과는 같은 이름에 -cpu를 붙인 TSV에 덧붙인다.
 # 프로세스는 `launchctl print pid/<Cubie>`가 보여 주는 그 앱 소속 WebKit XPC 서비스만 센다(다른 앱의 WebKit은 섞이지 않는다).
+#   재는 시나리오는 사이트 창을 열지 않아 WebKit 칸은 0이다. 옛 결과 TSV와 열을 맞추려고 칸은 남긴다.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-ROOT="$(cd "$HERE/../.." && pwd)"
 APP="$HERE/Cubie.app/Contents/MacOS/Cubie"
-URL=""
 SIDE=96
 LABEL="measure"
 OUT=""
 IDLE=60
-WEB=""
-INJECT=""
 DETAIL=0
-NATIVE=0
-WEB_WINDOWS=0
 ONSCREEN=0
-QUERY=""
-PORT=4393
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --url) URL="$2"; shift 2 ;;
     --side) SIDE="$2"; shift 2 ;;
     --label) LABEL="$2"; shift 2 ;;
     --out) OUT="$2"; shift 2 ;;
     --quick) IDLE=10; shift ;;
-    --web) WEB="$(cd "$2" && pwd)"; shift 2 ;;
-    --inject) INJECT="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --detail) DETAIL=1; shift ;;
-    --native) NATIVE=1; shift ;;
-    --web-windows) WEB_WINDOWS=1; shift ;;
+    --native) shift ;;
     --onscreen) ONSCREEN=1; shift ;;
-    --query) QUERY="$2"; shift 2 ;;
     *) echo "모르는 옵션: $1" >&2; exit 2 ;;
   esac
 done
@@ -67,7 +47,6 @@ done
 [ -x "$APP" ] || { echo "앱이 없다: apps/cubie/build.sh 먼저" >&2; exit 1; }
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/cubie-measure.XXXXXX")"
-SERVER_PID=""
 APP_PID=""
 cleanup() {
   exec 3>&- 2>/dev/null || true
@@ -76,37 +55,14 @@ cleanup() {
     sleep 1
     kill -9 "$APP_PID" 2>/dev/null || true
   fi
-  if [ -n "$SERVER_PID" ]; then
-    # serve는 pnpm 아래 자식으로 돈다. 프로세스 묶음째 끈다
-    pkill -P "$SERVER_PID" 2>/dev/null || true
-    kill "$SERVER_PID" 2>/dev/null || true
-  fi
   rm -rf "$TMP"
 }
 trap cleanup EXIT INT TERM
 
-if [ "$NATIVE" = 1 ] && [ -z "$URL" ]; then
-  URL="https://game.byb.kr/cube/mini"
-fi
-if [ -z "$URL" ]; then
-  WEB="${WEB:-$ROOT/apps/web/out}"
-  [ -f "$WEB/cube/mini.html" ] || { echo "apps/web/out이 없다: pnpm --filter @game/web build 먼저" >&2; exit 1; }
-  if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "포트 $PORT를 이미 누가 쓴다" >&2; exit 1
-  fi
-  "$ROOT/apps/web/node_modules/.bin/serve" "$WEB" -l "$PORT" -n >"$TMP/serve.log" 2>&1 &
-  SERVER_PID=$!
-  URL="http://localhost:$PORT/cube/mini${QUERY:+?$QUERY}"
-  for _ in $(seq 1 50); do
-    curl -fsS -o /dev/null "$URL" 2>/dev/null && break
-    sleep 0.2
-  done
-fi
-
 mkfifo "$TMP/in"
 WS_PID=""
 if [ "$ONSCREEN" = 1 ]; then WS_PID="$(pgrep -x WindowServer | head -1)"; fi
-CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_WEB="$((1 - NATIVE))" CUBIE_WEB_WINDOWS="$WEB_WINDOWS" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
+CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
 APP_PID=$!
 exec 3>"$TMP/in"
 cmd() { echo "$*" >&3; }
@@ -301,7 +257,7 @@ cmd practice stop
 cmd focus 0
 sleep 3
 
-# 기록 창(화면 밖)을 연 동안과 닫은 뒤. 네이티브 화면은 네이티브 창(--web-windows면 사이트 창), 웹 화면은 사이트 창
+# 기록 창(화면 밖)을 연 동안과 닫은 뒤
 cmd records open
 sleep 8
 measure "기록 창 열었을 때"
@@ -310,13 +266,13 @@ sleep 12
 measure "기록 창 닫은 뒤 12초"
 
 # 세 창(기록 창·티어표·설정 창)을 함께 연 동안과 닫은 뒤(docs/52 5-8)
-if [ "$NATIVE" = 1 ]; then
+{
   cmd records open
   cmd tiers open
   cmd settings open
   sleep 10
   measure "세 창 열었을 때"
-  # 기록 창에서 한 판 다시 보기(네이티브 창만. --web-windows면 사이트 창은 기록이 없어 다시 볼 판이 없다)
+  # 기록 창에서 한 판 다시 보기
   cmd replay open
   sleep 3
   measure "세 창 + 다시 보기 중"
@@ -383,7 +339,7 @@ if [ "$NATIVE" = 1 ]; then
   cpu_end "메뉴 프로필 칸 흔드는 중"
   measure "메뉴 프로필 칸 흔드는 중"
   cmd profile close
-fi
+}
 
 cmd state
 sleep 1

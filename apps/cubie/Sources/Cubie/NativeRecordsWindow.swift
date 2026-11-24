@@ -6,7 +6,6 @@ import CubieNativeC
 /// - 위: 크기별 Cubie 티어(엠블럼·최고 Ao5·이름, 누르면 그 크기), 「티어표」(네이티브 티어표 창)
 /// - 아래: 크기 단추, 요약(최고·평균·5번·12번 평균, 코어 `summary.rs`), 판마다 줄(번호·때·시간·입력 표시·힌트·수·다시 보기)
 /// - 다시 보기 상자: 섞인 모양에서 그때 시각대로(멈춤은 1초까지), 큐브는 큐브 창과 같은 `CACubeView`와 거울
-/// 웹 창과 달리 WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 예전처럼 사이트 창을 연다(`AppDelegate`)
 @MainActor
 final class NativeRecordsWindow: NativeSheetWindow {
   static let size = SheetSize.records

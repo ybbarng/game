@@ -2,7 +2,7 @@
 
 쓰는 사람을 위한 안내는 [README](README.md)에 있다. 이 문서는 빌드, 새 판 내기, README 그림 만들기를 다룬다. 설계와 결정은 [docs/47 15절](../../docs/47-cube-design.md)에 있다.
 
-앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정 창도 앱이 그린다(docs/52 5-8). 사용자 키 배치 편집기와 내보내기·가져오기도 설정 창 안에서 앱이 그린다(2026-11-16, docs/52 5-9). 사이트 화면을 WKWebView 창으로 여는 것은 설정 창의 「모든 설정…」뿐이고, `CUBIE_WEB_WINDOWS=1`이면 세 창 모두 예전처럼 사이트 창이다. 예전 웹 큐브 창(사이트 미니 모드 `https://game.byb.kr/cube/mini`)은 되돌림 스위치 `CUBIE_WEB=1`로만 뜬다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
+앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정 창도 앱이 그린다(docs/52 5-8). 사용자 키 배치 편집기와 내보내기·가져오기도 설정 창 안에서 앱이 그린다(2026-11-16, docs/52 5-9). 사이트 화면을 WKWebView 창으로 여는 것은 설정 창의 「모든 설정…」뿐이다. 예전 웹 큐브 창·사이트 창으로 되돌리는 스위치(`CUBIE_WEB=1`·`CUBIE_WEB_WINDOWS=1`)는 2026-11-25 지웠다(마지막 판은 git 태그 `cubie-web-fallback-last`, docs/52 5-20). 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
 
 ## 빌드·실행
 
@@ -17,7 +17,7 @@ apps/cubie/test.sh                        # 화면 없는 단위 시험(포커�
 
 직접 빌드한 앱을 쓰려면 `apps/cubie/build.sh --universal` 뒤 `apps/cubie/Cubie.app`을 `/Applications`로 복사한다. 이 맥에서 만든 앱은 첫 실행이 막히지 않는다.
 
-사이트 창(설정 창의 「모든 설정…」, `CUBIE_WEB_WINDOWS=1`이면 기록·티어표·설정, `CUBIE_WEB=1`이면 큐브 창도)이 로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
+사이트 창(설정 창의 「모든 설정…」)이 로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
 
 ```sh
 CUBIE_URL=http://localhost:4392/cube/mini apps/cubie/Cubie.app/Contents/MacOS/Cubie
@@ -31,40 +31,35 @@ defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주�
 `scripts/measure-memory.sh`가 앱을 측정 모드(`CUBIE_MEASURE=1`)로 띄워 상태마다 메모리를 잰다. 결과와 해석은 [docs/52 2절](../../docs/52-cubie-native.md).
 
 ```sh
-apps/cubie/build.sh && pnpm --filter @game/web build
-apps/cubie/scripts/measure-memory.sh                    # 로컬 빌드(apps/web/out)를 포트 4393으로 열어 잰다(약 4분)
-apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
+apps/cubie/build.sh
+apps/cubie/scripts/measure-memory.sh                    # 약 5분
 apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # 가만히 1분을 10초로, 결과를 TSV에 덧붙인다
 ```
 
-- 사용자 화면·포커스를 건드리지 않는다. 측정 모드의 앱은 앞으로 나올 수 없고(활성화 정책 `.prohibited`), 큐브 창은 화면 밖 좌표에 투명하게 마우스를 받지 않게 떠 있다. 메뉴 막대 아이콘·전역 단축키·마우스 감시·자동 업데이트를 켜지 않고, 웹 저장소는 비영속이라 사용자 기록·설정을 읽지도 쓰지도 않는다. 이미 떠 있는 Cubie와 같이 돌아도 된다.
-- 화면 밖 창은 WebKit이 「가려짐」으로 보고 그리기를 멈추므로, 측정 모드에서만 WebKit의 가려짐 감지를 끈다(비공개 설정). 그래야 보이는 창과 같이 그린다.
-- 상태는 표준 입력 한 줄 명령으로 바꾼다(`Sources/Cubie/Measure.swift` 머리말의 목록: 포커스·섞기·거울·키로 돌리기·숨기기·단축키 표 불러오기 등). 스크립트만 쓰는 FIFO라 다른 프로세스가 끼어들 수 없다.
-- 재는 값은 `footprint`의 `phys_footprint`(1초 간격 세 번 평균)이고, 프로세스는 `launchctl print pid/<Cubie>`가 보여 주는 그 앱 소속 WebKit 서비스(WebContent·GPU·Networking)만 센다.
+- 사용자 화면·포커스를 건드리지 않는다. 측정 모드의 앱은 앞으로 나올 수 없고(활성화 정책 `.prohibited`), 큐브 창은 화면 밖 좌표에 투명하게 마우스를 받지 않게 떠 있다. 메뉴 막대 아이콘·전역 단축키·마우스 감시·자동 업데이트를 켜지 않고, 저장소는 메모리에만 있어 사용자 기록·설정을 읽지도 쓰지도 않는다. 이미 떠 있는 Cubie와 같이 돌아도 된다.
+- 상태는 표준 입력 한 줄 명령으로 바꾼다(`Sources/Cubie/NativeMeasure.swift` 머리말의 목록: 포커스·섞기·거울·키로 돌리기·숨기기·단축키 표·창 열기 등). 스크립트만 쓰는 FIFO라 다른 프로세스가 끼어들 수 없다.
+- 재는 값은 `footprint`의 `phys_footprint`(1초 간격 세 번 평균)이고, 그 앱 소속 WebKit 서비스(WebContent·GPU·Networking) 칸도 센다(지금 시나리오는 사이트 창을 열지 않아 0이다).
 - CPU도 함께 잰다(`CPU …` 줄과 끝의 요약): 가만히 1분, 돌리는 동안 약 20초, 포커스 있고 멈춤·포커스 없음 10초, 숨긴 뒤 30초부터 1분. 구간 처음과 끝의 누적 CPU 시간(`ps -o time`) 차이 ÷ 지난 시간이라 100%가 코어 하나다. `--out <파일>.tsv`를 주면 CPU 결과는 `<파일>-cpu.tsv`에 덧붙인다. 결과는 docs/52 2-4.
-- 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 20~30MB 작다. 웹 화면 쪽(WebContent·GPU·Networking)은 실제 앱과 같다.
-- `--inject <js 파일>`은 문서 시작 때 실험 스크립트를 넣는다(빌드 없이 「테두리 끄기」·「화면 배율 1」 같은 안을 견줄 때). `--detail`은 WebContent·GPU의 메모리 갈래(`footprint` 범주)를 함께 찍는다.
-- 끝나면(중간에 멈춰도) 띄운 앱과 로컬 서버를 끈다.
-- `--native`는 네이티브 화면(앱 기본)을 같은 시나리오로 잰다. `--native`가 없으면 웹 화면(`CUBIE_WEB=1`)을 잰다. 시나리오 끝에 단축키 표·공식 연습·기록 창, 세 창(기록·티어표·설정)을 함께 연 동안·다시 보기 중·닫은 뒤 상태도 잰다(창은 화면 밖). `--native --web-windows`는 그 세 창만 예전 사이트 창으로 열어 견준다. `--detail`은 Cubie 자신의 메모리 갈래도 찍는다.
-- `--onscreen`은 재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로 둔다(웹·네이티브 모두). 화면 밖 창은 WindowServer가 합성하지 않을 수 있어서, WindowServer 쪽(메모리는 `top` MEM, CPU는 누적 시간)을 볼 때만 쓴다. 앱은 앞으로 나오지 않고 마우스는 지나간다. WindowServer 값에는 다른 앱 화면 변화가 섞인다.
+- 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 작다.
+- 끝나면(중간에 멈춰도) 띄운 앱을 끈다.
+- 시나리오 끝에 단축키 표·공식 연습·기록 창, 세 창(기록·티어표·설정)을 함께 연 동안·다시 보기 중·닫은 뒤, 홈 시연, 키 배치 편집기, 티어표 진열, 메뉴 프로필 칸 흔들기 상태도 잰다(창은 화면 밖). `--detail`은 Cubie 자신의 메모리 갈래도 찍는다. 예전 웹 화면·사이트 창과 견주는 `--url`·`--web-windows`는 2026-11-25 웹 되돌림 스위치와 함께 지웠다(git 태그 `cubie-web-fallback-last`의 앱과 스크립트로 잰다).
+- `--onscreen`은 재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로 둔다. 화면 밖 창은 WindowServer가 합성하지 않을 수 있어서, WindowServer 쪽(메모리는 `top` MEM, CPU는 누적 시간)을 볼 때만 쓴다. 앱은 앞으로 나오지 않고 마우스는 지나간다. WindowServer 값에는 다른 앱 화면 변화가 섞인다.
 
 ## 네이티브 화면(docs/52 5-5·5-6)
 
-큐브 창(`Sources/Cubie/NativeCubeWindow.swift`)은 Rust 코어 한 판(C ABI) + Core Animation 3D 층 트리(`NativeCube.swift`)로 그린다. 코어가 키 해석·섞기·판정·한 판 기록(시간·다시 보기 글·구간·콤보)·힌트(사람 해법)·공식 연습 진행기·티어를 맡고(사이트와 공통 시험 자료로 어긋남 0), 앱은 시계·저장·창·말풍선·단축키 표(`NativeKeysView`)·소리·떠 있을 때 움직임을 맡는다. 창 다루기는 웹 화면과 함께 쓰는 `FloatingWindow`, 앱 껍데기는 `CubeSurface` 약속만 본다.
+큐브 창(`Sources/Cubie/NativeCubeWindow.swift`)은 Rust 코어 한 판(C ABI) + Core Animation 3D 층 트리(`NativeCube.swift`)로 그린다. 코어가 키 해석·섞기·판정·한 판 기록(시간·다시 보기 글·구간·콤보)·힌트(사람 해법)·공식 연습 진행기·티어를 맡고(사이트와 공통 시험 자료로 어긋남 0), 앱은 시계·저장·창·말풍선·단축키 표(`NativeKeysView`)·소리·떠 있을 때 움직임을 맡는다. 창 다루기(자리 기억·끌기·핀치·빈 곳 넘기기)는 `FloatingWindow`에 갈라 두었다.
 
 - 저장: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글(`cube.mini.v1` 등, `CubieCore/NativeStore.swift`·`MiniBook.swift`). 처음 띄울 때 웹 저장소(WebKit localStorage sqlite)의 `cube.*`를 한 번 옮긴다(`WebStorageMigration`, 지우지 않음, 표시 `cubie.migrated.v1`).
-- 사이트 창(설정 창이 여는 「모든 설정…」, `CUBIE_WEB_WINDOWS=1`·`CUBIE_WEB=1`의 창)에는 앱 저장소 글을 문서 시작 때 넣고, 설정 창을 닫으면 연 때 넣은 글과 견주어 사이트에서 바뀐 키만(`cube.mini.*` 빼고) 읽어 온다(`AppDelegate.storeScript`, `CubieCore/WebStoreMerge.swift`). 그 사이 네이티브 설정 창에서 바꾼 값은 그대로 남는다.
+- 사이트 창(설정 창이 여는 「모든 설정…」)에는 앱 저장소 글을 문서 시작 때 넣고, 그 창을 닫으면 연 때 넣은 글과 견주어 사이트에서 바뀐 키만(`cube.mini.*` 빼고) 읽어 온다(`WebStoreSync`, `CubieCore/WebStoreMerge.swift`). 그 사이 네이티브 설정 창에서 바꾼 값은 그대로 남는다.
 - 티어 엠블럼은 앱에 묶은 PNG(`Resources/Emblems` 32pt·64px, `Emblems/big` 64pt·128px). 사이트 3D 엠블럼을 정면에서 찍은 정지 그림이고 `apps/web/scripts/render-emblem-posters.mjs`(`ONLY=cubie`)가 만든다.
 
 ```sh
 apps/cubie/scripts/build-native.sh [--universal]          # 정적 라이브러리 → apps/cubie/.native/ (build.sh·test.sh가 먼저 부른다)
 apps/cubie/Cubie.app/Contents/MacOS/Cubie                 # 띄우기(⌃⌥⌘C로 키 입력, 메뉴 막대 아이콘에서 끝내기)
-CUBIE_WEB=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie     # 되돌림: 예전 웹 큐브 창
 (cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo test --release)   # 한 판·C ABI·연습·JSON 시험(wgpu 없음)
 CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 창 없이 PNG(CARenderer: 큐브 여섯, 말풍선 둘, 단축키 표)
 node apps/cubie/scripts/native-compare.mjs <폴더>          # WebKit 웹 화면과 바탕 넷 위 비교판(compare.png·compare-panels.png)
 node apps/cubie/scripts/window-compare.mjs <폴더>          # 기록 창·티어표·설정 창: 같은 저장소로 네이티브(CUBIE_WINDOW_SHOT)와 사이트(WebKit)를 나란히
-CUBIE_WEB_WINDOWS=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 되돌림: 기록 창·티어표·설정 창만 예전 사이트 창
 ```
 
 - 기록 창·티어표·설정 창(docs/52 5-8)의 화면 글은 `CubieCore/RecordsSheet.swift`·`TierSheet.swift`·`SettingsSheet.swift`에 모았다. 사이트 화면 글이 바뀌면 웹 시험 `apps/web/src/cube/native/native-windows-text.test.ts`가 깨져 앱 글도 고치라고 알린다.
@@ -124,5 +119,4 @@ node apps/cubie/scripts/readme-shots.mjs           # --hero: 움직이는 그림
 
 - ad-hoc 서명이고 공증이 없어서, 받은 사람은 README 「설치」의 첫 실행 풀기를 한 번 해야 한다. 이 과정을 없애려면 Apple Developer ID로 서명하고 공증(notarytool)을 받아야 한다.
 - 같은 이름의 앱(iOS 큐브 앱 Cubie Solver, 옛 큐브 프로그램 Jaap's Cubie)이 있다.
-- 웹 화면 바탕을 비우는 데 공개 속성이 없어 널리 쓰는 키(`drawsBackground`)를 쓴다. macOS 판이 바뀌어 동작이 달라지면 바탕이 보일 수 있다.
 - 지원 판은 macOS 15 이상이다. 14로 낮추려면 `Package.swift`의 `platforms`와 `Resources/Info.plist`의 `LSMinimumSystemVersion`(release.sh가 appcast의 최소 판으로도 쓴다)만 바꾸면 컴파일된다. 13까지 낮추려면 macOS 14부터 있는 `NSApp.activate()` 세 곳(`AppDelegate.swift` 두 곳, `Updater.swift` 한 곳)을 `#available`로 나눠 13에서는 `activate(ignoringOtherApps:)`를 부른다. Sparkle 2.10.1은 macOS 12부터 돈다. 어느 쪽이든 그 판의 맥에서 투명 창·포커스 돌려주기·웹 화면이 도는지 확인한 뒤 낮춘다(2026-11-09, 복사본을 13으로 낮춰 컴파일해 본 결과).

@@ -5,7 +5,8 @@
  * - 화면 → 앱: `window.webkit.messageHandlers.cubie.postMessage(msg)`.
  *
  * 브라우저에서 열면(다리가 없으면) 창의 포커스·보임으로 같은 일을 하고, 화면 구석의 작은 메뉴로 고른다.
- * 앱 쪽 이름(`ToApp`·`FromApp`의 `type`)은 `apps/cubie/Sources/Cubie/Bridge.swift`와 같아야 한다.
+ * 앱 쪽(`apps/cubie/Sources/Cubie/Bridge.swift`)은 2026-11-25 웹 큐브 창과 함께 지웠다(git 태그 `cubie-web-fallback-last`,
+ * docs/52 5-20). 지금 앱은 큐브 창을 직접 그려 이 다리를 쓰지 않고, README 그림·비교 그림이 앱처럼 띄울 때 쓴다.
  */
 
 import type { KeyChord } from "../input";

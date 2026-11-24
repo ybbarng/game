@@ -7,7 +7,7 @@ import SQLite3
 /// WebKit은 그것을 `~/Library/WebKit/kr.byb.cubie/WebsiteData/Default/<출처>/<출처>/LocalStorage/localstorage.sqlite3`의
 /// `ItemTable(key TEXT, value BLOB)`에 둔다(값은 UTF-16LE). 출처 폴더의 `origin` 파일에 출처 주소(https·game.byb.kr)가 든다.
 /// 웹 프로세스를 띄우지 않고 이 파일을 읽기 전용으로 열어 `cube.`로 시작하는 키를 같은 글 그대로 옮긴다.
-/// - 웹 저장소는 지우지 않는다(되돌림 스위치 `CUBIE_WEB=1`로 웹 화면을 다시 써도 그대로 있다).
+/// - 웹 저장소는 지우지 않는다(옛 판으로 되돌려도 그대로 있다).
 /// - 옮긴 표시(`cubie.migrated.v1`, 옮긴 때와 키)를 남겨 다시 옮기지 않는다. 이미 네이티브에 같은 키가 있으면 덮지 않는다.
 public enum WebStorageMigration {
   public static let markerKey = "cubie.migrated.v1"
