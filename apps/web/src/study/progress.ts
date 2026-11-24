@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
 import { localDay, type PuzzleRecord, recordMiss, recordSolve } from "./review";
 
 export type { PuzzleRecord } from "./review";
@@ -19,29 +20,31 @@ export interface StudyProgress {
  * 기록 모양과 다음 복습 날은 `review.ts`가 정한다(옛 기록도 그대로 읽는다)
  */
 export function createStudyProgress(name: string) {
-  return create<StudyProgress>()(
-    persist(
-      (set) => ({
-        records: {},
-        solve: (id, now = Date.now()) =>
-          set((s) => ({
-            records: {
-              ...s.records,
-              [id]: recordSolve(s.records[id], now, localDay),
-            },
-          })),
-        miss: (id, now = Date.now()) =>
-          set((s) => ({
-            records: { ...s.records, [id]: recordMiss(s.records[id], now) },
-          })),
-        reset: () => set({ records: {} }),
-      }),
-      {
-        name,
-        storage: createJSONStorage(() => localStorage),
-        // 미리 그려 둔 HTML과 첫 화면이 같아야 하므로 저장값은 첫 그리기 뒤에 읽는다(StoreHydration).
-        skipHydration: true,
-      },
+  return hydrateAfterFirstPaint(
+    create<StudyProgress>()(
+      persist(
+        (set) => ({
+          records: {},
+          solve: (id, now = Date.now()) =>
+            set((s) => ({
+              records: {
+                ...s.records,
+                [id]: recordSolve(s.records[id], now, localDay),
+              },
+            })),
+          miss: (id, now = Date.now()) =>
+            set((s) => ({
+              records: { ...s.records, [id]: recordMiss(s.records[id], now) },
+            })),
+          reset: () => set({ records: {} }),
+        }),
+        {
+          name,
+          storage: createJSONStorage(() => localStorage),
+          // 미리 그려 둔 HTML과 첫 화면이 같아야 하므로 저장값은 첫 그리기 뒤에 읽는다(StoreHydration).
+          skipHydration: true,
+        },
+      ),
     ),
   );
 }

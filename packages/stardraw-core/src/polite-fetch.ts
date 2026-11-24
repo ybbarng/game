@@ -6,7 +6,7 @@
  * - 다시 받기는 `maxAttempts`번, 처음 보낸 때부터 `maxWaitMs`까지. 넘으면 마지막 응답을 그대로 돌려준다
  * 시각과 기다림은 `clock`으로 잰다(시험은 손으로 옮기는 시계를 넣는다).
  */
-import { obj } from "@game/mighty-engine/josa";
+import { obj } from "@game/core/josa";
 
 /** fair-play의 `Clock`과 같은 모양(규칙 패키지는 그 패키지에 기대지 않는다) */
 export interface FetchClock {

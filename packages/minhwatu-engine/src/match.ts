@@ -1,3 +1,4 @@
+import { createRng, nextInt } from "@game/core";
 import {
   cardOf,
   isCardId,
@@ -5,7 +6,6 @@ import {
   shuffledDeck,
   sortCards,
 } from "@game/hwatu";
-import { createRng, nextInt } from "@game/mighty-engine";
 
 import { DEAL_SIZES, type MinhwatuRules } from "./rules";
 import { scoreRound, yaksOf } from "./score";

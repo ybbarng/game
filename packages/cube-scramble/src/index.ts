@@ -10,6 +10,8 @@
  * - 4×4: 대회 공식은 무작위 상태지만 1차는 무작위 수 40수(`official: false`).
  * - 5×5·6×6·7×7: 무작위 수 60·80·100수(대회 방식과 같다).
  */
+
+import { createRng, nextInt, type RngState, shuffleInPlace } from "@game/core";
 import {
   applyAlgorithm,
   type CubieCube,
@@ -23,12 +25,6 @@ import {
   solve3x3,
   solvedFacelets,
 } from "@game/cube-solver";
-import {
-  createRng,
-  nextInt,
-  type RngState,
-  shuffleInPlace,
-} from "@game/mighty-engine";
 
 /** WCA 종목 번호 */
 export type ScrambleEvent =

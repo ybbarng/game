@@ -15,6 +15,7 @@ import type {
   MatchState as HeartsState,
   PlayerView as HeartsView,
 } from "@game/hearts-engine";
+import { heuristicBot } from "@game/mighty-ai";
 import type {
   Action,
   Card,
@@ -178,6 +179,8 @@ export class HostRoom<
   /** 끝내기 투표(열려 있을 때). 자리 → 끝내기에 찬성하는가 */
   private endVote: Map<number, boolean> | null = null;
   private readonly bot: KitBot<View, ActionT> | null;
+  /** 대국(LocalMatch)에 넘길 컴퓨터: `bot`, 없고 마이티면 휴리스틱 봇 */
+  private readonly matchBot: KitBot<View, ActionT> | null;
   private readonly botLevel: number | null;
   private readonly pace: ((next: () => void) => void) | null;
   private readonly runBot: BotRunner<View, ActionT> | null;
@@ -239,6 +242,12 @@ export class HostRoom<
     this.recommitTimeoutMs = options.recommitTimeoutMs ?? 30_000;
     this.clock = options.clock ?? realClock;
     this.bot = options.bot ?? null;
+    // 마이티는 컴퓨터를 주지 않아도 휴리스틱 봇이 맡는다(예전 LocalMatch 기본값, 2026-11-25 거기서 옮김)
+    this.matchBot =
+      this.bot ??
+      ((this.kit as unknown) === mightyKit
+        ? (heuristicBot as unknown as KitBot<View, ActionT>)
+        : null);
     this.botLevel = options.botLevel ?? null;
     this.pace = options.pace ?? null;
     this.runBot = options.runBot ?? null;
@@ -435,7 +444,7 @@ export class HostRoom<
         seed: resumed.seed,
         humanSeat: 0,
         humanSeats: [0, ...this.guests.keys()],
-        ...(this.bot ? { bot: this.bot } : {}),
+        ...(this.matchBot ? { bot: this.matchBot } : {}),
         clock: this.clock,
         ...(this.pace ? { pace: this.pace } : {}),
         ...(this.runBot ? { runBot: this.runBot } : {}),
@@ -947,7 +956,7 @@ export class HostRoom<
           seed: derived.seed,
           humanSeat: 0,
           humanSeats: [0, ...this.guests.keys()],
-          ...(this.bot ? { bot: this.bot } : {}),
+          ...(this.matchBot ? { bot: this.matchBot } : {}),
           clock: this.clock,
           ...(this.pace ? { pace: this.pace } : {}),
           ...(this.runBot ? { runBot: this.runBot } : {}),
@@ -1052,7 +1061,7 @@ export class HostRoom<
       humanSeat: 0,
       humanSeats: [0, ...this.guests.keys()],
       ...("preset" in start ? { presetDeal: start.preset as Extra } : {}),
-      ...(this.bot ? { bot: this.bot } : {}),
+      ...(this.matchBot ? { bot: this.matchBot } : {}),
       clock: this.clock,
       ...(this.pace ? { pace: this.pace } : {}),
       ...(this.runBot ? { runBot: this.runBot } : {}),
@@ -1114,13 +1123,14 @@ export class HostRoom<
     table.device.on("persist", () => this.persist());
     watchFairDevice(table.device);
     match = new LocalMatch({
+      kit: mightyKit,
       rules: this.rules as unknown as RuleSet,
       seed,
       humanSeat: 0,
       humanSeats: [0, ...this.guests.keys()],
       presetDeal: table.presetDeal(),
-      ...(this.bot
-        ? { bot: this.bot as unknown as KitBot<PlayerView, Action> }
+      ...(this.matchBot
+        ? { bot: this.matchBot as unknown as KitBot<PlayerView, Action> }
         : {}),
       clock: this.clock,
       ...(this.pace ? { pace: this.pace } : {}),

@@ -9,12 +9,12 @@ import {
 } from "@game/galaxy-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
+import { RoomScreen } from "@/components/LazyRoomScreen";
 import { Chip as BaseChip } from "@/components/options/Chip";
 import {
   SubScreen as BaseSubScreen,
   Section,
 } from "@/components/options/SubScreen";
-import { RoomScreen } from "@/components/RoomScreen";
 import {
   TimePresetPicker,
   timePresetLabel,

@@ -8,7 +8,7 @@ import {
 } from "@game/mighty-engine";
 
 import { DEFAULT_BOT_NAMES } from "@/game/bot-names";
-import { LocalMatch } from "@/game/local-match";
+import { MightyLocalMatch } from "@/game/mighty-local-match";
 import { useGame } from "@/game/store";
 import { LESSONS, TUTORIAL_RULES } from "@/tutorial/lessons";
 import { useTutorialProgress } from "@/tutorial/progress";
@@ -33,13 +33,13 @@ export const mightyTutorial: TutorialKit<
   startMission(scenario) {
     const seed = Math.floor(Math.random() * 2 ** 31);
     const match = scenario
-      ? new LocalMatch({
+      ? new MightyLocalMatch({
           rules: TUTORIAL_RULES,
           seed,
           initialState: createScenario({ rules: TUTORIAL_RULES, ...scenario }),
         })
       : // 실전 한 판은 입문 컴퓨터와 한다. 추천 카드는 중수 기준이다.
-        new LocalMatch({ rules: TUTORIAL_RULES, seed, bot: beginnerBot });
+        new MightyLocalMatch({ rules: TUTORIAL_RULES, seed, bot: beginnerBot });
     useGame.getState().attachOnline(match, NAMES);
   },
   subscribe: (listener) =>

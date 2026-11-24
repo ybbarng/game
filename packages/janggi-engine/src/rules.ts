@@ -2,7 +2,7 @@ import {
   decodeTimePreset,
   encodeTimePreset,
   type TimePreset,
-} from "@game/mighty-engine";
+} from "@game/core";
 
 /** 판: 가로 9줄 × 세로 10줄의 교차점 */
 export const WIDTH = 9;

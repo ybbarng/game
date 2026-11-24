@@ -5,6 +5,8 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수 */
 export type NyrongppongLevel = 0 | 1 | 2;
 
@@ -14,18 +16,20 @@ interface NyrongppongSettings extends NyrongppongRules {
   set(patch: Partial<Omit<NyrongppongSettings, "set">>): void;
 }
 
-export const useNyrongppongSettings = create<NyrongppongSettings>()(
-  persist(
-    (set) => ({
-      ...STANDARD_RULES,
-      level: 0,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "nyrongppong-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useNyrongppongSettings = hydrateAfterFirstPaint(
+  create<NyrongppongSettings>()(
+    persist(
+      (set) => ({
+        ...STANDARD_RULES,
+        level: 0,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "nyrongppong-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "큐브 대회 규칙 섞기 — 씨앗에서 결정적, 순수 함수",
   "exports": {
     ".": "./src/index.ts"
@@ -11,8 +12,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@game/cube-solver": "workspace:*",
-    "@game/mighty-engine": "workspace:*"
+    "@game/core": "workspace:*",
+    "@game/cube-solver": "workspace:*"
   },
   "devDependencies": {
     "@game/cube-engine": "workspace:*"

@@ -2,6 +2,8 @@ import type { GostopRules, GukjinRule } from "@game/gostop-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수 */
 export type GostopLevel = 0 | 1 | 2;
 
@@ -14,20 +16,22 @@ interface GostopSettings {
   set(patch: Partial<Omit<GostopSettings, "set">>): void;
 }
 
-export const useGostopSettings = create<GostopSettings>()(
-  persist(
-    (set) => ({
-      players: 2,
-      rounds: 3,
-      gukjin: "best",
-      level: 0,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "gostop-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useGostopSettings = hydrateAfterFirstPaint(
+  create<GostopSettings>()(
+    persist(
+      (set) => ({
+        players: 2,
+        rounds: 3,
+        gukjin: "best",
+        level: 0,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "gostop-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

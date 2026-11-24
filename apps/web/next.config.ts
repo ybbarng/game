@@ -32,15 +32,14 @@ const nextConfig: NextConfig = {
       ? ["tsx", "ts", "jsx", "js", "specimen.tsx"]
       : ["tsx", "ts", "jsx", "js"],
   generateBuildId: async () => sourceCommit(),
+  // 묶음 크기를 소스 파일별로 가를 때만 켠다(`ANALYZE=1` 빌드 뒤 `node scripts/bundle-size.mjs --sources`).
+  // 운영 빌드에는 소스 맵을 싣지 않는다
+  productionBrowserSourceMaps: process.env.ANALYZE === "1",
   // 화면이 아는 자기 판 번호. 배포된 out/version.json(scripts/write-version.mjs)과 다르면 새 배포가 나온 것(StaleBuild)
   env: { NEXT_PUBLIC_BUILD_COMMIT: sourceCommit() },
-  transpilePackages: [
-    "@game/mighty-engine",
-    "@game/mighty-ai",
-    "@game/fair-play",
-    "@game/hearts-engine",
-    "@game/hearts-ai",
-  ],
+  // transpilePackages는 두지 않는다. 작업 공간 패키지(packages/*, TS 소스 그대로)는 목록 없이도 Turbopack이
+  // 옮겨 짓는다. 예전 목록(마이티·하트·멘탈 포커 다섯)은 패키지가 서른 넘게 는 뒤로 낡아 있었고, 지워도
+  // 빌드·결과가 같았다(2026-11-25 첫 화면 가볍게)
 };
 
 export default nextConfig;

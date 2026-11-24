@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "은하 한 바퀴 컴퓨터 플레이어 — 입문·중수·고수, 컴퓨터끼리 두기와 밸런스 bench",
   "exports": {
     ".": "./src/index.ts"

@@ -3,6 +3,8 @@ import type { YutRules } from "@game/yut-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수 */
 export type YutLevel = 0 | 1 | 2;
 
@@ -26,25 +28,27 @@ interface YutSettings {
   set(patch: Partial<Omit<YutSettings, "set">>): void;
 }
 
-export const useYutSettings = create<YutSettings>()(
-  persist(
-    (set) => ({
-      lineup: "duel",
-      pieces: 4,
-      backDo: true,
-      flatPercent: 60,
-      landOnHome: false,
-      nak: true,
-      time: "none",
-      level: 0,
-      vibrate: true,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "yut-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useYutSettings = hydrateAfterFirstPaint(
+  create<YutSettings>()(
+    persist(
+      (set) => ({
+        lineup: "duel",
+        pieces: 4,
+        backDo: true,
+        flatPercent: 60,
+        landOnHome: false,
+        nak: true,
+        time: "none",
+        level: 0,
+        vibrate: true,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "yut-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

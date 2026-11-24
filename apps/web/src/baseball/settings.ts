@@ -3,6 +3,8 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수 */
 export type BaseballLevel = 0 | 1 | 2;
 
@@ -22,24 +24,26 @@ interface BaseballSettings {
   set(patch: Partial<Omit<BaseballSettings, "set">>): void;
 }
 
-export const useBaseballSettings = create<BaseballSettings>()(
-  persist(
-    (set) => ({
-      digits: 3,
-      zero: false,
-      soloMode: "duel",
-      fair: true,
-      winsToFinish: 1,
-      level: 0,
-      time: "none",
-      showHints: true,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "baseball-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useBaseballSettings = hydrateAfterFirstPaint(
+  create<BaseballSettings>()(
+    persist(
+      (set) => ({
+        digits: 3,
+        zero: false,
+        soloMode: "duel",
+        fair: true,
+        winsToFinish: 1,
+        level: 0,
+        time: "none",
+        showHints: true,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "baseball-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

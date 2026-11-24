@@ -2,7 +2,7 @@ import {
   decodeTimePreset,
   encodeTimePreset,
   type TimePreset,
-} from "@game/mighty-engine";
+} from "@game/core";
 
 /** 판: 8 × 8 칸 */
 export const SIZE = 8;

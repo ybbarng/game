@@ -42,6 +42,7 @@ function archiveOf(
 /** 혼자 두는 마이티를 사람 자리도 봇처럼 판 n개 둔다 */
 function playMighty(rounds: number) {
   const match = new LocalMatch({
+    kit: mightyKit,
     rules: presetRules("standard5"),
     seed: 41,
     bot: heuristicBot,

@@ -19,6 +19,7 @@
     "@game/baseball-engine": "workspace:*",
     "@game/chess-ai": "workspace:*",
     "@game/chess-engine": "workspace:*",
+    "@game/core": "workspace:*",
     "@game/cube-ai": "workspace:*",
     "@game/cube-engine": "workspace:*",
     "@game/cube-scramble": "workspace:*",

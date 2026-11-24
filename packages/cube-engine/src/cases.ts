@@ -1,4 +1,4 @@
-import { nextInt, type RngState } from "@game/mighty-engine";
+import { nextInt, type RngState } from "@game/core";
 import type { PuzzleState } from "@game/puzzle-core";
 import { applyMoves, type CubeMove, invertMoves } from "./move";
 import { parseMoves } from "./notation";

@@ -1,10 +1,13 @@
-import { ONECARD_LEVELS as AI_LEVELS } from "@game/onecard-ai";
+// 단계 이름표만 쓰므로 컴퓨터 전체(index) 대신 단계 파일만 부른다(설정은 첫 화면에서도 읽혀 가볍게 둔다)
+import { ONECARD_LEVELS as AI_LEVELS } from "@game/onecard-ai/levels";
 import {
   type OnecardRules,
   STANDARD_ONECARD_RULES,
 } from "@game/onecard-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
 
 /** 0 입문, 1 중수, 2 고수 */
 export type OnecardLevel = 0 | 1 | 2;
@@ -18,20 +21,22 @@ interface OnecardSettings {
   set(patch: Partial<Omit<OnecardSettings, "set">>): void;
 }
 
-export const useOnecardSettings = create<OnecardSettings>()(
-  persist(
-    (set) => ({
-      players: STANDARD_ONECARD_RULES.players,
-      handSize: STANDARD_ONECARD_RULES.handSize,
-      endOnFirst: STANDARD_ONECARD_RULES.endOnFirst,
-      level: 0,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "onecard-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useOnecardSettings = hydrateAfterFirstPaint(
+  create<OnecardSettings>()(
+    persist(
+      (set) => ({
+        players: STANDARD_ONECARD_RULES.players,
+        handSize: STANDARD_ONECARD_RULES.handSize,
+        endOnFirst: STANDARD_ONECARD_RULES.endOnFirst,
+        level: 0,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "onecard-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "description": "민화투 규칙 엔진 — 순수 함수",
   "exports": {
     ".": "./src/index.ts"
@@ -11,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@game/core": "workspace:*",
     "@game/mighty-engine": "workspace:*",
     "@game/hwatu": "workspace:*"
   }

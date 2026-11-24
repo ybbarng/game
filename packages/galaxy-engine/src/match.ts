@@ -6,7 +6,7 @@ import {
   startClock,
   TIME_PRESETS,
   type TimeControl,
-} from "@game/mighty-engine";
+} from "@game/core";
 import {
   CHAIN_LENGTH,
   chainHash,

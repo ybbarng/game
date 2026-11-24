@@ -13,9 +13,9 @@ import { endOnlineSession } from "@/net/session";
 
 import { AboutScreen } from "./AboutScreen";
 import { GameTable } from "./GameTable";
+import { RoomScreen } from "./LazyRoomScreen";
 import { mightyRoom } from "./mighty-room";
 import { OptionsScreen } from "./OptionsScreen";
-import { RoomScreen } from "./RoomScreen";
 import { Splash } from "./Splash";
 import { StartScreen } from "./StartScreen";
 import { LessonPlayer } from "./tutorial/LessonPlayer";

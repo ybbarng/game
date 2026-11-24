@@ -7,6 +7,8 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수 */
 export type HeartsLevel = 0 | 1 | 2;
 
@@ -21,19 +23,21 @@ interface HeartsSettings {
   setLevel(level: HeartsLevel): void;
 }
 
-export const useHeartsSettings = create<HeartsSettings>()(
-  persist(
-    (set) => ({
-      ruleCode: WINDOWS_RULE_CODE,
-      setRuleCode: (ruleCode) => set({ ruleCode }),
-      level: 2,
-      setLevel: (level) => set({ level }),
-    }),
-    {
-      name: "hearts-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useHeartsSettings = hydrateAfterFirstPaint(
+  create<HeartsSettings>()(
+    persist(
+      (set) => ({
+        ruleCode: WINDOWS_RULE_CODE,
+        setRuleCode: (ruleCode) => set({ ruleCode }),
+        level: 2,
+        setLevel: (level) => set({ level }),
+      }),
+      {
+        name: "hearts-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

@@ -47,8 +47,3 @@ export const BOT_LEVELS: readonly {
 export function botFor(level: BotLevel): Bot {
   return level === 2 ? searchBot : level === 0 ? beginnerBot : intermediateBot;
 }
-
-/** 봇 수 사이에 브라우저가 그림을 그리고 입력을 받게 한다 */
-export function browserPace(next: () => void): void {
-  setTimeout(next, 0);
-}

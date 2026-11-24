@@ -2,6 +2,8 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수, 3 초고수(2026-11-03 더함. 예전에 저장한 0~2는 그대로 읽힌다) */
 export type ChessLevel = 0 | 1 | 2 | 3;
 
@@ -13,7 +15,7 @@ export type ColorPick = "white" | "black" | "random";
  */
 export type PieceSet = "3d" | "glyph";
 
-/** 체스만의 설정. 첫 그리기 뒤에 저장값을 읽는다(ChessApp이 rehydrate) */
+/** 체스만의 설정. 첫 그리기 뒤에 저장값을 읽는다(StoreHydration) */
 interface ChessSettings {
   winsToFinish: number;
   level: ChessLevel;
@@ -29,23 +31,25 @@ interface ChessSettings {
   set(patch: Partial<Omit<ChessSettings, "set">>): void;
 }
 
-export const useChessSettings = create<ChessSettings>()(
-  persist(
-    (set) => ({
-      winsToFinish: 1,
-      level: 0,
-      pick: "white",
-      time: "none",
-      coordinates: true,
-      pieces: "3d",
-      dangerHint: true,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "chess-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useChessSettings = hydrateAfterFirstPaint(
+  create<ChessSettings>()(
+    persist(
+      (set) => ({
+        winsToFinish: 1,
+        level: 0,
+        pick: "white",
+        time: "none",
+        coordinates: true,
+        pieces: "3d",
+        dangerHint: true,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "chess-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 
