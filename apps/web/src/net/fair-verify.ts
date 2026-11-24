@@ -1,22 +1,7 @@
-import {
-  checkReplay,
-  type FairLogged,
-  type RoundDeal,
-  realAction,
-} from "@game/fair-play";
-import {
-  type Action,
-  type Card,
-  createMatch,
-  createRng,
-  type MatchState,
-  type PlayerView,
-  type RuleSet,
-  viewOf,
-} from "@game/mighty-engine";
+import { createRng } from "@game/core";
+import type { FairLogged } from "@game/fair-play";
 
 import type { KitBot } from "@/game/kit";
-import { mightyKit } from "@/game/mighty-kit";
 
 export type FairVerdict =
   | { ok: true }
@@ -110,31 +95,10 @@ export function standingProblem(input: {
   return expected === shown ? null : STANDING_MISMATCH;
 }
 
-/** 마이티 */
-export const MIGHTY_REPLAY: FairReplayGame = {
-  standing: pickStanding(STANDING_KEYS.mighty ?? []),
-  initial: (rules, seed) =>
-    createMatch({ rules: rules as RuleSet, seed }).state,
-  check: (rules, seed, log, deals) =>
-    checkReplay(
-      rules as RuleSet,
-      seed,
-      log,
-      deals as ReadonlyMap<number, RoundDeal>,
-    ),
-  viewOf: (state, seat) => viewOf(state as MatchState, seat),
-  realAction: (action, cards) =>
-    realAction(action as Action, cards as ReadonlyMap<number, Card>),
-  annotate: (view, action) =>
-    mightyKit.annotateBotAction
-      ? mightyKit.annotateBotAction(view as PlayerView, action as Action)
-      : action,
-};
-
 export interface FairVerifyInput {
-  /** 어떤 게임인가(없으면 마이티) */
-  game?: FairReplayGame;
-  rules: RuleSet;
+  /** 어떤 게임인가(마이티·하트는 `KitFairTable.replay`, 화투 셋·원카드는 `cardTable`로 만든 것) */
+  game: FairReplayGame;
+  rules: unknown;
   seed: number;
   seat: number;
   log: readonly FairLogged[];
@@ -295,8 +259,7 @@ function idle(): Promise<void> {
 export async function verifyFairLog(
   input: FairVerifyInput,
 ): Promise<FairVerdict> {
-  const { rules, seed, seat, log, deals } = input;
-  const game = input.game ?? MIGHTY_REPLAY;
+  const { game, rules, seed, seat, log, deals } = input;
   const checked = game.check(rules, seed, log, deals);
   if (!checked.ok)
     return {

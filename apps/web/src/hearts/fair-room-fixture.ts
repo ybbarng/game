@@ -8,7 +8,7 @@ import { HostRoom, type IncidentNotice } from "@/net/host-room";
 import type { HostStore } from "@/net/host-store";
 import { MemoryNetwork } from "@/net/transport";
 
-import { heartsKit } from "./kit";
+import { heartsRoomKit } from "./fair-table";
 
 /**
  * 하트 멘탈 포커 방 시험의 공통 준비. 시험을 여러 파일(fair-room, fair-room-rounds, fair-room-late-open,
@@ -55,7 +55,7 @@ export function hostOptions(
   endScore = 10,
 ) {
   return {
-    kit: heartsKit,
+    kit: heartsRoomKit,
     hostName: "방장",
     rules: { ...WINDOWS_RULES, endScore },
     bot: heartsIntermediateBot,
@@ -91,7 +91,7 @@ export async function setup(
   >[] = [];
   for (let i = 0; i < guestCount; i++) {
     const guest = new GuestRoom({
-      kit: heartsKit,
+      kit: heartsRoomKit,
       transport: net.join(`g${i}`),
       name: `손님${i}`,
       token: null,

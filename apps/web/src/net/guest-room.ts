@@ -1,44 +1,35 @@
+import { createRng } from "@game/core";
 import {
   type Clock,
-  checkHeartsReplay,
   checkHwatuReplay,
   checkOnecardTable,
-  FairGuestSeat,
   type FairLogged,
   flipCount,
-  HeartsGuestSeat,
   HwatuGuestSeat,
   type Incident,
   OnecardGuestSeat,
   type PartySnapshot,
   realClock,
-  realHeartsAction,
   realHwatuAction,
   realOnecardAction,
 } from "@game/fair-play";
-import {
-  type HeartsRules,
-  createMatch as heartsCreateMatch,
-  viewOf as heartsViewOf,
-} from "@game/hearts-engine";
-import {
-  type Action,
-  createRng,
-  type GameEvent,
-  type MatchState,
-  type PlayerView,
-  type PresetDeal,
-  type RuleSet,
+import type {
+  Action,
+  GameEvent,
+  MatchState,
+  PlayerView,
+  PresetDeal,
+  RuleSet,
 } from "@game/mighty-engine";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import type { GameKit, KitLoggedAction, VerifyContext } from "@/game/kit";
-import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
 import { botCheckFor, lobbyBotPlan } from "./bot-plan";
 import type { ClaimsResolved } from "./claim";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
+import { FAIR_TABLE_MISSING, type KitFairSeat } from "./fair-table";
 import {
   endsWithRetire,
   type FairReplayGame,
@@ -238,8 +229,11 @@ export interface GuestRoomOptions<
   Event = GameEvent,
   Extra = PresetDeal,
 > {
-  /** 어떤 게임의 방인가. 없으면 마이티. 판 끝 검증도 이 게임 엔진으로 한다 */
-  kit?: GameKit<Rules, State, View, ActionT, Event, Extra>;
+  /**
+   * 어떤 게임의 방인가. 판 끝 검증도 이 게임 엔진으로 한다. 암호화방에 들어가려면 판을 만들 수 있어야 한다:
+   * 화투 셋·원카드는 `cardTable`, 마이티·하트는 `fairTable`(`withFairTable`로 불러 채운 킷)
+   */
+  kit: GameKit<Rules, State, View, ActionT, Event, Extra>;
   transport: Transport;
   name: string;
   /** 재접속용. 같은 방에 다시 들어올 때 같은 자리를 받는다 */
@@ -450,14 +444,7 @@ export class GuestRoom<
     rematch: new Set(),
   };
   /** 멘탈 포커 진행(이 방이 멘탈 포커일 때, 첫 화면을 받으면 만든다) */
-  fair:
-    | FairGuestSeat
-    | HeartsGuestSeat
-    // biome-ignore lint/suspicious/noExplicitAny: 화투 게임마다 상태 모양이 다르다
-    | HwatuGuestSeat<any, any, any, any, any>
-    // biome-ignore lint/suspicious/noExplicitAny: 원카드 상태 모양
-    | OnecardGuestSeat<any, any, any, any, any>
-    | null = null;
+  fair: KitFairSeat | AnyHwatuSeat | AnyOnecardSeat | null = null;
   /** 화투: 시드를 확인하기 전에 온 화면·걸음별 사건(멘탈 포커 진행은 시드가 있어야 만든다) */
   private cardEarly: {
     snapshots: { view: View; events: Event[]; resync: boolean }[];
@@ -510,16 +497,7 @@ export class GuestRoom<
   constructor(
     options: GuestRoomOptions<Rules, State, View, ActionT, Event, Extra>,
   ) {
-    this.kit =
-      options.kit ??
-      (mightyKit as unknown as GameKit<
-        Rules,
-        State,
-        View,
-        ActionT,
-        Event,
-        Extra
-      >);
+    this.kit = options.kit;
     this.transport = options.transport;
     this.name = options.name;
     this.token = options.token;
@@ -757,17 +735,15 @@ export class GuestRoom<
       clock: this.clock,
       ...(saved ? { restore: saved.snapshots } : {}),
     };
-    const deliver = (view: unknown, events: unknown) => {
-      if (live())
-        this.deliver({
-          view: view as unknown as View,
-          events: events as unknown as Event[],
-        });
+    const deliver = (view: View, events: Event[]) => {
+      if (live()) this.deliver({ view, events });
     };
     const verify = (deal: number, log: unknown) => {
       if (live()) void this.verifyRound(deal, log as FairLogged[]);
     };
     const spec = this.kit.cardTable;
+    const fairTable = this.kit.fairTable;
+    if (!spec && !fairTable) throw new Error(FAIR_TABLE_MISSING);
     const fair =
       spec && "kind" in spec && spec.kind === "onecard"
         ? new OnecardGuestSeat({
@@ -787,40 +763,33 @@ export class GuestRoom<
               onSnapshot: deliver,
               onVerify: verify,
             })
-          : this.kit.id === "hearts"
-            ? new HeartsGuestSeat({
-                ...common,
-                rules: rules.rules as unknown as HeartsRules,
-                // 넘긴 카드 열쇠는 받는 기기에게만 직접 보낸다(방장을 거치지 않는다).
-                sendTo: (message, device) => {
-                  if (!live()) return;
-                  const tagged = tagFair(message as FairMessage, gen);
-                  if (device === 0) this.rememberOwn(tagged, 0);
-                  const peer = this.peerOfDevice(device);
-                  if (peer) this.transport.send(tagged, peer);
-                },
-                onSnapshot: deliver,
-                onVerify: verify,
-              })
-            : new FairGuestSeat({
-                ...common,
-                rules: rules.rules as unknown as RuleSet,
-                onSnapshot: deliver,
-                onVerify: verify,
-              });
+          : (fairTable as NonNullable<typeof fairTable>).guest({
+              ...common,
+              rules: rules.rules,
+              // 넘긴 카드 열쇠(하트)는 받는 기기에게만 직접 보낸다(방장을 거치지 않는다).
+              sendTo: (message, device) => {
+                if (!live()) return;
+                const tagged = tagFair(message, gen);
+                if (device === 0) this.rememberOwn(tagged, 0);
+                const peer = this.peerOfDevice(device);
+                if (peer) this.transport.send(tagged, peer);
+              },
+              onSnapshot: deliver,
+              onVerify: verify,
+            });
     this.fair = fair;
     this.restoredSent = saved?.sent ?? [];
     fair.device.on("persist", () => this.persistFair());
     watchFairDevice(fair.device);
     for (const { message, from } of this.fairEarly.splice(0))
-      fair.receive(message as never, from);
+      fair.receive(message, from);
     if (isCardSeat(fair)) {
       fair.start();
       const history = this.cardEarly.history;
       this.cardEarly.history = null;
       if (history) fair.history(history as never);
       for (const s of this.cardEarly.snapshots.splice(0))
-        fair.snapshot(s.view as never, s.events as never, s.resync);
+        fair.snapshot(s.view, s.events, s.resync);
     }
     return fair;
   }
@@ -904,8 +873,7 @@ export class GuestRoom<
         return delivered;
       },
       this.fair
-        ? (action) =>
-            (this.fair?.outgoing(action as never) as ActionT | null) ?? null
+        ? (action) => (this.fair?.outgoing(action) as ActionT | null) ?? null
         : undefined,
       this.kit.offTurn
         ? (view, action) => this.kit.offTurn?.(view, action) ?? false
@@ -949,14 +917,15 @@ export class GuestRoom<
     )
       this.hostRounds.last = round;
     const table = this.kit.cardTable;
-    const kind = !table
-      ? this.kit.id === "hearts"
-        ? "hearts"
-        : "mighty"
-      : "kind" in table && table.kind === "onecard"
-        ? "onecard"
-        : (table as { viewRoundOver(view: never): boolean });
-    const finished = finishedRoundOf(kind, view);
+    // 멘탈 포커 판이 없는 게임(판 게임 등)은 세지 않는다(멘탈 포커 판 끝 검증에만 쓴다).
+    const finished = table
+      ? finishedRoundOf(
+          "kind" in table && table.kind === "onecard"
+            ? "onecard"
+            : (table as { viewRoundOver(view: never): boolean }),
+          view,
+        )
+      : (this.kit.fairTable?.finishedRound(view) ?? null);
     if (finished !== null) this.hostRounds.finished.add(finished);
   }
 
@@ -974,13 +943,13 @@ export class GuestRoom<
       lobby,
       log.some((e) => e.bot === true || botSeats.has(e.seat)),
     );
+    const game = this.kit.cardTable
+      ? this.cardReplay(complete)
+      : this.kit.fairTable?.replay;
+    if (!game) return null;
     return {
-      ...(this.kit.cardTable
-        ? { game: this.cardReplay(complete) }
-        : this.kit.id === "hearts"
-          ? { game: this.heartsReplay() }
-          : {}),
-      rules: rules.rules as unknown as RuleSet,
+      game,
+      rules: rules.rules,
       seed: this.fairSeed,
       seat: this.seat,
       log,
@@ -1114,30 +1083,6 @@ export class GuestRoom<
     };
   }
 
-  /** 하트 판 다시 계산하기 */
-  private heartsReplay(): FairReplayGame {
-    const kit = this.kit;
-    return {
-      check: (rules, seed, log, deals) =>
-        checkHeartsReplay(
-          rules as HeartsRules,
-          seed,
-          log as never,
-          deals as never,
-        ),
-      viewOf: (state, seat) => heartsViewOf(state as never, seat),
-      standing: pickStanding(STANDING_KEYS.hearts ?? []),
-      initial: (rules, seed) =>
-        heartsCreateMatch({ rules: rules as HeartsRules, seed }).state,
-      realAction: (action, cards) =>
-        realHeartsAction(action as never, cards as never),
-      annotate: (view, action) =>
-        kit.annotateBotAction
-          ? kit.annotateBotAction(view as View, action as ActionT)
-          : action,
-    };
-  }
-
   /** 마지막 턴에 판 전체를 진짜 카드로 다시 계산한다 */
   private async verifyRound(deal: number, log: FairLogged[]): Promise<void> {
     // 새로고침한 참가자는 손패 카드를 다 알기 전까지 화면 전달을 미룬다. 그 사이 끝난 판, 첫 화면보다 앞 판,
@@ -1244,7 +1189,7 @@ export class GuestRoom<
       case "fpHistory": {
         if (from !== this.hostId || !Array.isArray(message.items)) return;
         const fair = this.ensureFair();
-        if (fair) fair.history(message.items as never);
+        if (fair) fair.history(message.items);
         else if (this.kit.cardTable) this.cardEarly.history = message.items;
         break;
       }
@@ -1373,11 +1318,7 @@ export class GuestRoom<
         }
         // 멘탈 포커: 자리 표를 내가 연 카드로 바꿔 넘긴다(못 열었으면 열 때까지 미룬다).
         if (fair)
-          fair.snapshot(
-            message.view as never,
-            message.events as never,
-            message.resync === true,
-          );
+          fair.snapshot(message.view, message.events, message.resync === true);
         else this.deliver(snapshot);
         break;
       }
@@ -1547,10 +1488,7 @@ export class GuestRoom<
     }
     // 마이티·하트도 마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다. 열쇠를 공개한 판이 다 열리길 기다린다
     // (화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다, `whenRevealedOpened`).
-    if (
-      this.fair instanceof HeartsGuestSeat ||
-      this.fair instanceof FairGuestSeat
-    )
+    if (this.fair && !isCardSeat(this.fair))
       await this.fair.whenRevealedOpened();
     const input = this.fairInput(log);
     if (!input) return { ok: false, reason: "검증할 정보가 없어요." };

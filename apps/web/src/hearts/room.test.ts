@@ -4,6 +4,7 @@ import { heartsIntermediateBot, heartsNormalBot } from "@game/hearts-ai";
 import { WINDOWS_RULES } from "@game/hearts-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { mightyKit } from "@/game/mighty-kit";
 import { type AuditResult, GuestRoom, OTHER_GAME_ROOM } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { MemoryNetwork } from "@/net/transport";
@@ -74,6 +75,7 @@ describe("하트 온라인 방", () => {
   it("마이티 방에는 하트로 들어가지 않는다", async () => {
     const net = new MemoryNetwork();
     new HostRoom({
+      kit: mightyKit,
       transport: net.join("host"),
       clock,
       hostName: "방장",

@@ -60,6 +60,8 @@ export const heartsKit: HeartsKit = {
   isOver: (view) => view.phase === "gameOver",
   // 끝내기는 게임 전체를 끝내므로 참가자에게는 허락하지 않는다.
   guestMayAct: (action) => action.type !== "retire",
+  // 멘탈 포커 판은 온라인 방을 열 때만 불러온다(혼자 하기 묶음에 싣지 않는다).
+  loadFairTable: () => import("./fair-table").then((m) => m.heartsFairTable),
   retireAction: { type: "retire" },
   stats: heartsStats,
   // 멘탈 포커 판의 판 패: { hands: 자리마다 처음 패 }(fair-play HeartsRoundDeal과 같다).

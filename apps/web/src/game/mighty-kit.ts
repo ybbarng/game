@@ -78,6 +78,9 @@ export const mightyKit: MightyKit = {
   isOver: (view) => view.phase === "gameOver",
   // 그만두기는 게임 전체를 끝내므로 참가자에게는 허락하지 않는다(모의 침투 B6).
   guestMayAct: (action) => action.type !== "retire",
+  // 멘탈 포커 판은 온라인 방을 열 때만 불러온다(혼자 하기 묶음에 싣지 않는다).
+  loadFairTable: () =>
+    import("./mighty-fair-table").then((m) => m.mightyFairTable),
   retireAction: { type: "retire" },
   stats: mightyStats,
   // 멘탈 포커 판의 판 패: { deal: 처음 나눈 패, redeal?: 6·7마 다시 나눈 순서 }(fair-play RoundDeal과 같다).

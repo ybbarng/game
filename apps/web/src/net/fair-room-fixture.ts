@@ -3,6 +3,7 @@
 import { ManualClock, prepareGroup } from "@game/fair-play";
 import { heuristicBot, intermediateBot } from "@game/mighty-ai";
 import type { Action, PlayerView, RuleSet } from "@game/mighty-engine";
+import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { closeWhenDone } from "./close-when-done";
 import { type FairSaved, GuestRoom } from "./guest-room";
 
@@ -71,6 +72,7 @@ export function hostOptions(
   store?: HostStore,
 ) {
   return {
+    kit: mightyRoomKit,
     hostName: "방장",
     rules,
     revealTimeoutMs: 500,
@@ -99,6 +101,7 @@ export async function setup(
   const guests: GuestRoom[] = [];
   for (let i = 0; i < guestCount; i++) {
     const guest = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join(`g${i}`),
       name: `손님${i}`,
       token: null,

@@ -5,6 +5,7 @@ import { heuristicBot } from "@game/mighty-ai";
 import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
+import { mightyRoomKit } from "@/game/mighty-fair-table";
 import { GuestRoom } from "./guest-room";
 import { HostRoom } from "./host-room";
 import { type LatencyMessage, withLatency } from "./latency";
@@ -145,16 +146,19 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
     const hostTransport = net.join("host");
     const hostGot = countLatency(hostTransport);
     const host = new HostRoom({
+      kit: mightyRoomKit,
       transport: hostTransport,
       clock,
       hostName: "방장",
       rules,
       revealTimeoutMs: 500,
       standInDelayMs: 10,
+      bot: heuristicBot,
     });
     // 손님이 알림도 보내게 해 beacon·seen까지 옛 기기에 닿게 한다
     const fresh = newClient(net, "a", true);
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: fresh.transport,
       clock,
       name: "철수",
@@ -164,6 +168,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
     const bTransport = net.join("b");
     const bGot = countLatency(bTransport);
     const b = new GuestRoom({
+      kit: mightyRoomKit,
       transport: bTransport,
       clock,
       name: "영희",
@@ -211,16 +216,19 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
     const net = new MemoryNetwork();
     const fresh = newClient(net, "host", true);
     const host = new HostRoom({
+      kit: mightyRoomKit,
       transport: fresh.transport,
       clock,
       hostName: "방장",
       rules,
       revealTimeoutMs: 500,
       standInDelayMs: 10,
+      bot: heuristicBot,
     });
     const aTransport = net.join("a");
     const aGot = countLatency(aTransport);
     const a = new GuestRoom({
+      kit: mightyRoomKit,
       transport: aTransport,
       clock,
       name: "철수",
@@ -228,6 +236,7 @@ describe("옛 방 코드가 새 클라이언트의 측정 메시지를 무시한
     });
     await until(() => a.seat !== null);
     const b = new GuestRoom({
+      kit: mightyRoomKit,
       transport: net.join("b"),
       clock,
       name: "영희",
