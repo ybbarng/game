@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { leaveQuietly } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 
 /**
@@ -52,7 +53,8 @@ export function HostLeftNotice({
       방장이 방을 나가 게임이 끝났어요.
       <button
         type="button"
-        onClick={onExit}
+        // 연결이 이미 끝났으니 나갈지 다시 묻지 않는다
+        onClick={() => leaveQuietly(onExit)}
         className="shrink-0 rounded-lg bg-amber-400 px-3 py-1 font-semibold text-black"
       >
         처음으로

@@ -1,5 +1,5 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /** 판 한 변 줄 수와 가장자리 여백(OmokBoard의 PAD) */
 const SIZE = 15;
@@ -227,7 +227,7 @@ test(
     await guest.screenshot({ path: info.outputPath("omok-online-guest.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 오목" }).click();
+    await leaveOnline(host, "← 오목");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });

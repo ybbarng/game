@@ -1,5 +1,5 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /*
  * 민화투 화면 시험. 시드(`?seed=`)로 같은 판을 다시 쳐 결과가 기기 속도와 상관없게 한다.
@@ -263,7 +263,7 @@ test(
     await guest.screenshot({ path: info.outputPath("minhwatu-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
-    await host.getByRole("button", { name: "← 민화투" }).click();
+    await leaveOnline(host, "← 민화투");
     await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
       timeout: 20_000,
     });

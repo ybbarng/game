@@ -19,7 +19,7 @@ import {
 } from "../src/baduk/study";
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 import { linesBreakAtSpaces } from "./word-wrap";
 
 /** 9줄 판과 가장자리 여백(BadukBoard의 BADUK_PAD) */
@@ -273,7 +273,7 @@ test(
     await white.screenshot({ path: info.outputPath("baduk-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 바둑" }).click();
+    await leaveOnline(host, "← 바둑");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });

@@ -502,7 +502,7 @@ export function BoardOnlineScreen<
           서버 없이 두 기기를 바로 이어요. 연결 문제를 고치려고 연결에 걸린
           시간을 서버에 보내요. 둔 수·이름·채팅은 보내지 않아요.
         </RoomFootnote>
-        {phase !== "error" && <RoomBackLink onBack={onBack} />}
+        {phase !== "error" && <RoomBackLink onBack={onBack} phase={phase} />}
       </div>
     </main>
   );

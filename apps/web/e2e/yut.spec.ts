@@ -10,6 +10,7 @@ import {
   animationsDone,
   expect,
   fastForwardUntil,
+  leaveOnline,
   type Page,
   ready,
   speedUpAnimations,
@@ -341,7 +342,7 @@ test(
     await host.screenshot({ path: info.outputPath("yut-online-host-end.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 모든 던지기를 다시 계산해 확인한다.
-    await host.getByRole("button", { name: "← 윷놀이" }).click();
+    await leaveOnline(host, "← 윷놀이");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 15_000,
     });

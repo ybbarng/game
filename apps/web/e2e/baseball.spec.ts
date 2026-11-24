@@ -1,5 +1,5 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /** 세 자리·1~9 수를 작은 것부터(테스트가 차례로 물을 때) */
 const NUMBERS: string[] = [];
@@ -498,7 +498,7 @@ test(
     });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 계산해 확인한다.
-    await host.getByRole("button", { name: "← 숫자야구" }).click();
+    await leaveOnline(host, "← 숫자야구");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 15_000,
     });

@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { leaveQuietly } from "@/game/screen-history";
 import { useSettings } from "@/game/settings";
 import { cn } from "@/lib/cn";
 
@@ -85,11 +86,19 @@ export function NameInput({
 }
 
 /** 대기실 맨 아래 「처음으로」(오류 화면은 `RoomError`가 단추로 따로 둔다) */
-export function RoomBackLink({ onBack }: { onBack: () => void }) {
+export function RoomBackLink({
+  onBack,
+  phase,
+}: {
+  onBack: () => void;
+  /** 대기실 단계. 방에 아직 들지 않았거나(이름) 못 들었으면(꽉 참·내보냄) 나갈지 묻지 않는다 */
+  phase: string;
+}) {
+  const quiet = phase === "name" || phase === "full" || phase === "kicked";
   return (
     <button
       type="button"
-      onClick={onBack}
+      onClick={() => (quiet ? leaveQuietly(onBack) : onBack())}
       className="text-center text-white/80 text-xs underline"
     >
       처음으로
@@ -133,7 +142,8 @@ export function RoomError({
         {onBack && (
           <button
             type="button"
-            onClick={onBack}
+            // 방에 잇지 못했으니 나갈지 다시 묻지 않는다
+            onClick={() => leaveQuietly(onBack)}
             className="flex-1 rounded-xl bg-white/10 py-3 font-semibold"
           >
             처음으로

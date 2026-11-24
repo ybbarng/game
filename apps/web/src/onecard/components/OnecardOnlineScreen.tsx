@@ -499,7 +499,7 @@ export function OnecardOnlineScreen({
           서버 없이 기기끼리 바로 이어요. 연결 문제를 고치려고 연결에 걸린
           시간을 서버에 보내요(카드·이름·채팅은 보내지 않아요).
         </RoomFootnote>
-        {phase !== "error" && <RoomBackLink onBack={onBack} />}
+        {phase !== "error" && <RoomBackLink onBack={onBack} phase={phase} />}
       </div>
     </main>
   );

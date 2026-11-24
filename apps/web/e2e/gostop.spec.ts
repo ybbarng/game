@@ -2,6 +2,7 @@ import { useTestSpeed } from "./fast";
 import {
   expect,
   fastForwardUntil,
+  leaveOnline,
   type Page,
   ready,
   speedUpAnimations,
@@ -303,7 +304,7 @@ test(
     await guest.screenshot({ path: info.outputPath("gostop-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
-    await host.getByRole("button", { name: "← 고스톱" }).click();
+    await leaveOnline(host, "← 고스톱");
     await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
       timeout: 10_000,
     });

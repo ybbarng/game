@@ -1,6 +1,6 @@
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
-import { expect, type Page, ready, test } from "./test";
+import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 const board = (page: Page) => page.getByRole("img", { name: /체스판/ });
 const pieces = (page: Page) => page.locator("[data-piece]");
@@ -322,7 +322,7 @@ test(
     await black.screenshot({ path: info.outputPath("chess-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 체스" }).click();
+    await leaveOnline(host, "← 체스");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });
@@ -374,7 +374,7 @@ test(
     await expect(white.getByRole("status")).toHaveText("합의해 비겼어요.");
     await white.screenshot({ path: info.outputPath("chess-draw.png") });
 
-    await host.getByRole("button", { name: "← 체스" }).click();
+    await leaveOnline(host, "← 체스");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });

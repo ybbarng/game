@@ -3,7 +3,14 @@ import { OPENING_LINE_MOVES } from "../src/janggi/opening-line";
 import { planText } from "../src/janggi/plan-text";
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
-import { expect, type Locator, type Page, ready, test } from "./test";
+import {
+  expect,
+  type Locator,
+  leaveOnline,
+  type Page,
+  ready,
+  test,
+} from "./test";
 
 /** 판 크기와 가장자리 여백(JanggiBoard의 PAD) */
 const PAD = 0.62;
@@ -769,7 +776,7 @@ test(
     await han.screenshot({ path: info.outputPath("janggi-online.png") });
 
     // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-    await host.getByRole("button", { name: "← 장기" }).click();
+    await leaveOnline(host, "← 장기");
     await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
       timeout: 10_000,
     });
