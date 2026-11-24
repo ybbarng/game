@@ -7,58 +7,12 @@ import { browserPace } from "./bots";
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
 import type { GameKit, KitBot } from "./kit";
 import { LocalMatch, type SavedMatch } from "./local-match";
+import type { SavedSlot } from "./saved-slot";
 import { paced } from "./settings";
 import type { Cue } from "./sound";
 import { playUiCue } from "./ui-sound";
 
-/**
- * 이 기기에 남기는 저장 칸 하나(localStorage 열쇠 하나). 브라우저 저장소를 쓸 수 없는 환경(사생활 보호 창 등)에서는
- * 조용히 넘어간다: 저장하지 못하면 이어하기만 안 될 뿐 게임은 계속된다
- */
-export interface SavedSlot<T> {
-  save(value: T): void;
-  /** 없거나 읽을 수 없거나 `isValid`가 거르면 null */
-  load(): T | null;
-  clear(): void;
-}
-
-/** 이어하기 저장본의 기본 검사: 판 번호 1과 기록 목록 */
-export const isSavedMatch = (value: unknown): boolean => {
-  const saved = value as { version?: unknown; log?: unknown } | null;
-  return saved?.version === 1 && Array.isArray(saved.log);
-};
-
-export function savedMatchSlot<T>(
-  key: string,
-  isValid: (value: unknown) => boolean = isSavedMatch,
-): SavedSlot<T> {
-  return {
-    save(value) {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch {
-        // 저장할 수 없으면 이어하기만 안 된다.
-      }
-    },
-    load() {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return null;
-        const value: unknown = JSON.parse(raw);
-        return isValid(value) ? (value as T) : null;
-      } catch {
-        return null;
-      }
-    },
-    clear() {
-      try {
-        localStorage.removeItem(key);
-      } catch {
-        // 지울 수 없어도 문제없다.
-      }
-    },
-  };
-}
+export { isSavedMatch, type SavedSlot, savedMatchSlot } from "./saved-slot";
 
 /** 화면이 아는 대국 창구: 혼자 하기·방장은 LocalMatch, 참가자는 RemoteMatch */
 export type MatchStoreHost<View, ActionT, Event> = MatchHost<
@@ -117,6 +71,8 @@ export interface MatchStoreState<
   events: Event[];
   /** 보인 걸음 번호(같은 화면이 다시 와도 판 끝 띠를 한 번만 띄운다) */
   seq: number;
+  /** 지금 화면을 보인 시각(ms, Date.now). 나이롱뽕 뽕 응답 창의 남은 시간을 세는 기준 */
+  viewAt: number;
   queue: Snapshot<View, Event>[];
   level: number;
   notice: string | null;
@@ -190,10 +146,15 @@ export interface MatchStoreConfig<
   /** 이 장면의 연출(나눠 주기·카드 내기 등)이 걸리는 시간(ms). 다음 장면은 그 뒤에 보인다 */
   sceneMs?(events: readonly Event[], view: View): number;
   /**
-   * 대국을 붙일 때 처음 보일 사건과 그 연출 시간. `last`는 붙이기 전 마지막 걸음의 사건이다.
+   * 대국을 붙일 때 처음 보일 사건과 그 연출 시간. `first`는 붙이기 전까지 쌓인 걸음이다.
    * 없으면 사건 없이 지금 화면만 보인다
    */
-  opening?(last: readonly Event[], view: View): { events: Event[]; ms: number };
+  opening?(
+    first: readonly Snapshot<View, Event>[],
+    view: View,
+  ): { events: Event[]; ms: number };
+  /** 컴퓨터 행동 사이를 늦추는 함수(혼자 하기·연습 대국). 없으면 `browserPace` */
+  pace?(next: () => void): void;
 }
 
 /**
@@ -218,6 +179,7 @@ export function createMatchStore<
   const undoable =
     config.undoable ?? ((latest: View) => latest.phase === "play");
   const pause = config.otherPause;
+  const pace = config.pace ?? browserPace;
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   let unsubscribe: (() => void) | null = null;
@@ -260,6 +222,7 @@ export function createMatchStore<
           view: next.view,
           events: next.events,
           seq: get().seq + 1,
+          viewAt: Date.now(),
         });
         const scene = config.sceneMs?.(next.events, next.view) ?? 0;
         const after = other && pause.when === "after" ? paced(pause.ms) : 0;
@@ -301,10 +264,7 @@ export function createMatchStore<
       };
       const first = host.drain();
       const current = host.current();
-      const opening = config.opening?.(first.at(-1)?.events ?? [], current) ?? {
-        events: [],
-        ms: 0,
-      };
+      const opening = config.opening?.(first, current) ?? { events: [], ms: 0 };
       shownUntil = opening.ms > 0 ? Date.now() + opening.ms : 0;
       set({
         host,
@@ -318,6 +278,7 @@ export function createMatchStore<
         view: current,
         events: opening.events,
         seq: get().seq + 1,
+        viewAt: Date.now(),
         queue: [],
         notice: null,
         practice,
@@ -351,7 +312,7 @@ export function createMatchStore<
           humanSeat,
           bot: config.botFor(level),
           ...workerBotOption({ game, level }),
-          pace: browserPace,
+          pace,
         },
         log,
       );
@@ -395,6 +356,7 @@ export function createMatchStore<
       view: null,
       events: [],
       seq: 0,
+      viewAt: 0,
       queue: [],
       level: config.initialLevel,
       notice: null,
@@ -437,7 +399,7 @@ export function createMatchStore<
           seed: config.practiceSeed ?? Math.floor(Math.random() * 2 ** 31),
           humanSeat: 0,
           bot: config.botFor(level),
-          pace: browserPace,
+          pace,
           ...(initialState ? { initialState } : {}),
         });
         attach(local, { local, level, seatNames: null, stats: null });

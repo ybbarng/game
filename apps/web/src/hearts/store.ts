@@ -14,6 +14,7 @@ import { browserPace } from "@/game/bots";
 import type { DealTiming } from "@/game/cues";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { savedMatchSlot } from "@/game/saved-slot";
 import { useSettings } from "@/game/settings";
 import { play as playCue } from "@/game/sound";
 import { dealPlan, prefersReducedMotion, SHUFFLE_MS } from "@/game/timing";
@@ -63,34 +64,10 @@ const EVENT_DELAY: Partial<Record<GameEvent["type"], number>> = {
 const TRICK_HOLD = 1000;
 const TRICK_COLLECT = 380;
 
-const SAVE_KEY = "hearts-save";
-
-function saveHearts(saved: HeartsSaved): void {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-  } catch {
-    // 저장할 수 없으면 이어하기만 안 된다.
-  }
-}
-
-export function loadHearts(): HeartsSaved | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as HeartsSaved;
-    return saved.version === 1 && Array.isArray(saved.log) ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearHearts(): void {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    // 지울 수 없어도 문제없다.
-  }
-}
+const slot = savedMatchSlot<HeartsSaved>("hearts-save");
+const saveHearts = slot.save;
+export const loadHearts = slot.load;
+export const clearHearts = slot.clear;
 
 interface HeartsStore {
   host: HeartsHost | null;

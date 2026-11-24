@@ -15,6 +15,7 @@ import { dealCues } from "@/game/cues";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import type { KitBot } from "@/game/kit";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { savedMatchSlot } from "@/game/saved-slot";
 import { useSettings } from "@/game/settings";
 import { play as playSound } from "@/game/sound";
 import { dealPlan, prefersReducedMotion, SHUFFLE_MS } from "@/game/timing";
@@ -83,34 +84,10 @@ export function dealDuration(handSize: number, players: number): number {
   return dealPlan(handSize, players, onecardDealPattern(handSize)).duration;
 }
 
-const SAVE_KEY = "onecard-save";
-
-function saveOnecard(saved: OnecardSaved): void {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-  } catch {
-    // 저장할 수 없으면 이어하기만 안 된다.
-  }
-}
-
-export function loadOnecard(): OnecardSaved | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as OnecardSaved;
-    return saved.version === 1 && Array.isArray(saved.log) ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearOnecard(): void {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    // 지울 수 없어도 문제없다.
-  }
-}
+const slot = savedMatchSlot<OnecardSaved>("onecard-save");
+const saveOnecard = slot.save;
+export const loadOnecard = slot.load;
+export const clearOnecard = slot.clear;
 
 /**
  * 자리별 외침·잡기·헛외침 사건 수(`OnecardStore.shoutEvents`). 사건을 낸 자리(외친 사람·잡은 사람·헛외친 사람)로 센다.

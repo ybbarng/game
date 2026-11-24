@@ -12,6 +12,7 @@ import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { savedMatchSlot } from "@/game/saved-slot";
 import { paced } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
 import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
@@ -50,34 +51,10 @@ export type BaseballSaved = SavedMatch<BaseballRules, Action, undefined> & {
 /** 컴퓨터가 묻거나 답한 것은 바로 보이지 않고 잠깐 기다렸다 보인다(생각하는 듯이) */
 const BOT_DELAY_MS = 450;
 
-const SAVE_KEY = "baseball-save";
-
-function saveBaseball(saved: BaseballSaved): void {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-  } catch {
-    // 저장할 수 없으면 이어하기만 안 된다.
-  }
-}
-
-export function loadBaseball(): BaseballSaved | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as BaseballSaved;
-    return saved.version === 1 && Array.isArray(saved.log) ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearBaseball(): void {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    // 지울 수 없어도 문제없다.
-  }
-}
+const slot = savedMatchSlot<BaseballSaved>("baseball-save");
+const saveBaseball = slot.save;
+export const loadBaseball = slot.load;
+export const clearBaseball = slot.clear;
 
 interface BaseballStore {
   host: BaseballHost | null;

@@ -59,7 +59,7 @@ export const gostopTutorial: TutorialKit<
         scenario
           ? createGostopScenario({ rules: GOSTOP_TUTORIAL_RULES, ...scenario })
           : null,
-        GOSTOP_TUTORIAL_RULES,
+        { rules: GOSTOP_TUTORIAL_RULES },
       );
   },
   subscribe: (listener) =>

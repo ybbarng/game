@@ -14,6 +14,7 @@ import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { isSavedMatch, savedMatchSlot } from "@/game/saved-slot";
 import { paced } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
 import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
@@ -61,39 +62,16 @@ export type GalaxySaved = SavedMatch<GalaxyRules, Action, undefined> & {
   bid?: PendingBid;
 };
 
-const SAVE_KEY = "galaxy-save";
-
-function saveGalaxy(saved: GalaxySaved): void {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-  } catch {
-    // 저장할 수 없으면 이어하기만 안 된다.
-  }
-}
-
-export function loadGalaxy(): GalaxySaved | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as GalaxySaved;
-    // 판 번호가 다른 이어하기(옛 규칙 판)는 버린다
-    return saved.version === 1 &&
-      Array.isArray(saved.log) &&
-      saved.rules?.edition === GALAXY_EDITION
-      ? saved
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearGalaxy(): void {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    // 지울 수 없어도 문제없다.
-  }
-}
+// 판 번호가 다른 이어하기(옛 규칙 판)는 버린다
+const slot = savedMatchSlot<GalaxySaved>(
+  "galaxy-save",
+  (value) =>
+    isSavedMatch(value) &&
+    (value as GalaxySaved).rules?.edition === GALAXY_EDITION,
+);
+const saveGalaxy = slot.save;
+export const loadGalaxy = slot.load;
+export const clearGalaxy = slot.clear;
 
 /** 움직임 줄이기(연출 없이 결과만, docs/41 6절) */
 export function prefersReducedMotion(): boolean {
