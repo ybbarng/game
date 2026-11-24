@@ -13,7 +13,7 @@ import { parseMove, puzzleState } from "./study";
 
 /*
  * 묶인 기물·비켜 부르는 장군 묶음을 study-deep.test.ts와 같은 방법으로 더 깊이(4수) 다시 읽는다.
- * 무거운 확인이라 파일을 나눠 다른 시험과 함께 돈다
+ * 무거운 확인이라 파일을 나눠 다른 시험과 함께 돈다(양수겸장·포 길 열기는 study-deep-fork-cannon.test.ts)
  */
 const KINDS = new Set(["pin", "discover"]);
 const rows = JANGGI_PUZZLE_SETS.flatMap((s) => s.puzzles)

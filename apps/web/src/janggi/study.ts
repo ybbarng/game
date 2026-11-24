@@ -11,8 +11,10 @@ import {
   type JanggiState,
   KIND_NAMES,
   type Kind,
+  kingsFacing,
   legalMoves,
   type Move,
+  materialScore,
   PIECE_VALUE,
   palaceOf,
   pointAt,
@@ -582,17 +584,96 @@ function guarded(board: Board, at: number): boolean {
   return attacked(probe, at, "h");
 }
 
-/** 한이 어떻게 받아도(쉬기 포함) 이 자리의 한 기물이 남고, 초가 그것을 잡아도 다시 잡히지 않나 */
-export function safeAfterEveryReply(after: Board, at: number): boolean {
-  const piece = after[at];
+/** 두 궁이 마주 본 판(빅장)은 그 자리에서 점수로 끝난다. 초가 점수로 이기나 */
+const choWinsBikjang = (b: Board) =>
+  materialScore(b, "c") > materialScore(b, "h");
+
+/** 한이 다음 수에 빅장을 만들어 점수로 이길 수 있나 */
+function hanWinsByBikjang(board: Board): boolean {
+  return legalMoves(board, "h").some((m) => {
+    const next = applyMove(board, m);
+    return kingsFacing(next) && !choWinsBikjang(next);
+  });
+}
+
+/**
+ * 한의 모든 받는 수(장군이 아니면 쉬기도) 뒤 판. 빅장이 되는 받는 수는 판이 점수로 끝나므로
+ * `bikjang`으로 따로 표시한다
+ */
+export function hanReplies(after: Board): { board: Board; bikjang: boolean }[] {
   const next: Board[] = legalMoves(after, "h").map((m) => applyMove(after, m));
   if (!inCheck(after, "h")) next.push(after);
-  return next.every(
-    (b) =>
-      b[at] === piece &&
-      legalMoves(b, "c").some((m) => m.to === at) &&
-      !guarded(b, at),
+  return next.map((board) => ({ board, bikjang: kingsFacing(board) }));
+}
+
+/**
+ * 한이 어떻게 받아도(쉬기 포함) 이 자리의 한 기물이 남고, 초가 그것을 잡아도 다시 잡히지 않나.
+ * 한이 빅장으로 받아 점수로 이기거나, 잡은 뒤에도 한이 점수로 앞서 빅장으로 빠져나갈 수 있으면 아니다
+ */
+export function safeAfterEveryReply(after: Board, at: number): boolean {
+  const piece = after[at];
+  return hanReplies(after).every(({ board: b, bikjang }) =>
+    bikjang
+      ? choWinsBikjang(b)
+      : b[at] === piece &&
+        !guarded(b, at) &&
+        legalMoves(b, "c").some(
+          (m) => m.to === at && !hanWinsByBikjang(applyMove(b, m)),
+        ),
   );
+}
+
+/** 초 점수 − 한 점수(한의 덤 포함) */
+const balance = (b: Board) => materialScore(b, "c") - materialScore(b, "h");
+
+/**
+ * 한이 어떻게 받아도(쉬기 포함) 초가 처음 판(`start`)보다 얻는 기물 점수의 가장 나쁜 값.
+ * 받은 뒤 초는 잡는 수 하나를 더 둘 수 있고(`allow`로 좁힌다), 잡은 기물이 다시 잡히면 그 기물 값을 뺀다.
+ * 잡지 않고 그대로 두어도 된다. 한이 빅장으로 받아 점수로 이기면 −∞, 초가 이기면 +∞
+ */
+export function worstGain(
+  start: Board,
+  after: Board,
+  allow: (b: Board, m: Move) => boolean = () => true,
+): number {
+  let worst = Infinity;
+  for (const { board: b, bikjang } of hanReplies(after)) {
+    if (bikjang) {
+      if (!choWinsBikjang(b)) return -Infinity;
+      continue;
+    }
+    let take = 0;
+    for (const m of legalMoves(b, "c")) {
+      const taken = b[m.to] ?? "";
+      if (taken === "" || !allow(b, m)) continue;
+      const next = applyMove(b, m);
+      if (kingsFacing(next)) {
+        if (choWinsBikjang(next)) take = Infinity;
+        continue;
+      }
+      // 잡은 뒤에도 한이 점수로 앞서면, 한은 빅장을 만들어 점수로 이기며 빠져나간다.
+      if (hanWinsByBikjang(next)) continue;
+      const back = legalMoves(next, "h").some((r) => r.to === m.to);
+      const gain =
+        PIECE_VALUE[taken[1] as Kind] -
+        (back ? PIECE_VALUE[(b[m.from] as string)[1] as Kind] : 0);
+      if (gain > take) take = gain;
+    }
+    worst = Math.min(worst, balance(b) - balance(start) + take);
+  }
+  return worst;
+}
+
+/**
+ * 양수겸장이 한의 모든 받는 수(쉬기 포함)에 성립하나: 받은 뒤에도 옮긴 기물이 한의 기물을 잡아,
+ * 다시 잡혀도 처음 판보다 기물 점수를 얻는다(잡은 뒤 한이 점수로 앞서 빅장으로 빠져나가면 얻은 것이 아니다).
+ * 해설은 「하나를 살리면 다른 하나를 잡는다」만 말하므로, 한이 빅장으로 받아 판이 끝나는 수도 없어야 한다
+ */
+export function forkHolds(board: Board, move: Move): boolean {
+  const after = applyMove(board, move);
+  if (kingsFacing(after)) return false;
+  if (hanReplies(after).some((r) => r.bikjang)) return false;
+  return worstGain(board, after, (_b, m) => m.from === move.to) > 0;
 }
 
 /**
