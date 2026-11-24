@@ -1,27 +1,33 @@
 import AppKit
 import CubieCore
 
+/// 프로필 칸 오른쪽 엠블럼을 흔드는 것(앱은 `MenuEmblemSway`). 칸은 이 약속만 보고, README 그림(`scripts/readme-shots.mjs`)은
+/// 흔들기 없이(`nil`) 이 파일과 `Profile.swift`만 묶어 컴파일한다
+@MainActor
+protocol ProfileEmblemSway: AnyObject {
+  /// 엠블럼 자리에 얹을 보기
+  var view: NSView { get }
+  var swaying: Bool { get }
+  /// 칸이 메뉴 창에 붙었다(nil이면 떨어졌다)
+  func attached(to window: NSWindow?)
+  /// 스크린샷: 흔들기 각을 정해 둔다
+  func showYaw(_ yaw: Double)
+}
+
 /// 메뉴 막대 메뉴 맨 위 프로필 칸(docs/47 15-20): 왼쪽 동그란 사진, 가운데 이름과 티어 글, 오른쪽 지금 크기의 티어 엠블럼.
-/// - 사진이 없으면(지금은 늘) 무채색 사람 모양. 나중에 로그인이 생기면 웹이 보낸 사진을 동그랗게 잘라 그린다.
-/// - 엠블럼은 웹이 사이트와 같은 그림을 PNG로 그려 보낸 것(`Profile.emblem`). 티어가 없으면 비운다.
+/// - 사진이 없으면(지금은 늘) 무채색 사람 모양.
+/// - 엠블럼은 앱에 묶은 정지 그림(`Profile.emblem`). 티어가 없으면 비운다. 흔들기(`sway`)가 있으면 그 보기가 대신 보인다
+///   (메뉴가 열린 동안 천천히 좌우로, docs/52 5-11).
 /// - 누르면 「기록 보기」. 메뉴 항목에 뷰를 달면 맥이 강조·누르기를 대신 해 주지 않아 직접 그리고 받는다.
 /// - 색은 모두 시스템의 의미 색(글자·보조 글자·강조)이라 다크·라이트 메뉴를 따라간다.
-/// - 엠블럼은 메뉴가 열린 동안 천천히 좌우로 흔든다(docs/52 5-11, 티어표 진열과 같은 9초 왕복). 앱에 묶은 13각 띠
-///   (`Emblems/sway/<티어>-menu.webp`)에서 이웃한 두 장을 두 층에 겹쳐 둔다(`MenuEmblemView`, 칸을 다시 그리지 않고 층 그림과
-///   투명도만 바꾼다). 메뉴가 닫히면(창에서 떨어지면) 멈추고, 동작 줄이기면 정면 그림 그대로다.
 @MainActor
 final class ProfileMenuView: NSView {
   private let profile: Profile
   private let onPick: () -> Void
   private var hovering = false
-  /// 흔드는 엠블럼(앱에 묶은 띠가 있을 때)
-  private let swayView: MenuEmblemView?
-  private var sway = TierShowcase.Sway.from(0)
-  private var timer: Timer?
-  private var last: CFTimeInterval = 0
+  private let sway: ProfileEmblemSway?
   /// 재기·시험: 지금 흔드는지
-  var swaying: Bool { timer != nil }
-  private var stats = SwayStats(name: "menu")
+  var swaying: Bool { sway?.swaying ?? false }
 
   static let height: CGFloat = 52
   private static let side: CGFloat = 14
@@ -34,24 +40,20 @@ final class ProfileMenuView: NSView {
     profile.tierText.map { Self.text($0, size: 11, weight: .regular, secondary: true, highlighted: hovering) }
   }
 
-  init(profile: Profile, onPick: @escaping () -> Void) {
+  init(profile: Profile, sway: ProfileEmblemSway?, onPick: @escaping () -> Void) {
     self.profile = profile
     self.onPick = onPick
-    if let id = profile.emblemTier, let strip = EmblemArt.menuStrip(id).flatMap(EmblemArt.decode) {
-      swayView = MenuEmblemView(strip: strip, gain: EmblemArt.hdrMenuGain(id).flatMap(EmblemArt.decode))
-    } else {
-      swayView = nil
-    }
+    self.sway = sway
     let textW = max(
       Self.text(profile.name, size: 13, weight: .semibold).size().width,
       profile.tierText.map { Self.text($0, size: 11, weight: .regular).size().width } ?? 0)
     let w = max(240, Self.side + Self.photo + 10 + ceil(textW) + 12 + Self.emblem + Self.side)
     super.init(frame: NSRect(x: 0, y: 0, width: w, height: Self.height))
     autoresizingMask = [.width]
-    if let swayView {
-      addSubview(swayView)
-      swayView.frame = emblemRect
-      swayView.autoresizingMask = [.minXMargin]
+    if let v = sway?.view {
+      addSubview(v)
+      v.frame = emblemRect
+      v.autoresizingMask = [.minXMargin]
     }
     setAccessibilityElement(true)
     setAccessibilityRole(.menuItem)
@@ -86,65 +88,11 @@ final class ProfileMenuView: NSView {
     super.viewDidMoveToWindow()
     // 메뉴를 다시 열면 강조 없이 시작한다
     if window == nil { hovering = false }
-    hdrDecided = false
-    refreshHdr()
-    updateSway()
-  }
-
-  /// HDR을 정했는지와 그때의 화면(메뉴 창이 다른 화면에 놓이면 다시 정한다)
-  private var hdrDecided = false
-  private var hdrScreen: ObjectIdentifier?
-
-  /// 메뉴가 뜬 화면이 HDR이면 반짝임을 흰색보다 밝게(docs/52 5-16). 메뉴 창이 붙은 뒤에야 화면에 놓일 수 있어 흔드는 동안에도
-  /// 화면이 바뀌었는지만 본다(바뀌지 않으면 아무것도 하지 않는다)
-  private func refreshHdr() {
-    guard let swayView, let id = profile.emblemTier, let window else { return }
-    let screen = window.screen.map(ObjectIdentifier.init)
-    guard !hdrDecided || screen != hdrScreen else { return }
-    hdrDecided = true
-    hdrScreen = screen
-    swayView.useHdr(EmblemArt.hdrOn(tier: id, screen: window.screen))
-  }
-
-  /// 메뉴가 열려 있고(창에 붙어 있고) 동작 줄이기가 아니면 흔든다. 메뉴는 따로 도는 고리(event tracking)라 .common에 둔다
-  private func updateSway() {
-    let move = window != nil && swayView != nil && !ShowcaseMotion.reduce
-    if move, timer == nil {
-      sway = .from(0)
-      last = CACurrentMediaTime()
-      let t = Timer(timeInterval: 1.0 / 20, repeats: true) { [weak self] _ in
-        MainActor.assumeIsolated {
-          guard let self else { return }
-          // 메뉴가 닫혔는데 창에서 떨어지지 않았으면(맥이 메뉴 창을 숨겨 두는 때) 여기서 멈춘다
-          guard self.window?.isVisible == true else {
-            self.timer?.invalidate()
-            self.timer = nil
-            return
-          }
-          self.refreshHdr()
-          let now = CACurrentMediaTime()
-          self.sway = self.sway.step(min(100, (now - self.last) * 1000))
-          self.last = now
-          let t0 = CACurrentMediaTime()
-          self.swayView?.yaw = self.sway.yaw
-          self.stats.add((CACurrentMediaTime() - t0) * 1000, hdr: self.swayView?.hdr ?? false)
-        }
-      }
-      RunLoop.main.add(t, forMode: .common)
-      timer = t
-    } else if !move, let t = timer {
-      t.invalidate()
-      timer = nil
-      sway = .from(0)
-      swayView?.yaw = 0
-    }
+    sway?.attached(to: window)
   }
 
   /// 스크린샷: 흔들기 각을 정해 둔다
-  func showYaw(_ yaw: Double) {
-    sway = .from(yaw)
-    swayView?.yaw = sway.yaw
-  }
+  func showYaw(_ yaw: Double) { sway?.showYaw(yaw) }
 
   private var emblemRect: NSRect {
     NSRect(x: bounds.width - Self.side - Self.emblem, y: (bounds.height - Self.emblem) / 2, width: Self.emblem, height: Self.emblem)
@@ -182,11 +130,9 @@ final class ProfileMenuView: NSView {
       drawPlaceholderPhoto(in: p)
     }
 
-    // 엠블럼(오른쪽)
+    // 엠블럼(오른쪽). 흔드는 엠블럼은 위에 얹은 보기가 보인다
     let ex = b.width - Self.side - Self.emblem
-    if swayView != nil {
-      // 흔드는 엠블럼은 위에 얹은 층(`MenuEmblemView`)이 보인다
-    } else if let data = profile.emblem, let image = NSImage(data: data), image.size.width > 0 {
+    if sway == nil, let data = profile.emblem, let image = NSImage(data: data), image.size.width > 0 {
       let h = Self.emblem * image.size.height / image.size.width
       image.draw(
         in: NSRect(x: ex, y: (b.height - h) / 2, width: Self.emblem, height: h), from: .zero, operation: .sourceOver,
@@ -223,104 +169,4 @@ final class ProfileMenuView: NSView {
       .fill()
     NSGraphicsContext.restoreGraphicsState()
   }
-}
-
-/// 메뉴 프로필 칸의 흔드는 엠블럼(32pt): 13각 띠에서 이웃한 두 장을 두 층에 두고 위 층 투명도로 사이 각을 메운다
-@MainActor
-final class MenuEmblemView: NSView, ShotPicture {
-  private let sdrFrames: [CGImage]
-  /// HDR 배율 지도 띠(보석 티어만). HDR 화면이면 처음 쓸 때 색 띠에 곱해 둔다(docs/52 5-16)
-  private let gain: CGImage?
-  private lazy var hdrFrames: [CGImage]? = {
-    guard let gain, let strip, let h = EmblemArt.hdr(strip, gain: gain) else { return nil }
-    return Self.split(h)
-  }()
-  private var strip: CGImage?
-  private var frames: [CGImage]
-  private let lo = CALayer()
-  private let hi = CALayer()
-  private var shown: (Int, Int, Double) = (-1, -1, -1)
-  /// 지금 HDR 그림을 쓰는지
-  private(set) var hdr = false
-
-  private static func split(_ strip: CGImage) -> [CGImage] {
-    let n = TierShowcase.menuFrames
-    let w = strip.width / n
-    return (0..<n).compactMap { strip.cropping(to: CGRect(x: w * $0, y: 0, width: w, height: strip.height)) }
-  }
-
-  init(strip: CGImage, gain: CGImage? = nil) {
-    sdrFrames = Self.split(strip)
-    frames = sdrFrames
-    self.gain = gain
-    self.strip = gain == nil ? nil : strip
-    super.init(frame: .zero)
-    wantsLayer = true
-    for l in [lo, hi] {
-      l.contentsGravity = .resizeAspect
-      l.actions = ["contents": NSNull(), "opacity": NSNull(), "bounds": NSNull(), "position": NSNull()]
-      layer?.addSublayer(l)
-    }
-    yaw = 0
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) { fatalError() }
-
-  override func layout() {
-    super.layout()
-    lo.frame = bounds
-    hi.frame = bounds
-  }
-
-  /// HDR 그림으로 바꾸거나 되돌린다(배율 지도가 없는 티어는 늘 SDR)
-  func useHdr(_ on: Bool) {
-    let next = on ? hdrFrames : nil
-    guard (next != nil) != hdr else { return }
-    hdr = next != nil
-    frames = next ?? sdrFrames
-    EmblemArt.setHdr(lo, hdr)
-    EmblemArt.setHdr(hi, hdr)
-    shown = (-1, -1, -1)
-    let y = yaw
-    yaw = y
-  }
-
-  /// 흔들기 각(라디안)
-  var yaw: Double = 0 {
-    didSet {
-      let f = TierShowcase.frames(yaw: yaw, count: frames.count)
-      if f.lo == shown.0, f.hi == shown.1, abs(f.frac - shown.2) < 0.01 { return }
-      CATransaction.begin()
-      CATransaction.setDisableActions(true)
-      if f.lo != shown.0 { lo.contents = frames[f.lo] }
-      if f.hi != shown.1 { hi.contents = frames[f.hi] }
-      hi.opacity = Float(f.frac)
-      CATransaction.commit()
-      shown = f
-    }
-  }
-
-  /// 스크린샷: 두 장을 겹친 그림(64px)
-  var shotImage: CGImage? {
-    guard shown.0 >= 0, let a = frames[safe: shown.0], let b = frames[safe: shown.1] else { return nil }
-    let w = a.width
-    guard
-      let ctx = CGContext(
-        data: nil, width: w, height: a.height, bitsPerComponent: 8, bytesPerRow: 0,
-        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-    else { return nil }
-    let r = CGRect(x: 0, y: 0, width: w, height: a.height)
-    ctx.setAlpha(1 - shown.2)
-    ctx.draw(a, in: r)
-    ctx.setBlendMode(.plusLighter)
-    ctx.setAlpha(shown.2)
-    ctx.draw(b, in: r)
-    return ctx.makeImage()
-  }
-  var shotCorner: CGFloat { 0 }
-}
-
-extension Array {
-  fileprivate subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
 }

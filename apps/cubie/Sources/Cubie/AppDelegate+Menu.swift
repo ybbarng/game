@@ -61,7 +61,8 @@ extension AppDelegate {
     case .profile:
       // 맨 위 프로필 칸(뷰가 직접 그리고 누르기를 받는다). 누르면 기록 보기
       let i = NSMenuItem(title: cube.profile.name, action: nil, keyEquivalent: "")
-      i.view = ProfileMenuView(profile: cube.profile) { [weak self] in self?.menuRecords() }
+      let p = cube.profile
+      i.view = ProfileMenuView(profile: p, sway: MenuEmblemSway.make(p)) { [weak self] in self?.menuRecords() }
       return [i]
     case .separator:
       return [.separator()]

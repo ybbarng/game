@@ -135,7 +135,7 @@ final class NativeMeasure {
           p.emblemTier = "challenger"
           p.emblem = EmblemArt.stillData("challenger")
         }
-        let v = ProfileMenuView(profile: p) {}
+        let v = ProfileMenuView(profile: p, sway: MenuEmblemSway.make(p)) {}
         let w = NSWindow(contentRect: v.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.setFrameOrigin(NSPoint(x: -30000, y: -30000))

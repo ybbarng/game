@@ -135,7 +135,9 @@ struct SwayFramesTests {
   }
 
   @Test func menuSwayPathOnlyPicksPreparedFrames() throws {
-    let b = try body("ProfileMenuView.swift", from: "var yaw: Double = 0 {")
-    for c in costly { #expect(!b.contains(c), "메뉴 칸 흔들기에 \(c)") }
+    for start in ["var yaw: Double = 0 {", "private func tick("] {
+      let b = try body("MenuEmblemSway.swift", from: start)
+      for c in costly { #expect(!b.contains(c), "메뉴 칸 흔들기 \(start)…에 \(c)") }
+    }
   }
 }
