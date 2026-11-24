@@ -27,7 +27,7 @@ import { useChessSettings } from "../settings";
 import {
   defenseOffThread,
   explainEndgame,
-  explainMate,
+  explainMatePuzzle,
   explainOutside,
   judgeMove,
   puzzleState,
@@ -133,7 +133,7 @@ function ChessPuzzleRun({
           ? explainEndgame(before.position, move)
           : puzzle.kind === "outside"
             ? explainOutside(before.position, move)
-            : explainMate(before.position, move),
+            : explainMatePuzzle(puzzle, before.position, move),
     solve: () => solve(puzzle.id),
     miss: () => miss(puzzle.id),
   });

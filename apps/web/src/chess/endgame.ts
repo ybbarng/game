@@ -64,7 +64,8 @@ export type MethodRule = GuideRule | LadderRule | PawnRule;
 /**
  * 기물마다 연습에서 메이트해야 하는 수(백의 수). 방법대로 두면 모든 판에서 퀸 22수·룩 27수 안에 끝난다.
  * 룩 둘은 흑이 어떻게 받아도 표본 8만여 판에서 18수 안에 끝났다(ladder-guide.test.ts).
- * 폰은 퀸이 될 때까지의 수다. 방법이 쓰는 범위의 판 모두에서 흑이 어떻게 받아도 8수 안에 퀸이 됐다(pawn-guide.test.ts)
+ * 폰은 퀸이 될 때까지의 수다. 방법이 쓰는 범위의 판 모두에서 흑이 어떻게 받아도 8수 안에 퀸이 됐다(pawn-guide.test.ts).
+ * 단계를 하나씩 빼 보면 「쉬기」 60판·「옆에서 밀기」 196판·「스테일메이트 피하기」 10판이 실패한다
  */
 export const ENDGAME_LIMIT: Record<EndgamePiece, number> = {
   Q: 25,
