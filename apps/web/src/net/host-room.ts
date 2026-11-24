@@ -993,8 +993,14 @@ export class HostRoom<
   ): CardTable<Rules, State, ActionT, Event> {
     const spec = this.kit.cardTable as NonNullable<typeof this.kit.cardTable>;
     const out = this.fairOut();
-    const get = () =>
-      this.match as LocalMatch<Rules, State, View, ActionT, Event, Extra>;
+    type Match = LocalMatch<Rules, State, View, ActionT, Event, Extra>;
+    // 판은 자기 게임의 대국 하나에 묶는다. 방을 그만둬(`abandon`) `this.match`가 비거나 한 판 더로 새 대국이 들어온 뒤에도
+    // 앞 게임 판의 늦은 계산(다음 판 준비 등)은 자기 대국을 읽는다(바꾸기는 `out.live()`가 막는다)
+    let own: Match | null = null;
+    const get = (): Match => {
+      if (!own && this.match) own = this.match as Match;
+      return (own ?? this.match) as Match;
+    };
     const hooks = {
       patch: (fn: (state: State) => State) => {
         // 한 판 더 뒤 앞 게임 진행이 늦게 부르면 새 대국을 건드리지 않는다.
