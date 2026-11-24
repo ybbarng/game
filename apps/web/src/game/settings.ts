@@ -17,6 +17,7 @@ import {
   FACE_STYLES,
   type FaceStyleId,
 } from "@/components/card-art/themes";
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
 
 import type { BotLevel } from "./bots";
 import { setVolume as setSoundVolume } from "./sound";
@@ -84,77 +85,79 @@ interface Settings {
 }
 
 /** 이 브라우저에만 남는 개인 설정. 저장이 안 되는 환경(사생활 보호 창 등)에서도 기본값으로 동작한다 */
-export const useSettings = create<Settings>()(
-  persist(
-    (set) => ({
-      cardThemeId: CLASSIC.id,
-      faceStyle: "traditional",
-      setFaceStyle: (faceStyle) => set({ faceStyle }),
-      cardBackId: "theme",
-      setCardBack: (cardBackId) => set({ cardBackId }),
-      playerName: "",
-      setPlayerName: (playerName) => set({ playerName }),
-      speed: 1,
-      setSpeed: (speed) => set({ speed }),
-      sound: true,
-      setSound: (sound) => set({ sound }),
-      botNames: [],
-      setBotName: (index, name) =>
-        set((s) => {
-          const botNames = [...s.botNames];
-          while (botNames.length < index) botNames.push("");
-          botNames[index - 1] = name.slice(0, 8);
-          return { botNames };
-        }),
-      cardTip: false,
-      setCardTip: (cardTip) => set({ cardTip }),
-      // 은어에 익숙해지도록 처음부터 켜 둔다(2026-10-25).
-      slangTerms: true,
-      setSlangTerms: (slangTerms) => set({ slangTerms }),
-      suitStyle: "outline",
-      setSuitStyle: (suitStyle) => set({ suitStyle }),
-      fairPlay: true,
-      setFairPlay: (fairPlay) => set({ fairPlay }),
-      volume: 0.8,
-      setVolume: (volume) => {
-        setSoundVolume(volume);
-        set({ volume });
+export const useSettings = hydrateAfterFirstPaint(
+  create<Settings>()(
+    persist(
+      (set) => ({
+        cardThemeId: CLASSIC.id,
+        faceStyle: "traditional",
+        setFaceStyle: (faceStyle) => set({ faceStyle }),
+        cardBackId: "theme",
+        setCardBack: (cardBackId) => set({ cardBackId }),
+        playerName: "",
+        setPlayerName: (playerName) => set({ playerName }),
+        speed: 1,
+        setSpeed: (speed) => set({ speed }),
+        sound: true,
+        setSound: (sound) => set({ sound }),
+        botNames: [],
+        setBotName: (index, name) =>
+          set((s) => {
+            const botNames = [...s.botNames];
+            while (botNames.length < index) botNames.push("");
+            botNames[index - 1] = name.slice(0, 8);
+            return { botNames };
+          }),
+        cardTip: false,
+        setCardTip: (cardTip) => set({ cardTip }),
+        // 은어에 익숙해지도록 처음부터 켜 둔다(2026-10-25).
+        slangTerms: true,
+        setSlangTerms: (slangTerms) => set({ slangTerms }),
+        suitStyle: "outline",
+        setSuitStyle: (suitStyle) => set({ suitStyle }),
+        fairPlay: true,
+        setFairPlay: (fairPlay) => set({ fairPlay }),
+        volume: 0.8,
+        setVolume: (volume) => {
+          setSoundVolume(volume);
+          set({ volume });
+        },
+        botLevel: 2,
+        setBotLevel: (botLevel) => set({ botLevel }),
+        ruleCode: RULE_PRESETS[0]?.code ?? "",
+        setRuleCode: (ruleCode) => set({ ruleCode }),
+        customRules: [],
+        setCardTheme: (id) => set({ cardThemeId: id }),
+        // 같은 이름이면 덮어쓴다.
+        saveCustomRule: (rule) =>
+          set((s) => ({
+            customRules: [
+              ...s.customRules.filter((r) => r.name !== rule.name),
+              rule,
+            ],
+          })),
+        removeCustomRule: (name) =>
+          set((s) => ({
+            customRules: s.customRules.filter((r) => r.name !== name),
+          })),
+      }),
+      {
+        name: "mighty-settings",
+        storage: createJSONStorage(() => localStorage),
+        // 미리 그려 둔 HTML과 첫 화면이 같아야 하므로 저장값은 첫 그리기 뒤에 읽는다(StoreHydration).
+        skipHydration: true,
+        // 1: 은어 기본값을 켜기로 바꿨다. 예전 기본값(끄기)이 저장된 사람도 한 번 켜 준다.
+        version: 1,
+        migrate: (persisted, version) => {
+          const state = persisted as Partial<Settings>;
+          return version < 1 ? { ...state, slangTerms: true } : state;
+        },
+        // 저장해 둔 음량을 소리 출력에도 알려 준다.
+        onRehydrateStorage: () => (state) => {
+          if (state) setSoundVolume(state.volume);
+        },
       },
-      botLevel: 2,
-      setBotLevel: (botLevel) => set({ botLevel }),
-      ruleCode: RULE_PRESETS[0]?.code ?? "",
-      setRuleCode: (ruleCode) => set({ ruleCode }),
-      customRules: [],
-      setCardTheme: (id) => set({ cardThemeId: id }),
-      // 같은 이름이면 덮어쓴다.
-      saveCustomRule: (rule) =>
-        set((s) => ({
-          customRules: [
-            ...s.customRules.filter((r) => r.name !== rule.name),
-            rule,
-          ],
-        })),
-      removeCustomRule: (name) =>
-        set((s) => ({
-          customRules: s.customRules.filter((r) => r.name !== name),
-        })),
-    }),
-    {
-      name: "mighty-settings",
-      storage: createJSONStorage(() => localStorage),
-      // 미리 그려 둔 HTML과 첫 화면이 같아야 하므로 저장값은 첫 그리기 뒤에 읽는다(StoreHydration).
-      skipHydration: true,
-      // 1: 은어 기본값을 켜기로 바꿨다. 예전 기본값(끄기)이 저장된 사람도 한 번 켜 준다.
-      version: 1,
-      migrate: (persisted, version) => {
-        const state = persisted as Partial<Settings>;
-        return version < 1 ? { ...state, slangTerms: true } : state;
-      },
-      // 저장해 둔 음량을 소리 출력에도 알려 준다.
-      onRehydrateStorage: () => (state) => {
-        if (state) setSoundVolume(state.volume);
-      },
-    },
+    ),
   ),
 );
 

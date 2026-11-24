@@ -3,9 +3,11 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /**
- * 은하 한 바퀴 설정 저장소. 루트 layout의 StoreHydration이 모든 페이지에서 부르므로 엔진 값을 가져오지 않는다
- * (타입만). 엔진을 부르면 사계절 하늘 자료까지 모든 페이지 묶음에 실린다. 규칙 만들기는 `settings.ts`
+ * 은하 한 바퀴 설정 저장소. 엔진 값을 가져오지 않는다(타입만). 별 따기 화면도 이 저장소를 불러,
+ * 엔진을 부르면 사계절 하늘 자료까지 그 묶음에 실린다. 규칙 만들기는 `settings.ts`
  */
 
 /** 0 입문, 1 중수, 2 고수 */
@@ -33,29 +35,31 @@ export interface GalaxySettings {
   set(patch: Partial<Omit<GalaxySettings, "set">>): void;
 }
 
-export const useGalaxySettings = create<GalaxySettings>()(
-  persist(
-    (set) => ({
-      players: 2,
-      length: "standard",
-      takeover: true,
-      seasonal: true,
-      meteor: false,
-      moon: true,
-      requests: true,
-      level: 0,
-      time: "none",
-      follow: false,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "galaxy-settings",
-      storage: createJSONStorage(() => localStorage),
-      // 1: 따라가는 시점의 기본을 끔(판 전체 보기)으로 바꿨다(2026-11-05 사용자 「빠르게 움직이면서 끊어지듯이 움직여 정신이 없음」). 전에 저장된 켬도 한 번 끔으로
-      version: 1,
-      migrate: (old) =>
-        ({ ...(old as object), follow: false }) as GalaxySettings,
-      skipHydration: true,
-    },
+export const useGalaxySettings = hydrateAfterFirstPaint(
+  create<GalaxySettings>()(
+    persist(
+      (set) => ({
+        players: 2,
+        length: "standard",
+        takeover: true,
+        seasonal: true,
+        meteor: false,
+        moon: true,
+        requests: true,
+        level: 0,
+        time: "none",
+        follow: false,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "galaxy-settings",
+        storage: createJSONStorage(() => localStorage),
+        // 1: 따라가는 시점의 기본을 끔(판 전체 보기)으로 바꿨다(2026-11-05 사용자 「빠르게 움직이면서 끊어지듯이 움직여 정신이 없음」). 전에 저장된 켬도 한 번 끔으로
+        version: 1,
+        migrate: (old) =>
+          ({ ...(old as object), follow: false }) as GalaxySettings,
+        skipHydration: true,
+      },
+    ),
   ),
 );

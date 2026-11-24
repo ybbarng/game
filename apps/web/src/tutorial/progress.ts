@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
 import { type GameId, track } from "@/stats/track";
 
 export interface TutorialProgress {
@@ -35,7 +36,7 @@ export function createTutorialProgress(name: string) {
       },
     ),
   );
-  return Object.assign(store, { game });
+  return hydrateAfterFirstPaint(Object.assign(store, { game }));
 }
 
 export type TutorialProgressStore = ReturnType<typeof createTutorialProgress>;

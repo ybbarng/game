@@ -3,6 +3,8 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 /** 0 입문, 1 중수, 2 고수, 3 초고수 */
 export type JanggiLevel = 0 | 1 | 2 | 3;
 
@@ -26,23 +28,25 @@ interface JanggiSettings {
   set(patch: Partial<Omit<JanggiSettings, "set">>): void;
 }
 
-export const useJanggiSettings = create<JanggiSettings>()(
-  persist(
-    (set) => ({
-      bikjang: "score",
-      winsToFinish: 1,
-      level: 0,
-      pick: "cho",
-      labels: "hanja",
-      time: "none",
-      dangerHint: true,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "janggi-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
+export const useJanggiSettings = hydrateAfterFirstPaint(
+  create<JanggiSettings>()(
+    persist(
+      (set) => ({
+        bikjang: "score",
+        winsToFinish: 1,
+        level: 0,
+        pick: "cho",
+        labels: "hanja",
+        time: "none",
+        dangerHint: true,
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "janggi-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+      },
+    ),
   ),
 );
 

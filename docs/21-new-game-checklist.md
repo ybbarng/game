@@ -63,7 +63,7 @@
   - `stats`: 판·게임 요약, 승패 단위와 기록 하나의 승패(`result`, 같이 한 사람별·연승 업적이 쓴다), 그 게임만의 업적 둘 이상(`achievements`, 설명은 마침표로)
   - `review`: 다음 수 해설
   - `botFor`, `guestMayAct`
-- [ ] `settings.ts`: 규칙·단계·고른 것을 저장(persist)한다. `StoreHydration`에서 rehydrate한다
+- [ ] `settings.ts`: 규칙·단계·고른 것을 저장(persist, `skipHydration: true`)하고 저장소를 `hydrateAfterFirstPaint(create(...))`(`lib/persist-hydration.ts`)로 감싼다. 루트 `StoreHydration`이 그 화면이 불러온 저장소만 첫 그리기 뒤에 읽는다(2026-11-25, 예전처럼 `StoreHydration`에 이름을 더하지 않는다. 더하면 모든 화면이 그 게임 설정을 싣는다)
 - [ ] `store.ts`: **저장소 공장 `createMatchStore`(`game/match-store.ts`)로 만든다**(2026-11-25). 아래 항목은 공장이 모두 맡고, 게임 파일은 차이만 넘긴다: 게임 이름·키트·`botFor`, 이어하기 저장 칸 `savedMatchSlot("<게임>-save")`, 편 고르기 `seatFor`, 무르는 행동 `isTurn`(이번 판만이면 `opensRound`), 소리 `cues`, 남의 걸음 `byOther`와 쉼 `otherPause`, 카드 연출이 있으면 `sceneMs`·`opening`. 판 게임 넷(오목·장기·체스·바둑)과 화투 셋이 쓴다. 약속 후 공개 자동 행동처럼 공장에 없는 흐름이 꼭 필요하면 공장에 옵션을 더하고, 따로 저장소를 짜더라도 이어하기 저장은 `savedMatchSlot`을 쓴다
   - `newGame`, `resume`(이어하기), `attachOnline`, `submit`(실패하면 invalid 소리)
   - `undo`(혼자 하기만), `leave`
@@ -150,7 +150,7 @@
 - [ ] `components/<게임>-tutorial.tsx`: `TutorialKit`을 채운다
   - `startMission`, `subscribe`, `Table`(미션 띠를 얹은 대국 화면)
   - 판 그림을 보이는 `Scene`
-- [ ] `tutorial/progress.ts`에 진행 기록을 두고 `StoreHydration`에서 rehydrate한다
+- [ ] 진행 기록은 `createTutorialProgress("<게임>-tutorial")`로 만든다(첫 그리기 뒤 읽기는 공장이 스스로 올린다)
 - [ ] 단위 시험: 미션마다 `solution`이면 성공, `mistake`면 실패. 장면을 모두 만들 수 있다. 퀴즈 정답 번호가 보기 안에 있다
 - [ ] 미션 대국은 이어하기 저장, 내 기록, 복기에 남기지 않는다
 

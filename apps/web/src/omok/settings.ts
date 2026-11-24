@@ -3,6 +3,8 @@ import type { Variant } from "@game/omok-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { hydrateAfterFirstPaint } from "@/lib/persist-hydration";
+
 import type { StonePick } from "./store";
 
 /** 0 입문, 1 중수, 2 고수, 3 초고수 */
@@ -21,31 +23,33 @@ interface OmokSettings {
   set(patch: Partial<Omit<OmokSettings, "set">>): void;
 }
 
-export const useOmokSettings = create<OmokSettings>()(
-  persist(
-    (set) => ({
-      // 국제 공식 규칙인 렌주가 기본이다(흑만 3·3·4·4·장목 금지, 2026-10-29 사용자)
-      variant: "renju",
-      winsToFinish: 1,
-      level: 0,
-      pick: "black",
-      showForbidden: true,
-      time: "none",
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "omok-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-      // 1: 기본 규칙을 일반에서 렌주로. 예전 기본값(일반)으로 남은 기기는 한 번 렌주로 옮긴다
-      version: 1,
-      migrate: (persisted, version) => {
-        const state = persisted as Partial<OmokSettings>;
-        if (version < 1 && state.variant === "standard")
-          state.variant = "renju";
-        return state as OmokSettings;
+export const useOmokSettings = hydrateAfterFirstPaint(
+  create<OmokSettings>()(
+    persist(
+      (set) => ({
+        // 국제 공식 규칙인 렌주가 기본이다(흑만 3·3·4·4·장목 금지, 2026-10-29 사용자)
+        variant: "renju",
+        winsToFinish: 1,
+        level: 0,
+        pick: "black",
+        showForbidden: true,
+        time: "none",
+        set: (patch) => set(patch),
+      }),
+      {
+        name: "omok-settings",
+        storage: createJSONStorage(() => localStorage),
+        skipHydration: true,
+        // 1: 기본 규칙을 일반에서 렌주로. 예전 기본값(일반)으로 남은 기기는 한 번 렌주로 옮긴다
+        version: 1,
+        migrate: (persisted, version) => {
+          const state = persisted as Partial<OmokSettings>;
+          if (version < 1 && state.variant === "standard")
+            state.variant = "renju";
+          return state as OmokSettings;
+        },
       },
-    },
+    ),
   ),
 );
 

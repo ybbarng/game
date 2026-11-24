@@ -347,8 +347,8 @@ export function loadContext(root) {
   ctx.readText = (rel) => read(path.join(web, rel));
   const routes = appRoutes(path.join(web, "src/app"));
   const reach = {};
-  // 루트 layout을 빼고 닿는 주소. 루트 layout의 StoreHydration이 모든 게임의 저장소를 불러 게임 폴더의 많은 파일이
-  // 「모든 화면이 닿는」 파일이 되는데, 그 게임 화면 말고는 저장값을 읽기만 한다. 게임 폴더 파일은 이것으로 좁힌다
+  // 루트 layout을 빼고 닿는 주소. 루트 layout이 불러 쓰는 것(예전 StoreHydration은 모든 게임의 저장소를 불렀다,
+  // 2026-11-25부터는 저장소가 스스로 올린다) 때문에 게임 폴더 파일이 「모든 화면이 닿는」 파일이 되지 않게 이것으로 좁힌다
   const ownReach = {};
   for (const r of routes) {
     r.area = webAreaOf(ctx, `app/${r.key ? `${r.key}/` : ""}page.tsx`);

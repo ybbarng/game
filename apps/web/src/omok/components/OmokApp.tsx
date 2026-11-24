@@ -312,11 +312,6 @@ export function OmokApp() {
   const winsToFinish = useOmokSettings((s) => s.winsToFinish);
   const time = useOmokSettings((s) => s.time);
 
-  // 수 배우기 진행은 첫 그리기 뒤에 읽는다(미리 그린 HTML과 첫 화면이 같게).
-  useEffect(() => {
-    void useOmokStudyProgress.persist.rehydrate();
-  }, []);
-
   // 다 끝난 게임은 이어하기에 남기지 않는다.
   useEffect(() => {
     // 튜토리얼 미션은 이어하기 저장과 상관없다.

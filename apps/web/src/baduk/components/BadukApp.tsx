@@ -385,13 +385,6 @@ export function BadukApp() {
   const winsToFinish = useBadukSettings((s) => s.winsToFinish);
   const time = useBadukSettings((s) => s.time);
 
-  // 저장한 설정과 배우기 진행을 첫 그리기 뒤에 읽는다(다른 게임은 StoreHydration이 맡는다).
-  useEffect(() => {
-    void useBadukSettings.persist.rehydrate();
-    void useBadukTutorialProgress.persist.rehydrate();
-    void useBadukStudyProgress.persist.rehydrate();
-  }, []);
-
   // 다 끝난 게임은 이어하기에 남기지 않는다(튜토리얼 미션은 이어하기 저장과 상관없다).
   useEffect(() => {
     if (view?.phase === "gameOver" && !useBaduk.getState().practice)

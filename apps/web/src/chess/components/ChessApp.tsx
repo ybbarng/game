@@ -58,18 +58,6 @@ const PIECE_SET_OPTIONS: readonly { value: PieceSet; label: string }[] = [
   { value: "glyph", label: "기호" },
 ];
 
-/**
- * 체스 설정과 배우기 진행은 첫 그리기 뒤에 읽는다(미리 그린 HTML과 첫 화면을 맞춘다).
- * 다른 게임은 공통 StoreHydration이 하지만, 체스는 공통 파일을 건드리지 않으려고 여기서 한다
- */
-export function useChessHydration(): void {
-  useEffect(() => {
-    void useChessSettings.persist.rehydrate();
-    void useChessTutorialProgress.persist.rehydrate();
-    void useChessStudyProgress.persist.rehydrate();
-  }, []);
-}
-
 /** 체스 옵션: 개인 시간·판 수·컴퓨터·내 색·칸 이름. 다함께 체스도 여기서 고른 판 수와 시간을 쓴다 */
 function ChessOptions({ onBack }: { onBack: () => void }) {
   const s = useChessSettings();
@@ -365,7 +353,6 @@ const studyScreen = (id: string, review?: Review): Screen =>
 
 /** 체스(/chess): 첫 화면, 옵션, 규칙, 배우기, 다함께 체스 방, 대국 화면 */
 export function ChessApp() {
-  useChessHydration();
   // 판·방을 떠날 때(나가기 단추든 뒤로가기든) 하는 정리
   function leavePlay() {
     endChessSession();
