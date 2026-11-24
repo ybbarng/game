@@ -1412,17 +1412,19 @@ function applyManage(
 
 /* ───────────── 걸음 ───────────── */
 
-function retire(state: GalaxyState): StepResult {
+/** 끝내기: 함께 고르는 차례에 기다리던 사람이 하나뿐이면 그 사람이 진다(`noForfeit`이면 결과 없이) */
+function retire(state: GalaxyState, noForfeit: boolean): StepResult {
   if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   const pending = pendingSeats(state);
   const together =
-    state.phase === "commit" ||
-    state.phase === "reveal" ||
-    state.phase === "requestReveal" ||
-    state.phase === "bid" ||
-    state.phase === "bidReveal";
+    !noForfeit &&
+    (state.phase === "commit" ||
+      state.phase === "reveal" ||
+      state.phase === "requestReveal" ||
+      state.phase === "bid" ||
+      state.phase === "bidReveal");
   if (together && pending.length === 1) {
     finish(next, "forfeit", pending[0] as number, events);
     next.retired = true;
@@ -1445,7 +1447,7 @@ export function step(
     return fail("없는 자리예요.");
   if (!action || typeof action !== "object") return fail("모르는 행동이에요.");
   if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
-  if (action.type === "retire") return retire(state);
+  if (action.type === "retire") return retire(state, action.noForfeit === true);
   if (state.out[seat]) return fail("운항을 멈춘 우주인이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];

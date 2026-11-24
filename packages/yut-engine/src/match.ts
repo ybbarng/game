@@ -313,13 +313,14 @@ function settle(state: YutState, events: GameEvent[]): void {
   startTurn(state, (state.turn + 1) % state.rules.players, events);
 }
 
-/** 끝내기: 약속·공개를 기다리던 사람이 하나뿐이면 그 사람의 편이 진다 */
-function retire(state: YutState): StepResult {
+/** 끝내기: 약속·공개를 기다리던 사람이 하나뿐이면 그 사람의 편이 진다(`noForfeit`이면 결과 없이) */
+function retire(state: YutState, noForfeit: boolean): StepResult {
   if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
   const next = clone(state);
   const events: GameEvent[] = [];
   const pending = pendingSeats(state);
   const waiting =
+    !noForfeit &&
     (state.phase === "commit" ||
       state.phase === "reveal" ||
       state.phase === "open") &&
@@ -426,7 +427,7 @@ export function step(
     return fail("없는 자리예요.");
   switch (action.type) {
     case "retire":
-      return retire(state);
+      return retire(state, action.noForfeit === true);
     case "resign": {
       if (state.phase === "gameOver") return fail("이미 끝난 게임이에요.");
       const next = clone(state);

@@ -269,4 +269,13 @@ describe("끝과 순위(2-10)", () => {
     expect(state.result?.seat).toBe(3);
     expect(state.retired).toBe(true);
   });
+
+  it("혼자 하기 그만하기(noForfeit)는 기다리던 사람이 하나여도 순위 없이 끝난다", () => {
+    let s = must(scene(), 0, { type: "roll" }).state;
+    for (const seat of [0, 1, 2]) s = must(s, seat, chainAction(s, seat)).state;
+    const { state } = must(s, 0, { type: "retire", noForfeit: true });
+    expect(state.result).toBeNull();
+    expect(state.retired).toBe(true);
+    expect(state.phase).toBe("gameOver");
+  });
 });
