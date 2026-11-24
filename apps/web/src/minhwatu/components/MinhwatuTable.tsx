@@ -308,8 +308,17 @@ export function MinhwatuTable({
   /** 추천 카드를 보인다(튜토리얼 실전) */
   hints?: boolean;
 }) {
-  const { view, host, local, notice, level, reconnecting, hostLeft, events } =
-    useMinhwatu();
+  const {
+    view,
+    host,
+    local,
+    notice,
+    level,
+    reconnecting,
+    hostLeft,
+    invalid,
+    events,
+  } = useMinhwatu();
   const submit = useMinhwatu((s) => s.submit);
   const undo = useMinhwatu((s) => s.undo);
   const canUndo = useMinhwatu((s) => s.canUndo());
@@ -547,7 +556,7 @@ export function MinhwatuTable({
   );
   const endButtons = (
     <div className="flex flex-wrap justify-center gap-2">
-      {view.phase === "roundEnd" && !view.continued[me] && (
+      {view.phase === "roundEnd" && !view.continued[me] && !hostLeft && (
         <button
           type="button"
           onClick={() => submit({ type: "continue" })}
@@ -715,6 +724,8 @@ export function MinhwatuTable({
           rect={center}
           reconnecting={reconnecting}
           hostLeft={hostLeft}
+          invalid={invalid}
+          onExit={onExit}
         >
           <HwatuFairBar me={me} over={gameOver} />
         </HwatuOnlineNotes>
@@ -730,8 +741,8 @@ export function MinhwatuTable({
         mine
       />
 
-      {/* 내 단추 */}
-      {layout.actions && (
+      {/* 내 단추(방장이 나가 끝난 판에서는 두지 않는다) */}
+      {layout.actions && !hostLeft && (
         <div
           className="absolute flex flex-wrap content-center items-center justify-center gap-2"
           style={at(layout.actions)}

@@ -194,6 +194,8 @@ interface OnecardStore {
   seatNames: string[] | null;
   reconnecting: boolean;
   hostLeft: boolean;
+  /** 내 기기의 판 끝 검증이 실패했으면 그 사유(이 게임은 무효, 마이티·하트와 같다) */
+  invalid: string | null;
   offlineSeats: number[];
   view: OnecardView | null;
   /** 마지막으로 보인 걸음의 사건 */
@@ -341,6 +343,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       seatNames: options.seatNames,
       reconnecting: false,
       hostLeft: false,
+      invalid: null,
       offlineSeats: [],
       view: host.current(),
       events: first.flatMap((s) => s.events),
@@ -426,6 +429,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     seatNames: null,
     reconnecting: false,
     hostLeft: false,
+    invalid: null,
     offlineSeats: [],
     view: null,
     events: [],
@@ -482,6 +486,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         seatNames,
         reconnecting: false,
         hostLeft: false,
+        invalid: null,
         offlineSeats: [],
         view: host.current(),
         events: [...events],
@@ -584,6 +589,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         shoutEvents: [],
         reconnecting: false,
         hostLeft: false,
+        invalid: null,
         offlineSeats: [],
         practice: false,
         dealing: null,

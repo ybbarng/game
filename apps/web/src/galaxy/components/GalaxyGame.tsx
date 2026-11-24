@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
@@ -413,6 +414,7 @@ export function GalaxyGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     offlineSeats,
   } = useGalaxy();
   const submit = useGalaxy((s) => s.submit);
@@ -783,8 +785,8 @@ export function GalaxyGame({
           onShowChange={setBannerUp}
         />
       </div>
-      {timedDecision && <DecisionTimer resetKey={decisionKey} />}
-      {decisionPanel}
+      {timedDecision && !hostLeft && <DecisionTimer resetKey={decisionKey} />}
+      {!hostLeft && decisionPanel}
       {!decisionPanel && hover !== null && selected === null && !gameOver && (
         <SquareInfo
           view={view}
@@ -839,32 +841,35 @@ export function GalaxyGame({
           </ul>
         </details>
       )}
-      <div className="flex flex-wrap justify-center gap-2">
-        {!gameOver && (
-          <ResignButton
-            resetKey={decisionKey}
-            onResign={() => submit({ type: "resign" })}
-            className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
-          />
-        )}
-        {gameOver && !mission && (
-          <>
-            <button
-              type="button"
-              onClick={onExit}
-              className="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
-            >
-              다시 하기
-            </button>
-            <a
-              href="/"
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-            >
-              게임 목록
-            </a>
-          </>
-        )}
-      </div>
+      {/* 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만) */}
+      {!hostLeft && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {!gameOver && (
+            <ResignButton
+              resetKey={decisionKey}
+              onResign={() => submit({ type: "resign" })}
+              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
+            />
+          )}
+          {gameOver && !mission && (
+            <>
+              <button
+                type="button"
+                onClick={onExit}
+                className="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
+              >
+                다시 하기
+              </button>
+              <a
+                href="/"
+                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
+              >
+                게임 목록
+              </a>
+            </>
+          )}
+        </div>
+      )}
       {online && <ChatBox mySeat={me} />}
     </>
   );
@@ -897,15 +902,15 @@ export function GalaxyGame({
         </span>
       </header>
 
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔어요."
-            : "방장과 연결이 끊겼어요. 다시 잇는 중이에요."}
-        </p>
+      {online && (invalid || reconnecting || hostLeft) && (
+        <div className="w-full max-w-xl">
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
+        </div>
       )}
       {waitingOffline && (
         <div

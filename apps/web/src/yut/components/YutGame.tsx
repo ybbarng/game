@@ -14,6 +14,7 @@ import {
 } from "@game/yut-engine";
 import { useEffect, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
@@ -118,6 +119,7 @@ export function YutGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     events,
     offlineSeats,
   } = useYut();
@@ -312,15 +314,15 @@ export function YutGame({
         </span>
       </header>
 
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔어요."
-            : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
-        </p>
+      {online && (invalid || reconnecting || hostLeft) && (
+        <div className="w-full max-w-xl split:col-span-2 split:max-w-none">
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
+        </div>
       )}
       {waitingOffline && (
         <div
@@ -387,7 +389,7 @@ export function YutGame({
             {...(decision?.kind === "move" ? { onSelect: setSelected } : {})}
           />
         )}
-        {decision?.kind === "move" && homeOption && (
+        {decision?.kind === "move" && homeOption && !hostLeft && (
           <button
             type="button"
             data-new-piece
@@ -411,7 +413,7 @@ export function YutGame({
           </button>
         )}
         {/* 앞 윷이 구르거나 결과를 보이는 동안(윷·모 뒤)에는 손의 윷을 내밀지 않는다 */}
-        {decision?.kind === "throw" && !moving && !tossing && (
+        {decision?.kind === "throw" && !moving && !tossing && !hostLeft && (
           <ThrowPad
             onThrow={throwGesture}
             onTooLow={() => setNotice(TOO_LOW_NOTICE)}
@@ -437,44 +439,47 @@ export function YutGame({
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>
 
-      <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
-        {!gameOver && (
-          <>
-            {!online && !mission && (
+      {/* 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만) */}
+      {!hostLeft && (
+        <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
+          {!gameOver && (
+            <>
+              {!online && !mission && (
+                <button
+                  type="button"
+                  disabled={!canUndo}
+                  onClick={() => undo()}
+                  className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm disabled:opacity-40"
+                >
+                  무르기
+                </button>
+              )}
+              <ResignButton
+                resetKey={pendingKey}
+                onResign={() => submit({ type: "resign" })}
+                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
+              />
+            </>
+          )}
+          {gameOver && !mission && (
+            <>
               <button
                 type="button"
-                disabled={!canUndo}
-                onClick={() => undo()}
-                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm disabled:opacity-40"
+                onClick={onExit}
+                className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
               >
-                무르기
+                다시 하기
               </button>
-            )}
-            <ResignButton
-              resetKey={pendingKey}
-              onResign={() => submit({ type: "resign" })}
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
-            />
-          </>
-        )}
-        {gameOver && !mission && (
-          <>
-            <button
-              type="button"
-              onClick={onExit}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다시 하기
-            </button>
-            <a
-              href="/"
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-            >
-              게임 목록
-            </a>
-          </>
-        )}
-      </div>
+              <a
+                href="/"
+                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
+              >
+                게임 목록
+              </a>
+            </>
+          )}
+        </div>
+      )}
 
       {online && (
         <div className="w-full max-w-xl split:col-start-2">

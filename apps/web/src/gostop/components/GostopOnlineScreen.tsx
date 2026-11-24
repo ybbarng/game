@@ -138,9 +138,9 @@ export function GostopOnlineScreen({
       text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
-      if (!ok)
-        useGostop.setState({ notice: `기록 검증 실패: ${reason ?? ""}` });
-      recordAudit(roomCode, ok ? null : `${who}: ${reason ?? ""}`);
+      const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
+      if (failure) useGostop.setState({ invalid: failure });
+      recordAudit(roomCode, failure);
     }
   };
 

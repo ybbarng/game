@@ -55,6 +55,8 @@ const BOT_LEVEL = 1;
 export interface BoardOnlineStore<View, ActionT, Event> {
   reconnecting: boolean;
   hostLeft: boolean;
+  /** 내 기기의 판 끝 검증이 실패했으면 그 사유(이 게임은 무효) */
+  invalid: string | null;
   offlineSeats: number[];
   notice: string | null;
   attachOnline(
@@ -192,8 +194,9 @@ export function BoardOnlineScreen<
       text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
-      if (!ok) useStore.setState({ notice: `기록 검증 실패: ${reason ?? ""}` });
-      recordAudit(roomCode, ok ? null : `${who}: ${reason ?? ""}`);
+      const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
+      if (failure) useStore.setState({ invalid: failure });
+      recordAudit(roomCode, failure);
     }
   };
 

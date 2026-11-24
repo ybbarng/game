@@ -21,6 +21,7 @@ import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
 import { HintButton, useHint } from "@/components/HintButton";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -163,6 +164,7 @@ export function JanggiGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     events,
   } = useJanggi();
   const submit = useJanggi((s) => s.submit);
@@ -317,15 +319,13 @@ export function JanggiGame({
       }
       alerts={
         online &&
-        (reconnecting || hostLeft) && (
-          <p
-            role="alert"
-            className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
-          >
-            {hostLeft
-              ? "방장이 방을 나갔어요."
-              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
-          </p>
+        (invalid || reconnecting || hostLeft) && (
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
         )
       }
       opponent={
@@ -369,98 +369,101 @@ export function JanggiGame({
         />
       }
       actions={
-        <div className="flex w-full flex-wrap justify-center gap-2">
-          {mySetup && (
-            <SetupButtons
-              legend="상차림"
-              onPick={(setup) => submit({ type: "setup", setup })}
-            />
-          )}
-          {view.phase === "play" && (
-            <>
-              {!online && !mission && (
-                <button
-                  type="button"
-                  disabled={!canUndo}
-                  onClick={() => {
-                    setSelected(null);
-                    undo();
-                  }}
-                  className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
-                >
-                  무르기
-                </button>
-              )}
-              <HintButton
-                online={online}
-                mission={!!mission}
-                myTurn={myMove}
-                thinking={thinking}
-                onHint={() =>
-                  // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 쉬기면 상태 줄로 알린다.
-                  // 워커에서 센다.
-                  ask(
-                    () =>
-                      adviseWith<Action>(
-                        { game: "janggi", name: "advisor" },
-                        view,
-                        played + 1,
-                      ),
-                    (action) => {
-                      if (action.type === "pass") {
-                        showHint("pass");
-                        return;
-                      }
-                      if (action.type !== "move") return;
-                      showHint({ from: action.from, to: action.to });
-                      setSelected(action.from);
-                    },
-                  )
-                }
+        // 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만)
+        !hostLeft && (
+          <div className="flex w-full flex-wrap justify-center gap-2">
+            {mySetup && (
+              <SetupButtons
+                legend="상차림"
+                onPick={(setup) => submit({ type: "setup", setup })}
               />
-              {myMove && view.check !== mySide && (
-                <button
-                  type="button"
-                  onClick={() => submit({ type: "pass" })}
-                  className="rounded-xl bg-white/10 px-4 py-2"
-                >
-                  한 수 쉬기
-                </button>
-              )}
-              {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-              {(!online || myMove) && (
-                <ResignButton
-                  resetKey={played}
-                  onResign={() => submit({ type: "resign" })}
+            )}
+            {view.phase === "play" && (
+              <>
+                {!online && !mission && (
+                  <button
+                    type="button"
+                    disabled={!canUndo}
+                    onClick={() => {
+                      setSelected(null);
+                      undo();
+                    }}
+                    className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
+                  >
+                    무르기
+                  </button>
+                )}
+                <HintButton
+                  online={online}
+                  mission={!!mission}
+                  myTurn={myMove}
+                  thinking={thinking}
+                  onHint={() =>
+                    // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 쉬기면 상태 줄로 알린다.
+                    // 워커에서 센다.
+                    ask(
+                      () =>
+                        adviseWith<Action>(
+                          { game: "janggi", name: "advisor" },
+                          view,
+                          played + 1,
+                        ),
+                      (action) => {
+                        if (action.type === "pass") {
+                          showHint("pass");
+                          return;
+                        }
+                        if (action.type !== "move") return;
+                        showHint({ from: action.from, to: action.to });
+                        setSelected(action.from);
+                      },
+                    )
+                  }
                 />
-              )}
-            </>
-          )}
-          {view.phase === "roundEnd" && !view.continued[me] && (
-            <button
-              type="button"
-              onClick={() => submit({ type: "continue" })}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다음 판
-            </button>
-          )}
-          {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
-          {gameOver && !mission && (
-            <>
+                {myMove && view.check !== mySide && (
+                  <button
+                    type="button"
+                    onClick={() => submit({ type: "pass" })}
+                    className="rounded-xl bg-white/10 px-4 py-2"
+                  >
+                    한 수 쉬기
+                  </button>
+                )}
+                {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
+                {(!online || myMove) && (
+                  <ResignButton
+                    resetKey={played}
+                    onResign={() => submit({ type: "resign" })}
+                  />
+                )}
+              </>
+            )}
+            {view.phase === "roundEnd" && !view.continued[me] && (
               <button
                 type="button"
-                onClick={onExit}
+                onClick={() => submit({ type: "continue" })}
                 className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
               >
-                다시 하기
+                다음 판
               </button>
-              <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-                게임 목록
-              </a>
-            </>
-          )}
-        </div>
+            )}
+            {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
+            {gameOver && !mission && (
+              <>
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                >
+                  다시 하기
+                </button>
+                <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
+                  게임 목록
+                </a>
+              </>
+            )}
+          </div>
+        )
       }
       chat={online && <ChatBox mySeat={me} />}
     />

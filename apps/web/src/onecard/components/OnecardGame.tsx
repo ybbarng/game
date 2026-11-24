@@ -36,6 +36,7 @@ import {
   useHandSpread,
 } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
+import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
 import { ActionButton, Panel } from "@/components/panels/common";
 import { ResultBanner } from "@/components/ResultBanner";
@@ -461,6 +462,7 @@ export function OnecardGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     offlineSeats,
     shoutEvents,
     dealing,
@@ -1242,26 +1244,19 @@ export function OnecardGame({
             </div>
           )}
 
-          {online && reconnecting && !hostLeft && (
-            <div
-              role="status"
-              className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit max-w-[92%] items-center gap-2 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl"
-            >
-              <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              방장과 연결이 끊겼어요. 다시 연결하는 중…
-            </div>
-          )}
-          {online && hostLeft && (
-            <div className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit items-center gap-3 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl">
-              방장이 방을 나갔어요.
-              <button
-                type="button"
-                onClick={onExit}
-                className="rounded-lg bg-amber-400 px-3 py-1 font-semibold text-black"
-              >
-                처음으로
-              </button>
-            </div>
+          {online && (
+            <>
+              <InvalidBanner
+                invalid={invalid}
+                top={layout.hud.y + layout.hud.h + 6}
+              />
+              <ConnectionNotices
+                reconnecting={reconnecting}
+                hostLeft={hostLeft}
+                onExit={onExit}
+                floating
+              />
+            </>
           )}
 
           {showSettings && (

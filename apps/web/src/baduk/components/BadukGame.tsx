@@ -18,6 +18,7 @@ import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
 import { HintButton, useHint } from "@/components/HintButton";
+import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -117,6 +118,7 @@ export function BadukGame({
     seatNames,
     reconnecting,
     hostLeft,
+    invalid,
     events,
   } = useBaduk();
   const submit = useBaduk((s) => s.submit);
@@ -260,15 +262,13 @@ export function BadukGame({
       }
       alerts={
         online &&
-        (reconnecting || hostLeft) && (
-          <p
-            role="alert"
-            className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
-          >
-            {hostLeft
-              ? "방장이 방을 나갔어요."
-              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
-          </p>
+        (invalid || reconnecting || hostLeft) && (
+          <BoardOnlineAlerts
+            invalid={invalid}
+            reconnecting={reconnecting}
+            hostLeft={hostLeft}
+            onExit={onExit}
+          />
         )
       }
       opponent={
@@ -302,109 +302,112 @@ export function BadukGame({
         />
       }
       actions={
-        <div className="flex w-full flex-wrap justify-center gap-2">
-          {liveCount && view.phase === "play" && (
-            <p className="w-full text-center text-sm text-white/80">
-              지금 세면 {countText(liveCount)}
-            </p>
-          )}
-          {view.phase === "play" && (
-            <>
-              {!online && !mission && (
+        // 방장이 나가 끝난 판에서는 판 단추를 두지 않는다(알림의 「처음으로」만)
+        !hostLeft && (
+          <div className="flex w-full flex-wrap justify-center gap-2">
+            {liveCount && view.phase === "play" && (
+              <p className="w-full text-center text-sm text-white/80">
+                지금 세면 {countText(liveCount)}
+              </p>
+            )}
+            {view.phase === "play" && (
+              <>
+                {!online && !mission && (
+                  <button
+                    type="button"
+                    disabled={!canUndo}
+                    onClick={() => {
+                      setAim(null);
+                      undo();
+                    }}
+                    className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
+                  >
+                    무르기
+                  </button>
+                )}
+                <HintButton
+                  online={online}
+                  mission={!!mission}
+                  myTurn={myTurn}
+                  thinking={thinking}
+                  onHint={() =>
+                    // 같은 판이면 같은 수(시드는 둔 수 개수). 힌트 고수(baduk/advisor.ts)가 워커에서 센다.
+                    ask(
+                      () =>
+                        adviseWith<Action>(
+                          { game: "baduk", name: "advisor" },
+                          view,
+                          createRng(played + 1).seed,
+                        ),
+                      (action) => {
+                        if (action.type === "place") {
+                          showHint(action.at);
+                          setAim(action.at);
+                        } else showHint("pass");
+                      },
+                    )
+                  }
+                />
+                {myTurn && (
+                  <button
+                    type="button"
+                    onClick={() => submit({ type: "pass" })}
+                    className={cn(
+                      "rounded-xl px-4 py-2",
+                      passEnds && passWins
+                        ? "bg-amber-300 font-semibold text-black"
+                        : "bg-white/10",
+                    )}
+                  >
+                    쉬기
+                  </button>
+                )}
                 <button
                   type="button"
-                  disabled={!canUndo}
-                  onClick={() => {
-                    setAim(null);
-                    undo();
-                  }}
-                  className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
-                >
-                  무르기
-                </button>
-              )}
-              <HintButton
-                online={online}
-                mission={!!mission}
-                myTurn={myTurn}
-                thinking={thinking}
-                onHint={() =>
-                  // 같은 판이면 같은 수(시드는 둔 수 개수). 힌트 고수(baduk/advisor.ts)가 워커에서 센다.
-                  ask(
-                    () =>
-                      adviseWith<Action>(
-                        { game: "baduk", name: "advisor" },
-                        view,
-                        createRng(played + 1).seed,
-                      ),
-                    (action) => {
-                      if (action.type === "place") {
-                        showHint(action.at);
-                        setAim(action.at);
-                      } else showHint("pass");
-                    },
-                  )
-                }
-              />
-              {myTurn && (
-                <button
-                  type="button"
-                  onClick={() => submit({ type: "pass" })}
+                  aria-pressed={counting}
+                  onClick={() => setCounting((c) => !c)}
                   className={cn(
                     "rounded-xl px-4 py-2",
-                    passEnds && passWins
-                      ? "bg-amber-300 font-semibold text-black"
-                      : "bg-white/10",
+                    counting ? "bg-white text-black" : "bg-white/10",
                   )}
                 >
-                  쉬기
+                  세어 보기
                 </button>
-              )}
-              <button
-                type="button"
-                aria-pressed={counting}
-                onClick={() => setCounting((c) => !c)}
-                className={cn(
-                  "rounded-xl px-4 py-2",
-                  counting ? "bg-white text-black" : "bg-white/10",
+                {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
+                {(!online || myTurn) && (
+                  <ResignButton
+                    resetKey={played}
+                    onResign={() => submit({ type: "resign" })}
+                  />
                 )}
-              >
-                세어 보기
-              </button>
-              {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-              {(!online || myTurn) && (
-                <ResignButton
-                  resetKey={played}
-                  onResign={() => submit({ type: "resign" })}
-                />
-              )}
-            </>
-          )}
-          {view.phase === "roundEnd" && !view.continued[me] && (
-            <button
-              type="button"
-              onClick={() => submit({ type: "continue" })}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다음 판
-            </button>
-          )}
-          {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
-          {gameOver && !mission && (
-            <>
+              </>
+            )}
+            {view.phase === "roundEnd" && !view.continued[me] && (
               <button
                 type="button"
-                onClick={onExit}
+                onClick={() => submit({ type: "continue" })}
                 className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
               >
-                다시 하기
+                다음 판
               </button>
-              <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-                게임 목록
-              </a>
-            </>
-          )}
-        </div>
+            )}
+            {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
+            {gameOver && !mission && (
+              <>
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                >
+                  다시 하기
+                </button>
+                <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
+                  게임 목록
+                </a>
+              </>
+            )}
+          </div>
+        )
       }
       chat={online && <ChatBox mySeat={me} />}
     />

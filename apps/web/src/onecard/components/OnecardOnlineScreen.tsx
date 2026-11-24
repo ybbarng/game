@@ -146,9 +146,9 @@ export function OnecardOnlineScreen({
       text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
-      if (!ok)
-        useOnecard.setState({ notice: `기록 검증 실패: ${reason ?? ""}` });
-      recordAudit(roomCode, ok ? null : `${who}: ${reason ?? ""}`);
+      const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
+      if (failure) useOnecard.setState({ invalid: failure });
+      recordAudit(roomCode, failure);
     }
   };
 
