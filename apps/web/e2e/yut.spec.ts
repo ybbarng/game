@@ -18,7 +18,8 @@ import {
 } from "./test";
 
 const status = (page: Page) => page.getByRole("status").first();
-const over = (page: Page) => page.getByRole("button", { name: "다시 하기" });
+/** 게임이 끝나면 혼자 하기·온라인 모두 「처음으로」가 뜬다(「다시 하기」는 혼자 하기만) */
+const over = (page: Page) => page.getByRole("button", { name: "처음으로" });
 const throwButton = (page: Page) => page.locator("[data-throw]");
 /** 지금 움직일 수 있는 판 위 말 묶음 */
 const movableStacks = (page: Page) => page.locator("[data-stack]:enabled");

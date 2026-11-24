@@ -169,6 +169,42 @@ for (const preset of ["표준 5마", "표준 7마"]) {
   });
 }
 
+test("게임이 끝나면 「다시 하기」로 같은 규칙·새 씨앗의 게임을 바로 시작한다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await prepareFast(page);
+  // 첫 판은 주소 씨앗으로 연다. 「다시 하기」는 주소 씨앗을 쓰지 않고 새로 뽑는다.
+  await page.goto("/mighty?seed=7");
+  await startSolo(page);
+  await expect(page.getByText("공약을 정하세요")).toBeVisible();
+  // 끝까지 두지 않고, 저장된 대국 기록 끝에 「그만하기」를 넣어 끝난 게임으로 이어 한다.
+  const saved = await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem("mighty-save") as string);
+    raw.log = [{ seat: 0, action: { type: "retire" } }];
+    localStorage.setItem("mighty-save", JSON.stringify(raw));
+    return raw as { rules: unknown; seed: number };
+  });
+  await page.reload();
+  await page.getByRole("button", { name: /하던 게임 이어하기/ }).click();
+  await expect(page.getByText("게임을 중간에 끝냈어요")).toBeVisible();
+  await expect(page.getByRole("button", { name: "처음으로" })).toBeVisible();
+
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await expect(page).toHaveURL(/\/mighty\?seed=7$/);
+  await expect(page.getByText("게임을 중간에 끝냈어요")).toHaveCount(0);
+  await expect(page.getByText("공약을 정하세요")).toBeVisible();
+  const next = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem("mighty-save") as string) as {
+        rules: unknown;
+        seed: number;
+      },
+  );
+  expect(saved.seed).toBe(7);
+  expect(next.rules).toEqual(saved.rules);
+  expect(next.seed).not.toBe(7);
+});
+
 test("움직임 줄이기를 켜면 섞고 나눠 주는 연출 없이 바로 공약을 정한다", async ({
   page,
 }) => {

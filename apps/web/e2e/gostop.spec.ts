@@ -181,7 +181,20 @@ test("고스톱: 게임 목록에서 들어가 입문 컴퓨터와 맞고 한 �
   await expect(page.getByRole("region", { name: "판 정산" })).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("gostop-end.png") });
-  await expect(page.getByRole("button", { name: "다시 하기" })).toBeVisible();
+
+  // 「다시 하기」는 첫 화면으로 가지 않고 같은 규칙(맞고 2명, 손패 10장)으로 새 판을 바로 시작한다.
+  // 씨앗을 새로 뽑으므로 판이 어떻게 흐를지(총통으로 바로 끝나기도 한다)는 보지 않고, 새로 나눈 손패와 규칙 줄만 본다.
+  // 끝난 판은 손패를 여러 장 냈으니 10장이면 새로 나눈 것이다.
+  await expect(hand(page)).not.toHaveCount(10);
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await expect(page).toHaveURL(/\/gostop\?seed=7$/);
+  await expect(hand(page)).toHaveCount(10);
+  await expect(
+    page.getByText("맞고 · 1/1판 · 7점부터 고 · 입문"),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /나홀로 고스톱/ })).toHaveCount(
+    0,
+  );
   expect(errors).toEqual([]);
 });
 

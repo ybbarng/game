@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
+import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { SeatPlateFrame } from "@/components/SeatPlate";
 import type { MissionProps } from "@/components/tutorial/MissionOverlay";
@@ -298,10 +299,13 @@ function MyHand({
  */
 export function MinhwatuTable({
   onExit,
+  onRestart,
   mission,
   hints = false,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션이면 목표 띠를 얹는다 */
   mission?: MissionProps;
   /** 추천 카드를 보인다(튜토리얼 실전) */
@@ -570,14 +574,12 @@ export function MinhwatuTable({
         </span>
       )}
       {gameOver && !mission && (
-        <>
-          <button type="button" onClick={onExit} className={HWATU_PRIMARY}>
-            다시 하기
-          </button>
-          <a href="/" className={HWATU_SECONDARY}>
-            게임 목록
-          </a>
-        </>
+        <RoundEndButtons
+          onRestart={online ? undefined : onRestart}
+          onHome={onExit}
+          primaryClass={HWATU_PRIMARY}
+          secondaryClass={HWATU_SECONDARY}
+        />
       )}
     </div>
   );

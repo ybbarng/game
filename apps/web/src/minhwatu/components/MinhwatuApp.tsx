@@ -373,6 +373,18 @@ export function MinhwatuApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useMinhwatuSettings.getState();
+    useMinhwatu.getState().newGame({
+      rules: rulesOf(s),
+      level: s.level,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
 
   if (screen.kind === "online")
     return (
@@ -385,7 +397,8 @@ export function MinhwatuApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <MinhwatuTable onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <MinhwatuTable onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -415,15 +428,7 @@ export function MinhwatuApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useMinhwatu.getState().resume(saved);
-        else {
-          const s = useMinhwatuSettings.getState();
-          const seed = seedFromUrl();
-          useMinhwatu.getState().newGame({
-            rules: rulesOf(s),
-            level: s.level,
-            ...(seed !== undefined ? { seed } : {}),
-          });
-        }
+        else startSolo(seedFromUrl());
         setScreen({ kind: "playing" });
       }}
     />

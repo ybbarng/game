@@ -39,9 +39,10 @@ import { FairBar } from "@/components/FairBar";
 import { useHandControls } from "@/components/hand-controls";
 import { ConnectionNotices, InvalidBanner } from "@/components/OnlineAlerts";
 import { OpenHand } from "@/components/OpenHand";
-import { ActionButton, Panel } from "@/components/panels/common";
+import { Panel } from "@/components/panels/common";
 import { ResignConfirm } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
+import { PANEL_BUTTONS, RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { useRelayoutFade } from "@/components/relayout";
 import { SeatPlate } from "@/components/SeatPlate";
@@ -446,10 +447,13 @@ export interface OnecardReplayProps {
  */
 export function OnecardGame({
   onExit,
+  onRestart,
   mission,
   replay,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   mission?: MissionProps;
   replay?: OnecardReplayProps;
 }) {
@@ -985,14 +989,12 @@ export function OnecardGame({
                   />
                   <RankTable view={view} name={name} />
                   {!mission && !replay && (
-                    <div className="flex justify-center gap-2">
-                      <ActionButton onClick={onExit}>다시 하기</ActionButton>
-                      <a
-                        href="/"
-                        className="rounded-xl bg-white/15 px-4 py-2 font-semibold text-sm hover:bg-white/25"
-                      >
-                        게임 목록
-                      </a>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <RoundEndButtons
+                        onRestart={online ? undefined : onRestart}
+                        onHome={onExit}
+                        {...PANEL_BUTTONS}
+                      />
                     </div>
                   )}
                 </Panel>

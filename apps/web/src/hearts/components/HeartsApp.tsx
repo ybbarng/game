@@ -15,6 +15,7 @@ import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
+import { seedFromUrl } from "@/lib/url-seed";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useHeartsTutorialProgress } from "@/tutorial/progress";
 
@@ -85,6 +86,12 @@ export function HeartsApp() {
   const backToStart = () => setScreen({ kind: "start" });
 
   const rules = heartsRules(ruleCode);
+  /**
+   * 컴퓨터와 새 판(첫 화면 「나홀로 하트」와 판 끝 「다시 하기」). 고른 규칙·단계 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) =>
+    newGame({ rules, ...(seed !== undefined ? { seed } : {}) });
 
   if (screen.kind === "online")
     return (
@@ -97,7 +104,8 @@ export function HeartsApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <HeartsTable onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <HeartsTable onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "options")
     return <HeartsOptions onBack={() => setScreen({ kind: "start" })} />;
   if (screen.kind === "rules")
@@ -155,13 +163,7 @@ export function HeartsApp() {
         title: "나홀로 하트",
         detail: `컴퓨터 3명과 · ${ruleCode === WINDOWS_RULE_CODE ? "윈도우 하트" : "직접 정한 규칙"} · ${levelLabel ?? ""}`,
         onClick: () => {
-          const seed = Number(
-            new URLSearchParams(window.location.search).get("seed"),
-          );
-          newGame({
-            rules,
-            ...(Number.isInteger(seed) && seed > 0 ? { seed } : {}),
-          });
+          startSolo(seedFromUrl());
           setScreen({ kind: "playing" });
         },
       }}

@@ -104,12 +104,15 @@ function waitingText(
 
 export function GameTable({
   onExit,
+  onRestart,
   mission,
   hints = false,
   openHands = null,
   topInset = 0,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션 목표와 결과 안내 */
   mission?: MissionProps;
   /** 컴퓨터가 추천하는 카드에 빛을 낸다 */
@@ -987,7 +990,8 @@ export function GameTable({
                       startMoney={startMoney}
                       seatName={seatName}
                       onSubmit={act}
-                      onNewGame={onExit}
+                      onHome={onExit}
+                      onRestart={network ? undefined : onRestart}
                     />
                   ) : waiting ? (
                     <p className="text-center text-sm opacity-80">{waiting}</p>

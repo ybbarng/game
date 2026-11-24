@@ -17,6 +17,7 @@ import { HintButton, useHint } from "@/components/HintButton";
 import { BoardOnlineAlerts } from "@/components/OnlineAlerts";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
+import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
   MissionOverlay,
@@ -80,9 +81,12 @@ function PlayerPlate({
 /** 대국 화면 */
 export function OmokGame({
   onExit,
+  onRestart,
   mission,
 }: {
   onExit: () => void;
+  /** 혼자 하기: 같은 설정으로 새 판(게임이 끝났을 때 「다시 하기」) */
+  onRestart?: () => void;
   /** 튜토리얼 미션이면 목표 띠를 얹는다 */
   mission?: MissionProps;
 }) {
@@ -317,18 +321,10 @@ export function OmokGame({
             )}
             {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
             {gameOver && !mission && (
-              <>
-                <button
-                  type="button"
-                  onClick={onExit}
-                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-                >
-                  다시 하기
-                </button>
-                <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-                  게임 목록
-                </a>
-              </>
+              <RoundEndButtons
+                onRestart={online ? undefined : onRestart}
+                onHome={onExit}
+              />
             )}
           </div>
         )

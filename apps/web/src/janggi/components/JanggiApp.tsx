@@ -454,6 +454,19 @@ export function JanggiApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /** 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로, 씨앗은 새로 */
+  const startSolo = () => {
+    const s = useJanggiSettings.getState();
+    useJanggi.getState().newGame({
+      rules: {
+        bikjang: s.bikjang,
+        winsToFinish: s.winsToFinish,
+        ...(s.time !== "none" ? { time: s.time } : {}),
+      },
+      level: s.level,
+      pick: s.pick,
+    });
+  };
   // 「오늘 복습」으로 연 문제: 다 풀면 복습 줄의 다음 문제로, 줄 끝이면 목록으로
   const reviewOf = (queue: Review, current: string) =>
     reviewRunFor({
@@ -475,7 +488,8 @@ export function JanggiApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <JanggiGame onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <JanggiGame onExit={backToStart} onRestart={startSolo} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -534,18 +548,7 @@ export function JanggiApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useJanggi.getState().resume(saved);
-        else {
-          const s = useJanggiSettings.getState();
-          useJanggi.getState().newGame({
-            rules: {
-              bikjang: s.bikjang,
-              winsToFinish: s.winsToFinish,
-              ...(s.time !== "none" ? { time: s.time } : {}),
-            },
-            level: s.level,
-            pick: s.pick,
-          });
-        }
+        else startSolo();
         setScreen({ kind: "playing" });
       }}
     />

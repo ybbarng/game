@@ -146,7 +146,7 @@ test("오목: 게임 목록에서 들어가 입문 컴퓨터와 한 판을 끝�
   await page.screenshot({ path: info.outputPath("omok-end.png") });
 
   // 다 끝난 게임은 이어하기에 남지 않는다.
-  await page.getByRole("button", { name: "다시 하기" }).click();
+  await page.getByRole("button", { name: "처음으로" }).click();
   await expect(page.getByRole("button", { name: /나홀로 오목/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
 });
@@ -208,7 +208,8 @@ test(
     await expect(board(guest)).toBeVisible();
     await expect(guest.getByText("방장", { exact: true })).toBeVisible();
 
-    const over = (p: Page) => p.getByRole("button", { name: "다시 하기" });
+    // 온라인 판 끝에는 「처음으로」만 둔다(같은 설정 새 판은 혼자 하기만).
+    const over = (p: Page) => p.getByRole("button", { name: "처음으로" });
     for (let i = 0; i < 300; i++) {
       if ((await over(host).isVisible()) && (await over(guest).isVisible()))
         break;
@@ -285,6 +286,45 @@ test(
     await page.screenshot({ path: info.outputPath("omok-review.png") });
   },
 );
+
+test("오목: 게임이 끝나면 「다시 하기」로 같은 규칙의 새 게임을 바로 시작한다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await page.goto("/omok");
+  await ready(page);
+  await page.getByRole("button", { name: "옵션" }).click();
+  await page.getByRole("button", { name: "3판 2승" }).click();
+  await page.getByRole("button", { name: /흑\(먼저\)/ }).click();
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByRole("button", { name: /나홀로 오목/ }).click();
+
+  // 내 차례에 기권한다(둘째 판은 흑백이 바뀌어 컴퓨터가 먼저 두고, 수가 오가면 묻기가 닫힌다).
+  const resign = async () => {
+    await expect(page.getByRole("status")).toContainText("내 차례");
+    await page.getByRole("button", { name: "기권" }).click();
+    await page.getByRole("button", { name: "기권하기" }).click();
+  };
+  // 두 판을 기권해 게임을 끝낸다.
+  await resign();
+  await page.getByRole("button", { name: "다음 판" }).click();
+  await resign();
+  await expect(page.getByText(/나 0 : 2 .* · 2승 먼저/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "처음으로" })).toBeVisible();
+
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  // 첫 화면으로 가지 않고 같은 규칙(3판 2승, 내가 흑)으로 새 게임이 시작된다.
+  await expect(page).toHaveURL(/\/omok$/);
+  await expect(page.getByText(/· 1판째/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "상대 자리" })).toContainText(
+    "0승",
+  );
+  await expect(stones(page)).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  // 3판 2승 그대로: 한 판을 져도 게임이 끝나지 않고 다음 판으로 간다.
+  await resign();
+  await expect(page.getByText(/나 0 : 1 .* · 2승 먼저/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "다음 판" })).toBeVisible();
+});
 
 /** 판의 한 자리에 둔다. 휴대폰은 겨누고 다시 눌러 둔다 */
 async function placeAt(page: Page, x: number, y: number, touch: boolean) {
@@ -416,7 +456,12 @@ test(
       "그 수로는 몰아붙일 수 없어요.",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
-    await play("H4");
+    // 힌트는 다섯 자리를 겨눠 두고, 대국 화면처럼 「여기 두기」로 둔다.
+    await expect(page.getByRole("button", { name: "여기 두기" })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "힌트" }).click();
+    await page.getByRole("button", { name: "여기 두기" }).click();
     await expect(page.getByRole("status")).toHaveText("다섯!");
     await expect(page.getByText("H4: 다섯!")).toBeVisible();
     await page.getByRole("button", { name: "← 목록" }).click();

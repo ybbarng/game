@@ -8,6 +8,7 @@ import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { cn } from "@/lib/cn";
+import { seedFromUrl } from "@/lib/url-seed";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { gostopRoom } from "../online";
@@ -375,6 +376,18 @@ export function GostopApp() {
   }, [setScreen]);
 
   const backToStart = () => setScreen({ kind: "start" });
+  /**
+   * 컴퓨터와 새 판(첫 화면 「시작」과 판 끝 「다시 하기」). 고른 설정 그대로.
+   * 씨앗은 첫 화면에서만 주소 `?seed=`를 따르고, 「다시 하기」는 새로 뽑는다
+   */
+  const startSolo = (seed?: number) => {
+    const s = useGostopSettings.getState();
+    useGostop.getState().newGame({
+      rules: gostopRulesOf(s),
+      level: s.level,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+  };
 
   if (screen.kind === "online")
     return (
@@ -387,7 +400,8 @@ export function GostopApp() {
         onPlaying={() => setScreen({ kind: "playing" })}
       />
     );
-  if (screen.kind === "playing") return <GostopTable onExit={backToStart} />;
+  if (screen.kind === "playing")
+    return <GostopTable onExit={backToStart} onRestart={() => startSolo()} />;
   if (screen.kind === "tutorial")
     return (
       <TutorialHome
@@ -417,17 +431,7 @@ export function GostopApp() {
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
         if (saved) useGostop.getState().resume(saved);
-        else {
-          const s = useGostopSettings.getState();
-          const seed = Number(
-            new URLSearchParams(window.location.search).get("seed"),
-          );
-          useGostop.getState().newGame({
-            rules: gostopRulesOf(s),
-            level: s.level,
-            ...(Number.isInteger(seed) && seed > 0 ? { seed } : {}),
-          });
-        }
+        else startSolo(seedFromUrl());
         setScreen({ kind: "playing" });
       }}
     />
