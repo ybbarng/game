@@ -477,8 +477,12 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     submit(action) {
       const host = get().host;
       if (!host) return { ok: false, error: "게임이 없어요." };
-      // 컴퓨터 수와 연출을 다 보여 주기 전에는 두지 않는다(기권은 언제든).
-      if (action.type !== "resign" && (get().queue.length > 0 || get().playing))
+      // 컴퓨터 수와 연출을 다 보여 주기 전에는 두지 않는다(기권·그만두기는 언제든).
+      if (
+        action.type !== "resign" &&
+        action.type !== "retire" &&
+        (get().queue.length > 0 || get().playing)
+      )
         return { ok: false, error: "잠깐만요." };
       const result = host.submit(action);
       if (!result.ok) {

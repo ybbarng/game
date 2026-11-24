@@ -365,6 +365,17 @@ describe("끝내기·시간", () => {
     expect(g.state.phase).toBe("gameOver");
   });
 
+  it("혼자 하기 그만하기(noForfeit)는 기다리던 사람이 하나여도 아무도 지지 않는다", () => {
+    const g = new Game(STANDARD_RULES, S0);
+    g.commitAll();
+    g.act(0, { type: "guess", guess: "789" });
+    g.act(0, { type: "retire", noForfeit: true });
+    expect(g.state.result).toBeNull();
+    expect(g.state.wins).toEqual([0, 0]);
+    expect(g.state.retired).toBe(true);
+    expect(g.state.phase).toBe("gameOver");
+  });
+
   it("공개를 하지 않은 사람도 끝내기로 진다", () => {
     const g = new Game(STANDARD_RULES, S0);
     g.commitAll();

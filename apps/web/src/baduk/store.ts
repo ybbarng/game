@@ -345,7 +345,9 @@ export const useBaduk = create<BadukStore>((set, get) => {
       const host = get().host;
       if (!host) return { ok: false, error: "게임이 없어요." };
       // 컴퓨터 수를 보여 주기 전에는 두지 않는다.
-      if (get().queue.length > 0) return { ok: false, error: "잠깐만요." };
+      // 그만두기(설정 「그만하기」)는 보던 화면과 상관없어 기다리지 않는다.
+      if (get().queue.length > 0 && action.type !== "retire")
+        return { ok: false, error: "잠깐만요." };
       const result = host.submit(action);
       if (!result.ok) {
         set({ notice: result.error });

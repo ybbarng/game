@@ -6,6 +6,7 @@ import legacy from "../../../packages/yut-engine/src/legacy-y1.fixture.json" wit
 };
 import { FLAT_ROLL_MS } from "../src/yut/components/toss-timing";
 import { useTestSpeed } from "./fast";
+import { expectQuitEnd, quitFromSettings } from "./solo-quit";
 import {
   animationsDone,
   expect,
@@ -1191,3 +1192,33 @@ test("윷놀이 다시 보기: 몸짓이 없는 옛 기록(규칙 판 1)은 3D �
   await expect(mat(page)).toHaveAttribute("data-toss", "2d");
   await expect(page.locator("[data-toss-3d]")).toHaveCount(0);
 });
+
+test(
+  "윷놀이: 혼자 하기 설정의 「그만하기」로 끝내면 비김 없이 끝 화면이 뜨고 그만둔 게임으로 남는다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await page.goto("/yut");
+    await startSolo(page);
+    await expect(page.locator("[data-yut-board]")).toBeVisible();
+    await quitFromSettings(page);
+    await expectQuitEnd(page, "yut");
+    // 끝난 게임에는 던지라는 멍석 글도, 차례 표시도 없다.
+    await expect(page.getByText("윷을 던져 보세요.")).toHaveCount(0);
+    await expect(
+      page.locator("[data-side]").filter({ hasText: "▶" }),
+    ).toHaveCount(0);
+    // 결과 없이 그만둔 판은 판 기록(승패·비김)을 남기지 않는다.
+    const rounds = await page.evaluate(
+      () =>
+        (
+          JSON.parse(localStorage.getItem("mighty-stats") ?? "{}") as {
+            rounds?: { game: string }[];
+          }
+        ).rounds?.filter((r) => r.game === "yut").length ?? 0,
+    );
+    expect(rounds).toBe(0);
+    await page.screenshot({ path: info.outputPath("yut-quit.png") });
+  },
+);

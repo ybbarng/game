@@ -1,4 +1,5 @@
 import { useTestSpeed } from "./fast";
+import { expectQuitEnd, quitFromSettings } from "./solo-quit";
 import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /** 판 한 변 줄 수와 가장자리 여백(OmokBoard의 PAD) */
@@ -820,5 +821,27 @@ test(
       page.locator('[data-mark="other"][data-mark-at="K1"]'),
     ).toHaveCount(1);
     await page.screenshot({ path: info.outputPath("omok-good-build.png") });
+  },
+);
+
+test(
+  "오목: 혼자 하기 설정의 「그만하기」로 끝내면 승패 없이 끝 화면이 뜨고 그만둔 게임으로 남는다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await page.goto("/omok");
+    await ready(page);
+    await page.getByRole("button", { name: /나홀로 오목/ }).click();
+    await expect(board(page)).toBeVisible();
+    await quitFromSettings(page);
+    await expectQuitEnd(page, "omok");
+    await page.screenshot({ path: info.outputPath("omok-quit.png") });
+    // 끝난 게임은 이어하기에 남지 않는다.
+    await page.getByRole("button", { name: "처음으로" }).click();
+    await expect(
+      page.getByRole("button", { name: /나홀로 오목/ }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
   },
 );

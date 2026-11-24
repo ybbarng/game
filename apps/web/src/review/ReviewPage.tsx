@@ -207,6 +207,11 @@ export function ReviewPage() {
                   <span className="text-white/60 text-xs">
                     {when(a.startedAt)} · {a.rounds}판
                     {a.over ? " · 끝남" : " · 하던 중"}
+                    {a.invalid && (
+                      <span data-review-invalid className="text-rose-300">
+                        {" · 무효"}
+                      </span>
+                    )}
                   </span>
                 </button>
                 <ConfirmButton

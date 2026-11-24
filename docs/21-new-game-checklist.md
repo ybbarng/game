@@ -84,7 +84,7 @@
 - [ ] `games/registry.ts`에 한 줄을 더한다: 이름, 영문 이름, 한 줄 설명, 인원, 주소
 - [ ] 공통 화면 조각(2026-11-24, 게임마다 따로 만들지 않는다)
   - 옵션·규칙 화면: `components/options`의 `SubScreen`(틀·「처음으로」, 게임마다 다른 건 바탕 `bg`·판 색 `panelClassName`), `Section`, 칩 `Chip`·`Chips`(누르는 자리 높이 44px, `aria-pressed`, 고른 색만 `activeClassName`), 효과음 `SoundSetting`
-  - 판 화면 「설정」: 모든 게임에 둔다. 판 게임은 머리줄 `GameHeader`(왼쪽 「← 게임」, 오른쪽 `BoardSettingsButton`), 둘러앉은 카드 판은 위 막대 단추(`BAR_BUTTON`)로 `GameSettingsMenu`를 연다. 효과음 켜기·크기는 늘, 해당하는 것만 켠다: 진행 속도(`speed`), 카드·무늬(`cards`), 혼자 하기 컴퓨터 단계(`levels`, 새 게임부터), 그 게임만의 줄(`extra`·`footer`), 혼자 하기 도중 게임 전체 끝내기 「그만하기」(`onQuit`, 「정말 그만할까요?」로 한 번 더 묻는다)
+  - 판 화면 「설정」: 모든 게임에 둔다. 판 게임은 머리줄 `GameHeader`(왼쪽 「← 게임」, 오른쪽 `BoardSettingsButton`), 둘러앉은 카드 판은 위 막대 단추(`BAR_BUTTON`)로 `GameSettingsMenu`를 연다. 효과음 켜기·크기는 늘, 해당하는 것만 켠다: 진행 속도(`speed`), 카드·무늬(`cards`), 혼자 하기 컴퓨터 단계(`levels`, 새 게임부터), 그 게임만의 줄(`extra`·`footer`), 혼자 하기 도중 게임 전체 끝내기 「그만하기」(`onQuit`, 「정말 그만할까요?」로 한 번 더 묻는다. 모든 게임에 둔다, 판 게임 일곱은 2026-11-25부터). 그만하기는 키트의 `quitAction ?? retireAction`을 내고, 엔진의 그만두기가 기다리던 사람을 지게 하면(윷·숫자야구·은하) 아무도 지지 않는 꼴(`{ type: "retire", noForfeit: true }`)을 `quitAction`에 둔다. 그만둔 게임은 결과 상자에 승패·비김 없이 「게임을 끝냈어요.」와 판 끝 단추(`RoundEndButtons`), 내 기록에는 「그만둔 게임」(`retired: true`, 이기지 않음)으로 남고 끝내지 않은 판은 판 기록을 남기지 않는다(승패로 세지 않는다). 저장소 `submit`은 연출 대기열이 남아도 그만두기는 받는다. 시험: `game/solo-quit.test.ts`(일곱 게임), 화면 시험 도우미 `e2e/solo-quit.ts`(오목·숫자야구·윷)
   - 판 위에 뜨는 상자(설정·점수판·규칙 편집·용어 사전)는 공통 `Dialog`: `role="dialog"`·`aria-modal`·이름, 처음 초점, Esc 닫기, Tab 가두기, 닫으면 연 단추로 초점, 겹침 순서 800(판·알림 위, 온라인 나가기 확인 900 아래). 고치던 것을 잃는 상자는 `closeOnOutside={false}`
   - 누르는 자리는 44px 이상: 겉모습을 바꾸지 않을 단추는 `HIT_AREA`(보이지 않는 44px 칸, 부모가 `overflow-hidden`이면 잘린다), 글자 뒤로 단추는 `BACK_BUTTON`. 위험한 단추(기권)와 나가기는 붙여 두지 않는다
   - 휴대폰 안전 영역(노치·홈 막대): 화면 틀은 `components/safe-area.ts`의 여백(`SAFE_P4`·`SAFE_PY3_PX4`), 절대 좌표 카드 무대는 `SAFE_STAGE`(투명 테두리). 무대 기준 좌표를 `getBoundingClientRect`로 잴 때는 `clientLeft`·`clientTop`을 더한다
@@ -134,6 +134,7 @@
 ## 7. 기록과 복기
 
 - [ ] 혼자 하기와 방장은 `StatsRecorder`·`ArchiveRecorder`로 남긴다
+  - 온라인 참가자 기록은 공통 방 화면(`RoomScreen`)이 맡아 게임마다 할 일은 없다(2026-11-25): 판·게임 기록을 이 기기의 게임 끝 검증 결과까지 탭 저장소에 두고(`StatsTarget.hold`, `stats/pending.ts`), 통과하면 내 기록에 넣고 실패하면(무효 게임) 버린다. 검증 전에 창을 닫으면 확인하지 못한 기록은 남지 않는다. 복기는 증거로 남기되 무효 표시(`GameArchive.invalid`, 목록 꼬리표 「무효」)를 단다(`net/own-audit.ts`). docs/13 4절
 - [ ] `stats/ProfilePage.tsx`에 탭과 통계 화면을 더한다(`KIT_STATS`에도 그 게임 `stats`를 넣는다), 온라인 화면의 기록 대상에 `people: sessionPeople(세션)`
 - [ ] `review/ReviewPage.tsx`
   - `GAME_NAME`에 더한다

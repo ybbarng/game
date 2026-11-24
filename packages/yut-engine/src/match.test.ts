@@ -314,6 +314,21 @@ describe("끝내기·기권·사슬 다시 약속", () => {
     expect(ended.retired).toBe(true);
   });
 
+  it("혼자 하기 그만하기(noForfeit)는 기다리던 사람이 하나여도 결과 없이 끝난다", () => {
+    let state = started();
+    state = must(state, state.turn, throwOf(state)).state;
+    state = must(state, 0, chainAction(state, 0)).state;
+    const { state: ended, events } = must(state, 0, {
+      type: "retire",
+      noForfeit: true,
+    });
+    expect(ended.result).toBeNull();
+    expect(ended.retired).toBe(true);
+    expect(events).toEqual([
+      { type: "gameEnded", result: null, retired: true },
+    ]);
+  });
+
   it("기권하면 상대 편이 이긴다", () => {
     const state = started();
     const { state: ended } = must(state, 1, { type: "resign" });

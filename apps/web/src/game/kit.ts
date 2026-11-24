@@ -174,6 +174,11 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    * 참가자는 보낼 수 없어야 한다(`guestMayAct`)
    */
   readonly retireAction: Action;
+  /**
+   * 혼자 하기 설정 메뉴 「그만하기」로 내는 행동. 없으면 `retireAction`.
+   * 기다리던 사람이 하나면 그 사람을 지게 하는 그만두기(윷·숫자야구·은하)는 아무도 지지 않는 꼴을 둔다(승패로 세지 않게)
+   */
+  readonly quitAction?: Action;
   /** 내 기록에 남길 것 */
   readonly stats: KitStats<View, Event>;
   /** 복기할 때 기록에서 상태를 다시 만든다 */

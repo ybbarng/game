@@ -38,7 +38,7 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { hangingPieces } from "../danger";
-import { DRAW_LABEL } from "../kit";
+import { chessKit, DRAW_LABEL } from "../kit";
 import { CHESS_LEVELS, useChessSettings } from "../settings";
 import { useChess } from "../store";
 import { ChessBoard, PieceIcon } from "./ChessBoard";
@@ -256,6 +256,7 @@ export function ChessGame({
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
+  else if (view.retired) status = "게임을 끝냈어요.";
   else if (result?.kind === "draw")
     status = result.reason === "agreed" ? "합의해 비겼어요." : "비겼어요.";
   else if (result?.seat === me)
@@ -284,7 +285,7 @@ export function ChessGame({
         }
       : null;
   const outcome: Outcome | null =
-    result === null
+    result === null || view.retired
       ? null
       : result.kind === "draw"
         ? "draw"
@@ -325,6 +326,11 @@ export function ChessGame({
               useStore={useChessSettings}
               levels={CHESS_LEVELS}
               solo={!online && !mission}
+              onQuit={
+                !gameOver && !online && !mission
+                  ? () => submit(chessKit.quitAction ?? chessKit.retireAction)
+                  : undefined
+              }
             />
           }
         />

@@ -320,6 +320,7 @@ export const galaxyKit: GalaxyKit = {
   // 사람이 자기 씨앗으로 약속한 사슬은 컴퓨터가 공개할 수 없다.
   botCanAct: botKnowsChain,
   retireAction: { type: "retire" },
+  quitAction: { type: "retire", noForfeit: true },
   stats: galaxyStats,
   // 숨긴 패가 없다. 주사위·공문은 기록 속 고리 공개로 다시 계산된다.
   review: {

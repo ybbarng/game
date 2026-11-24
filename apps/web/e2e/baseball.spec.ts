@@ -1,4 +1,5 @@
 import { useTestSpeed } from "./fast";
+import { expectQuitEnd, quitFromSettings } from "./solo-quit";
 import { expect, leaveOnline, type Page, ready, test } from "./test";
 
 /** 세 자리·1~9 수를 작은 것부터(테스트가 차례로 물을 때) */
@@ -607,5 +608,23 @@ test(
     await page.goto("/baseball");
     await expect(page.getByText("1/5 단원 마침")).toBeVisible();
     await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
+  },
+);
+
+test(
+  "숫자야구: 비밀 수를 정하기 전에 설정의 「그만하기」로 끝내도 기권패로 세지 않고 그만둔 게임으로 남는다",
+  {
+    tag: "@only-desktop",
+  },
+  async ({ page }, info) => {
+    await page.goto(`/baseball?seed=${SEED}`);
+    await startSolo(page);
+    // 컴퓨터는 비밀 수를 정했고 나만 남은 때: 끊긴 사람을 기다리지 않는 끝내기였다면 내가 졌다.
+    await expect(status(page)).toContainText("내 비밀 수를 정하세요");
+    await quitFromSettings(page);
+    await expectQuitEnd(page, "baseball");
+    // 혼자 그만둔 게임에는 공개 확인 상자(「아직 공개하지 않았어요.」)가 없다.
+    await expect(page.getByText("아직 공개하지 않았어요.")).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath("baseball-quit.png") });
   },
 );

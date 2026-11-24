@@ -63,6 +63,10 @@ export interface YutRound {
   players: number;
   mode: "solo" | "team";
   outcome: "win" | "loss" | "draw";
+  /**
+   * 어떻게 끝났나. `retired`는 2026-11-25 전 기록에만 있다(결과 없이 그만둔 판이 비김으로 들어가 있었다).
+   * 그런 판은 승패·지표에서 뺀다(`yutStats.result`, `summarizeYut`)
+   */
   by: GameResult["kind"] | "retired";
   /** 내가 던진 횟수와 그중 윷·모 */
   throws: number;
@@ -81,7 +85,13 @@ export interface YutGame {
 }
 
 export const yutStats: KitStats<YutView, GameEvent> = {
-  result: { unit: "round", outcome: (data) => (data as YutRound).outcome },
+  result: {
+    unit: "round",
+    outcome: (data) => {
+      const r = data as YutRound;
+      return r.by === "retired" ? null : r.outcome;
+    },
+  },
   achievements: [
     anyRound<YutRound>(
       "mo-3",
@@ -105,7 +115,8 @@ export const yutStats: KitStats<YutView, GameEvent> = {
       (e): e is Extract<GameEvent, { type: "gameEnded" }> =>
         e.type === "gameEnded",
     );
-    if (!ended) return null;
+    // 결과 없이 그만둔 판(혼자 하기 「그만하기」 등)은 판 기록을 남기지 않는다. 비김으로 세지 않게.
+    if (!ended || ended.result === null) return null;
     const me = end.mySeat;
     const side = sideOf(end.rules, me);
     let throws = 0;
@@ -128,7 +139,7 @@ export const yutStats: KitStats<YutView, GameEvent> = {
       players: end.rules.players,
       mode: end.rules.mode,
       outcome: outcomeFor(ended.result, side),
-      by: ended.result?.kind ?? "retired",
+      by: ended.result.kind,
       throws,
       yuts,
       mos,
@@ -250,6 +261,7 @@ export const yutKit: YutKit = {
   // 끊긴 사람 대신 둘 때, 사람이 만든 사슬 씨앗은 모르니 공개는 그 사람을 기다린다.
   botCanAct: botKnowsChain,
   retireAction: { type: "retire" },
+  quitAction: { type: "retire", noForfeit: true },
   stats: yutStats,
   // 숨긴 패가 없다. 던지기 결과는 기록 속 고리 공개로 다시 계산된다.
   review: {
@@ -326,9 +338,11 @@ export interface YutSummary {
 }
 
 export function summarizeYut(rounds: readonly RoundRecord[]): YutSummary {
+  // 옛 기록의 결과 없이 그만둔 판(`by: "retired"`)은 판으로 세지 않는다.
   const all = rounds
     .filter((r) => r.game === "yut")
-    .map((r) => r.data as YutRound);
+    .map((r) => r.data as YutRound)
+    .filter((r) => r.by !== "retired");
   const sum = (pick: (r: YutRound) => number) =>
     all.reduce((n, r) => n + pick(r), 0);
   return {

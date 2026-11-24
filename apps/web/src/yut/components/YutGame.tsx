@@ -31,7 +31,7 @@ import { cn } from "@/lib/cn";
 import { subj } from "@/lib/josa";
 import { useAutoClear } from "@/lib/use-auto-clear";
 import { useChat } from "@/net/chat";
-import { outcomeFor } from "../kit";
+import { outcomeFor, yutKit } from "../kit";
 import { sceneOf } from "../scene";
 import { yutSession } from "../session";
 import { useYutSettings, YUT_LEVELS } from "../settings";
@@ -272,9 +272,13 @@ export function YutGame({
   else status = `${subj(turnName)} 말을 고르는 중…`;
 
   const ended = events.find((e) => e.type === "gameEnded");
+  // 결과 없이 그만둔 게임은 승패·비김을 보이지 않는다.
   const banner: Banner | null =
-    ended?.type === "gameEnded" && !mission ? bannerOf(result, view) : null;
-  const outcome = gameOver ? outcomeFor(result, mySide) : null;
+    ended?.type === "gameEnded" && !mission && result !== null
+      ? bannerOf(result, view)
+      : null;
+  const outcome =
+    gameOver && result !== null ? outcomeFor(result, mySide) : null;
   const waitingOn = pendingSeats({ ...view, keys: [] });
   const waitingOffline =
     online &&
@@ -312,6 +316,11 @@ export function YutGame({
             useStore={useYutSettings}
             levels={YUT_LEVELS}
             solo={!online && !mission}
+            onQuit={
+              !gameOver && !online && !mission
+                ? () => submit(yutKit.quitAction ?? yutKit.retireAction)
+                : undefined
+            }
           />
         }
       />
@@ -427,7 +436,8 @@ export function YutGame({
         <SideTray
           view={view}
           name={name}
-          turnSide={sideOf(view.rules, view.turn)}
+          // 끝난 게임에는 차례가 없다(차례 표시를 남기지 않는다).
+          turnSide={gameOver ? -1 : sideOf(view.rules, view.turn)}
         />
         <SeatClocks view={view} name={name} />
       </div>
