@@ -34,24 +34,80 @@ function Totals({ m }: { m: MapMethod }) {
   ) : null;
 }
 
-/** 지점 그림 띠: 지점마다 그림, 들어오는 길을 끝냈으면 ✓, 내 구간이 약하거나 잘하면 그림 테두리 색 */
-function Strip({ m, ctx, wrap }: { m: MapMethod; ctx: MapCtx; wrap: boolean }) {
+/**
+ * 단계 사이 화살표(그림). 끝낸 걸음은 해법 색, 아직이면 흐리게(내 위치가 함께 읽힌다).
+ * 큐브 그림보다 덜 띄게 가늘게 그린다
+ */
+function StepArrow({
+  dir,
+  color,
+  done,
+}: {
+  dir: "right" | "down";
+  color: string;
+  done: boolean;
+}) {
+  const right = dir === "right";
+  return (
+    <svg
+      aria-hidden
+      width={right ? 14 : 12}
+      height={right ? 12 : 14}
+      viewBox={right ? "0 0 14 12" : "0 0 12 14"}
+      className="shrink-0"
+      data-step-arrow={done ? "done" : "todo"}
+    >
+      <path
+        d={right ? "M1 6 H11 M7 2 L12 6 L7 10" : "M6 1 V11 M2 7 L6 12 L10 7"}
+        fill="none"
+        stroke={done ? color : "rgba(255,255,255,0.28)"}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** 지점으로 들어오는 길을 끝냈나(첫 지점은 null) */
+function arrivedDone(m: MapMethod, i: number, ctx: MapCtx): boolean {
+  if (!i) return false;
+  const e = edgeById(m.edges[i - 1] as string) as MapEdge;
+  return edgeLearn(e, ctx.progress) === "done";
+}
+
+/**
+ * 지점 그림 띠. `column`: 위(다 섞임)에서 아래(다 맞음)로, 지점 이름을 곁에 둔다(카드를 가로로 늘어놓을 때,
+ * 카드 방향과 맞추는 순서 방향을 엇갈리게). 그 밖은 왼쪽에서 오른쪽으로, 넘치면 옆으로 민다
+ */
+function Strip({
+  m,
+  ctx,
+  column = false,
+}: {
+  m: MapMethod;
+  ctx: MapCtx;
+  column?: boolean;
+}) {
   const nodes = methodNodes(m);
   const solo = ctx.solo.get(m.id);
+  if (column) return <ColumnStrip m={m} ctx={ctx} />;
   return (
     <ol
-      className={cn(
-        "flex items-end gap-1",
-        wrap ? "flex-wrap" : "overflow-x-auto pb-1",
-      )}
-      data-card-strip
+      className="flex items-end gap-1 overflow-x-auto pb-1"
+      data-card-strip="row"
     >
       {nodes.map((id, i) => {
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
         const skill = e ? solo?.get(e.id)?.skill : undefined;
         const me = ctx.me.get(id)?.includes(m);
-        return (
+        return [
+          i > 0 && (
+            <li key={`${id}-arrow`} aria-hidden className="self-center pb-3">
+              <StepArrow dir="right" color={METHOD_COLOR[m.id]} done={done} />
+            </li>
+          ),
           <li
             key={id}
             className="relative flex shrink-0 flex-col items-center"
@@ -71,6 +127,47 @@ function Strip({ m, ctx, wrap }: { m: MapMethod; ctx: MapCtx; wrap: boolean }) {
             </div>
             <span className="h-3 text-[10px] text-emerald-300 leading-3">
               {done ? "✓" : ""}
+            </span>
+          </li>,
+        ];
+      })}
+    </ol>
+  );
+}
+
+/** 세로 띠: 지점마다 한 줄(그림 · 이름 · ✓), 지점 사이는 가는 세로 선 */
+function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
+  const nodes = methodNodes(m);
+  const solo = ctx.solo.get(m.id);
+  return (
+    <ol className="flex flex-col" data-card-strip="column">
+      {nodes.map((id, i) => {
+        const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
+        const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
+        const skill = e ? solo?.get(e.id)?.skill : undefined;
+        const me = ctx.me.get(id)?.includes(m);
+        return (
+          <li key={id} className="flex flex-col" data-strip-node={id}>
+            {i > 0 && (
+              <span aria-hidden className="ml-4 flex py-0.5">
+                <StepArrow dir="down" color={METHOD_COLOR[m.id]} done={done} />
+              </span>
+            )}
+            <span className="flex items-center gap-2">
+              <span
+                className="shrink-0 rounded-md border-2 p-0.5"
+                style={{
+                  borderColor: skill ? SKILL_RING[skill] : "transparent",
+                }}
+                data-strip-skill={skill ?? undefined}
+              >
+                <NodeCube id={id} settings={ctx.settings} px={36} />
+              </span>
+              <span className="min-w-0 break-keep text-sm leading-tight">
+                {nodeById(id).title}
+              </span>
+              {done && <span className="text-emerald-300 text-xs">✓</span>}
+              {me && <MeBadge methods={[]} />}
             </span>
           </li>
         );
@@ -129,7 +226,7 @@ export function CardsView({
               </span>
               <Totals m={m} />
             </span>
-            <Strip m={m} ctx={ctx} wrap={dir === "h"} />
+            <Strip m={m} ctx={ctx} column={dir === "h"} />
           </a>
         );
       })}
@@ -166,8 +263,8 @@ function MethodScreen({
         </h2>
         <Totals m={m} />
       </div>
-      <Strip m={m} ctx={ctx} wrap={false} />
-      <ol className="flex flex-col gap-1.5">
+      <Strip m={m} ctx={ctx} />
+      <ol className="flex flex-col">
         {m.edges.map((id, i) => {
           const e = edgeById(id) as MapEdge;
           const href = edgeHref(e, m, ctx.courseOf);
@@ -189,6 +286,16 @@ function MethodScreen({
           );
           return (
             <li key={id}>
+              {i > 0 && (
+                // 걸음 사이: 앞 걸음을 끝냈으면 해법 색
+                <span aria-hidden className="flex py-0.5 pl-[58px]">
+                  <StepArrow
+                    dir="down"
+                    color={METHOD_COLOR[m.id]}
+                    done={arrivedDone(m, i, ctx)}
+                  />
+                </span>
+              )}
               {href ? (
                 <a
                   href={href}

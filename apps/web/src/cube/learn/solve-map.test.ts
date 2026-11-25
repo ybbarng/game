@@ -22,6 +22,7 @@ import {
   isBigMethod,
   lessonFor,
   MAP_EDGES,
+  MAP_LANES,
   MAP_METHODS,
   MAP_NODES,
   MAP_PREP,
@@ -31,6 +32,7 @@ import {
   methodFormulaCount,
   methodNodes,
   newFormulas,
+  nodeById,
   nodeMask,
   nodeSize,
 } from "./solve-map";
@@ -147,6 +149,20 @@ describe("그래프", () => {
         expect(edgeById(id)?.from, `${m.id} ${id}`).toBe(nodes[i]);
       });
     }
+  });
+
+  it("지점은 그 지점을 지나는 해법 가운데 가장 왼쪽(쉬운) 해법의 칸에 있다", () => {
+    const wrong = MAP_NODES.filter((n) => {
+      const lanes = MAP_METHODS.filter((m) =>
+        methodNodes(m).includes(n.id),
+      ).map((m) => MAP_LANES[m.id] as number);
+      return n.col !== Math.min(...lanes);
+    }).map((n) => n.id);
+    expect(wrong).toEqual([]);
+    // 초보자 길은 왼쪽 끝에 곧게 내려온다
+    expect(
+      methodNodes(method("beginner")).map((id) => nodeById(id).col),
+    ).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   it("모든 지점과 길이 적어도 한 해법에 쓰인다", () => {

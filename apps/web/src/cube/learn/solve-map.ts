@@ -81,66 +81,97 @@ export interface MapNode {
   size?: 3 | 4;
 }
 
+/**
+ * 해법마다 가로 칸(왼쪽 초보자 → 오른쪽 고급, 2026-11-25 사용자 「왼쪽이 초보자용, 오른쪽이 고급」).
+ * 차례는 사이트 과정의 선행 차례(courses.ts REQUIRES: 초보자 → 2단계 → CFOP → 루·ZZ → 페트루스)를 따르고, 같은
+ * 줄기의 갈래(코너 방향 먼저)는 바로 옆에, 사이트에 단원이 없는 갈래·코너 먼저는 그 뒤, 4×4는 오른쪽 끝에 둔다.
+ * 지점은 그 지점을 지나는 해법 가운데 가장 왼쪽 칸에 둔다(초보자 길이 왼쪽에 곧게 내려온다). solve-map.test.ts가 본다
+ */
+export const MAP_LANES: Readonly<Record<string, number>> = {
+  beginner: 0,
+  "beginner-twist-first": 1,
+  "two-look": 2,
+  cfop: 3,
+  roux: 4,
+  zz: 5,
+  petrus: 6,
+  "zz-coll": 7,
+  "zz-zbll": 7,
+  "cfop-1lll": 7,
+  "corners-first": 7,
+  "444-reduction": 8,
+  "444-yau": 9,
+};
+
 export const MAP_NODES: readonly MapNode[] = [
-  // 4×4: 센터·엣지를 묶으면 3×3처럼 맞춘다(축소법은 다 섞인 3×3, 야우는 흰 십자가 맞은 3×3에 닿는다)
+  // 4×4: 센터·엣지를 묶으면 3×3처럼 맞춘다(축소법은 다 섞인 3×3, 야우는 흰 십자가 맞은 3×3에 닿는다).
+  // 3×3 다 섞임 위(음수 줄) 오른쪽 끝에 따로 둔다
   {
     id: "4-scrambled",
     title: "4×4 다 섞임",
     row: -4,
-    col: 4.5,
+    col: 8,
     view: "",
     size: 4,
   },
+  { id: "4-centers", title: "4×4 센터", row: -3, col: 8, view: "", size: 4 },
   {
     id: "4-ud-centers",
     title: "흰·노랑 센터",
     row: -3,
-    col: 4,
+    col: 9,
     view: "",
     size: 4,
   },
-  { id: "4-centers", title: "4×4 센터", row: -3, col: 5.5, view: "", size: 4 },
-  { id: "4-cross3", title: "흰 십자 셋", row: -2, col: 4, view: "", size: 4 },
+  { id: "4-cross3", title: "흰 십자 셋", row: -2, col: 9, view: "", size: 4 },
   {
     id: "4-yau-centers",
     title: "옆 센터",
     row: -1,
-    col: 4,
+    col: 9,
     view: "",
     size: 4,
   },
-  { id: "corners-first", title: "코너 여덟", row: 4, col: 5.5, view: "" },
-  { id: "scrambled", title: "다 섞임", row: 0, col: 2.5, view: "" },
-  { id: "roux-fb", title: "첫 블록", row: 1, col: 0, view: "z2 y2" },
-  { id: "petrus-222", title: "2×2×2", row: 1, col: 1, view: "z2 y2" },
-  { id: "eoline", title: "EO라인", row: 1, col: 2, view: "z2 y2" },
-  { id: "cross", title: "흰 십자", row: 1, col: 3.5, view: "" },
-  { id: "roux-sb", title: "두 블록", row: 2, col: 0, view: "z2 y2" },
-  { id: "petrus-223", title: "2×2×3", row: 2, col: 1, view: "z2 y2" },
-  { id: "zz-left", title: "왼쪽 블록", row: 2, col: 2, view: "z2 y2" },
-  { id: "pair-1", title: "짝 하나", row: 2, col: 3, view: "z2" },
-  { id: "first-layer", title: "첫 층", row: 2, col: 4.5, view: "" },
-  { id: "roux-co", title: "위 코너 방향", row: 3, col: 0, view: "z2 y2" },
-  { id: "petrus-eo", title: "엣지 방향", row: 3, col: 1, view: "z2 y2" },
-  { id: "pair-2", title: "짝 둘", row: 3, col: 3, view: "z2" },
-  { id: "cmll", title: "위 코너", row: 4, col: 0, view: "z2 y2" },
-  { id: "pair-3", title: "짝 셋", row: 4, col: 3, view: "z2" },
-  { id: "lse-eo", title: "엣지 방향", row: 5, col: 0, view: "z2 y2" },
-  { id: "f2l", title: "아래 두 층", row: 5, col: 3.5, view: "z2" },
-  { id: "lse-ulur", title: "왼쪽·오른쪽 엣지", row: 6, col: 0, view: "z2 y2" },
-  { id: "yellow-cross", title: "노란 십자", row: 6, col: 3, view: "z2" },
-  { id: "oll", title: "노란 면", row: 7, col: 2, view: "z2" },
-  { id: "yellow-edges", title: "위 엣지", row: 7, col: 4.5, view: "z2" },
-  { id: "pll-corners", title: "위 코너", row: 8, col: 2, view: "z2" },
-  { id: "ll-corners-placed", title: "코너 자리", row: 8, col: 4, view: "z2" },
+  // 초보자 줄기(왼쪽 끝)
+  { id: "scrambled", title: "다 섞임", row: 0, col: 0, view: "" },
+  { id: "cross", title: "흰 십자", row: 1, col: 0, view: "" },
+  { id: "first-layer", title: "첫 층", row: 2, col: 0, view: "" },
+  { id: "f2l", title: "아래 두 층", row: 5, col: 0, view: "z2" },
+  { id: "yellow-cross", title: "노란 십자", row: 6, col: 0, view: "z2" },
+  { id: "yellow-edges", title: "위 엣지", row: 7, col: 0, view: "z2" },
+  { id: "ll-corners-placed", title: "코너 자리", row: 8, col: 0, view: "z2" },
+  { id: "solved", title: "다 맞음", row: 9.5, col: 0, view: "" },
+  // 초보자(코너 방향 먼저)
   {
     id: "ll-corners-oriented",
     title: "코너 방향",
     row: 8,
-    col: 5,
+    col: 1,
     view: "z2",
   },
-  { id: "solved", title: "다 맞음", row: 9, col: 2.5, view: "" },
+  // 2단계 OLL·PLL
+  { id: "oll", title: "노란 면", row: 7, col: 2, view: "z2" },
+  { id: "pll-corners", title: "위 코너", row: 8, col: 2, view: "z2" },
+  // CFOP
+  { id: "pair-1", title: "짝 하나", row: 2, col: 3, view: "z2" },
+  { id: "pair-2", title: "짝 둘", row: 3, col: 3, view: "z2" },
+  { id: "pair-3", title: "짝 셋", row: 4, col: 3, view: "z2" },
+  // 루
+  { id: "roux-fb", title: "첫 블록", row: 1, col: 4, view: "z2 y2" },
+  { id: "roux-sb", title: "두 블록", row: 2, col: 4, view: "z2 y2" },
+  { id: "roux-co", title: "위 코너 방향", row: 3, col: 4, view: "z2 y2" },
+  { id: "cmll", title: "위 코너", row: 4, col: 4, view: "z2 y2" },
+  { id: "lse-eo", title: "엣지 방향", row: 5, col: 4, view: "z2 y2" },
+  { id: "lse-ulur", title: "왼쪽·오른쪽 엣지", row: 6, col: 4, view: "z2 y2" },
+  // ZZ
+  { id: "eoline", title: "EO라인", row: 1, col: 5, view: "z2 y2" },
+  { id: "zz-left", title: "왼쪽 블록", row: 3, col: 5, view: "z2 y2" },
+  // 페트루스
+  { id: "petrus-222", title: "2×2×2", row: 1, col: 6, view: "z2 y2" },
+  { id: "petrus-223", title: "2×2×3", row: 2, col: 6, view: "z2 y2" },
+  { id: "petrus-eo", title: "엣지 방향", row: 3, col: 6, view: "z2 y2" },
+  // 코너 먼저
+  { id: "corners-first", title: "코너 여덟", row: 4, col: 7, view: "" },
 ];
 
 export interface MapEdge {

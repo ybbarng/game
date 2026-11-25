@@ -10,6 +10,7 @@ import {
   edgeTrain,
   methodSolo,
   myNode,
+  myRoute,
   prepDone,
 } from "./solve-map-me";
 
@@ -31,7 +32,19 @@ describe("진행", () => {
       ["beginner", "two-look", "cfop", "roux", "zz"].map((id) =>
         myNode(method(id), DEMO_PROGRESS),
       ),
-    ).toEqual(["f2l", "f2l", "cross", "roux-fb", null]);
+    ).toEqual(["f2l", "oll", "cross", "roux-fb", null]);
+  });
+
+  it("내 경로: 초보자선으로 아래 두 층까지, 거기서 2단계선으로 갈아타 노란 면까지", () => {
+    const route = myRoute(MAP_METHODS, DEMO_PROGRESS);
+    expect(route.map((l) => `${l.method.id}:${l.edge.id}`)).toEqual([
+      "beginner:cross",
+      "beginner:first-corners",
+      "beginner:second-layer",
+      "two-look:two-look-cross",
+      "two-look:two-look-face",
+    ]);
+    expect(myRoute(MAP_METHODS, EMPTY)).toEqual([]);
   });
 
   it("길은 단원 하나라도 끝냈으면 끝냄, 해 보기만 통과했으면 하는 중이다", () => {

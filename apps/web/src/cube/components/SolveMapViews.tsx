@@ -28,7 +28,12 @@ import {
   nodeSize,
   nodeState,
 } from "../learn/solve-map";
-import { type EdgeSolo, edgeLearn, edgeTrain } from "../learn/solve-map-me";
+import {
+  type EdgeSolo,
+  edgeLearn,
+  edgeTrain,
+  myRoute,
+} from "../learn/solve-map-me";
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import {
@@ -577,14 +582,47 @@ function MetroLayer({
       ];
     }),
   );
+  // 고른 노선의 이름: 처음 길과 마지막 길 곁(지하철 노선도처럼 처음과 끝)
+  const names = ctx.selected.flatMap((m) => {
+    const ends = [m.edges[0], m.edges.at(-1)].map(
+      (id) => edgeById(id as string) as MapEdge,
+    );
+    return ends.flatMap((e, k) => {
+      const a = pos.get(e.from);
+      const b = pos.get(e.to);
+      if (!a || !b) return [];
+      const t = k === 0 ? 0.3 : 0.7;
+      return [
+        {
+          m,
+          key: `${m.id}-${k ? "end" : "start"}`,
+          at: { x: a.x + (b.x - a.x) * t - 40, y: a.y + (b.y - a.y) * t },
+        },
+      ];
+    });
+  });
   const spots = placeLabels(
-    raw.map((r) => ({ ...r.at, ...labelSize(r.e, ctx, true) })),
+    [
+      ...raw.map((r) => ({ ...r.at, ...labelSize(r.e, ctx, true) })),
+      ...names.map((n) => ({ ...n.at, w: textW(n.m.title) + 16, h: 18 })),
+    ],
     [...pos].map(([id, p]) => {
       const w = 64 + textW(nodeById(id).title) + 30;
       return { x: p.x - 10 + w / 2, y: p.y, w, h: 40 };
     }),
   );
   const labels = raw.map((r, i) => ({ ...r, at: spots[i] as Pt }));
+  const nameSpots = names.map((n, i) => ({
+    ...n,
+    at: spots[raw.length + i] as Pt,
+  }));
+  // 내 경로: 끝낸 길을 따라 노선을 이어 탄 한 줄. 노선이 바뀌는 역이 환승역
+  const route = myRoute(ctx.methods, ctx.progress);
+  const transfers = new Set(
+    route
+      .filter((l, i) => i > 0 && route[i - 1]?.method !== l.method)
+      .map((l) => l.edge.from),
+  );
   // 선은 고른 해법을 위에 그린다
   const order = [...ctx.methods].sort(
     (a, b) => Number(isSel(a)) - Number(isSel(b)),
@@ -600,6 +638,25 @@ function MetroLayer({
         height={layout.height}
         aria-hidden
       >
+        {/* 내 경로(노선 아래 흰 띠) */}
+        {route.map(({ edge: e, method: m }) => {
+          const a = pos.get(e.from);
+          const b = pos.get(e.to);
+          if (!a || !b) return null;
+          return (
+            <path
+              key={`route-${e.id}`}
+              d={seg(a, b, lineOff(m), parallelOffset(e, edges))}
+              fill="none"
+              stroke="#fff"
+              strokeOpacity={0.35}
+              strokeWidth={13}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              data-route-leg={`${m.id}:${e.id}`}
+            />
+          );
+        })}
         {order.map((m) =>
           m.edges.map((id) => {
             const e = edgeById(id) as MapEdge;
@@ -621,6 +678,21 @@ function MetroLayer({
           }),
         )}
       </svg>
+      {nameSpots.map(({ m, key, at }) => (
+        <span
+          key={key}
+          className="-translate-x-1/2 -translate-y-1/2 absolute whitespace-nowrap rounded-full px-2 font-semibold text-[11px] text-neutral-950 leading-[18px]"
+          style={{
+            left: at.x,
+            top: at.y,
+            background: METHOD_COLOR[m.id],
+            zIndex: 3,
+          }}
+          data-line-name={key}
+        >
+          {m.title}
+        </span>
+      ))}
       {/* 고른 노선의 역 사이 공식 수 */}
       {labels.map(({ m, e, at }) => {
         const id = e.id;
@@ -662,19 +734,49 @@ function MetroLayer({
         const on = selectedNodes.has(id);
         const me = ctx.me.get(id);
         const href = nodeHref(id, ctx.selected, ctx.courseOf);
+        const transfer = transfers.has(id);
         const body = (
           <>
-            <span
-              className={cn(
-                "shrink-0 rounded-full border-neutral-900 bg-white",
-                big ? "h-5 w-5 border-[3px]" : "h-3 w-3 border-2",
+            {/* 환승역(여러 노선이 지나는 같은 모양): 크고 테두리 있는 둥근 역, 곁에 갈아탈 노선 색 점 */}
+            <span className="relative shrink-0">
+              <span
+                className={cn(
+                  "block rounded-full",
+                  big
+                    ? "h-6 w-6 border-[4px] border-white bg-neutral-900"
+                    : "h-3 w-3 border-2 border-neutral-900",
+                )}
+                style={
+                  big
+                    ? undefined
+                    : { background: METHOD_COLOR[lines[0]?.id ?? "beginner"] }
+                }
+                data-station={big ? "transfer" : "stop"}
+              />
+              {transfer && (
+                <span
+                  className="-inset-1.5 absolute rounded-full border-2 border-white border-dashed"
+                  data-route-transfer
+                />
               )}
-              style={
-                big
-                  ? undefined
-                  : { background: METHOD_COLOR[lines[0]?.id ?? "beginner"] }
-              }
-            />
+            </span>
+            {big && (
+              <span
+                className="flex max-w-[44px] flex-wrap gap-0.5"
+                data-station-lines
+              >
+                {lines.map((m) => (
+                  <span
+                    key={m.id}
+                    className="h-2 w-2 rounded-full"
+                    style={{
+                      background: METHOD_COLOR[m.id],
+                      opacity: isSel(m) ? 1 : 0.35,
+                    }}
+                  />
+                ))}
+              </span>
+            )}
             <NodeCube id={id} settings={ctx.settings} px={38} />
             <span className="text-[11px] leading-tight">
               {nodeById(id).title}
@@ -686,7 +788,7 @@ function MetroLayer({
           "-translate-y-1/2 absolute flex items-center gap-1 whitespace-nowrap",
           !on && "opacity-40",
         );
-        const style = { left: p.x - (big ? 10 : 6), top: p.y, zIndex: 2 };
+        const style = { left: p.x - (big ? 12 : 6), top: p.y, zIndex: 2 };
         return href ? (
           <a key={id} href={href} className={cls} style={style} data-node={id}>
             {body}

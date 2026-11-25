@@ -13,6 +13,7 @@ import { parseSplits, type SolveRecord } from "../records";
 import { averageMs, type LearnProgress, type TrainBook } from "./progress";
 import {
   edgeById,
+  MAP_LANES,
   MAP_MEASURE,
   MAP_PREP,
   type MapEdge,
@@ -50,6 +51,43 @@ export function myNode(m: MapMethod, p: LearnProgress): MapNodeId | null {
     at = i;
   }
   return at < 0 ? null : (nodes[at + 1] as MapNodeId);
+}
+
+export interface RouteLeg {
+  edge: MapEdge;
+  /** 이 길을 탄 해법(노선) */
+  method: MapMethod;
+}
+
+/**
+ * 「내 경로」: 다 섞임에서 끝낸 길을 따라 노선 여럿을 이어 탄 한 줄. 지금 탄 노선에 끝낸 다음 길이 있으면 그대로
+ * 가고, 없으면 그 지점에서 끝낸 길이 있는 다른 노선으로 갈아탄다(여럿이면 쉬운 칸 MAP_LANES 차례). 4×4는 보지 않는다
+ */
+export function myRoute(
+  methods: readonly MapMethod[],
+  p: LearnProgress,
+): RouteLeg[] {
+  const legs: RouteLeg[] = [];
+  let at: MapNodeId = "scrambled";
+  let cur: MapMethod | undefined;
+  const lane = (m: MapMethod) => MAP_LANES[m.id] ?? 99;
+  const ordered = [...methods].sort((a, b) => lane(a) - lane(b));
+  for (let guard = 0; guard < 40; guard++) {
+    const next = (m: MapMethod) => {
+      const i = methodNodes(m).indexOf(at);
+      if (i < 0 || i >= m.edges.length) return undefined;
+      const e = edgeById(m.edges[i] as string);
+      return e && e.from === at && edgeLearn(e, p) === "done" ? e : undefined;
+    };
+    const stay = cur ? next(cur) : undefined;
+    const m = stay ? cur : ordered.find((x) => next(x));
+    const e = m ? next(m) : undefined;
+    if (!m || !e) break;
+    legs.push({ edge: e, method: m });
+    cur = m;
+    at = e.to;
+  }
+  return legs;
 }
 
 // ── 공식 연습 ──────────────────────────────────────────

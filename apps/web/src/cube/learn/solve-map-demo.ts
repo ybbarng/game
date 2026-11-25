@@ -4,7 +4,10 @@ import type { LearnProgress, TrainBook } from "./progress";
 
 const done = { passed: [], done: true };
 
-/** 초보자 아래 두 층까지 끝냄, 노란 십자 하는 중, CFOP 십자·루 첫 블록 끝냄 */
+/**
+ * 초보자 아래 두 층까지 끝냄, 초보자 노란 십자는 하는 중, 2단계 OLL(노란 십자 → 노란 면)은 끝냄(아래 두 층에서
+ * 2단계로 갈아탐), CFOP 십자·루 첫 블록 끝냄
+ */
 export const DEMO_PROGRESS: LearnProgress = {
   lessons: {
     "333-start": done,
@@ -15,6 +18,7 @@ export const DEMO_PROGRESS: LearnProgress = {
     "333-first-corners-up": done,
     "333-second-layer": done,
     "333-ll-cross": { passed: [1], done: false },
+    "cfop-2look-oll": done,
     "cfop-cross": done,
     "roux-fb": done,
   },
