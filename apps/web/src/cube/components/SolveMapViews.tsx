@@ -21,7 +21,6 @@ import {
   edgeById,
   FINISH_METHODS,
   MAP_METHODS,
-  MAP_PREP,
   type MapEdge,
   type MapMethod,
   type MapMethodId,
@@ -44,7 +43,6 @@ import {
 } from "../learn/solve-map-me";
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
-import { ExplodedCube } from "./ExplodedCube";
 import {
   clampView,
   type Detour,
@@ -282,8 +280,8 @@ export interface MapCtx {
   train: TrainBook;
   /** 해법 id → 길마다 내 혼자 맞추기 구간 */
   solo: Map<string, Map<string, EdgeSolo>>;
-  /** 「나」가 있는 지점 → 그 해법들. 아무 데도 없으면 "prep" */
-  me: Map<MapNodeId | "prep", MapMethod[]>;
+  /** 「나」가 있는 지점 → 그 해법들. 기록이 없으면 그 크기의 「다 섞임」 */
+  me: Map<MapNodeId, MapMethod[]>;
   courseOf: (lessonId: string) => string | undefined;
   /** 단원 id → 단원 제목 */
   lessonTitle: (lessonId: string) => string;
@@ -300,30 +298,6 @@ export interface MapCtx {
   /** 3×3 지도에 들르는 주소와 들르기(크기 탭은 그대로) */
   hopHref: string;
   hop: () => void;
-}
-
-/** 큐브의 기초 페이지(다른 작업 트리에서 만드는 중, 2026-11-25 사용자 「준비를 밖으로 빼는 걸로 하자」) */
-export const BASICS_HREF = "/cube/basics";
-
-/**
- * 출발 표시: 지도 맨 위 작은 링크 하나. 「큐브의 기초」(큐브 상태를 바꾸지 않는 지식: 큐브와 만나기·조각의 움직임·
- * 표기 읽기)를 다 끝냈으면 ✓, 기록이 없으면 「나」. 그림은 조각을 떼어 놓은 작은 SVG(3D 없음)
- */
-export function StartMark({ ctx }: { ctx: MapCtx }) {
-  const done = MAP_PREP.every((id) => ctx.progress.lessons[id]?.done);
-  return (
-    <a
-      href={BASICS_HREF}
-      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-neutral-800 py-0.5 pr-3 pl-1 text-sm"
-      data-map-prep
-      data-done={done ? "" : undefined}
-    >
-      <ExplodedCube colors={ctx.settings.colors} size={28} simple />
-      <span>큐브의 기초</span>
-      {done && <span className="text-emerald-300">✓</span>}
-      {ctx.me.has("prep") && <MeBadge methods={[]} />}
-    </a>
-  );
 }
 
 /** 「나」 표시(해법마다 색 점) */
@@ -450,10 +424,6 @@ interface Layout {
   height: number;
   pos: Map<MapNodeId, { x: number; y: number }>;
   nodeH: number;
-  /** 준비(출발점) 자리: 맨 위, 초보자 칸. 지도는 그림 위·단원 아래 상자, 노선도는 역(가운데 점) */
-  prep: { x: number; y: number; h: number };
-  /** 다 섞임처럼 준비에서 바로 이어지는 첫 지점들 */
-  starts: MapNodeId[];
 }
 
 function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
@@ -464,10 +434,8 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
     const RH = style === "map" ? 158 : 118;
     const PAD = 24;
     const nodeH = style === "map" ? 92 : 0;
-    // 준비 칸 높이와 그 아래 간격(지도는 그림 + 이름 + 단원 셋이 세로로, 노선도는 한 줄)
-    // 출발 표시(「큐브의 기초」 작은 링크) 높이와 그 아래 간격
-    const prepH = style === "map" ? 34 : 0;
-    const TOP = PAD + prepH + (style === "map" ? 56 : 84);
+    // 지도는 「다 섞임」에서 시작한다(노선도는 역 이름표·노선 이름이 위로 조금 나온다)
+    const TOP = PAD + (style === "map" ? 16 : 40);
     const cols = [...nodes].map((id) => nodeById(id).col);
     const maxCol = Math.max(...cols);
     const pos = new Map<MapNodeId, { x: number; y: number }>();
@@ -478,20 +446,11 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
         y: TOP + (n.row - min) * RH,
       });
     }
-    const starts = [
-      ...new Set(ctx.methods.map((m) => methodNodes(m)[0] as MapNodeId)),
-    ];
     return {
       width: PAD * 2 + (maxCol + 1) * CW + (style === "metro" ? 70 : 0),
       height: TOP + (max - min) * RH + nodeH + 30 + PAD,
       pos,
       nodeH,
-      prep: {
-        x: PAD + 0.5 * CW,
-        y: PAD + (style === "metro" ? 30 : 0),
-        h: prepH,
-      },
-      starts,
     };
   }, [ctx.methods, style]);
 }
@@ -567,13 +526,13 @@ export function MapView({
   const edges = visibleEdges(ctx.methods);
   const selectedEdges = new Set(ctx.selected.flatMap((m) => m.edges));
   const selectedNodes = new Set(ctx.selected.flatMap(methodNodes));
-  // 처음 가운데 둘 곳: 「나」가 있는 지점(기록이 없으면 준비 출발점). 지도 범위로 묶여 맨 위·왼쪽 끝이 보인다
-  const meNode = [...ctx.me.keys()].find(
-    (k): k is MapNodeId => k !== "prep" && layout.pos.has(k as MapNodeId),
-  );
-  const focus = meNode
-    ? (layout.pos.get(meNode) as Pt)
-    : { x: layout.prep.x, y: layout.prep.y };
+  // 처음 가운데 둘 곳: 「나」가 있는 지점(기록이 없으면 「다 섞임」). 지도 범위로 묶여 맨 위·왼쪽 끝이 보인다
+  const meNode =
+    [...ctx.me.keys()].find((k) => layout.pos.has(k)) ??
+    (methodNodes(ctx.selected[0] ?? (ctx.methods[0] as MapMethod))[0] as
+      | MapNodeId
+      | undefined);
+  const focus = (meNode && layout.pos.get(meNode)) || { x: 0, y: 0 };
   // 큰 큐브 「3×3 맞추기」를 펼친 칸: 모든 노선 오른쪽, 「3×3처럼」 높이에서 아래로
   const panel = useMemo(() => {
     const sz = finishPanelSize(ctx);
@@ -649,28 +608,6 @@ export function MapView({
           />
         );
       })}
-      {layout.starts.map((id) => {
-        const b = layout.pos.get(id);
-        return b ? (
-          <line
-            key={`prep-${id}`}
-            x1={layout.prep.x}
-            y1={layout.prep.y + layout.prep.h / 2}
-            x2={b.x}
-            y2={b.y + layout.nodeH / 2}
-            stroke="#aaa"
-            strokeWidth={6}
-          />
-        ) : null;
-      })}
-      <rect
-        x={layout.prep.x - 24}
-        y={layout.prep.y + layout.prep.h / 2 - 24}
-        width={48}
-        height={48}
-        rx={10}
-        fill="#fff"
-      />
       {[...layout.pos].map(([id, p]) => (
         <circle
           key={id}
@@ -825,31 +762,7 @@ function MapLayer({
             />
           ));
         })}
-        {/* 준비에서 첫 지점(다 섞임, 4×4 다 섞임)으로: 모든 해법이 여기서 출발한다 */}
-        {layout.starts.map((id) => {
-          const b = pos.get(id);
-          if (!b) return null;
-          const y0 = layout.prep.y + layout.prep.h;
-          const dy = Math.max(30, (b.y - y0) * 0.45);
-          return (
-            <path
-              key={`prep-${id}`}
-              d={`M${layout.prep.x},${y0} C${layout.prep.x},${y0 + dy} ${b.x},${b.y - dy} ${b.x},${b.y}`}
-              fill="none"
-              stroke="#d4d4d8"
-              strokeOpacity={0.6}
-              strokeWidth={3}
-              data-prep-line={id}
-            />
-          );
-        })}
       </svg>
-      <div
-        className="-translate-x-1/2 absolute"
-        style={{ left: layout.prep.x, top: layout.prep.y, zIndex: 2 }}
-      >
-        <StartMark ctx={ctx} />
-      </div>
       {geo.map((g) => {
         const on = selectedEdges.has(g.e.id);
         // 흐린 길에 적을 값이 없으면(셀 자료 없음·단원 있음) 꼬리표를 두지 않는다
@@ -1124,22 +1037,6 @@ function MetroLayer({
             />
           );
         })}
-        {/* 시발역(준비)에서 첫 역으로: 모든 노선이 여기서 출발한다 */}
-        {order.map((m) => {
-          const b = pos.get(methodNodes(m)[0] as MapNodeId);
-          if (!b) return null;
-          return (
-            <path
-              key={`prep-${m.id}`}
-              d={seg(layout.prep, b, lineOff(m), 0)}
-              fill="none"
-              stroke={METHOD_COLOR[m.id]}
-              strokeOpacity={isSel(m) ? 1 : 0.18}
-              strokeWidth={isSel(m) ? 4 : 3}
-              strokeLinejoin="round"
-            />
-          );
-        })}
         {order.map((m) =>
           m.edges.map((id) => {
             const e = edgeById(id) as MapEdge;
@@ -1292,30 +1189,6 @@ function MetroLayer({
         );
       })}
       <Loops ctx={ctx} pos={pos} dx={150} dy={0} />
-      {/* 시발역: 모든 노선이 지나는 첫 역(준비) */}
-      <div
-        className="-translate-y-1/2 absolute flex items-center gap-1"
-        style={{ left: layout.prep.x - 14, top: layout.prep.y, zIndex: 2 }}
-        data-node="prep"
-      >
-        <span className="block h-7 w-7 shrink-0 rounded-full border-[5px] border-white bg-neutral-900" />
-        <span
-          className="flex max-w-[44px] flex-wrap gap-0.5"
-          data-station-lines
-        >
-          {ctx.methods.map((m) => (
-            <span
-              key={m.id}
-              className="h-2 w-2 rounded-full"
-              style={{
-                background: METHOD_COLOR[m.id],
-                opacity: isSel(m) ? 1 : 0.35,
-              }}
-            />
-          ))}
-        </span>
-        <StartMark ctx={ctx} />
-      </div>
     </div>
   );
 }
@@ -1652,13 +1525,6 @@ export function HubView({ ctx }: { ctx: MapCtx }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <ol className="flex flex-col gap-2" data-map-hubs>
-      {/* 출발 표시: 큐브의 기초 → 다 섞임 */}
-      <li className="flex flex-col gap-2" data-hub="prep">
-        <span className="self-start">
-          <StartMark ctx={ctx} />
-        </span>
-        <span className="ml-6 h-4 w-0.5 bg-white/30" aria-hidden />
-      </li>
       {hubs.map((h) => {
         const out = segs.filter((s) => s.from === h);
         const me = ctx.me.get(h);
@@ -1860,9 +1726,6 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
   return (
     <div className="overflow-x-auto" data-map-bars>
       <div className="flex w-max min-w-full flex-col gap-4 pb-1">
-        <span className="self-start">
-          <StartMark ctx={ctx} />
-        </span>
         {ctx.selected.map((m) => {
           const t = methodTotals(m);
           const cells = barCells(m);

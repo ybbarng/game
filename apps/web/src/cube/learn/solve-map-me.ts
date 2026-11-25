@@ -16,7 +16,6 @@ import {
   edgeById,
   MAP_LANES,
   MAP_MEASURE,
-  MAP_PREP,
   type MapEdge,
   type MapMethod,
   type MapNodeId,
@@ -34,12 +33,9 @@ export function edgeLearn(edge: MapEdge, p: LearnProgress): EdgeLearn {
   return "none";
 }
 
-/** 준비 칸을 다 끝냈나 */
-export const prepDone = (p: LearnProgress) =>
-  MAP_PREP.every((id) => p.lessons[id]?.done);
-
 /**
- * 해법 하나에서 「나」의 자리: 앞에서부터 끝낸 길을 따라간 마지막 지점. 아무 길도 끝내지 않았으면 null(준비 칸).
+ * 해법 하나에서 「나」의 자리: 앞에서부터 끝낸 길을 따라간 마지막 지점. 아무 길도 끝내지 않았으면 null(화면은
+ * 어느 해법에도 자리가 없으면 「다 섞임」에 둔다).
  * 처음 길을 끝내지 않았으면 그 해법에는 아직 들어서지 않은 것이다
  */
 export function myNode(m: MapMethod, p: LearnProgress): MapNodeId | null {

@@ -21,7 +21,6 @@ import {
   type MapCtx,
   MeBadge,
   NodeCube,
-  StartMark,
   toggleClick,
 } from "./SolveMapViews";
 import { detours, METHOD_COLOR, methodTotals } from "./solve-map-model";
@@ -87,6 +86,12 @@ function loopsAt(m: MapMethod, id: MapNodeId, ctx: MapCtx) {
   return detours(ctx.size, ctx.from, [m]).filter((d) => d.at === id);
 }
 
+/** 이 해법 카드의 이 지점에 「나」를 둘까(기록이 없어 해법 없이 「다 섞임」에 둔 「나」는 모든 카드에) */
+function meAt(ctx: MapCtx, id: MapNodeId, m: MapMethod): boolean {
+  const at = ctx.me.get(id);
+  return !!at && (at.length === 0 || at.includes(m));
+}
+
 /** 지점으로 들어오는 길을 끝냈나(첫 지점은 null) */
 function arrivedDone(m: MapMethod, i: number, ctx: MapCtx): boolean {
   if (!i) return false;
@@ -119,7 +124,7 @@ function Strip({
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
         const skill = e ? solo?.get(e.id)?.skill : undefined;
-        const me = ctx.me.get(id)?.includes(m);
+        const me = meAt(ctx, id, m);
         return [
           i > 0 && (
             <li key={`${id}-arrow`} aria-hidden className="self-center pb-3">
@@ -168,7 +173,7 @@ function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
         const skill = e ? solo?.get(e.id)?.skill : undefined;
-        const me = ctx.me.get(id)?.includes(m);
+        const me = meAt(ctx, id, m);
         return (
           <li key={id} className="flex flex-col" data-strip-node={id}>
             {i > 0 && (
@@ -217,64 +222,50 @@ export function CardsView({
   open: MapMethod | null;
   onOpen: (m: MapMethod | null) => void;
 }) {
-  // 맨 위 출발 표시(큐브의 기초): 해법마다 다른 걸음이 아니라 카드 밖에 하나
-  const start = (
-    <span className="self-start">
-      <StartMark ctx={ctx} />
-    </span>
-  );
   if (open)
-    return (
-      <>
-        {start}
-        <MethodScreen m={open} ctx={ctx} onBack={() => onOpen(null)} />
-      </>
-    );
+    return <MethodScreen m={open} ctx={ctx} onBack={() => onOpen(null)} />;
   return (
-    <>
-      {start}
-      <div
-        className={cn(
-          dir === "v"
-            ? "flex flex-col gap-3"
-            : "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2",
-        )}
-        data-map-cards={dir}
-      >
-        {ctx.methods.map((m) => {
-          const on = ctx.selected.includes(m);
-          return (
-            // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
-            <a
-              key={m.id}
-              href={`?v=cards-${dir}&method=${m.id}`}
-              onClick={(ev) => {
-                ev.preventDefault();
-                onOpen(m);
-              }}
-              className={cn(
-                "flex flex-col gap-2 rounded-xl border bg-neutral-800/70 p-3 text-left",
-                dir === "h" && "w-[300px] shrink-0 snap-start",
-                on ? "" : "border-white/10",
-              )}
-              style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
-              data-card={m.id}
-            >
-              <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <span
-                  className="font-semibold text-lg"
-                  style={{ color: METHOD_COLOR[m.id] }}
-                >
-                  {m.title}
-                </span>
-                <Totals m={m} />
+    <div
+      className={cn(
+        dir === "v"
+          ? "flex flex-col gap-3"
+          : "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2",
+      )}
+      data-map-cards={dir}
+    >
+      {ctx.methods.map((m) => {
+        const on = ctx.selected.includes(m);
+        return (
+          // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
+          <a
+            key={m.id}
+            href={`?v=cards-${dir}&method=${m.id}`}
+            onClick={(ev) => {
+              ev.preventDefault();
+              onOpen(m);
+            }}
+            className={cn(
+              "flex flex-col gap-2 rounded-xl border bg-neutral-800/70 p-3 text-left",
+              dir === "h" && "w-[300px] shrink-0 snap-start",
+              on ? "" : "border-white/10",
+            )}
+            style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
+            data-card={m.id}
+          >
+            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span
+                className="font-semibold text-lg"
+                style={{ color: METHOD_COLOR[m.id] }}
+              >
+                {m.title}
               </span>
-              <Strip m={m} ctx={ctx} column={dir === "h"} />
-            </a>
-          );
-        })}
-      </div>
-    </>
+              <Totals m={m} />
+            </span>
+            <Strip m={m} ctx={ctx} column={dir === "h"} />
+          </a>
+        );
+      })}
+    </div>
   );
 }
 
@@ -312,7 +303,7 @@ function MethodScreen({
         {m.edges.map((id, i) => {
           const e = edgeById(id) as MapEdge;
           const href = hrefOf(e, m, ctx);
-          const me = ctx.me.get(e.to)?.includes(m);
+          const me = meAt(ctx, e.to, m);
           const body = (
             <>
               <span className="w-5 shrink-0 text-right text-sm text-white/50">

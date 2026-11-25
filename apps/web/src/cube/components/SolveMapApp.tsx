@@ -23,6 +23,7 @@ import {
   type MapMethod,
   type MapMethodId,
   type MapNodeId,
+  methodNodes,
   methodSize,
 } from "../learn/solve-map";
 import {
@@ -220,14 +221,16 @@ export function SolveMapApp() {
     return out;
   }, [record.records, record.method, n]);
   const me = useMemo(() => {
-    const out = new Map<MapNodeId | "prep", MapMethod[]>();
+    const out = new Map<MapNodeId, MapMethod[]>();
     for (const m of MAP_METHODS) {
       if (m.extra || methodSize(m) !== n) continue;
       const at = myNode(m, record.progress);
       if (!at) continue;
       out.set(at, [...(out.get(at) ?? []), m]);
     }
-    if (!out.size) out.set("prep", []);
+    // 기록이 없으면 지도가 시작하는 「다 섞임」에
+    if (!out.size)
+      out.set(methodNodes(methodById(defaultOf(n)))[0] as MapNodeId, []);
     return out;
   }, [record.progress, n]);
 

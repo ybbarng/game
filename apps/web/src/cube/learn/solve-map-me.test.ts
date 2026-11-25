@@ -11,7 +11,6 @@ import {
   methodSolo,
   myNode,
   myRoute,
-  prepDone,
 } from "./solve-map-me";
 
 const method = (id: string) =>
@@ -20,11 +19,10 @@ const edge = (id: string) => edgeById(id) as MapEdge;
 const EMPTY: LearnProgress = { lessons: {} };
 
 describe("진행", () => {
-  it("아무것도 안 했으면 어느 해법에서도 「나」는 준비 칸(null)이다", () => {
+  it("아무것도 안 했으면 어느 해법에도 「나」의 자리가 없다(null)", () => {
     expect(MAP_METHODS.map((m) => myNode(m, EMPTY))).toEqual(
       MAP_METHODS.map(() => null),
     );
-    expect(prepDone(EMPTY)).toBe(false);
   });
 
   it("해법마다 앞에서부터 끝낸 길을 따라간 마지막 지점에 「나」가 있다", () => {

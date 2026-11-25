@@ -5,13 +5,15 @@ import { expect, test } from "./test";
  * 「나」 표시와 견본 기록. 시안을 고르면 이 시험도 고른 안에 맞춰 줄인다.
  */
 
-test("해법 지도: 기록이 없으면 「나」는 준비 칸, 초보자 길의 꼬리표는 그 단원으로 간다", async ({
+test("해법 지도: 지도는 「다 섞임」에서 시작하고 기록이 없으면 「나」도 거기, 초보자 길의 꼬리표는 그 단원으로 간다", async ({
   page,
 }) => {
   await page.goto("/cube/learn-map");
   await expect(page.locator('[data-solve-map="a"]')).toBeVisible();
-  await expect(page.locator("[data-map-prep] [data-me]")).toBeVisible();
-  await expect(page.locator("[data-node] [data-me]")).toHaveCount(0);
+  await expect(page.locator('[data-node="scrambled"] [data-me]')).toBeVisible();
+  await expect(page.locator("[data-node] [data-me]")).toHaveCount(1);
+  // 큐브의 기초는 지도 밖 페이지라 지도에 출발 표시가 없다
+  await expect(page.locator("[data-map-prep]")).toHaveCount(0);
   await expect(page.locator('[data-edge="first-corners"]')).toHaveAttribute(
     "href",
     "/cube/learn?lesson=333-first-corners-up",

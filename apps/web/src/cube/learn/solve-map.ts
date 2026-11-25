@@ -65,7 +65,6 @@ export type MapNodeId =
   | "lse-ulur"
   | "petrus-222"
   | "petrus-223"
-  | "petrus-eo"
   | "corners-first"
   // 2×2
   | "2-scrambled"
@@ -243,7 +242,7 @@ const BASE_NODES: readonly MapNode[] = [
   // 페트루스
   { id: "petrus-222", title: "2×2×2", row: 1, col: 6, view: "z2 y2" },
   { id: "petrus-223", title: "2×2×3", row: 2, col: 6, view: "z2 y2" },
-  { id: "petrus-eo", title: "엣지 방향", row: 3, col: 6, view: "z2 y2" },
+  // 페트루스 엣지 방향은 ZZ 「왼쪽 블록」과 같은 상태(아래 왼쪽 2×2×3 + 엣지 방향)라 그 지점으로 합친다
   // 코너 먼저
   { id: "corners-first", title: "코너 여덟", row: 4, col: 7, view: "" },
 ];
@@ -522,14 +521,14 @@ const BASE_EDGES: readonly MapEdge[] = [
   {
     id: "petrus-eo",
     from: "petrus-223",
-    to: "petrus-eo",
+    to: "zz-left",
     title: "엣지 방향",
     lessons: ["petrus-intro"],
     formulas: [],
   },
   {
     id: "petrus-f2l",
-    from: "petrus-eo",
+    from: "zz-left",
     to: "yellow-cross",
     title: "F2L 마무리",
     lessons: [],
@@ -714,16 +713,6 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["555-edges", "555-last-two-edges"],
     formulas: ids(EDGES_5X5),
   },
-];
-
-/**
- * 준비 칸(지도 맨 위, 상태 지점이 아님): 큐브 상태를 바꾸지 않는 지식 단원. 3×3 처음 맞추기 과정 앞부분
- * (lessons-333.ts 차례)의 큐브와 만나기·조각의 움직임·표기. 안전한 회전은 흰 십자 걸음에 둔다
- */
-export const MAP_PREP: readonly string[] = [
-  "333-start",
-  "333-piece-moves",
-  "333-notation",
 ];
 
 export type MapMethodId =
@@ -1403,10 +1392,6 @@ const LOOKS: Partial<Record<MapNodeId, Look>> = {
   "petrus-223": {
     solved: [...petrus223, ...centers.filter((p) => !touches(p, YELLOW, L))],
   },
-  "petrus-eo": {
-    solved: [...petrus223, ...centers.filter((p) => !touches(p, YELLOW, L))],
-    oriented: { pieces: notIn(petrus223, edges), colors: EO_COLORS },
-  },
   "corners-first": { solved: [...corners, ...centers] },
 };
 
@@ -1536,6 +1521,11 @@ export function nodeMask(id: MapNodeId, as?: CubeSize): StickerVisibility[] {
       }
     }
   for (const p of look.solved) for (const s of stickers(p)) out[s] = "visible";
+  // 홀수 크기의 면 정가운데 센터 블럭은 움직이지 않아 늘 맞은 조각이다(다 섞임에서도 칠한다, 2026-11-26 사용자).
+  // 4×4·2×2는 고정 센터가 없다
+  topo.pieces.forEach((p, i) => {
+    if (p.kind === "center") for (const s of stickers(i)) out[s] = "visible";
+  });
   return out;
 }
 

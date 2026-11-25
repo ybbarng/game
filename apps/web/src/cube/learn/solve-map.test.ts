@@ -4,7 +4,7 @@
 // 3. 지점 정의: 단원 규칙(또는 단원이 쓰는 공식)으로 앞 지점에서 다음 지점에 닿는다. 그림은 해법을 따라 맞은 칸이 늘기만 한다.
 // 4. 평균 수: MAP_MEASURE가 지금 규칙·해법으로 잰 값이다.
 import { solveCfop, solveRoux } from "@game/cube-ai";
-import { faceColors, solvedCube } from "@game/cube-engine";
+import { cubeTopology, faceColors, solvedCube } from "@game/cube-engine";
 import { scramble } from "@game/cube-scramble";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
@@ -31,7 +31,6 @@ import {
   MAP_LANES,
   MAP_METHODS,
   MAP_NODES,
-  MAP_PREP,
   MAP_SIZES,
   type MapEdge,
   type MapMethodId,
@@ -101,7 +100,6 @@ const REACHED = {
   "lse-ulur": (s) => goalMet(3, s, "lse-ulur"),
   "petrus-222": (s) => goalMet(3, s, "petrus-222"),
   "petrus-223": (s) => goalMet(3, s, "petrus-223"),
-  "petrus-eo": (s) => goalMet(3, s, "petrus-223") && goalMet(3, s, "eo"),
   "corners-first": (s) => cornersOnly(s),
 } satisfies Partial<Record<MapNodeId, Reached>>;
 
@@ -270,15 +268,6 @@ describe("그래프", () => {
       "444-yau",
       "555-reduction",
     ]);
-  });
-
-  it("준비 칸의 단원은 3×3 처음 맞추기 과정에서 흰 십자 걸음보다 앞에 있다", () => {
-    const course = COURSES.find((c) => c.id === "333-beginner");
-    const order = course?.lessons.map((l) => l.id) ?? [];
-    const cross = order.indexOf("333-safe-turns");
-    expect(
-      MAP_PREP.map((id) => order.indexOf(id) < cross && order.includes(id)),
-    ).toEqual(MAP_PREP.map(() => true));
   });
 });
 
@@ -665,6 +654,50 @@ describe("지점 정의", () => {
       });
     }
     expect(lost).toEqual([]);
+  });
+
+  it("다 섞임 그림은 움직이지 않는 센터만 색이다(3×3은 여섯 면 가운데, 5×5는 한가운데만, 2×2·4×4는 없음)", () => {
+    const shown = (id: MapNodeId, n: number) => {
+      const topo = cubeTopology(n);
+      const mask = nodeMask(id);
+      return topo.pieces.flatMap((p) =>
+        p.stickers.some((s) => mask[s] === "visible") ? [p.kind] : [],
+      );
+    };
+    expect({
+      3: shown("scrambled", 3),
+      5: shown("5-scrambled", 5),
+      2: shown("2-scrambled", 2),
+      4: shown("4-scrambled", 4),
+    }).toEqual({
+      3: Array(6).fill("center"),
+      5: Array(6).fill("center"),
+      2: [],
+      4: [],
+    });
+  });
+
+  it("고정 센터는 모든 지점에서 색이다(5×5 나머지 센터 칸은 센터 걸음 뒤부터)", () => {
+    const hidden = MAP_NODES.flatMap((node) => {
+      const topo = cubeTopology(node.size ?? 3);
+      const mask = nodeMask(node.id);
+      return topo.pieces.some(
+        (p) =>
+          p.kind === "center" && p.stickers.some((s) => mask[s] !== "visible"),
+      )
+        ? [node.id]
+        : [];
+    });
+    expect(hidden).toEqual([]);
+    const inner = (id: MapNodeId) => {
+      const mask = nodeMask(id);
+      return cubeTopology(5).pieces.filter(
+        (p) =>
+          p.kind === "innerCenter" &&
+          p.stickers.every((s) => mask[s] === "visible"),
+      ).length;
+    };
+    expect([inner("5-scrambled"), inner("5-centers")]).toEqual([0, 48]);
   });
 
   it("지점 그림은 같은 크기 안에서 모두 서로 다르다", () => {
