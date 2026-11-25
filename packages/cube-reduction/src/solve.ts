@@ -79,8 +79,8 @@ export const STAGE_NAMES: Readonly<Record<ReductionStageId, string>> = {
   "centers-rest": "나머지 센터",
   edges: "엣지 짝",
   "last-edges": "마지막 두 엣지",
-  "oll-parity": "OLL 패리티",
-  "pll-parity": "PLL 패리티",
+  "oll-parity": "토끼이빨",
+  "pll-parity": "바보토끼이빨",
   three: "3×3",
 };
 
