@@ -2,8 +2,10 @@ import {
   checkReplay,
   FairGuestSeat,
   FairHostTable,
+  hiddenFriend,
   type RoundDeal,
   realAction,
+  type SeenFriendView,
 } from "@game/fair-play";
 import {
   type Action,
@@ -31,13 +33,22 @@ export const MIGHTY_REPLAY: FairReplayGame = {
   standing: pickStanding(STANDING_KEYS.mighty ?? []),
   initial: (rules, seed) =>
     createMatch({ rules: rules as RuleSet, seed }).state,
-  check: (rules, seed, log, deals) =>
-    checkReplay(
+  check: (rules, seed, log, deals, seen) => {
+    const checked = checkReplay(
       rules as RuleSet,
       seed,
       log,
       deals as ReadonlyMap<number, RoundDeal>,
-    ),
+    );
+    if (!checked.ok || !seen) return checked;
+    // 걸음별 사건이 없는 참가자는 받은 화면으로 프렌드 숨기기를 찾는다(방장 기기는 걸음별 사건으로 찾는다).
+    // 찾지 않으면 그 뒤 컴퓨터 수가 다시 계산한 것과 달라 정직한 방장을 짚는다.
+    const hidden = hiddenFriend(
+      checked.states,
+      seen.map((v) => JSON.parse(v) as SeenFriendView),
+    );
+    return hidden ? { ok: false, ...hidden } : checked;
+  },
   viewOf: (state, seat) => viewOf(state as MatchState, seat),
   realAction: (action, cards) =>
     realAction(action as Action, cards as ReadonlyMap<number, Card>),

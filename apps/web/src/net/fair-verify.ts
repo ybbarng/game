@@ -14,6 +14,8 @@ export interface FairReplayGame {
     seed: number,
     log: readonly FairLogged[],
     deals: ReadonlyMap<number, unknown>,
+    /** 게임 중 받은 화면(JSON). 받은 화면으로만 누구 탓인지 가려지는 부정(마이티 프렌드 숨기기)에 쓴다 */
+    seen?: readonly string[],
   ):
     | { ok: true; states: { roundNumber: number }[]; upTo: number }
     | { ok: false; index: number; seat: number; reason: string };
@@ -260,7 +262,7 @@ export async function verifyFairLog(
   input: FairVerifyInput,
 ): Promise<FairVerdict> {
   const { game, rules, seed, seat, log, deals } = input;
-  const checked = game.check(rules, seed, log, deals);
+  const checked = game.check(rules, seed, log, deals, input.seen);
   if (!checked.ok)
     return {
       ok: false,
