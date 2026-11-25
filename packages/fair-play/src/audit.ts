@@ -155,6 +155,49 @@ export function checkReplay(
   return { ok: true, state, states, upTo: log.length };
 }
 
+/** 프렌드가 점수를 따고도 밝히지 않았을 때(방장 길 `blameOf`와 참가자 길 `hiddenFriend`가 함께 쓴다) */
+export const FRIEND_HIDDEN = "프렌드인데 점수를 따고도 밝히지 않았어요.";
+
+/** 받은 화면에서 프렌드 공개를 보는 데 쓰는 칸 */
+export interface SeenFriendView {
+  roundNumber: number;
+  trickIndex: number;
+  friendRevealed: boolean;
+}
+
+/**
+ * 걸음별 사건이 없는 기기(참가자)의 프렌드 숨기기 찾기. 진짜 카드로는 턴이 끝나며 프렌드가 드러났는데(점수를 따
+ * 드러남, `revealFriendOnScore`), 그 뒤 턴의 받은 화면이 여전히 프렌드를 숨겼으면 자리 표 진행에서는 드러나지 않았다는
+ * 뜻이다. 방장 물음에 프렌드 카드를 갖고도 아니라고 한 그 자리 탓이다(죽이기의 `lastKill`과 같은 판단).
+ * 이것 없이는 그 뒤 컴퓨터 수·화면이 다시 계산한 것과 달라 정직한 방장을 짚는다.
+ * `states`는 `checkReplay`가 돌려준 걸음마다의 상태(`states[i + 1]`이 기록 i 뒤)
+ */
+export function hiddenFriend(
+  states: readonly MatchState[],
+  seen: readonly SeenFriendView[],
+): { index: number; seat: number; reason: string } | null {
+  for (let i = 0; i + 1 < states.length; i++) {
+    const before = states[i] as MatchState;
+    const after = states[i + 1] as MatchState;
+    if (before.round.friendRevealed || !after.round.friendRevealed) continue;
+    const friend = after.round.friend;
+    if (friend === null || after.roundNumber !== before.roundNumber) continue;
+    const hidden = seen.some(
+      (v) =>
+        v.roundNumber === before.roundNumber &&
+        v.trickIndex > before.round.trickIndex &&
+        !v.friendRevealed,
+    );
+    if (hidden)
+      return {
+        index: i,
+        seat: friend,
+        reason: FRIEND_HIDDEN,
+      };
+  }
+  return null;
+}
+
 function blameOf(
   real: readonly GameEvent[],
   seen: readonly GameEvent[],
@@ -181,7 +224,7 @@ function blameOf(
   )
     return {
       seat: realFriend.seat,
-      reason: "프렌드인데 점수를 따고도 밝히지 않았어요.",
+      reason: FRIEND_HIDDEN,
     };
   return {
     seat: 0,
