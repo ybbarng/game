@@ -21,6 +21,7 @@ import {
   stepMovesBig,
 } from "./big-path";
 import { solveReduced } from "./big-solve";
+import { solveTwoLook } from "./ll-compare";
 import type {
   Course,
   CourseStage,
@@ -80,6 +81,22 @@ const BEGINNER_333_MOVES = (() => {
     return [flip, ...r.steps.map(stepMoves)].filter(Boolean).join(" ");
   });
 })();
+
+// 마지막 층을 공식으로: 초보자와 같은 섞기를 아래 두 층은 초보자 단원 규칙으로, 마지막 층은 2단계 OLL·PLL로(docs/47 16-24)
+function twoLookDemoMoves(scramble: string): string[] {
+  let s = play(solvedCube(3), scramble);
+  const lower: string[] = [];
+  for (const id of ["cross", "corners", "second"] as const) {
+    const flip = id === "second" ? "z2" : "";
+    s = play(s, flip);
+    const r = runStage(id, s);
+    s = r.state;
+    lower.push(flip, ...r.steps.map(stepMoves));
+  }
+  const ll = solveTwoLook(s);
+  const text = (xs: string[]) => xs.filter(Boolean).join(" ");
+  return [text(lower), text(ll.oll), text(ll.pll)];
+}
 
 // 2×2 둘: 같은 섞기 하나를 단원의 경우별 정해진 길(beginner-path-222.ts)로 푼 수(2026-11-10)
 const SCRAMBLE_222 = "R U' F2 R' U R2 F' U2 R F' U";
@@ -247,12 +264,35 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       },
     ],
   },
+  "333-2look": {
+    stages: [
+      { title: "아래 두 층", lessons: [], goal: "second-layer" },
+      { title: "2단계 OLL", lessons: ["cfop-2look-oll"], goal: "oll" },
+      { title: "2단계 PLL", lessons: ["cfop-2look-pll"], goal: "solved" },
+    ],
+    demo: {
+      scramble: BEGINNER_333_SCRAMBLE,
+      moves: twoLookDemoMoves(BEGINNER_333_SCRAMBLE),
+      source:
+        "단원 규칙(아래 두 층 beginner-path.ts runStage · 2단계 ll-compare.ts solveTwoLook)",
+    },
+    quizzes: [
+      {
+        question:
+          "초보자 해법은 위 층 코너의 방향을 맨 끝에 맞췄어요. 2단계 OLL·PLL에서는 언제 맞출까요?",
+        choices: ["2단계 OLL에서, 자리보다 먼저", "2단계 PLL 뒤 맨 끝에"],
+        answer: 0,
+        why: "2단계 OLL로 위 층 조각의 방향을 먼저 다 맞추고(노란 십자 → 노란 면), 2단계 PLL로 자리를 맞춰요(코너 → 엣지).",
+      },
+    ],
+  },
   cfop: {
+    // 마지막 층의 2단계 OLL·PLL 단원은 앞 과정 「마지막 층을 공식으로」에 있다(docs/47 16-24). 이 과정은 단계 이름만 둔다
     stages: [
       { title: "십자", lessons: ["cfop-cross"], goal: "cross" },
       { title: "F2L(짝 넷)", lessons: ["cfop-f2l-pair"], goal: "f2l" },
-      { title: "OLL", lessons: ["cfop-2look-oll"], goal: "oll" },
-      { title: "PLL", lessons: ["cfop-2look-pll"], goal: "solved" },
+      { title: "OLL", lessons: [], goal: "oll" },
+      { title: "PLL", lessons: [], goal: "solved" },
     ],
     demo: {
       scramble: CFOP_SCRAMBLE,
@@ -266,7 +306,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     },
     quizzes: [
       {
-        question: "처음 배울 때 OLL은 두 번에 나눠요. 먼저 맞추는 것은?",
+        question: "앞 과정의 2단계 OLL은 두 번에 나눴어요. 먼저 맞추는 것은?",
         choices: ["엣지 방향(노란 십자)", "코너 방향"],
         answer: 0,
         why: "2단계 OLL은 노란 십자를 먼저, 그다음 위 층 코너의 노랑을 위로 해요. PLL도 코너 자리 → 엣지 자리 두 번으로 나눠요.",

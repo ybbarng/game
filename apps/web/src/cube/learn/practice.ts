@@ -33,8 +33,10 @@ const BEGINNER_LINKS: { id: string; title: string }[] = [
 ];
 
 const practiceHref = (id: string) => `/cube/train?set=${id}`;
-/** ZZ 해법 카드가 함께 잇는 CFOP 연습 단계(마지막 층) */
-const ZZ_LL_STAGES = ["2look-oll", "2look-pll"];
+/** 2단계 마지막 층 연습 단계(ZZ 해법 카드와 「마지막 층을 공식으로」 카드가 잇는다) */
+const LL_STAGES = ["2look-oll", "2look-pll"];
+const ZZ_LL_STAGES = LL_STAGES;
+const TWO_LOOK_COURSE = "333-2look";
 
 export function practiceLinks(
   course: Course,
@@ -45,17 +47,23 @@ export function practiceLinks(
   const stageLinks =
     method === "beginner"
       ? BEGINNER_LINKS
-      : method
-        ? [
-            ...stagesOf(method),
-            // ZZ 마지막 층은 CFOP 2단계 공식 그대로라 그 연습 단계를 함께 잇는다
-            ...(method === "zz"
-              ? ZZ_LL_STAGES.map((id) => stageById(id)).filter(
-                  (s) => s !== undefined,
-                )
-              : []),
-          ].map((s) => ({ id: s.id, title: s.title }))
-        : [];
+      : course.id === TWO_LOOK_COURSE
+        ? // 마지막 층을 공식으로: CFOP 연습 단계 가운데 2단계 둘(docs/47 16-24)
+          LL_STAGES.flatMap((id) => {
+            const s = stageById(id);
+            return s ? [{ id: s.id, title: s.title }] : [];
+          })
+        : method
+          ? [
+              ...stagesOf(method),
+              // ZZ 마지막 층은 CFOP 2단계 공식 그대로라 그 연습 단계를 함께 잇는다
+              ...(method === "zz"
+                ? ZZ_LL_STAGES.map((id) => stageById(id)).filter(
+                    (s) => s !== undefined,
+                  )
+                : []),
+            ].map((s) => ({ id: s.id, title: s.title }))
+          : [];
   for (const s of stageLinks)
     out.push({ href: practiceHref(s.id), title: s.title, kind: "practice" });
   if (CROSS_COURSES.has(course.id))
@@ -65,7 +73,7 @@ export function practiceLinks(
   ];
   // 공식 연습 단계로 이미 이은 묶음은 빼고, 나머지(오르테가·패리티 등)는 자유 훈련으로
   for (const set of sets)
-    if (!(method && stageById(set)))
+    if (!(method && stageById(set)) && !stageLinks.some((l) => l.id === set))
       out.push({
         href: practiceHref(set),
         title: setTitle(set),

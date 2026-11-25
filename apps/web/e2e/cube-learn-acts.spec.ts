@@ -83,13 +83,38 @@ test("배우기: 루 첫 블록은 조각 찾기, ZZ 엣지 방향은 고르기 
   await shot(page, "learn-zz-eo-quiz", info.project.name);
 });
 
+test("배우기: 마지막 층을 공식으로 첫 단원은 모양 16가지 평면도와 초보자 해법 견주기 표를 보인다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=333-2look-intro");
+  await goStep(page, 2);
+  const cases = page.locator('[data-sheet="2look-cases"]');
+  await expect(cases.locator("[data-sheet-group]")).toHaveCount(4);
+  await expect(
+    cases.locator("[data-sheet-case] [data-alg-picture]"),
+  ).toHaveCount(16);
+  await shot(page, "learn-2look-cases", info.project.name);
+
+  await goStep(page, 3);
+  const compare = page.locator('[data-sheet="ll-compare"]');
+  await expect(compare.locator("tbody tr")).toHaveCount(6);
+  // 숫자 자체는 단위 시험 ll-compare.test.ts가 다시 잰다
+  await expect(compare.locator('[data-compare="돌린 수(평균)"]')).toContainText(
+    /\d+수/,
+  );
+  await shot(page, "learn-2look-compare", info.project.name);
+});
+
 test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인드 글자 표", async ({
   page,
 }, info) => {
-  // 목록: 먼저 배울 과정이 보인다(잠그지 않음)
+  // 목록: 먼저 배울 과정이 보인다(잠그지 않음). 초보자 → 마지막 층을 공식으로 → CFOP(docs/47 16-24)
   await page.goto("/cube/methods");
   await expect(
     page.locator('[data-course="cfop"] [data-course-requires]'),
+  ).toHaveAttribute("data-course-requires", "333-2look");
+  await expect(
+    page.locator('[data-course="333-2look"] [data-course-requires]'),
   ).toHaveAttribute("data-course-requires", "333-beginner");
 
   // F2L 진짜 짝 문제

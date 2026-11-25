@@ -164,6 +164,7 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     { term: "기준 코너", use: /기준 코너/, define: /「기준 코너」/ },
     { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
   ],
+  "333-2look": [...NOTATION, ...CFOP_TERMS],
   cfop: [...NOTATION, ...CFOP_TERMS],
   roux: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
   zz: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
@@ -266,7 +267,11 @@ function bigCourseTexts(course: Course): { where: string; text: string }[] {
 describe("CFOP 모양 이름과 공식 이름", () => {
   const bare = /(^|[^A-Za-z0-9'])(H|T|Y|Z|Ua|Ub)(?![A-Za-z0-9'퍼]| 모양)/;
   for (const course of COURSES) {
-    if (!["cfop", "roux", "zz", "petrus", "444-yau"].includes(course.id))
+    if (
+      !["333-2look", "cfop", "roux", "zz", "petrus", "444-yau"].includes(
+        course.id,
+      )
+    )
       continue;
     it(`${course.title}: H·T·U·Y·Z 이름에 「모양」이나 「퍼뮤」를 붙인다`, () => {
       const found = [

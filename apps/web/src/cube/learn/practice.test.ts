@@ -46,6 +46,16 @@ describe("해법 익히기의 연습 칸", () => {
     expect(stageById("zz-pair")?.cases).toHaveLength(12);
   });
 
+  it("마지막 층을 공식으로는 2단계 OLL·PLL 공식 연습과 내 공식만 잇는다(같은 묶음을 자유 훈련으로 또 잇지 않는다)", () => {
+    const c = courseById("333-2look");
+    const links = c ? practiceLinks(c, title) : [];
+    expect(links.map((l) => [l.kind, l.href])).toEqual([
+      ["practice", "/cube/train?set=2look-oll"],
+      ["practice", "/cube/train?set=2look-pll"],
+      ["algs", "/cube/algs"],
+    ]);
+  });
+
   it("CFOP는 F2L부터 PLL까지 공식 연습, 십자 훈련, 내 공식을 잇는다", () => {
     const c = courseById("cfop");
     const hrefs = c ? practiceLinks(c, title).map((l) => l.href) : [];

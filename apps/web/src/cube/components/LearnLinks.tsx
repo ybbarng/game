@@ -5,6 +5,7 @@ import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "../learn/bld";
 import { nextCourses } from "../learn/courses";
 import type { AlgSet, Course, SheetName } from "../learn/types";
 import { MoveText } from "./MoveChip";
+import { LlCompareSheet, TwoLookCasesSheet } from "./TwoLookSheets";
 
 /** 배우기 화면의 연결 조각: 공식 훈련 단추, 과정 끝 「다음에 할 것」, 블라인드 글자 표(docs/47 8-1) */
 
@@ -134,7 +135,15 @@ const SHEET_DATA = {
 } as const;
 
 /** 단계 아래에 펼쳐 두는 표 */
-export function LessonSheet({ name }: { name: SheetName }) {
+export function LessonSheet({
+  name,
+  colors,
+}: {
+  name: SheetName;
+  colors: readonly number[];
+}) {
+  if (name === "2look-cases") return <TwoLookCasesSheet colors={colors} />;
+  if (name === "ll-compare") return <LlCompareSheet />;
   const sheet = SHEET_DATA[name];
   return (
     <details

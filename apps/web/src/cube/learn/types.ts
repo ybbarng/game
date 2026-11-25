@@ -276,6 +276,10 @@ export interface BesideCube {
 export const SHEETS = {
   "bld-edges": "블라인드 엣지 글자마다 준비 수(BLD_EDGE_TARGETS)",
   "bld-corners": "블라인드 코너 글자마다 준비 수(BLD_CORNER_TARGETS)",
+  "2look-cases":
+    "2단계 OLL·PLL 네 걸음의 모양 16가지 평면도(two-look-sheets.ts TWO_LOOK_GROUPS)",
+  "ll-compare":
+    "초보자 해법 마지막 층과 2단계 OLL·PLL 견주기(two-look-sheets.ts LL_COMPARE_TABLE)",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

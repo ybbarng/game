@@ -5,8 +5,9 @@ import type { LearnProgress } from "../learn/progress";
 import { type NextInput, nextStep } from "./next-step";
 
 const beginner = courseById("333-beginner");
+const bridge = courseById("333-2look");
 const cfop = courseById("cfop");
-if (!beginner || !cfop) throw new Error("과정이 없다");
+if (!beginner || !bridge || !cfop) throw new Error("과정이 없다");
 
 /** 과정 단원을 모두 끝낸 진도 */
 const doneAll = (...ids: string[]): LearnProgress["lessons"] =>
@@ -78,13 +79,30 @@ describe("다음에 할 것", () => {
     );
   });
 
-  it("5번 평균이 나오면 다음 해법(CFOP) 첫 단원", () => {
+  it("5번 평균이 나오면 다리 과정(마지막 층을 공식으로) 첫 단원", () => {
     expect(
       nextStep(
         input({
           anySolo: true,
           solo3: 5,
           learn: { lessons: doneAll("333-beginner") },
+        }),
+        COURSES,
+      ),
+    ).toMatchObject({
+      kind: "method",
+      title: `다음 해법: ${bridge.title}`,
+      href: `/cube/learn?lesson=${bridge.lessons[0]?.id}`,
+    });
+  });
+
+  it("다리 과정을 끝냈으면 CFOP 첫 단원", () => {
+    expect(
+      nextStep(
+        input({
+          anySolo: true,
+          solo3: 5,
+          learn: { lessons: doneAll("333-beginner", "333-2look") },
         }),
         COURSES,
       ),
@@ -102,7 +120,14 @@ describe("다음에 할 것", () => {
           anySolo: true,
           solo3: 12,
           learn: {
-            lessons: doneAll("333-beginner", "cfop", "roux", "zz", "petrus"),
+            lessons: doneAll(
+              "333-beginner",
+              "333-2look",
+              "cfop",
+              "roux",
+              "zz",
+              "petrus",
+            ),
           },
         }),
         COURSES,

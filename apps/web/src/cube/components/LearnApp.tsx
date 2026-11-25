@@ -635,7 +635,9 @@ function LessonView({
             />
           )}
         </p>
-        {step.sheet && <LessonSheet name={step.sheet} />}
+        {step.sheet && (
+          <LessonSheet name={step.sheet} colors={settings.colors} />
+        )}
         {step.beside && (
           <Beside
             key={`${lesson.id}-${at}-beside`}

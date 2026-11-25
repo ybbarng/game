@@ -15,6 +15,13 @@ import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "./bld";
 import { COURSES, courseById, nextCourses } from "./index";
 import { goalMet } from "./judge";
 import {
+  INTRO_LL,
+  T_PERM,
+  TWO_LOOK_LL,
+  Y_PERM,
+  Z_PERM_AUF,
+} from "./lessons-2look";
+import {
   CENTER_LAST_TWO_SETUP,
   CENTER_YELLOW,
   CENTER_YELLOW_SETUP,
@@ -42,10 +49,7 @@ import {
   PAIR_FRONT,
   PAIR_RIGHT,
   SPLIT_RIGHT,
-  T_PERM,
   WHITE_UP,
-  Y_PERM,
-  Z_PERM_AUF,
 } from "./lessons-cfop";
 import { setupFor } from "./notation";
 import type { Lesson, LessonStep, QuizSpec } from "./types";
@@ -219,6 +223,20 @@ describe("CFOP F2L 짝", () => {
     expect(same(play(3, "F' U' F", held(EDGE_STUCK)), held(PAIR_RIGHT))).toBe(
       true,
     );
+  });
+});
+
+describe("마지막 층을 공식으로: 첫 단원 그림", () => {
+  it("아래 두 층은 맞고 위 층은 흐트러졌으며, 가로줄 → 수네 → T퍼뮤 → Ua퍼뮤로 걸음마다 그 걸음의 목표가 된다", () => {
+    const intro = lessonOf("333-2look-intro");
+    let s = stateOf(step(intro, "quiz", 0));
+    expect(goalMet(3, s, "f2l")).toBe(true);
+    const goals = ["yellow-cross", "oll", "yellow-corners", "solved"] as const;
+    for (const g of goals) expect(goalMet(3, s, g), g).toBe(false);
+    INTRO_LL.forEach((alg, i) => {
+      s = play(3, alg, s);
+      expect(goalMet(3, s, goals[i] as (typeof goals)[number])).toBe(true);
+    });
   });
 });
 
@@ -585,10 +603,11 @@ describe("블라인드 외우기", () => {
 // ── 과정 끝 ──────────────────────────────────────────────
 
 describe("과정 끝과 먼저 배울 과정", () => {
-  it("3×3·2×2·CFOP·4×4 과정 끝에 섞인 큐브를 처음부터 맞추는 마무리가 있다", () => {
+  it("3×3·2×2·마지막 층을 공식으로·CFOP·4×4 과정 끝에 섞인 큐브를 처음부터 맞추는 마무리가 있다", () => {
     for (const id of [
       "333-beginner",
       "222-beginner",
+      "333-2look",
       "cfop",
       "444-reduction",
     ]) {
@@ -608,19 +627,34 @@ describe("과정 끝과 먼저 배울 과정", () => {
     const base = courseById("333-beginner");
     expect(base && nextCourses(base).map((c) => c.id)).toEqual([
       "222-from333",
-      "cfop",
+      "333-2look",
       "444-reduction",
     ]);
   });
 
-  it("CFOP 단원은 훈련 묶음으로 이어진다", () => {
+  it("초보자 → 마지막 층을 공식으로 → CFOP 차례이고, 2단계 단원은 다리 과정에만 있다", () => {
+    expect(courseById("333-2look")?.requires).toEqual(["333-beginner"]);
+    expect(courseById("cfop")?.requires).toEqual(["333-2look"]);
+    const where = (id: string) =>
+      COURSES.filter((c) => c.lessons.some((l) => l.id === id)).map(
+        (c) => c.id,
+      );
+    // 단원 id는 CFOP에 있던 때 그대로(진행 기록·힌트가 이 id를 쓴다)
+    expect(where("cfop-2look-oll")).toEqual(["333-2look"]);
+    expect(where("cfop-2look-pll")).toEqual(["333-2look"]);
+  });
+
+  it("CFOP·다리 과정 단원은 훈련 묶음으로 이어진다", () => {
     expect(CFOP_INTRO.lessons.map((l) => l.drill)).toEqual([
       undefined,
       undefined,
       "f2l",
+      "pll",
+    ]);
+    expect(TWO_LOOK_LL.lessons.map((l) => l.drill)).toEqual([
+      undefined,
       "2look-oll",
       "2look-pll",
-      "pll",
     ]);
   });
 });
