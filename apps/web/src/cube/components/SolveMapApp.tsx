@@ -16,7 +16,6 @@ import {
 } from "../learn/progress";
 import {
   MAP_METHODS,
-  MAP_PREP,
   type MapMethod,
   type MapMethodId,
   type MapNodeId,
@@ -35,15 +34,8 @@ import {
 import { loadMethod, type SolveMethod } from "../progress/methods";
 import { loadRecords, type SolveRecord } from "../records";
 import { useCubeSettings } from "../settings";
-import { ExplodedCube } from "./ExplodedCube";
 import { CardsView } from "./SolveMapCards";
-import {
-  BarsView,
-  HubView,
-  type MapCtx,
-  MapView,
-  MeBadge,
-} from "./SolveMapViews";
+import { BarsView, HubView, type MapCtx, MapView } from "./SolveMapViews";
 import {
   isExtra,
   MAIN_METHODS,
@@ -179,6 +171,7 @@ export function SolveMapApp() {
     solo,
     me,
     courseOf,
+    lessonTitle: (id) => lessonTitle.get(id) ?? id,
     toggle: (id) =>
       setSelected((xs) =>
         xs.includes(id)
@@ -281,7 +274,6 @@ export function SolveMapApp() {
         </div>
         {ready && (
           <>
-            <PrepCard ctx={ctx} />
             {variant === "a" && <MapView ctx={ctx} style="map" />}
             {variant === "c" && <MapView ctx={ctx} style="metro" />}
             {variant === "b" && <HubView ctx={ctx} />}
@@ -302,49 +294,4 @@ export function SolveMapApp() {
       </main>
     </div>
   );
-}
-
-/** 준비 칸: 큐브 상태를 바꾸지 않는 지식 단원. 모든 길이 여기서 출발한다 */
-function PrepCard({ ctx }: { ctx: MapCtx }) {
-  const here = ctx.me.has("prep");
-  return (
-    <section
-      className="flex items-center gap-3 self-center rounded-xl border border-white/15 bg-white/5 px-3 py-2"
-      data-map-prep
-    >
-      <ExplodedPrep ctx={ctx} />
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <h2 className="font-semibold">준비</h2>
-          {here && <MeBadge methods={[]} />}
-        </div>
-        <ul className="flex flex-wrap gap-1">
-          {MAP_PREP.map((id) => {
-            const done = ctx.progress.lessons[id]?.done;
-            return (
-              <li key={id}>
-                <a
-                  href={`/cube/learn?lesson=${id}`}
-                  className={cn(
-                    "inline-block whitespace-nowrap rounded-md border px-2 py-0.5 text-xs",
-                    done
-                      ? "border-emerald-400/60 text-emerald-300"
-                      : "border-white/20 text-white/80",
-                  )}
-                  data-done={done ? "" : undefined}
-                >
-                  {done ? "✓ " : ""}
-                  {lessonTitle.get(id) ?? id}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-function ExplodedPrep({ ctx }: { ctx: MapCtx }) {
-  return <ExplodedCube colors={ctx.settings.colors} size={64} />;
 }

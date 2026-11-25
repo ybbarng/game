@@ -11,8 +11,14 @@ import {
   methodNodes,
   nodeById,
 } from "../learn/solve-map";
-import { edgeLearn } from "../learn/solve-map-me";
-import { EdgeLines, type MapCtx, MeBadge, NodeCube } from "./SolveMapViews";
+import { edgeLearn, prepDone } from "../learn/solve-map-me";
+import {
+  EdgeLines,
+  type MapCtx,
+  MeBadge,
+  NodeCube,
+  PrepNode,
+} from "./SolveMapViews";
 import { edgeHref, METHOD_COLOR, methodTotals } from "./solve-map-model";
 
 const SKILL_RING = {
@@ -97,6 +103,23 @@ function Strip({
       className="flex items-end gap-1 overflow-x-auto pb-1"
       data-card-strip="row"
     >
+      {/* 맨 앞 준비(분해한 큐브), 그다음 다 섞임 */}
+      <li
+        className="relative flex shrink-0 flex-col items-center"
+        data-strip-node="prep"
+      >
+        <PrepNode ctx={ctx} look="picture" px={44} />
+        <span className="h-3 text-[10px] text-emerald-300 leading-3">
+          {prepDone(ctx.progress) ? "✓" : ""}
+        </span>
+      </li>
+      <li aria-hidden className="self-center pb-3">
+        <StepArrow
+          dir="right"
+          color={METHOD_COLOR[m.id]}
+          done={prepDone(ctx.progress)}
+        />
+      </li>
       {nodes.map((id, i) => {
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
@@ -141,6 +164,22 @@ function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
   const solo = ctx.solo.get(m.id);
   return (
     <ol className="flex flex-col" data-card-strip="column">
+      <li className="flex flex-col" data-strip-node="prep">
+        <span className="flex items-center gap-2">
+          <PrepNode ctx={ctx} look="picture" px={44} />
+          <span className="text-sm leading-tight">준비</span>
+          {prepDone(ctx.progress) && (
+            <span className="text-emerald-300 text-xs">✓</span>
+          )}
+        </span>
+        <span aria-hidden className="ml-4 flex py-0.5">
+          <StepArrow
+            dir="down"
+            color={METHOD_COLOR[m.id]}
+            done={prepDone(ctx.progress)}
+          />
+        </span>
+      </li>
       {nodes.map((id, i) => {
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
@@ -265,6 +304,17 @@ function MethodScreen({
       </div>
       <Strip m={m} ctx={ctx} />
       <ol className="flex flex-col">
+        {/* 맨 앞 준비: 그림과 단원 셋 */}
+        <li data-edge="prep">
+          <PrepNode ctx={ctx} look="row" px={56} />
+          <span aria-hidden className="flex py-0.5 pl-[58px]">
+            <StepArrow
+              dir="down"
+              color={METHOD_COLOR[m.id]}
+              done={prepDone(ctx.progress)}
+            />
+          </span>
+        </li>
         {m.edges.map((id, i) => {
           const e = edgeById(id) as MapEdge;
           const href = edgeHref(e, m, ctx.courseOf);

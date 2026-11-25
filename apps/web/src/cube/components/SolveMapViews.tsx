@@ -17,6 +17,7 @@ import { cn } from "@/lib/cn";
 import type { LearnProgress, TrainBook } from "../learn/progress";
 import {
   edgeById,
+  MAP_PREP,
   type MapEdge,
   type MapMethod,
   type MapNodeId,
@@ -35,6 +36,7 @@ import {
   myRoute,
 } from "../learn/solve-map-me";
 import type { CubeSettings } from "../settings";
+import { CoreCube } from "./CoreCube";
 import { CubePosterPair } from "./CubePosterPair";
 import {
   clampView,
@@ -42,6 +44,7 @@ import {
   edgeHref,
   edgeTurns,
   formulaText,
+  lessonHref,
   METHOD_COLOR,
   methodsOfEdge,
   methodTotals,
@@ -69,7 +72,85 @@ export interface MapCtx {
   /** 「나」가 있는 지점 → 그 해법들. 아무 데도 없으면 "prep" */
   me: Map<MapNodeId | "prep", MapMethod[]>;
   courseOf: (lessonId: string) => string | undefined;
+  /** 단원 id → 단원 제목 */
+  lessonTitle: (lessonId: string) => string;
   toggle: (id: MapMethod["id"]) => void;
+}
+
+/**
+ * 준비(출발점): 큐브 상태를 바꾸지 않는 지식 단원 셋. 모든 해법의 길이 여기서 출발한다(2026-11-25 사용자
+ * 「준비도 지도 안에 들어가야지」). `box`는 그림 위·단원 아래(지도·갈림길), `row`는 그림 곁에 단원(노선도·카드).
+ * 기록이 없는 사람의 「나」는 여기
+ */
+export function PrepNode({
+  ctx,
+  look = "box",
+  px = 56,
+  live = false,
+}: {
+  ctx: MapCtx;
+  look?: "box" | "row" | "picture";
+  px?: number;
+  /** 3D 장면으로(지도에 하나만). 아니면 그 장면을 찍은 정지 그림 */
+  live?: boolean;
+}) {
+  const here = ctx.me.has("prep");
+  const picture = (
+    <span className="relative shrink-0">
+      <CoreCube colors={ctx.settings.colors} size={px} live={live} />
+      {here && (
+        <span className="-top-1 -left-2 absolute">
+          <MeBadge methods={[]} />
+        </span>
+      )}
+    </span>
+  );
+  if (look === "picture") return picture;
+  const lessons = (
+    <ul className="flex flex-col gap-0.5">
+      {MAP_PREP.map((id) => {
+        const done = ctx.progress.lessons[id]?.done;
+        return (
+          <li key={id}>
+            <a
+              href={lessonHref(id)}
+              className={cn(
+                "block whitespace-nowrap rounded border px-1 text-[10px] leading-4",
+                done
+                  ? "border-emerald-400/50 text-emerald-300"
+                  : "border-white/20 text-white/80",
+              )}
+              data-prep-lesson={id}
+              data-done={done ? "" : undefined}
+            >
+              {done ? "✓ " : ""}
+              {ctx.lessonTitle(id)}
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+  return (
+    <div
+      className={cn(
+        "flex gap-1.5 rounded-lg bg-neutral-800 px-2 py-1.5",
+        look === "box" ? "flex-col items-center" : "items-center",
+      )}
+      data-map-prep
+    >
+      {picture}
+      <span
+        className={cn(
+          "flex gap-1",
+          look === "box" ? "flex-col items-center" : "flex-col",
+        )}
+      >
+        <span className="font-semibold text-xs">준비</span>
+        {lessons}
+      </span>
+    </div>
+  );
 }
 
 /** 「나」 표시(해법마다 색 점) */
@@ -193,6 +274,10 @@ interface Layout {
   height: number;
   pos: Map<MapNodeId, { x: number; y: number }>;
   nodeH: number;
+  /** 준비(출발점) 자리: 맨 위, 초보자 칸. 지도는 그림 위·단원 아래 상자, 노선도는 역(가운데 점) */
+  prep: { x: number; y: number; h: number };
+  /** 다 섞임처럼 준비에서 바로 이어지는 첫 지점들 */
+  starts: MapNodeId[];
 }
 
 function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
@@ -203,6 +288,9 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
     const RH = style === "map" ? 158 : 118;
     const PAD = 24;
     const nodeH = style === "map" ? 92 : 0;
+    // 준비 칸 높이와 그 아래 간격(지도는 그림 + 이름 + 단원 셋이 세로로, 노선도는 한 줄)
+    const prepH = style === "map" ? 178 : 0;
+    const TOP = PAD + prepH + (style === "map" ? 60 : RH);
     const cols = [...nodes].map((id) => nodeById(id).col);
     const maxCol = Math.max(...cols);
     const pos = new Map<MapNodeId, { x: number; y: number }>();
@@ -210,14 +298,23 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
       const n = nodeById(id);
       pos.set(id, {
         x: PAD + (n.col + 0.5) * CW,
-        y: PAD + (n.row - min) * RH,
+        y: TOP + (n.row - min) * RH,
       });
     }
+    const starts = [
+      ...new Set(ctx.methods.map((m) => methodNodes(m)[0] as MapNodeId)),
+    ];
     return {
       width: PAD * 2 + (maxCol + 1) * CW + (style === "metro" ? 70 : 0),
-      height: PAD * 2 + (max - min) * RH + nodeH + 30,
+      height: TOP + (max - min) * RH + nodeH + 30 + PAD,
       pos,
       nodeH,
+      prep: {
+        x: PAD + 0.5 * CW,
+        y: PAD + (style === "metro" ? 30 : 0),
+        h: prepH,
+      },
+      starts,
     };
   }, [ctx.methods, style]);
 }
@@ -293,11 +390,13 @@ export function MapView({
   const edges = visibleEdges(ctx.methods);
   const selectedEdges = new Set(ctx.selected.flatMap((m) => m.edges));
   const selectedNodes = new Set(ctx.selected.flatMap(methodNodes));
-  // 처음 가운데 둘 곳: 「나」가 있는 지점(없으면 맨 위)
+  // 처음 가운데 둘 곳: 「나」가 있는 지점(기록이 없으면 준비 출발점). 지도 범위로 묶여 맨 위·왼쪽 끝이 보인다
   const meNode = [...ctx.me.keys()].find(
     (k): k is MapNodeId => k !== "prep" && layout.pos.has(k as MapNodeId),
   );
-  const focus = layout.pos.get(meNode ?? "scrambled") ?? { x: 0, y: 0 };
+  const focus = meNode
+    ? (layout.pos.get(meNode) as Pt)
+    : { x: layout.prep.x, y: layout.prep.y };
   // 해법을 고르면 고른 길 전체가 보이게
   const fit = useMemo(() => {
     const ps = [...new Set(ctx.selected.flatMap(methodNodes))]
@@ -335,6 +434,28 @@ export function MapView({
           />
         );
       })}
+      {layout.starts.map((id) => {
+        const b = layout.pos.get(id);
+        return b ? (
+          <line
+            key={`prep-${id}`}
+            x1={layout.prep.x}
+            y1={layout.prep.y + layout.prep.h / 2}
+            x2={b.x}
+            y2={b.y + layout.nodeH / 2}
+            stroke="#aaa"
+            strokeWidth={6}
+          />
+        ) : null;
+      })}
+      <rect
+        x={layout.prep.x - 24}
+        y={layout.prep.y + layout.prep.h / 2 - 24}
+        width={48}
+        height={48}
+        rx={10}
+        fill="#fff"
+      />
       {[...layout.pos].map(([id, p]) => (
         <circle
           key={id}
@@ -461,7 +582,31 @@ function MapLayer({
             />
           ));
         })}
+        {/* 준비에서 첫 지점(다 섞임, 4×4 다 섞임)으로: 모든 해법이 여기서 출발한다 */}
+        {layout.starts.map((id) => {
+          const b = pos.get(id);
+          if (!b) return null;
+          const y0 = layout.prep.y + layout.prep.h;
+          const dy = Math.max(30, (b.y - y0) * 0.45);
+          return (
+            <path
+              key={`prep-${id}`}
+              d={`M${layout.prep.x},${y0} C${layout.prep.x},${y0 + dy} ${b.x},${b.y - dy} ${b.x},${b.y}`}
+              fill="none"
+              stroke="#d4d4d8"
+              strokeOpacity={0.6}
+              strokeWidth={3}
+              data-prep-line={id}
+            />
+          );
+        })}
       </svg>
+      <div
+        className="-translate-x-1/2 absolute"
+        style={{ left: layout.prep.x, top: layout.prep.y, zIndex: 2 }}
+      >
+        <PrepNode ctx={ctx} look="box" px={84} live />
+      </div>
       {geo.map((g) => {
         const on = selectedEdges.has(g.e.id);
         // 흐린 길에 적을 값이 없으면(셀 자료 없음·단원 있음) 꼬리표를 두지 않는다
@@ -658,6 +803,22 @@ function MetroLayer({
             />
           );
         })}
+        {/* 시발역(준비)에서 첫 역으로: 모든 노선이 여기서 출발한다 */}
+        {order.map((m) => {
+          const b = pos.get(methodNodes(m)[0] as MapNodeId);
+          if (!b) return null;
+          return (
+            <path
+              key={`prep-${m.id}`}
+              d={seg(layout.prep, b, lineOff(m), 0)}
+              fill="none"
+              stroke={METHOD_COLOR[m.id]}
+              strokeOpacity={isSel(m) ? 1 : 0.18}
+              strokeWidth={isSel(m) ? 4 : 3}
+              strokeLinejoin="round"
+            />
+          );
+        })}
         {order.map((m) =>
           m.edges.map((id) => {
             const e = edgeById(id) as MapEdge;
@@ -800,6 +961,30 @@ function MetroLayer({
           </div>
         );
       })}
+      {/* 시발역: 모든 노선이 지나는 첫 역(준비) */}
+      <div
+        className="-translate-y-1/2 absolute flex items-center gap-1"
+        style={{ left: layout.prep.x - 14, top: layout.prep.y, zIndex: 2 }}
+        data-node="prep"
+      >
+        <span className="block h-7 w-7 shrink-0 rounded-full border-[5px] border-white bg-neutral-900" />
+        <span
+          className="flex max-w-[44px] flex-wrap gap-0.5"
+          data-station-lines
+        >
+          {ctx.methods.map((m) => (
+            <span
+              key={m.id}
+              className="h-2 w-2 rounded-full"
+              style={{
+                background: METHOD_COLOR[m.id],
+                opacity: isSel(m) ? 1 : 0.35,
+              }}
+            />
+          ))}
+        </span>
+        <PrepNode ctx={ctx} look="row" px={72} live />
+      </div>
     </div>
   );
 }
@@ -1124,6 +1309,13 @@ export function HubView({ ctx }: { ctx: MapCtx }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <ol className="flex flex-col gap-2" data-map-hubs>
+      {/* 출발점: 준비 → 다 섞임 */}
+      <li className="flex flex-col gap-2" data-hub="prep">
+        <span className="self-start">
+          <PrepNode ctx={ctx} look="row" px={84} live />
+        </span>
+        <span className="ml-6 h-4 w-0.5 bg-white/30" aria-hidden />
+      </li>
       {hubs.map((h) => {
         const out = segs.filter((s) => s.from === h);
         const me = ctx.me.get(h);
@@ -1302,6 +1494,31 @@ function barCells(m: MapMethod): BarCell[] {
   return out;
 }
 
+/** 막대 맨 앞 준비 칸 너비(수가 없는 칸이라 모든 막대에서 같은 고정 너비) */
+const PREP_CELL = 76;
+
+/** 막대 맨 앞 준비 칸: 분해한 큐브 그림, 다 끝냈으면 ✓, 기록이 없으면 「나」. 누르면 아직 안 한 첫 준비 단원 */
+function PrepCell({ ctx }: { ctx: MapCtx }) {
+  const done = MAP_PREP.every((id) => ctx.progress.lessons[id]?.done);
+  const next = MAP_PREP.find((id) => !ctx.progress.lessons[id]?.done);
+  return (
+    <a
+      href={lessonHref(next ?? (MAP_PREP[0] as string))}
+      className="relative flex shrink-0 items-center gap-1 bg-white/10 px-1 py-1 text-[10px] leading-tight"
+      style={{ width: PREP_CELL }}
+      data-cell="prep"
+    >
+      <CoreCube colors={ctx.settings.colors} size={30} />
+      <span className="font-medium text-white">{done ? "✓ " : ""}준비</span>
+      {ctx.me.has("prep") && (
+        <span className="absolute top-0 right-0">
+          <MeBadge methods={[]} />
+        </span>
+      )}
+    </a>
+  );
+}
+
 /** 한 수의 막대 길이(px). 모든 막대가 같은 눈금이라 길이를 바로 견준다 */
 const PX_PER_TURN = 8;
 const MIN_CELL = 44;
@@ -1344,6 +1561,7 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
                 className="flex gap-px overflow-hidden rounded-md self-start"
                 data-bar-measured={measured ? "" : undefined}
               >
+                <PrepCell ctx={ctx} />
                 {cells.map((c, i) => {
                   const k = `${m.id}:${c.key}`;
                   const learn = c.edges.every(
