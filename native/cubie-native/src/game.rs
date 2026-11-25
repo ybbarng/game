@@ -130,6 +130,8 @@ pub struct Game {
     pub(crate) practice: Option<cube_core::practice::PracticeSession>,
     /// 진행기가 알린 일(비트: 1 다시 칠함 · 2 문제 맞춤 · 4 틀린 수 · 8 판 끝), 앱이 꺼내 간다
     pub(crate) practice_events: u32,
+    /// 상황 놓기로 둔 상황(docs/47 16-24). 섞기·맞춘 상태로에서 지운다
+    pub(crate) placed: Option<crate::place::Placed>,
 }
 
 impl Game {
@@ -155,6 +157,7 @@ impl Game {
             milestone: false,
             practice: None,
             practice_events: 0,
+            placed: None,
         }
     }
 
@@ -392,6 +395,7 @@ impl Game {
         }
         self.jump(st);
         self.scrambled = true;
+        self.placed = None;
         self.record = None;
         self.milestone = false;
         let _ = self.session.start(&s.text, Some(seed), self.now);
@@ -404,11 +408,14 @@ impl Game {
         Outcome::Scrambled { text: s.text }
     }
 
+    /// 맞춘 상태로: 맞추던 판은 기록 없이 끝나고(코어 세션 「마음대로」), 놓은 상황도 끝난다
     pub fn reset(&mut self) {
         self.jump(solved_cube(self.n));
         self.scrambled = false;
         self.session.reset();
         self.record = None;
+        self.milestone = false;
+        self.placed = None;
     }
 
     fn jump(&mut self, st: State) {

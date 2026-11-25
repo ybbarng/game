@@ -141,6 +141,16 @@ uint32_t cubie_game_practice_events(CubieGame *game);
 uint32_t cubie_game_practice_lines(const CubieGame *game, const char *again, uint8_t *out, uint32_t len);
 /// 저장할 기록 글(which 0 공식 연습 기록, 1 보고 치기 기록). 글 바이트 수
 uint32_t cubie_game_practice_record(const CubieGame *game, uint32_t which, uint8_t *out, uint32_t len);
+/// 상황 놓기 메뉴(docs/47 16-24): 줄마다 「단계 id\t단계 이름\t상황 id\t상황 이름\t모양 묶음」. 글 바이트 수
+uint32_t cubie_place_menu(uint8_t *out, uint32_t len);
+/// 상황 하나를 놓는다(3×3, 공식 연습 밖). 맞추던 판은 기록 없이 끝난다. 못 놓으면 false
+bool cubie_game_place(CubieGame *game, const char *stage, const char *case_id, const char *alg_book);
+/// 놓은 상황 「단계 id\t상황 id」(없으면 빈 글). 글 바이트 수
+uint32_t cubie_game_placed(const CubieGame *game, uint8_t *out, uint32_t len);
+/// 놓은 상황의 공식 펼치기·접기(힌트 키). 펼쳤으면 true
+bool cubie_game_place_reveal(CubieGame *game);
+/// 놓은 상황의 말풍선 줄들(공식 연습 줄과 같은 꼴). 글 바이트 수
+uint32_t cubie_game_place_lines(const CubieGame *game, uint8_t *out, uint32_t len);
 /// 다시 보기 글 → 걸음 줄들(「시각 표기」, 줄바꿈으로 이음). 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
 uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, double offset, uint8_t *out,
                             uint32_t len);

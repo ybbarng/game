@@ -623,6 +623,71 @@ pub unsafe extern "C" fn cubie_game_practice_record(
     unsafe { write_str(if which == 0 { &rec } else { &train }, out, len) }
 }
 
+/// 상황 놓기 메뉴(docs/47 16-24): 줄마다 「단계 id\t단계 이름\t상황 id\t상황 이름\t모양 묶음(없으면 빈칸)」. 글 바이트 수를
+/// 돌려준다
+///
+/// # Safety
+/// `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_place_menu(out: *mut u8, len: u32) -> u32 {
+    unsafe { write_str(&crate::place::place_menu_lines().join("\n"), out, len) }
+}
+
+/// 상황 하나를 놓는다(3×3, 공식 연습 밖). 맞추던 판은 기록 없이 끝난다. 내 공식은 사이트와 같은 JSON. 못 놓으면 false
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. 글은 NUL로 끝나는 C 글(NULL이면 빈 글).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_place(
+    g: *mut CubieGame,
+    stage: *const c_char,
+    case_id: *const c_char,
+    alg_book: *const c_char,
+) -> bool {
+    let g = unsafe { &mut *g };
+    let s = |p| unsafe { c_str(p) }.unwrap_or("");
+    let (stage, case_id, book) = (s(stage), s(case_id), s(alg_book));
+    g.game.place(stage, case_id, book)
+}
+
+/// 놓은 상황(「단계 id\t상황 id」, 없으면 빈 글)을 `out`에 쓴다. 글 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_placed(g: *const CubieGame, out: *mut u8, len: u32) -> u32 {
+    let g = unsafe { &*g };
+    let text = g
+        .game
+        .placed()
+        .map(|p| format!("{}\t{}", p.stage, p.case))
+        .unwrap_or_default();
+    unsafe { write_str(&text, out, len) }
+}
+
+/// 놓은 상황의 공식 펼치기·접기(힌트 키). 펼쳤으면 true
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_place_reveal(g: *mut CubieGame) -> bool {
+    unsafe { &mut *g }.game.place_reveal()
+}
+
+/// 놓은 상황의 말풍선 줄(공식 연습 줄과 같은 꼴, 줄바꿈으로 이음). 놓은 상황이 없으면 빈 글. 글 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_place_lines(
+    g: *const CubieGame,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    let g = unsafe { &*g };
+    unsafe { write_str(&g.game.place_lines().join("\n"), out, len) }
+}
+
 /// 다시 보기 글 → 걸음(사이트 `solveSteps`, 수 사이 멈춤은 `max_pause_ms`까지, 첫 수가 `offset`). 걸음마다 한 줄
 /// 「시각 표기」(수가 여럿이면 빈칸으로 이음)를 `out`에 쓴다. 글 전체 바이트 수를 돌려준다
 ///
