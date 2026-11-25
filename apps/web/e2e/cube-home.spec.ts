@@ -65,27 +65,11 @@ test(
         els.map((e) => e.getAttribute("data-cube-group")),
       ),
     ).toEqual(["배우기", "맞추기·겨루기", "더 보기"]);
-    // 처음 온 사람: 다음에 할 것은 사이트 쓰는 법
+    // 처음 온 사람: 다음에 할 것은 사이트 쓰는 법(배우기 묶음의 같은 칸은 감춘다, 아래 시험)
     const nextCard = page.locator("[data-cube-next]");
     await expect(nextCard).toHaveAttribute("data-cube-next", "intro");
     await expect(nextCard).toHaveAttribute("href", "/cube/intro");
     // 배우는 곳은 「큐브 배우기」 한 칸이고, 해법·단원은 첫 화면에 펼치지 않는다(docs/47 16-26)
-    const learnGroup = page.locator("[data-cube-group='배우기'] a");
-    expect(
-      await learnGroup.evaluateAll((els) =>
-        els.map((a) => [
-          a.querySelector("span:last-child")?.textContent,
-          a.getAttribute("href"),
-        ]),
-      ),
-    ).toEqual([
-      ["사이트 쓰는 법", "/cube/intro"],
-      ["큐브 배우기", "/cube/methods"],
-    ]);
-    await expect(learnGroup.first()).toHaveAttribute(
-      "data-cube-intro-link",
-      "",
-    );
     await expect(page.locator("[data-cube-learn-link]")).toHaveAttribute(
       "href",
       "/cube/methods",
@@ -151,7 +135,7 @@ test(
     await page.evaluate(() => {
       (window as { __cubeNo3d?: boolean }).__cubeNo3d = true;
     });
-    await page.locator("[data-cube-intro-link]").click();
+    await nextCard.click();
     const intro = page.locator("[data-cube-intro]");
     await expect(intro).toHaveAttribute("data-cube-intro", "words");
     // 세 가지 말: 공식을 고르면 통과
@@ -207,6 +191,115 @@ test(
     }
   },
 );
+
+/** 배우기 묶음 칸의 [이름, 주소, 한 줄을 채우는지] */
+async function learnCells(page: Page) {
+  return page
+    .locator("[data-cube-group='배우기'] a")
+    .evaluateAll((els) =>
+      els.map((a) => [
+        a.querySelector("span:last-child")?.textContent,
+        a.getAttribute("href"),
+        a.classList.contains("col-span-2"),
+      ]),
+    );
+}
+
+test(
+  "기록이 없으면 사이트 쓰는 법은 다음에 할 것에만 있고, 배우기 묶음은 큐브 배우기 한 줄",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 배치가 세로 휴대폰과 같다
+    await no3dUnlessShots(page);
+    await page.goto("/cube");
+    const next = page.locator("[data-cube-next]");
+    await expect(next).toHaveAttribute("data-cube-next", "intro");
+    await expect(next).toHaveText(/사이트 쓰는 법$/);
+    // 다음 걸음이 정해진 뒤의 자리(읽기 전 자리는 사라졌다)
+    await expect(page.locator("[data-cube-group-pending]")).toHaveCount(0);
+    expect(await learnCells(page)).toEqual([
+      ["큐브 배우기", "/cube/methods", true],
+    ]);
+    await expect(page.locator("[data-cube-intro-link]")).toHaveCount(0);
+    if (SAVE_SCREENSHOTS) {
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await heroShown(page);
+    }
+    await shot(page, "home-no-records", info.project.name);
+  },
+);
+
+test("기록이 있으면 다음에 할 것은 다른 걸음이고, 배우기 묶음에 사이트 쓰는 법이 돌아온다", {
+  tag: "@no-phone-landscape",
+}, async ({ page }) => {
+  // 배치가 세로 휴대폰과 같다
+  await no3d(page);
+  // 처음 맞추기 첫 단원을 끝낸 기기
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "cube.learn.v1",
+      JSON.stringify({ lessons: { "333-start": { passed: [], done: true } } }),
+    ),
+  );
+  await page.goto("/cube");
+  const next = page.locator("[data-cube-next]");
+  await expect(next).toHaveAttribute("data-cube-next", "first-solve");
+  await expect(page.locator("[data-cube-group-pending]")).toHaveCount(0);
+  expect(await learnCells(page)).toEqual([
+    ["사이트 쓰는 법", "/cube/intro", false],
+    ["큐브 배우기", "/cube/methods", false],
+  ]);
+  await expect(page.locator("[data-cube-intro-link]")).toHaveAttribute(
+    "href",
+    "/cube/intro",
+  );
+});
+
+test("다음 걸음을 읽기 전 배우기 묶음은 칸 없이 같은 높이의 자리만 둔다(칸이 떴다 사라지지 않는다)", {
+  tag: "@no-phone-landscape",
+}, async ({
+  browser,
+  page,
+  baseURL,
+  viewport,
+  isMobile,
+  deviceScaleFactor,
+}) => {
+  // 배치가 세로 휴대폰과 같다
+  const box = (p: Page, sel: string) =>
+    p.locator(sel).evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top), height: Math.round(r.height) };
+    });
+  // 스크립트를 끈 페이지 = 정적 HTML 그대로(다음 걸음을 읽기 전 첫 그리기)
+  const ctx = await browser.newContext({
+    ...(baseURL ? { baseURL } : {}),
+    ...(deviceScaleFactor ? { deviceScaleFactor } : {}),
+    viewport,
+    isMobile,
+    reducedMotion: "reduce",
+    javaScriptEnabled: false,
+  });
+  const before = await ctx.newPage();
+  await before.goto("/cube");
+  await expect(before.locator("[data-cube-group='배우기'] a")).toHaveCount(0);
+  const pending = await box(before, "[data-cube-group-pending]");
+  const groupBefore = await box(before, "[data-cube-group='맞추기·겨루기']");
+  await ctx.close();
+
+  await no3d(page);
+  await page.goto("/cube");
+  await expect(page.locator("[data-cube-next]")).toHaveAttribute(
+    "data-cube-next",
+    "intro",
+  );
+  const cell = await box(page, "[data-cube-learn-link]");
+  // 자리와 칸이 같은 높이·같은 줄이라 아래 묶음이 밀리지 않는다
+  expect(cell).toEqual(pending);
+  expect(await box(page, "[data-cube-group='맞추기·겨루기']")).toEqual(
+    groupBefore,
+  );
+});
 
 test(
   "다음에 할 것: 이 기기의 진도와 기록으로 권하는 칸이 바뀐다",
