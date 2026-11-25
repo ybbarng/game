@@ -25,7 +25,7 @@ const pick = (list: AlgCase[], id: string, caption: string, alg?: string) => {
 export const TWO_LOOK_GROUPS: CaseGroup[] = [
   {
     title: "1. 노란 십자(2단계 OLL 첫 걸음)",
-    look: "위를 보는 노란 엣지 블럭이 노란 센터와 만드는 모양을 봐요.",
+    look: "위를 보는 노란 엣지 블럭이 노란 센터 블럭과 만드는 모양을 봐요.",
     set: "2look-oll",
     mask: "ll-cross",
     cases: [
