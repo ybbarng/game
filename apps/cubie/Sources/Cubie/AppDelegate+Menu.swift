@@ -229,8 +229,9 @@ extension AppDelegate {
     toggleKeys()
     if keys.isShown, !cube.focused { focusCube() }
   }
-  /// 티어표를 지금 크기로(이미 열려 있으면 그 크기로 바꾼다)
-  @objc func menuTiers() { sheets.open(.tiers, n: cube.state.n) }
+  /// 티어표를 지금 크기로(이미 열려 있으면 그 크기로 바꾼다). 지금 크기는 메뉴 「큐브 크기」로 고른 사용자 크기다:
+  /// 상황 놓기로 3×3을 잠시 든 동안에도 고른 크기로 연다(기록 창과 같다, docs/47 16-28)
+  @objc func menuTiers() { sheets.open(.tiers, n: cube.book.n) }
   /// 메뉴 「키 배치·색…」: 앱이 그린 키·색 설정 창
   @objc func menuSettings() { sheets.open(.settings) }
 

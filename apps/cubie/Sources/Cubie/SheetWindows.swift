@@ -57,7 +57,7 @@ final class SheetWindows: NSObject, NSWindowDelegate {
       r.onTiers = { [weak self] n in self?.open(.tiers, n: n) }
       s = r
     case .tiers:
-      s = NativeTiersWindow(store: cube.store, math: RustTierMath(), n: n ?? cube.state.n)
+      s = NativeTiersWindow(store: cube.store, math: RustTierMath(), n: n ?? cube.book.n)
     case .settings:
       // 바꾸면 바로 큐브 창(색·회전 시간·스티커·소리·섞기 연출·키 배치)과 단축키 표가 다시 읽는다
       s = NativeSettingsWindow(
