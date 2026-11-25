@@ -15,6 +15,7 @@ import { MENU_STAGES } from "../mini/practice";
 import { drawRound } from "../practice/deck";
 import { keyCost } from "../practice/key-cost";
 import { choicesOf, pickAlg } from "../practice/pick-alg";
+import { PLACE_STAGES, placeCase } from "../practice/place";
 import { boardFor, caseStart, problemOf } from "../practice/problem";
 import type { PracticeMode } from "../practice/round";
 import { PracticeSession } from "../practice/session";
@@ -325,15 +326,34 @@ function runScenario(sc: Scenario) {
   return { ...sc, ops, out, record: follow, train };
 }
 
+/** 상황 놓기(`place.ts`): 단계·상황 × 키 배치 → 시작 모양과 보일 공식 */
+function places() {
+  return PLACE_STAGES.map((stage) => ({
+    stage: stage.id,
+    cases: stage.cases.map((c) => ({
+      id: c.id,
+      group: c.group ?? null,
+      start: colorsOf(caseStart(stage, c)),
+      algs: Object.fromEntries(
+        (Object.keys(KEYMAPS) as Preset[]).map((preset) => [
+          preset,
+          placeCase(stage.id, c.id, KEYMAPS[preset]())?.alg ?? null,
+        ]),
+      ),
+    })),
+  }));
+}
+
 export function buildPractice(): string {
   return fixtureJson(
     {
-      what: "공식 연습(practice/): 메뉴 단계, 단계·키 배치마다 고른 공식과 키 비용, 씨앗·기록 → 출제와 시작 모양, 진행기 차례(ManualClock) → 화면 상태·소리·기록",
+      what: "공식 연습(practice/): 메뉴 단계, 단계·키 배치마다 고른 공식과 키 비용, 씨앗·기록 → 출제와 시작 모양, 진행기 차례(ManualClock) → 화면 상태·소리·기록, 상황 놓기(place): 단계·상황 × 키 배치 → 시작 모양과 보일 공식",
       menu: MENU_STAGES,
     },
     [
       ...picksAndDraws().map((x) => ({ kind: "stage", ...x })),
       ...SCENARIOS.map((sc) => ({ kind: "session", ...runScenario(sc) })),
+      ...places().map((x) => ({ kind: "place", ...x })),
     ],
   );
 }

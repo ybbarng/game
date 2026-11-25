@@ -532,6 +532,60 @@ pub fn board_for(stage: &PracticeStage, c: &DrillCase, p: &Problem) -> ProblemBo
     }
 }
 
+// ── 상황 놓기(사이트 `practice/place.ts`, docs/47 16-24) ─────────
+
+/// 상황 놓기에 보일 단계(메뉴 차례): 마지막 층의 2단계 OLL·2단계 PLL과 OLL·PLL 전부
+pub const PLACE_STAGES: [&str; 4] = ["2look-oll", "2look-pll", "oll", "pll"];
+
+/// 놓은 상황 하나: 단계·상황, 시작 상태(쥐기 + 상황 만들기, 윗면 돌리기 없음), 보일 공식(맞춤 + 내 공식이나 키가 싼 공식)
+#[derive(Clone, Debug)]
+pub struct PlacedCase {
+    pub stage: &'static PracticeStage,
+    pub case: &'static DrillCase,
+    pub start: State,
+    pub alg: String,
+}
+
+/// 상황 놓기 메뉴의 단계들(차례대로). 상황은 단계의 `cases` 차례, 모양 묶음(`group`)이 바뀌는 곳에서 메뉴가 줄을 나눈다
+pub fn place_stages() -> Vec<&'static PracticeStage> {
+    PLACE_STAGES
+        .iter()
+        .filter_map(|id| stage_by_id(id))
+        .collect()
+}
+
+/// 상황 하나를 놓는다(공식 연습 문제와 같은 시작 모양, 사이트 `placeCase`). 상황 놓기 단계가 아니거나 모르는 상황이면 `None`
+pub fn place_case(
+    stage_id: &str,
+    case_id: &str,
+    keymap: &Keymap,
+    book: &AlgBook,
+) -> Option<PlacedCase> {
+    if !PLACE_STAGES.contains(&stage_id) {
+        return None;
+    }
+    let stage = stage_by_id(stage_id)?;
+    let case = stage.case(case_id)?;
+    let picked = pick_alg(case, keymap, book);
+    let alg = problem_of(stage, case, "", &picked.alg).alg;
+    Some(PlacedCase {
+        stage,
+        case,
+        start: case_start(stage, case, ""),
+        alg,
+    })
+}
+
+/// 놓은 상황의 공식을 시작 상태에 두면 그 상황의 통과 모양이 되는가(시험·확인용)
+pub fn placed_solves(p: &PlacedCase) -> bool {
+    let moves = parse3(&alg_tokens(&p.alg).join(" "));
+    goal_met(
+        PRACTICE_N,
+        &apply_moves(PRACTICE_N, &p.start, &moves),
+        goal_of(p.case),
+    )
+}
+
 // ── 따라 치기 판정(사이트 `MoveMatcher`·`FormulaRun`·`FollowJudge`) ─────
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
