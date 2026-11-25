@@ -57,21 +57,42 @@ test(
     await expect(
       page.getByRole("heading", { name: "큐브 맞추기" }),
     ).toBeVisible();
-    // 메뉴는 맨 위 「다음에 할 것」 하나, 문 셋(처음이라면·해법 익히기·맞추기·겨루기)과 더 보기(docs/47 16-2)
+    // 메뉴는 맨 위 「다음에 할 것」 하나, 문 둘(배우기·맞추기·겨루기)과 더 보기(docs/47 16-2·16-26)
     const groups = page.locator("[data-cube-group]");
-    await expect(groups).toHaveCount(4);
+    await expect(groups).toHaveCount(3);
     expect(
       await groups.evaluateAll((els) =>
         els.map((e) => e.getAttribute("data-cube-group")),
       ),
-    ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
+    ).toEqual(["배우기", "맞추기·겨루기", "더 보기"]);
     // 처음 온 사람: 다음에 할 것은 사이트 쓰는 법
     const nextCard = page.locator("[data-cube-next]");
     await expect(nextCard).toHaveAttribute("data-cube-next", "intro");
     await expect(nextCard).toHaveAttribute("href", "/cube/intro");
+    // 배우는 곳은 「큐브 배우기」 한 칸이고, 해법·단원은 첫 화면에 펼치지 않는다(docs/47 16-26)
+    const learnGroup = page.locator("[data-cube-group='배우기'] a");
+    expect(
+      await learnGroup.evaluateAll((els) =>
+        els.map((a) => [
+          a.querySelector("span:last-child")?.textContent,
+          a.getAttribute("href"),
+        ]),
+      ),
+    ).toEqual([
+      ["사이트 쓰는 법", "/cube/intro"],
+      ["큐브 배우기", "/cube/methods"],
+    ]);
+    await expect(learnGroup.first()).toHaveAttribute(
+      "data-cube-intro-link",
+      "",
+    );
+    await expect(page.locator("[data-cube-learn-link]")).toHaveAttribute(
+      "href",
+      "/cube/methods",
+    );
     await expect(
-      page.locator("[data-cube-group='처음이라면'] a").first(),
-    ).toHaveAttribute("data-cube-intro-link", "");
+      page.locator("[data-cube-group] a[href^='/cube/learn']"),
+    ).toHaveCount(0);
     await expect(page.locator("[data-cube-map-link]")).toHaveAttribute(
       "href",
       "/cube/map",
@@ -252,9 +273,12 @@ test(
         .evaluateAll((els) =>
           els.map((e) => e.getAttribute("data-map-section")),
         ),
-    ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
+    ).toEqual(["배우기", "맞추기·겨루기", "더 보기"]);
     await expect(page.locator('[data-map-item="/cube/daily"]')).toContainText(
       "오늘의 섞기",
+    );
+    await expect(page.locator('[data-map-item="/cube/methods"]')).toContainText(
+      "큐브 배우기",
     );
     expect(
       await page.evaluate(

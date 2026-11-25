@@ -22,7 +22,7 @@ export const MAP_INTRO =
 
 export const FEATURE_MAP: FeatureSection[] = [
   {
-    title: "처음이라면",
+    title: "배우기",
     items: [
       {
         icon: "👋",
@@ -43,21 +43,10 @@ export const FEATURE_MAP: FeatureSection[] = [
         what: "화면에 뜬 돌리기를 키로 치거나, 키를 보고 어떤 돌리기인지 맞히거나, 공식을 따라 쳐요.",
       },
       {
-        icon: "🧩",
-        title: "처음 맞추기",
-        href: "/cube/learn?lesson=333-start",
-        what: "3×3을 한 층씩 맞추는 해법을 처음부터 따라 해요.",
-      },
-    ],
-  },
-  {
-    title: "해법 익히기",
-    items: [
-      {
         icon: "🎓",
-        title: "해법 고르기",
+        title: "큐브 배우기",
         href: "/cube/methods",
-        what: "처음 맞추는 해법부터 골라 배우고 연습해요. 처음 맞추는 해법의 마지막 층을 공식으로 바꿔 빠른 해법으로 넘어가는 과정, 이름이 CFOP·루·ZZ인 빠른 해법 셋, 4×4 이상의 큰 큐브를 맞추는 법, 눈을 가리고 맞추는 블라인드도 있어요.",
+        what: "3×3을 한 층씩 처음 맞추는 해법부터 골라 배우고 연습해요. 처음 맞추는 해법의 마지막 층을 공식으로 바꿔 빠른 해법으로 넘어가는 과정, 이름이 CFOP·루·ZZ인 빠른 해법 셋, 4×4 이상의 큰 큐브를 맞추는 법, 눈을 가리고 맞추는 블라인드도 있어요.",
       },
       {
         icon: "🎯",
