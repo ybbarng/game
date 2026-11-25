@@ -193,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   }
 
   /// 확인용(CUBIE_DEBUG): 다른 프로세스가 보낸 알림으로 메뉴와 같은 일을 한다(메뉴를 마우스로 누르지 않고 확인).
-  /// 알림 이름 `kr.byb.cubie.debug`, object는 "scramble"·"mirror"·"size:4"·"records"·"tiers"·"settings"·"site-settings"(「모든 설정…」)·
+  /// 알림 이름 `kr.byb.cubie.debug`, object는 "scramble"·"reset"(맞춘 상태로)·"hint"·"place:<묶음 id>,<상황 id>"·"mirror"·"size:4"·"records"·"tiers"·"settings"·"site-settings"(「모든 설정…」)·
   /// "visible"(숨기기·보이기)·"reload"·"practice:<단계 id>"(비우면 끝내기)·"keys"·"frame:x,y,w,h"·"dump"
   private func listenDebug() {
     DistributedNotificationCenter.default().addObserver(
@@ -206,6 +206,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let parts = cmd.split(separator: ":", maxSplits: 1).map(String.init)
         switch parts.first {
         case "scramble": self.menuScramble()
+        case "reset": self.menuReset()
+        case "hint": self.menuHint()
+        case "place":
+          // "place:<묶음 id>,<상황 id>"(docs/47 16-24)
+          let f = (parts.last ?? "").split(separator: ",").map(String.init)
+          if f.count == 2 { self.cube.send(.place(set: f[0], id: f[1])) }
         case "mirror": self.menuMirror()
         case "size": self.cube.send(.size(Int(parts.last ?? "") ?? 3))
         case "records": self.menuRecords()

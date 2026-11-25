@@ -21,7 +21,7 @@ enum {
   CUBIE_KEY_MOVED = 2,     // 수를 둠(되돌리기 포함)
   CUBIE_KEY_SOLVED = 3,    // 섞인 큐브를 이 수로 다 맞춤
   CUBIE_KEY_SCRAMBLED = 4, // 섞음(Enter)
-  CUBIE_KEY_RESET = 5,     // 맞춘 상태로(앱 한 판은 쓰지 않는다: 미니 모드는 Esc·Space 명령을 먹기만 한다)
+  CUBIE_KEY_RESET = 5,     // 맞춘 상태로(맞추던 판은 기록 없이 끝난다. Esc 자리는 먹기만 한다, docs/47 16-24)
   CUBIE_KEY_PEEK_BACK = 6, // 살짝 보기: 뒤(키를 떼면 앱이 처음 각도로)
   CUBIE_KEY_PEEK_DOWN = 7, // 살짝 보기: 아래
   CUBIE_KEY_VIEW_HOME = 8, // 처음 각도로

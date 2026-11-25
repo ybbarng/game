@@ -12,11 +12,21 @@ struct CubeState {
   var practice: String?
   var practiceSee = false
   var practiceStages: [PracticeStageItem] = []
+  /// 「맞춘 상태로」 키(메뉴 옆에 보인다, docs/47 16-24). 모르거나 Esc 자리뿐이면 비어 있다
+  var resetKey: MenuKey?
+  /// 상황 놓기(docs/47 16-24): 메뉴에 보일 묶음과 지금 놓은 상황(묶음 id·상황 id, 안 했으면 nil)
+  var placeSets: [PlaceSetItem] = []
+  var placedSet: String?
+  var placedCase: String?
 }
 
 /// 앱이 큐브 화면(`NativeCubeWindow.send`)에 시키는 일(메뉴·단축키)
 enum CubeCommand {
   case scramble
+  /// 맞춘 상태로(맞추던 판은 기록 없이 끝난다)
+  case reset
+  /// 상황 놓기(그 상황을 처음부터)
+  case place(set: String, id: String)
   case toggleMirror
   case hint
   case size(Int)

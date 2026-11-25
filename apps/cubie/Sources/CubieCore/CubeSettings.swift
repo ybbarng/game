@@ -148,6 +148,13 @@ public struct StoredKeymap: Equatable, Sendable {
     return bindings.first { $0.action == "scramble" }
   }
 
+  /// 「맞춘 상태로」 키(메뉴 옆 표시, docs/47 16-24). 기본 배치 둘은 Shift+Enter. 아무것도 함께 누르지 않은 Esc 자리는
+  /// 앱이 가로채 쓰지 않으므로 고르지 않는다(코어 `keys::cubie_uses`와 같은 규칙)
+  public var resetKey: Binding? {
+    if preset != "custom" { return Binding(code: "Enter", shift: true, action: "reset") }
+    return bindings.first { $0.action == "reset" && !($0.code == "Escape" && $0.mods == 0) }
+  }
+
   /// 힌트 키 `\`를 배치가 다른 동작에 썼나(그러면 배치를 따른다, 사이트 `HINT_KEYS`)
   public var usesBackslash: Bool {
     preset == "custom" && bindings.contains { $0.code == "Backslash" && !$0.shift && !$0.alt && !$0.ctrl }
