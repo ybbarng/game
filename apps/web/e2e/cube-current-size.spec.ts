@@ -178,11 +178,11 @@ test("그 화면에 없는 크기면 3×3으로 열리고 지금 크기는 그�
     await page.goto(path);
     await expect(page.locator(picker)).toHaveAttribute("data-value", "3");
   }
-  await page.goto("/cube/methods");
-  await pressed(page, '[data-size-tab="3"]');
   await page.goto("/cube/patterns?tab=make");
   await pressed(page, '[data-cube-shape-size="3"]');
-  // 6×6은 단축키 표·혼자 맞추기·티어표에는 있다
+  // 6×6은 단축키 표·혼자 맞추기·티어표·해법 배우기(6×6·7×7로 넓히기, docs/47 16-29)에는 있다
+  await page.goto("/cube/methods");
+  await pressed(page, '[data-size-tab="6"]');
   await page.goto("/cube/keys");
   await pressed(page, '[data-size="6"]');
   await page.goto("/cube/solo");
