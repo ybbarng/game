@@ -1,7 +1,7 @@
 // 큐브 맞추기 배우기·훈련 자료의 모양(docs/47 8절). 화면과 엔진은 이 자료를 읽기만 한다.
 // 공식은 모두 WCA 표기 문자열이다(R U R' U', Rw, 2R, M E S, x y z). 기본 방향은 위 흰색·앞 초록·오른쪽 빨강.
 
-export type CubeSize = 2 | 3 | 4 | 5;
+export type CubeSize = 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
  * 맞아 있어야 할 조각 묶음 이름. "직접 해보기"의 통과 조건이다.
@@ -310,6 +310,11 @@ export interface CourseStage {
 export interface Course {
   id: string;
   size: CubeSize;
+  /**
+   * 해법 배우기 크기 탭에서 이 과정을 보일 크기들. 없으면 `size` 하나. 6×6·7×7로 넓히기처럼 두 크기에 함께 쓰는 과정이
+   * 둘 모두의 탭에 보인다(단원 크기는 단원마다 `Lesson.size`)
+   */
+  sizes?: CubeSize[];
   title: string;
   summary: string;
   lessons: Lesson[];

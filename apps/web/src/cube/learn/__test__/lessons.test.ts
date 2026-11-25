@@ -13,11 +13,15 @@ const steps = COURSES.flatMap((c) =>
 );
 
 describe("배우기 과정", () => {
-  it("단원 id가 겹치지 않고, 단원 크기가 과정 크기와 같다", () => {
+  it("단원 id가 겹치지 않고, 단원 크기가 과정이 보이는 크기 가운데 하나다", () => {
     const ids = COURSES.flatMap((c) => c.lessons.map((l) => l.id));
     expect(new Set(ids).size).toBe(ids.length);
-    for (const c of COURSES)
-      for (const l of c.lessons) expect(l.size, l.id).toBe(c.size);
+    for (const c of COURSES) {
+      // 두 크기에 보이는 과정(6×6·7×7로 넓히기)은 대표 크기(size)도 그 가운데 하나다
+      const sizes = c.sizes ?? [c.size];
+      expect(sizes, c.id).toContain(c.size);
+      for (const l of c.lessons) expect(sizes, l.id).toContain(l.size);
+    }
   });
 
   it("단계 모양: 시연은 공식, 해보기는 상황과 목표가 있다", () => {
