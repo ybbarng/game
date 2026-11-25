@@ -75,13 +75,12 @@ test("해법 지도 E: 카드를 누르면 해법 화면에서 세부 걸음을 
   ).toHaveAttribute("aria-disabled", "true");
 });
 
-test("해법 지도 B: 갈림길 구간을 누르면 그 구간의 걸음이 펼쳐진다", async ({
+test("해법 지도: 폐기한 B 갈림길 주소(v=b)로 열면 A 지도로 연다", async ({
   page,
 }) => {
   await page.goto("/cube/learn-map?v=b&m=beginner");
-  const seg = page.locator('[data-hub="cross"] [data-segment]').first();
-  await seg.locator("button").click();
-  await expect(seg.locator("[data-segment-steps] [data-edge]")).toHaveCount(2);
+  await expect(page.locator('[data-solve-map="a"]')).toBeVisible();
+  await expect(page).toHaveURL(/v=a/);
 });
 
 test("해법 지도 견본 기록: 지나온 길에 「나」, 약한 걸음·익숙한 상황 수가 보인다", async ({

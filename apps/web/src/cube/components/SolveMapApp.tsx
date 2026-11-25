@@ -45,10 +45,9 @@ import {
 import { loadRecords, type SolveRecord } from "../records";
 import { useCubeSettings } from "../settings";
 import { CardsView } from "./SolveMapCards";
-import { BarsView, HubView, type MapCtx, MapView } from "./SolveMapViews";
+import { BarsView, type MapCtx, MapView } from "./SolveMapViews";
 import {
   isExtra,
-  MAIN_METHODS,
   METHOD_COLOR,
   methodById,
   methodTotals,
@@ -56,10 +55,10 @@ import {
   visibleMethods,
 } from "./solve-map-model";
 
-export type MapVariant = "a" | "b" | "c" | "d" | "cards-v" | "cards-h";
+// B 갈림길 안은 폐기했다(2026-11-26: 하나씩 눌러야 상태를 알고, 갈림·합류는 C가 더 잘 보인다). `v=b`는 A로 연다
+export type MapVariant = "a" | "c" | "d" | "cards-v" | "cards-h";
 const VARIANTS: { id: MapVariant; title: string }[] = [
   { id: "a", title: "A 지도" },
-  { id: "b", title: "B 갈림길" },
   { id: "c", title: "C 노선도" },
   { id: "d", title: "D 막대" },
   { id: "cards-v", title: "E 카드 세로" },
@@ -203,9 +202,7 @@ export function SolveMapApp() {
       }
     : mine;
   const ofSize = (m: MapMethod) => methodSize(m) === n;
-  // B안은 3×3의 루·ZZ·페트루스도 「다른 해법」으로 접는다
-  const folded = (m: MapMethod) =>
-    variant === "b" && n === 3 ? !MAIN_METHODS.includes(m.id) : isExtra(m);
+  const folded = isExtra;
   const methods = visibleMethods(selected, extra, folded).filter(ofSize);
   const picked = selected.filter((id) => ofSize(methodById(id)));
   const chosen = (picked.length ? picked : [defaultOf(n)]).map(methodById);
@@ -410,7 +407,6 @@ export function SolveMapApp() {
           <>
             {variant === "a" && <MapView ctx={ctx} style="map" />}
             {variant === "c" && <MapView ctx={ctx} style="metro" />}
-            {variant === "b" && <HubView ctx={ctx} />}
             {variant === "d" && <BarsView ctx={ctx} />}
             {variant.startsWith("cards") && (
               <CardsView

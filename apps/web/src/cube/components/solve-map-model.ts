@@ -41,14 +41,6 @@ export const METHOD_COLOR: Readonly<Record<MapMethodId, string>> = {
   "555-reduction": "#fca5a5",
 };
 
-/** B안에서 처음에 펼쳐 둘 해법(나머지는 「다른 해법」으로 접는다) */
-export const MAIN_METHODS: readonly MapMethodId[] = [
-  "beginner",
-  "beginner-twist-first",
-  "two-look",
-  "cfop",
-];
-
 export const methodById = (id: MapMethodId) =>
   MAP_METHODS.find((m) => m.id === id) as MapMethod;
 
@@ -224,100 +216,6 @@ export function detours(
 
 /** 패리티 고리에 붙일 잰 값: 축소법 판에서 나온 비율과 나왔을 때 친 수(4×4) */
 export const parityMeasure = (kind: "oll" | "pll") => MAP_MEASURE.parity[kind];
-
-/**
- * B안 갈림길: 보일 해법끼리 갈라지거나 합쳐지는 지점(들어오는 길·나가는 길이 둘 이상)과 처음·끝 지점
- */
-export function hubNodes(methods: readonly MapMethod[]): Set<MapNodeId> {
-  const ins = new Map<MapNodeId, Set<string>>();
-  const outs = new Map<MapNodeId, Set<string>>();
-  const ends = new Set<MapNodeId>();
-  for (const m of methods) {
-    const nodes = methodNodes(m);
-    ends.add(nodes[0] as MapNodeId);
-    ends.add(nodes.at(-1) as MapNodeId);
-    for (const id of m.edges) {
-      const e = edgeById(id) as MapEdge;
-      ins.set(e.to, (ins.get(e.to) ?? new Set()).add(id));
-      outs.set(e.from, (outs.get(e.from) ?? new Set()).add(id));
-    }
-  }
-  const out = new Set(ends);
-  for (const [n, s] of ins) if (s.size > 1) out.add(n);
-  for (const [n, s] of outs) if (s.size > 1) out.add(n);
-  return out;
-}
-
-export interface Segment {
-  key: string;
-  from: MapNodeId;
-  to: MapNodeId;
-  edges: string[];
-  methods: MapMethod[];
-}
-
-/** 해법마다 길을 갈림길에서 끊은 구간(같은 길 묶음은 하나로, 지나는 해법을 모은다) */
-export function segments(methods: readonly MapMethod[]): Segment[] {
-  const hubs = hubNodes(methods);
-  const by = new Map<string, Segment>();
-  for (const m of methods) {
-    let cur: string[] = [];
-    let from = methodNodes(m)[0] as MapNodeId;
-    for (const id of m.edges) {
-      const e = edgeById(id) as MapEdge;
-      cur.push(id);
-      if (hubs.has(e.to)) {
-        const key = cur.join(">");
-        const seg = by.get(key) ?? {
-          key,
-          from,
-          to: e.to,
-          edges: cur,
-          methods: [],
-        };
-        seg.methods.push(m);
-        by.set(key, seg);
-        cur = [];
-        from = e.to;
-      }
-    }
-  }
-  return [...by.values()];
-}
-
-/** 구간의 공식 수(그 구간을 지나는 첫 고른 해법 기준, 없으면 첫 해법). 셀 자료가 없는 길이 있으면 null */
-export function segmentFormulas(
-  seg: Segment,
-  selected: readonly MapMethod[],
-): number | null {
-  const m = selected.find((x) => seg.methods.includes(x)) ?? seg.methods[0];
-  if (!m) return null;
-  const nf = newFormulas(m);
-  let sum = 0;
-  for (const id of seg.edges) {
-    const k = nf.get(id);
-    if (k === null || k === undefined) return null;
-    sum += k;
-  }
-  return sum;
-}
-
-/** 구간의 잰 평균 수(한 길이라도 잰 값이 없으면 undefined) */
-export function segmentTurns(
-  seg: Segment,
-  selected: readonly MapMethod[],
-): number | undefined {
-  const ms = [
-    ...selected.filter((x) => seg.methods.includes(x)),
-    ...seg.methods,
-  ];
-  for (const m of ms) {
-    const xs = seg.edges.map((id) => measuredStep(m.id, id));
-    if (xs.every((x) => x !== undefined))
-      return xs.reduce((a, b) => (a as number) + (b as number), 0);
-  }
-  return undefined;
-}
 
 export const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}초`;
 
