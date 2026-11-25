@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { edgeById, type MapEdge } from "../learn/solve-map";
 import {
+  clampView,
   edgeFormulaLabel,
   hubNodes,
   isExtra,
@@ -67,6 +68,31 @@ describe("B안 갈림길", () => {
       pairs && segmentFormulas(pairs, cfop),
       pairs && segmentTurns(pairs, cfop),
     ]).toEqual([41, 23]);
+  });
+});
+
+describe("줌·패닝 범위", () => {
+  // 틀 800×600, 지도 1200×1500
+  const b = { w: 800, h: 600, width: 1200, height: 1500 };
+
+  it("지도 왼쪽·위 끝 너머로는 밀리지 않는다(지도 밖 빈칸이 안 보인다)", () => {
+    expect(clampView({ x: 300, y: 50, k: 1 }, b)).toEqual({ x: 0, y: 0, k: 1 });
+  });
+
+  it("지도 오른쪽·아래 끝 너머로도 밀리지 않는다", () => {
+    expect(clampView({ x: -900, y: -2000, k: 1 }, b)).toEqual({
+      x: -400,
+      y: -900,
+      k: 1,
+    });
+  });
+
+  it("줄여서 지도가 틀보다 좁으면 왼쪽·위에 붙는다", () => {
+    expect(clampView({ x: 120, y: -40, k: 0.5 }, b)).toEqual({
+      x: 0,
+      y: -40,
+      k: 0.5,
+    });
   });
 });
 

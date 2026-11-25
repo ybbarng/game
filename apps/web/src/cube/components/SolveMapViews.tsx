@@ -37,6 +37,7 @@ import {
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import {
+  clampView,
   edgeFormulaLabel,
   edgeHref,
   edgeTurns,
@@ -865,7 +866,17 @@ function MapFrame({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
+  const [view, rawSetView] = useState<View>({ x: 0, y: 0, k: 1 });
+  // 지도 끝을 넘어 패닝하지 않게 모든 보기 바꾸기를 지도 범위 안으로 묶는다
+  const bounds = useRef({ w: 0, h: 0, width, height });
+  bounds.current = { w: size.w, h: size.h, width, height };
+  const setView = useCallback(
+    (u: View | ((v: View) => View)) =>
+      rawSetView((prev) =>
+        clampView(typeof u === "function" ? u(prev) : u, bounds.current),
+      ),
+    [],
+  );
   const home = useRef<View | null>(null);
   const pointers = useRef(new Map<number, Pt>());
   const gesture = useRef<{
@@ -896,14 +907,15 @@ function MapFrame({
     [size],
   );
 
-  // 처음: 「나」를 가운데에, 휴대폰은 조금 줄여서
+  // 처음: 「나」가 보이는 범위에서 지도 왼쪽 끝을 틀 왼쪽에(「나」를 가운데에 두되 지도 밖 빈칸은 보이지 않게).
+  // 휴대폰은 조금 줄여서
   useEffect(() => {
     if (!size.w || home.current) return;
     const k = size.w < 600 ? 0.75 : 1;
-    const v = centerOn(focus, k);
+    const v = clampView(centerOn(focus, k), bounds.current);
     home.current = v;
     setView(v);
-  }, [size, focus, centerOn]);
+  }, [size, focus, centerOn, setView]);
 
   // 고른 해법이 바뀌면 그 길 전체를 맞춘다(처음 한 번은 건너뛴다)
   const firstFit = useRef(true);
@@ -938,7 +950,7 @@ function MapFrame({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [setView]);
 
   const local = (ev: ReactPointerEvent): Pt => {
     const r = (box.current as HTMLDivElement).getBoundingClientRect();
