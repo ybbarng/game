@@ -74,10 +74,9 @@ describe("혼자 맞추기 구간", () => {
   });
 
   it("한 구간이 여러 걸음을 덮는 길(초보자 마지막 층)과 구간 기록이 없는 판은 넣지 않는다", () => {
-    const noSplits: SolveRecord[] = DEMO_RECORDS.map((r) => ({
-      ...r,
-      splits: undefined,
-    }));
+    const noSplits: SolveRecord[] = DEMO_RECORDS.map(
+      ({ splits: _, ...r }) => r,
+    );
     expect([
       methodSolo(method("beginner"), DEMO_RECORDS).has("beginner-edges"),
       methodSolo(method("beginner"), noSplits).size,

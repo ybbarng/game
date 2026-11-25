@@ -114,6 +114,9 @@ const SOLVE_METHOD: Partial<Record<MapMethod["id"], SolveMethod>> = {
   "corners-first": "corners",
 };
 
+/** 지도 해법의 혼자 맞추기 내 해법(없으면 undefined) */
+export const solveMethodOf = (m: MapMethod) => SOLVE_METHOD[m.id];
+
 /** 길 → 그 걸음 하나만 덮는 구간(앞 이정표>이 이정표). 여러 걸음을 한 구간이 덮으면 넣지 않는다 */
 const EDGE_SEGMENT: Readonly<Record<string, `${string}>${MilestoneId}`>> = {
   cross: "start>cross",
