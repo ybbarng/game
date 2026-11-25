@@ -151,7 +151,16 @@ describe("센터: 막대 넣기", () => {
 describe("센터: 막대 만들기", () => {
   it("안쪽 가로 층과 R·L·B는 윗면·아랫면 센터 블럭을 움직이지 않는다", () => {
     for (const n of [6, 7])
-      for (const alg of ["2U", "3U", "3D", "2D", "R", "L", "B"]) {
+      for (const alg of [
+        "2U",
+        "3U",
+        "3D",
+        "2D",
+        "R",
+        "L",
+        "B",
+        ...(n === 7 ? ["4U"] : []),
+      ]) {
         const faces = movedCenters(n, alg).map((m) => m.to.face);
         expect(
           faces.filter((f) => f === "U" || f === "D"),
@@ -173,7 +182,31 @@ describe("센터: 막대 만들기", () => {
   });
 });
 
-describe("센터: 7×7 가운데 세로 칸 하나씩", () => {
+describe("센터: 7×7 가운데 세로 열 하나씩", () => {
+  it("앞면 한가운데 오른쪽·위쪽·왼쪽 칸의 블럭은 F·F2·F'로 한가운데 아래쪽 칸에 온다", () => {
+    for (const [alg, from] of [
+      ["F", [1, 0]],
+      ["F2", [0, 1]],
+      ["F'", [-1, 0]],
+    ] as const) {
+      const m = moved(7, alg).find(
+        (x) =>
+          x.from.face === "F" &&
+          x.from.kind === "innerCenter" &&
+          x.from.at[0] === from[0] &&
+          x.from.at[1] === from[1],
+      );
+      expect(m && key(m.to), alg).toBe("F(0,-1,3.5)");
+    }
+  });
+
+  it("공식 속 U·U'는 윗면을 되돌린다: 가운데 세로 열 공식이 옮기는 윗면 칸은 하나뿐이다", () => {
+    for (const alg of [MID_IN_1, MID_IN_2])
+      expect(
+        movedCenters(7, alg).filter((m) => m.to.face === "U"),
+        alg,
+      ).toHaveLength(1);
+  });
   it.each([
     [MID_IN_1, 1],
     [MID_IN_2, 2],

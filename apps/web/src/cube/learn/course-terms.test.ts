@@ -127,6 +127,7 @@ const BIG_TERMS: OrderedTerm[] = [
 
 /** 6×6·7×7로 넓히기(docs/47 16-29) */
 const BIG67_TERMS: OrderedTerm[] = [
+  { term: "세로 열", use: /세로 열/, define: /「세로 열」/ },
   { term: "막대", use: /막대/, define: /「막대」/ },
   { term: "막대 넣기", use: /막대 넣기/, define: /「막대 넣기」/ },
   // 「겹치다」와 큐브의 기초 「한 겹으로 함께 돌아요」(층)는 다른 말
@@ -134,7 +135,7 @@ const BIG67_TERMS: OrderedTerm[] = [
   {
     term: "4R(한가운데 층)",
     use: /(^|[^0-9A-Za-z×-])4[RLUDFB]/m,
-    define: /4R은 바깥에서 넷째 층/,
+    define: /4R은 바깥에서 넷째 층|위에서 넷째 층, 곧 한가운데 가로 층\(4U\)/,
   },
   {
     term: "여러 안쪽 층(2-3Rw)",
