@@ -7,7 +7,7 @@ import { SAFE_P4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
 import { loadLearn as loadKeyLearn } from "../keys/storage";
 import { loadLearn } from "../learn/progress";
-import type { NextStep } from "../nav/next-step";
+import type { NextKind, NextStep } from "../nav/next-step";
 import { loadRecords } from "../records";
 import { CubeHero } from "./CubeHero";
 import "@/cube/components/cube-fx.css";
@@ -27,6 +27,8 @@ interface Item {
   span?: boolean;
   /** 화면 시험이 찾는 표시 */
   attr?: string;
+  /** 「다음에 할 것」이 이 칸과 같은 걸음이면 묶음에서 감춘다(같은 칸이 두 번 보이지 않게, docs/47 16-26) */
+  sameAs?: NextKind;
 }
 
 interface Group {
@@ -44,6 +46,7 @@ const GROUPS: Group[] = [
         title: "사이트 쓰는 법",
         href: "/cube/intro",
         attr: "data-cube-intro-link",
+        sameAs: "intro",
       },
       {
         icon: "🎓",
@@ -85,6 +88,20 @@ const GROUPS: Group[] = [
     ],
   },
 ];
+
+/**
+ * 묶음에 보일 칸. 「다음에 할 것」과 같은 칸은 감추고, 그래서 칸 수가 홀수가 되면 마지막 칸이 줄을 채운다.
+ * 다음 걸음이 아직 정해지지 않았으면(`null`) 감출 칸이 있는 묶음은 칸 대신 자리만 둔다(칸이 떴다 사라지지 않게)
+ */
+function visibleItems(items: Item[], next: NextKind | null): Item[] | null {
+  if (next === null && items.some((i) => i.sameAs)) return null;
+  const shown = items.filter((i) => i.sameAs !== next);
+  if (shown.length === items.length) return items;
+  const halves = shown.filter((i) => !i.span);
+  if (halves.length % 2 === 0) return shown;
+  const last = halves[halves.length - 1];
+  return shown.map((i) => (i === last ? { ...i, span: true } : i));
+}
 
 /** 혼자 맞추기 기록을 보는 크기(2×2~7×7) */
 const SIZES = [2, 3, 4, 5, 6, 7];
@@ -150,37 +167,50 @@ export function CubeHome() {
             <div aria-hidden className="min-h-16 rounded-2xl bg-white/5" />
           )}
         </section>
-        {GROUPS.map((group) => (
-          <section
-            key={group.title}
-            className="flex flex-col gap-1.5"
-            data-cube-group={group.title}
-          >
-            <h2 className="px-1 font-semibold text-white/50 text-xs">
-              {group.title}
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              {group.items.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  {...(item.attr ? { [item.attr]: "" } : {})}
-                  className={cn(
-                    "flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-3 transition hover:bg-white/10 active:scale-[0.98]",
-                    item.span && "col-span-2",
-                  )}
-                >
-                  <span aria-hidden className="text-xl">
-                    {item.icon}
-                  </span>
-                  <span className="truncate font-bold text-sm">
-                    {item.title}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </section>
-        ))}
+        {GROUPS.map((group) => {
+          const items = visibleItems(group.items, next?.kind ?? null);
+          return (
+            <section
+              key={group.title}
+              className="flex flex-col gap-1.5"
+              data-cube-group={group.title}
+            >
+              <h2 className="px-1 font-semibold text-white/50 text-xs">
+                {group.title}
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {/* 다음 걸음을 읽기 전: 한 줄 높이의 자리만(칸과 같은 테두리·안쪽 여백·글 줄 높이) */}
+                {items === null && (
+                  <div
+                    aria-hidden
+                    data-cube-group-pending
+                    className="col-span-2 flex items-center rounded-2xl border border-transparent bg-white/5 px-3 py-3"
+                  >
+                    <span className="invisible text-xl">·</span>
+                  </div>
+                )}
+                {(items ?? []).map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    {...(item.attr ? { [item.attr]: "" } : {})}
+                    className={cn(
+                      "flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-3 transition hover:bg-white/10 active:scale-[0.98]",
+                      item.span && "col-span-2",
+                    )}
+                  >
+                    <span aria-hidden className="text-xl">
+                      {item.icon}
+                    </span>
+                    <span className="truncate font-bold text-sm">
+                      {item.title}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          );
+        })}
         <p className="mt-1 text-center text-[11px] opacity-40">
           <MadeWith />
         </p>
