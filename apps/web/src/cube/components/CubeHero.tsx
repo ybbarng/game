@@ -187,6 +187,7 @@ export function CubeHero() {
     <div
       ref={wrapRef}
       data-cube-hero
+      data-hero-n={n}
       data-hero-ready={live ? "" : undefined}
       data-hero-shown={live && shown ? "" : undefined}
       className="flex w-full flex-col items-center"

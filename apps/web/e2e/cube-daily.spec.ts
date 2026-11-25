@@ -102,7 +102,8 @@ test(
     );
     // 기록 시도 중에는 다시 섞기·크기 바꾸기를 막는다
     await expect(button).toBeDisabled();
-    await expect(page.locator("[data-cube-size]")).toBeDisabled();
+    for (const b of await page.locator("[data-cube-size] button").all())
+      await expect(b).toBeDisabled();
     await shot(page, "daily-inspect", info.project.name);
 
     await solve(page, text);

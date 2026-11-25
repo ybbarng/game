@@ -58,7 +58,7 @@ try {
     ([m, n]) => {
       localStorage.setItem(
         "cube.settings.v1",
-        JSON.stringify({ heroSize: n, heroMethod: m }),
+        JSON.stringify({ heroMethod: m }),
       );
       localStorage.setItem(
         "cube.mini.v1",

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 
-import { no3d } from "./cube";
+import { no3d, pickSize } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 // 큐브 첫 화면 그림 요청을 page.route로 실패시킨다. 서비스 워커(sw.js)가 도중에 페이지를 맡으면(clients.claim)
@@ -413,20 +413,29 @@ test(
 );
 
 test(
-  "설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 고를 수 있다",
+  "첫 화면 큐브: 크기는 첫 화면의 지금 크기를 따르고, 설정은 그 크기의 해법만 고른다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     // 데스크톱에서만
     await no3dUnlessShots(page);
     await page.goto("/cube/settings");
     const hero = page.locator("[data-settings-hero]");
+    // 설정에는 첫 화면 큐브 크기 칸이 없다(2026-11-26 없앰). 해법은 지금 크기(처음 3×3)의 것
+    await expect(page.locator("[data-hero-size]")).toHaveCount(0);
     await hero.locator("[data-hero-method='3-cfop']").click();
     await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    // 4×4로 바꾸면 3×3 해법은 없어지고 「번갈아」로
-    await hero.locator("[data-hero-size='4']").click();
+    // 첫 화면에서 4×4로 바꾸면 연출도 4×4
+    await page.goto("/cube");
+    await pickSize(page, "[data-cube-home-size]", 4);
+    await expect(page.locator("[data-cube-hero]")).toHaveAttribute(
+      "data-hero-n",
+      "4",
+    );
+    // 설정: 3×3 해법은 없어지고 「번갈아」로
+    await page.goto("/cube/settings");
     await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveCount(0);
     await expect(
       hero.locator("[data-hero-method='alternate']"),
@@ -434,12 +443,24 @@ test(
     await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
     // 4×4에는 야우도 있다(4×4만)
     await expect(hero.locator("[data-hero-method='4-yau']")).toHaveText("야우");
-    // 6×6·7×7도 고를 수 있다(Cubie 홈 시연과 같은 해법 표)
-    await hero.locator("[data-hero-size='7']").click();
+    // 6×6·7×7도(Cubie 홈 시연과 같은 해법 표)
+    await page.goto("/cube");
+    await pickSize(page, "[data-cube-home-size]", 7);
+    await page.goto("/cube/settings");
     await expect(hero.locator("[data-hero-method='7-beginner']")).toBeVisible();
     await expect(hero.locator("[data-hero-method='7-cfop']")).toBeVisible();
     await expect(hero.locator("[data-hero-method='4-yau']")).toHaveCount(0);
-    await hero.locator("[data-hero-size='4']").click();
+    // 3×3으로 돌아오면 고른 프리드리히가 다시 쓰인다
+    await page.goto("/cube");
+    await pickSize(page, "[data-cube-home-size]", 3);
+    await page.goto("/cube/settings");
+    await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await page.goto("/cube");
+    await pickSize(page, "[data-cube-home-size]", 4);
+    await page.goto("/cube/settings");
     // 조각 강조: 기본은 「잠깐」, 고르면 남는다
     await expect(hero.locator("[data-hero-highlight='brief']")).toHaveAttribute(
       "aria-pressed",
@@ -496,9 +517,10 @@ test(
       },
     ];
     for (const c of cases) {
+      await page.goto("/cube");
+      await pickSize(page, "[data-cube-home-size]", c.size);
       await page.goto("/cube/settings");
       const hero = page.locator("[data-settings-hero]");
-      await hero.locator(`[data-hero-size='${c.size}']`).click();
       await hero.locator(`[data-hero-method='${c.method}']`).click();
       await page.goto("/cube");
       await heroShown(page);

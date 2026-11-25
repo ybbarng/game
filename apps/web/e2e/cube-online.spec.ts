@@ -1,4 +1,4 @@
-import { inputReady, keysFor, no3d, useNotationKeys } from "./cube";
+import { inputReady, keysFor, no3d, pickSize, useNotationKeys } from "./cube";
 import {
   expect,
   fastForwardUntil,
@@ -33,7 +33,12 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
   await page.clock.install();
   await page.goto("/cube/vs");
   await speedUpAnimations(page);
-  await expect(page.locator("[data-cube-vs-size]")).toHaveValue("2");
+  // 지금 크기(처음이면 3×3)로 열린다. 2×2를 고른다
+  await expect(page.locator("[data-cube-vs-size]")).toHaveAttribute(
+    "data-value",
+    "3",
+  );
+  await pickSize(page, "[data-cube-vs-size]", 2);
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await shot(page, "vs-setup", info.project.name);
   await page.locator("[data-cube-vs-start]").click();
@@ -157,6 +162,7 @@ test(
     await page.clock.install();
     await page.goto("/cube/vs");
     await speedUpAnimations(page);
+    await pickSize(page, "[data-cube-vs-size]", 2);
     await page.getByRole("button", { name: "입문", exact: true }).click();
     await page.locator("[data-cube-vs-start]").click();
     await expect(
@@ -196,7 +202,7 @@ test(
     test.setTimeout(150_000);
     await page.clock.install();
     await page.goto("/cube/vs");
-    await page.locator("[data-cube-vs-size]").selectOption("4");
+    await pickSize(page, "[data-cube-vs-size]", 4);
     await page.getByRole("button", { name: "입문", exact: true }).click();
     await page.locator("[data-cube-vs-start]").click();
 
@@ -298,7 +304,7 @@ test(
     await guest.goto(link);
     await guest.locator("[data-cube-enter]").click();
     await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
-    await host.getByLabel("종목").selectOption("2");
+    await pickSize(host, "[data-cube-room-size]", 2);
     await host.getByLabel("살펴보기").selectOption("0");
     await host.locator("[data-cube-start]").click();
     for (const p of [host, guest])
@@ -371,7 +377,7 @@ test(
     await guest.goto(link);
     await guest.locator("[data-cube-enter]").click();
     await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
-    await host.getByLabel("종목").selectOption("2");
+    await pickSize(host, "[data-cube-room-size]", 2);
     await host.getByLabel("살펴보기").selectOption("0");
 
     // 대기실에서 방장이 새로 고친다: 이름 화면 없이 같은 방(같은 방 코드·설정)으로 돌아온다
@@ -461,7 +467,7 @@ test(
     await host.goto("/cube/online?net=local");
     await host.locator("[data-cube-enter]").click();
     const oldLink = await host.locator("input[readonly]").inputValue();
-    await host.getByLabel("종목").selectOption("2");
+    await pickSize(host, "[data-cube-room-size]", 2);
     await host.getByLabel("살펴보기").selectOption("0");
 
     await host.reload();

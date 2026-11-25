@@ -1,4 +1,11 @@
-import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
+import {
+  inputReady,
+  keysFor,
+  no3d,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /**
@@ -70,6 +77,7 @@ test(
     test.setTimeout(150_000);
     await page.clock.install();
     await page.goto("/cube/vs");
+    await pickSize(page, "[data-cube-vs-size]", 2);
     await page.getByRole("button", { name: "초고수", exact: true }).click();
     await page.locator("[data-cube-vs-delay]").selectOption("8");
     await page.locator("[data-cube-vs-goal]").selectOption("layer1");
@@ -132,6 +140,7 @@ test(
     });
     await page.clock.install();
     await page.goto("/cube/vs");
+    await pickSize(page, "[data-cube-vs-size]", 2);
     await page.getByRole("button", { name: "초고수", exact: true }).click();
     await page.locator('[data-cube-vs-rounds="3"]').click();
     await page.locator("[data-cube-vs-score]").selectOption("avg");

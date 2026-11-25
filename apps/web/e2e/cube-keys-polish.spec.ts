@@ -1,4 +1,4 @@
-import { inputReady, no3d, shot } from "./cube";
+import { inputReady, no3d, pickSize, shot } from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -57,7 +57,7 @@ test("5×5 「두 손」: 숫자는 다음 면 키 하나의 깊이라 층 수 �
 }) => {
   await page.goto("/cube/solo");
   await inputReady(page);
-  await page.locator("[data-cube-size]").selectOption("5");
+  await pickSize(page, "[data-cube-size]", 5);
   await inputReady(page);
   const keys = page.locator("[data-cube-keys]");
   await expect(keys).toBeVisible();

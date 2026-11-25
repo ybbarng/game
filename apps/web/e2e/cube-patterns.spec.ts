@@ -1,4 +1,4 @@
-import { no3d } from "./cube";
+import { no3d, pickSize } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -53,10 +53,21 @@ test("패턴: 크기별 카드를 보고, 카드를 열면 시연이 나온다",
     "aria-current",
     "page",
   );
-  for (const n of [3, 2, 4, 5])
+  // 지금 크기(처음 3×3)의 패턴만 보이고, 크기 단추로 바꾼다
+  await expect(page.locator("[data-pattern-size]")).toHaveAttribute(
+    "data-pattern-size",
+    "3",
+  );
+  for (const n of [2, 4, 5, 3]) {
+    await pickSize(page, "[data-pattern-sizes]", n);
+    await expect(page.locator("[data-pattern-size]")).toHaveAttribute(
+      "data-pattern-size",
+      String(n),
+    );
     await expect(
       page.locator(`[data-pattern-size="${n}"] [data-pattern-card]`).first(),
     ).toBeVisible();
+  }
   await expect(page.locator('[data-pattern-card="3-superflip"]')).toContainText(
     "슈퍼플립",
   );

@@ -1,4 +1,11 @@
-import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
+import {
+  installClock,
+  no3d,
+  pauseClock,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, type Page, test } from "./test";
 
 /**
@@ -101,7 +108,8 @@ test(
     );
     await expect(page.locator("[data-cube-challenge-kind]")).toBeDisabled();
     await expect(page.locator("[data-cube-challenge-level]")).toBeDisabled();
-    await expect(page.locator("[data-cube-size]")).toBeDisabled();
+    for (const b of await page.locator("[data-cube-size] button").all())
+      await expect(b).toBeDisabled();
     // 살펴보기 동안은 줄지 않는다
     await page.clock.fastForward(3_000);
     await expect(page.locator("[data-cube-hp]")).toHaveAttribute(
@@ -181,7 +189,7 @@ test(
     // ── 3. 수 체력(2×2 어려움): 같은 층을 이어 돌리면 한 수, 수를 넘으면 끝 ──
     await page.locator("[data-cube-challenge-kind]").selectOption("moves");
     await page.locator("[data-cube-challenge-level]").selectOption("hard");
-    await page.locator("[data-cube-size]").selectOption("2");
+    await pickSize(page, "[data-cube-size]", 2);
     await expect(page.locator("[data-cube-rule]")).toHaveText(
       "짧은 풀이 + 25수",
     );
@@ -236,6 +244,10 @@ test(
     await expect(page.locator("[data-cube-challenge-kind]")).toHaveValue(
       "moves",
     );
-    await expect(page.locator("[data-cube-size]")).toHaveValue("2");
+    // 고른 크기는 지금 크기로 남아 다시 열어도 2×2
+    await expect(page.locator("[data-cube-size]")).toHaveAttribute(
+      "data-value",
+      "2",
+    );
   },
 );

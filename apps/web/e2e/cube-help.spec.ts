@@ -1,4 +1,11 @@
-import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
+import {
+  inputReady,
+  keysFor,
+  no3d,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import {
   expect,
   fastForwardUntil,
@@ -72,7 +79,7 @@ async function setup(
   }, o.seed);
   await page.clock.install();
   await page.goto("/cube/vs");
-  await page.locator("[data-cube-vs-size]").selectOption(o.size);
+  await pickSize(page, "[data-cube-vs-size]", o.size);
   await page.getByRole("button", { name: "초고수", exact: true }).click();
   await page.locator("[data-cube-vs-help]").selectOption(o.help);
   if (!o.inspection) await page.getByLabel("15초 살펴보기").uncheck();

@@ -550,7 +550,7 @@ async function heroFrames(browser) {
   const SIZE = 150;
   const page = await cubePage(browser, SIZE, {
     motion: true,
-    settings: { version: 1, heroSize: 3, heroMethod: "3-cfop" },
+    settings: { version: 1, heroMethod: "3-cfop" },
   });
   await fromApp(page, { type: "focus", focused: false });
   await waitAttr(page, "main[data-mini]", "data-mini-idle-armed", null);

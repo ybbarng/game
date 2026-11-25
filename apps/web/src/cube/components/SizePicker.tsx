@@ -61,7 +61,8 @@ export function SizePicker({
             e.currentTarget.blur();
           }}
           className={cn(
-            "min-w-11 rounded-lg px-2 py-1 text-sm tabular-nums transition active:scale-[0.97] disabled:opacity-50",
+            // 색은 바로 바꾼다(고른 칸이 둘로 보이는 때가 없게), 누를 때 크기만 움직인다
+            "min-w-11 rounded-lg px-2 py-1 text-sm tabular-nums transition-transform active:scale-[0.97] disabled:opacity-50",
             s === value
               ? "bg-sky-500 font-semibold text-black"
               : "text-white/70 hover:bg-white/10 hover:text-white",
