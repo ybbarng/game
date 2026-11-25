@@ -148,7 +148,7 @@ function NextPart() {
           href="/cube/methods"
           className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
         >
-          <b>해법 익히기</b>
+          <b>큐브 배우기</b>
           <span className="block text-white/70 text-xs">
             다른 해법을 배우려면
           </span>

@@ -55,7 +55,7 @@ import { TryPanel } from "./TryPanel";
 import "@/cube/components/cube-fx.css";
 
 /**
- * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 익히기(`MethodsApp`, `/cube/methods`)로 옮겼다.
+ * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 큐브 배우기(`MethodsApp`, `/cube/methods`)로 옮겼다.
  * 단원은 `?lesson=<id>`로 연다. 진도는 이 기기에 남고, 다음 단원을 잠그지는 않지만 차례를 보여 준다.
  */
 
@@ -84,7 +84,7 @@ export function LearnApp() {
   }, []);
 
   const found = lessonId ? findLesson(lessonId) : null;
-  // 과정 목록은 해법 익히기로 옮겼다(docs/47 16-6): 단원이 없는 주소는 그리로 넘긴다
+  // 과정 목록은 큐브 배우기(`/cube/methods`)로 옮겼다(docs/47 16-6): 단원이 없는 주소는 그리로 넘긴다
   useEffect(() => {
     if (lessonId !== undefined && !found)
       window.location.replace(
@@ -112,7 +112,7 @@ export function LearnApp() {
 }
 
 /**
- * 해법 익히기(`/cube/methods`, docs/47 16-2): 해법(과정)을 고르면 그 해법의 배우기(단원)와 연습(공식 훈련 묶음·십자 훈련·
+ * 큐브 배우기(`/cube/methods`, docs/47 16-2·16-26, 예전 이름 「해법 익히기」): 해법(과정)을 고르면 그 해법의 배우기(단원)와 연습(공식 훈련 묶음·십자 훈련·
  * 내 공식)이 한 카드에 보인다. `?m=<과정 id>`로 열면 그 해법 카드를 보인다. 예전 배우기 과정 목록(`/cube/learn`)을 옮겼다.
  */
 export function MethodsApp() {
@@ -160,7 +160,7 @@ function CourseList({
         <a href="/cube" className="text-sm text-white/70 hover:text-white">
           ← 큐브
         </a>
-        <h1 className="font-bold text-lg">해법 익히기</h1>
+        <h1 className="font-bold text-lg">큐브 배우기</h1>
         <a
           href="/cube/train"
           className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
@@ -518,7 +518,7 @@ function LessonView({
           href={`/cube/methods?m=${course.id}`}
           className="text-sm text-white/70 hover:text-white"
         >
-          ← 해법 익히기
+          ← 큐브 배우기
         </a>
         <h1 className="font-bold text-lg">
           {lessonIndex + 1}. {lesson.title}

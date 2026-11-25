@@ -23,12 +23,13 @@ test(
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     await useNotationKeys(page);
-    // 옛 과정 목록 주소는 해법 익히기로 넘어간다(docs/47 16-6)
+    // 옛 과정 목록 주소는 큐브 배우기로 넘어간다(docs/47 16-6·16-26)
     await page.goto("/cube/learn");
     await expect(page).toHaveURL(/\/cube\/methods$/);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "해법 익히기",
+      "큐브 배우기",
     );
+    await expect(page).toHaveTitle("큐브 배우기");
     await expect(page.locator("[data-course]").first()).toBeVisible();
     // 해법마다 배우기와 연습이 한 카드에
     await expect(
