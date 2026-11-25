@@ -86,7 +86,8 @@ interface Turn {
   q: number;
 }
 
-const MOVE_RE = /^(\d*)([URFDLBurfdlbMESxyz])(w?)(2?)('?)$/;
+// 앞 숫자는 층 수(3Rw)·층 번호(2R), 또는 여러 안쪽 층 범위(2-3Rw, 6×6 패리티 docs/47 16-29)
+const MOVE_RE = /^(\d*(?:-\d+)?)([URFDLBurfdlbMESxyz])(w?)(2?)('?)$/;
 
 export function tokens(alg: string): string[] {
   return alg
@@ -126,7 +127,14 @@ export function parseMove(tok: string, n: number): Turn {
   const sign = nv[axis] as number;
   const depthOf = (d: number) => sign * (big - 2 * (d - 1));
   let layers: number[];
-  if (wide) {
+  const range = /^(\d+)-(\d+)$/.exec(prefix);
+  if (range) {
+    if (!wide) throw new Error(`범위 표기는 w를 붙인다: ${tok}`);
+    const from = Number(range[1]);
+    const to = Number(range[2]);
+    layers = [];
+    for (let d = from; d <= to; d++) layers.push(depthOf(d));
+  } else if (wide) {
     const k = prefix === "" ? 2 : Number(prefix);
     layers = [];
     for (let d = 1; d <= k; d++) layers.push(depthOf(d));

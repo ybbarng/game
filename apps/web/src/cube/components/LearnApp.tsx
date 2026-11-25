@@ -10,6 +10,7 @@ import {
   BASICS,
   COURSES,
   courseById,
+  courseSizes,
   findLesson as findCourseLesson,
   METHOD_COURSES,
   nextLesson,
@@ -155,8 +156,11 @@ function CourseList({
   // 보이는 크기: 지금 크기(이 화면에 없으면 3×3, docs/47 16-28). `?m=`로 연 해법은 그 해법 크기를 보이되 지금 크기는
   // 그대로 둔다(보기). 크기 탭을 누르면 지금 크기도 바뀐다
   const current = useCurrentSize();
-  const [viewing, setViewing] = useState<number | null>(
-    () => pickedCourse?.size ?? null,
+  // 두 크기에 보이는 과정(6×6·7×7로 넓히기)은 지금 크기가 그 가운데 하나면 지금 크기 그대로
+  const [viewing, setViewing] = useState<number | null>(() =>
+    pickedCourse && !courseSizes(pickedCourse).includes(current)
+      ? pickedCourse.size
+      : null,
   );
   const size = viewing ?? sizeFor(COURSE_SIZES, current);
   useEffect(() => {
@@ -242,11 +246,11 @@ function CourseList({
   );
 }
 
-/** 크기별로 과정을 묶는다(3×3 → 2×2 → 4×4 → 5×5, 크기 안에서는 COURSES 차례) */
-const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5]
+/** 크기별로 과정을 묶는다(3×3 → 2×2 → 4×4 → 5×5 → 6×6 → 7×7, 크기 안에서는 COURSES 차례) */
+const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5, 6, 7]
   .map((size): [number, Course[]] => [
     size,
-    METHOD_COURSES.filter((c) => c.size === size),
+    METHOD_COURSES.filter((c) => courseSizes(c).includes(size)),
   ])
   .filter(([, list]) => list.length > 0);
 /** 해법 배우기에서 고를 수 있는 크기(과정이 있는 크기) */
