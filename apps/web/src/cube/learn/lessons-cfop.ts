@@ -1,5 +1,5 @@
 // 프리드리히(CFOP) 소개(docs/47 8-2 고급). 십자를 아래에서 → F2L 짝 → 전체 OLL 57·PLL 21.
-// 마지막 층의 2단계 OLL·PLL은 앞 과정 「마지막 층을 공식으로」(lessons-2look.ts)에서 배운다(docs/47 16-24).
+// 마지막 층의 2단계 OLL·PLL은 앞 과정 「마지막 층을 공식으로」(lessons-2look.ts)에서 배운다(docs/47 16-25).
 // 상황 연습(훈련)은 algs-*.ts의 상황 묶음을 쓰고, 여기는 개념을 익히는 단원이다.
 // 단계 글이 말하는 모양(짝이 붙었나 등)은 flow-advanced.test.ts가 엔진으로 확인한다.
 import { flip } from "./lessons-2look";

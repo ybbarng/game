@@ -84,7 +84,7 @@ const BEGINNER_333_MOVES = (() => {
   });
 })();
 
-// 마지막 층을 공식으로: 초보자와 같은 섞기를 아래 두 층은 초보자 단원 규칙으로, 마지막 층은 2단계 OLL·PLL로(docs/47 16-24)
+// 마지막 층을 공식으로: 초보자와 같은 섞기를 아래 두 층은 초보자 단원 규칙으로, 마지막 층은 2단계 OLL·PLL로(docs/47 16-25)
 function twoLookDemoMoves(scramble: string): string[] {
   let s = play(solvedCube(3), scramble);
   const lower: string[] = [];
@@ -291,7 +291,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     ],
   },
   cfop: {
-    // 마지막 층의 2단계 OLL·PLL 단원은 앞 과정 「마지막 층을 공식으로」에 있다(docs/47 16-24). 이 과정은 단계 이름만 둔다
+    // 마지막 층의 2단계 OLL·PLL 단원은 앞 과정 「마지막 층을 공식으로」에 있다(docs/47 16-25). 이 과정은 단계 이름만 둔다
     stages: [
       { title: "십자", lessons: ["cfop-cross"], goal: "cross" },
       { title: "F2L(짝 넷)", lessons: ["cfop-f2l-pair"], goal: "f2l" },

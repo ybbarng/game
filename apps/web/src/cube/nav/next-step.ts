@@ -31,7 +31,7 @@ export interface NextInput {
 
 /** 처음 맞추기 과정 */
 export const BEGINNER = "333-beginner";
-/** 처음 맞추기 뒤에 권하는 해법(차례대로, 다 끝낸 것은 건너뛴다). 첫째는 CFOP로 가는 다리(docs/47 16-24) */
+/** 처음 맞추기 뒤에 권하는 해법(차례대로, 다 끝낸 것은 건너뛴다). 첫째는 CFOP로 가는 다리(docs/47 16-25) */
 export const NEXT_METHODS = [
   "333-2look",
   "cfop",

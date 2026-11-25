@@ -7,7 +7,7 @@ import { LL_COMPARE_TABLE, TWO_LOOK_GROUPS } from "../learn/two-look-sheets";
 import { AlgPicture } from "./AlgPicture";
 
 /**
- * 「마지막 층을 공식으로」 첫 단원의 표 둘(docs/47 16-24). 모양 그림은 윗면 평면도(`AlgPicture`, 윗면 + 옆면 윗줄)이고
+ * 「마지막 층을 공식으로」 첫 단원의 표 둘(docs/47 16-25). 모양 그림은 윗면 평면도(`AlgPicture`, 윗면 + 옆면 윗줄)이고
  * 전개도는 쓰지 않는다(docs/standing-rules.md 2-1절).
  */
 

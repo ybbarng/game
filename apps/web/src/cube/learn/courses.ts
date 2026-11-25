@@ -17,7 +17,7 @@ import type { Course } from "./types";
 /**
  * 먼저 배우면 좋은 과정(목록에 보이기만 하고 잠그지 않는다). 과정 끝 「다음에 할 것」은 이 표의 거꾸로다.
  * 3×3을 아는 사람의 2×2는 3×3 초보자 과정을, 큰 큐브는 3×3 풀이를, 루·ZZ·블라인드는 CFOP의 F2L 짝·PLL 공식을 쓴다.
- * 「마지막 층을 공식으로」(2단계 OLL·PLL)는 초보자 해법과 CFOP 사이의 다리다(docs/47 16-24).
+ * 「마지막 층을 공식으로」(2단계 OLL·PLL)는 초보자 해법과 CFOP 사이의 다리다(docs/47 16-25).
  */
 const REQUIRES: Record<string, string[]> = {
   "222-from333": ["333-beginner"],
