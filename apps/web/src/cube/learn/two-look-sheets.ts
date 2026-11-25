@@ -4,13 +4,15 @@
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
 import { Z_PERM_AUF } from "./lessons-2look";
 import { LL_COMPARE } from "./ll-compare";
-import type { AlgCase, AlgSet, SheetName } from "./types";
+import type { AlgCase, AlgSet, MaskName, SheetName } from "./types";
 
 export interface CaseGroup {
   title: string;
   /** 무엇을 보고 고르는지 한 문장 */
   look: string;
   set: AlgSet;
+  /** 묶음 마스크 대신 쓸 가리기(노란 십자 걸음은 초보자 노란 십자 단원처럼 엣지 블럭의 노랑만) */
+  mask?: MaskName;
   cases: { id: string; alg: string; caption: string }[];
 }
 
@@ -25,6 +27,7 @@ export const TWO_LOOK_GROUPS: CaseGroup[] = [
     title: "1. 노란 십자(2단계 OLL 엣지 단계)",
     look: "위를 보는 노란 엣지 블럭이 노란 센터와 만드는 모양을 봐요.",
     set: "2look-oll",
+    mask: "ll-cross",
     cases: [
       pick(TWO_LOOK_OLL, "2look-oll-line", "가로줄"),
       pick(TWO_LOOK_OLL, "2look-oll-l", "ㄱ자"),

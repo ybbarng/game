@@ -52,6 +52,7 @@ import {
   WHITE_UP,
 } from "./lessons-cfop";
 import { setupFor } from "./notation";
+import { TWO_LOOK_GROUPS } from "./two-look-sheets";
 import type { Lesson, LessonStep, QuizSpec } from "./types";
 
 const play = (n: number, alg: string, s: PuzzleState = solvedCube(n)) =>
@@ -236,6 +237,26 @@ describe("마지막 층을 공식으로: 첫 단원 그림", () => {
     INTRO_LL.forEach((alg, i) => {
       s = play(3, alg, s);
       expect(goalMet(3, s, goals[i] as (typeof goals)[number])).toBe(true);
+    });
+  });
+});
+
+describe("마지막 층을 공식으로: 모양 16가지 개괄", () => {
+  it("걸음마다 3·7·2·4가지, 모두 그 걸음 전 모양이고 그 공식을 치면 그 걸음의 목표가 된다", () => {
+    const goals = ["yellow-cross", "oll", "yellow-corners", "solved"] as const;
+    expect(TWO_LOOK_GROUPS.map((g) => g.cases.length)).toEqual([3, 7, 2, 4]);
+    TWO_LOOK_GROUPS.forEach((g, i) => {
+      const goal = goals[i] as (typeof goals)[number];
+      for (const c of g.cases) {
+        const s = held(c.alg);
+        expect(goalMet(3, s, goal), c.id).toBe(false);
+        expect(goalMet(3, play(3, c.alg, s), goal), c.id).toBe(true);
+        // 앞 걸음까지는 끝난 모양이다
+        if (i > 0)
+          expect(goalMet(3, s, goals[i - 1] as (typeof goals)[number])).toBe(
+            true,
+          );
+      }
     });
   });
 });

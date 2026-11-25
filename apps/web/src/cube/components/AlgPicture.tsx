@@ -3,7 +3,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { faceGrid, stickersFromState } from "../bridge";
 import { ALG_SETS } from "../learn/alg-sets";
 import { maskFor } from "../learn/judge";
-import type { AlgSet } from "../learn/types";
+import type { AlgSet, MaskName } from "../learn/types";
 import { hexColor } from "../settings";
 import { CubePoster } from "./CubePoster";
 
@@ -34,19 +34,22 @@ export function AlgPicture({
   state,
   colors,
   className,
+  mask,
 }: {
   set: AlgSet;
   n: number;
   state: PuzzleState;
   colors: readonly number[];
   className: string;
+  /** 묶음 마스크 대신 쓸 가리기(예: 노란 십자 걸음은 엣지 블럭의 노랑만 「ll-cross」) */
+  mask?: MaskName;
 }) {
   // OLL 묶음은 노란 칸만 색으로(훈련 「가리기」와 같은 마스크), 나머지는 회색
-  const maskName = ALG_SETS.find((s) => s.set === set)?.mask;
+  const setMask = ALG_SETS.find((s) => s.set === set)?.mask;
   const faces = faceGrid(
     n,
     state,
-    maskName === "oll" ? maskFor(n, maskName) : null,
+    mask ? maskFor(n, mask) : setMask === "oll" ? maskFor(n, setMask) : null,
   );
   if (!TOP_SETS.has(set))
     return (

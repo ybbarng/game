@@ -42,6 +42,7 @@ export function TwoLookCasesSheet({ colors }: { colors: readonly number[] }) {
                     parseMoves(3, setupFor(c.alg, "z2")),
                   )}
                   colors={colors}
+                  {...(g.mask ? { mask: g.mask } : {})}
                   className="h-16 w-16"
                 />
                 <span className="break-keep text-center text-[11px] text-white/70">
