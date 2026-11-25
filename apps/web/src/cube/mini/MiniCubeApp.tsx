@@ -582,11 +582,27 @@ function MiniCube() {
   reducedRef.current = reduced;
   const [prefs, setPrefsState] = useState<MiniPrefs | null>(null);
   useEffect(() => setPrefsState(loadMiniPrefs()), []);
-  const n = prefs?.n ?? 3;
+  /**
+   * 상황 놓기가 잠시 든 크기(3×3, docs/47 16-24). 사용자 크기(`prefs.n`)는 저장하지도 바꾸지도 않고, 놓기가 끝나면
+   * (섞기·맞춘 상태로·크기 고르기) 지운다. 껐다 켜면 저장된 크기로 연다
+   */
+  const [placeN, setPlaceN] = useState<number | null>(null);
+  const n = placeN ?? prefs?.n ?? 3;
   const setPrefs = useCallback((next: MiniPrefs) => {
     setPrefsState(next);
     saveMiniPrefs(next);
   }, []);
+  /** 크기 고르기(앱 메뉴·구석 메뉴): 고른 크기가 사용자 크기가 되고 놓은 상황은 끝난다 */
+  const pickSize = useCallback(
+    (base: MiniPrefs, size: number) => {
+      setPlaceN(null);
+      setPrefs({ ...base, n: size });
+      // 지금 크기를 다시 골라 세션이 그대로면 놓은 상황만 끝낸다(맞춘 큐브, 앱의 크기 고르기처럼 새 판)
+      if (placedRef.current && sessionRef.current.n === size)
+        resetCubeRef.current();
+    },
+    [setPrefs],
+  );
 
   // 앱 안인지는 붙은 뒤에 본다(정적 HTML과 첫 그림이 같아야 한다)
   const [app, setApp] = useState(false);
@@ -1047,7 +1063,17 @@ function MiniCube() {
   // 섞기
   const preparing = useRef(false);
   const scrambleId = useRef(0);
+  /** 놓은 상황을 끝내고 사용자 크기로 돌아가는 중에 누른 섞기(새 세션이 생기면 섞는다) */
+  const scrambleAfterPlace = useRef(false);
+  const placeNRef = useRef(placeN);
+  placeNRef.current = placeN;
   const doScramble = useCallback(async () => {
+    // 상황을 놓느라 잠시 든 3×3이면 사용자 크기로 돌아가 그 큐브를 섞는다
+    if (placeNRef.current !== null) {
+      scrambleAfterPlace.current = true;
+      setPlaceN(null);
+      return;
+    }
     if (preparing.current) return;
     preparing.current = true;
     showRef.current.cancel();
@@ -1139,6 +1165,12 @@ function MiniCube() {
   idleRef.current = idle;
   const scrambleRef = useRef(doScramble);
   scrambleRef.current = doScramble;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 사용자 크기로 돌아와 세션이 새로 생기면 기다리던 섞기를 한다
+  useEffect(() => {
+    if (!scrambleAfterPlace.current) return;
+    scrambleAfterPlace.current = false;
+    void scrambleRef.current();
+  }, [session]);
 
   // 키
   const [keymap] = useState(() =>
@@ -1213,6 +1245,8 @@ function MiniCube() {
     clearRound();
     pendingPlace.current = null;
     setPlacedState(null);
+    // 상황을 놓느라 잠시 든 3×3이면 사용자 크기의 맞춘 큐브로 돌아간다(새 세션)
+    setPlaceN(null);
     sessionRef.current.reset();
     repaintRef.current();
   }, [clearRound]);
@@ -1231,7 +1265,10 @@ function MiniCube() {
   }, [clearRound]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 세션이 새로 생기면(3×3으로 바꿈) 기다리던 상황을 놓는다
   useEffect(() => applyPlace(), [session, applyPlace]);
-  /** 상황 놓기(메뉴): 공식 연습은 끝내고, 3×3이 아니면 3×3으로 바꾼 뒤 놓는다. 같은 상황을 다시 고르면 처음부터 */
+  /**
+   * 상황 놓기(메뉴): 공식 연습은 끝내고, 3×3이 아니면 3×3 판을 잠시 든 뒤 놓는다(사용자 크기는 저장하지 않는다).
+   * 같은 상황을 다시 고르면 처음부터
+   */
   const placeCaseRef = useRef((_set: string, _id: string) => {});
   placeCaseRef.current = (set: string, id: string) => {
     if (!keymap) return;
@@ -1240,7 +1277,7 @@ function MiniCube() {
     stopPracticeRef.current();
     pendingPlace.current = p;
     if (sessionRef.current.n !== PRACTICE_N) {
-      if (prefs) setPrefs({ ...prefs, n: PRACTICE_N });
+      setPlaceN(PRACTICE_N);
       return;
     }
     applyPlace();
@@ -1472,8 +1509,15 @@ function MiniCube() {
   }, []);
 
   // 앱이 보낸 것(앱이 없어도 같은 이벤트를 받는다: 화면 시험이 앱 흉내를 낸다)
-  const live = useRef({ prefs, n, recordsOpen, openRecords, practiceMode });
-  live.current = { prefs, n, recordsOpen, openRecords, practiceMode };
+  const live = useRef({
+    prefs,
+    n,
+    recordsOpen,
+    openRecords,
+    practiceMode,
+    pickSize,
+  });
+  live.current = { prefs, n, recordsOpen, openRecords, practiceMode, pickSize };
   useEffect(
     () =>
       onAppMessage((msg: FromApp) => {
@@ -1507,7 +1551,7 @@ function MiniCube() {
             if (c.prefs && (MINI_SIZES as readonly number[]).includes(msg.n)) {
               // 큐브 크기는 맞추기의 것이라 연습을 끝낸다(연습은 3×3만)
               stopPracticeRef.current();
-              setPrefs({ ...c.prefs, n: msg.n });
+              c.pickSize(c.prefs, msg.n);
             }
             break;
           case "records":
@@ -1545,7 +1589,8 @@ function MiniCube() {
     if (app && prefs)
       toApp({
         type: "state",
-        n: prefs.n,
+        // 지금 보이는 크기(상황을 놓는 동안은 잠시 든 3×3)
+        n,
         mirror: prefs.mirror,
         records: recordsOpen,
         scrambleKeys: keymap
@@ -1563,7 +1608,7 @@ function MiniCube() {
           ? { set: placed.placed.stage.id, id: placed.placed.case.id }
           : null,
       });
-  }, [app, prefs, recordsOpen, keymap, practice, practiceMode, placed]);
+  }, [app, prefs, n, recordsOpen, keymap, practice, practiceMode, placed]);
   // 기록을 보다가 포커스를 잃으면 닫는다(떠 있는 창은 큐브만)
   useEffect(() => {
     if (!focused && app) setRecordsOpen(false);
@@ -1811,7 +1856,7 @@ function MiniCube() {
           onSize={(size) => {
             if (!prefs) return;
             stopPractice();
-            setPrefs({ ...prefs, n: size });
+            pickSize(prefs, size);
           }}
           onRecords={() => {
             setMenuOpen(false);

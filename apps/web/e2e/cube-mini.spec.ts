@@ -1692,6 +1692,84 @@ test(
   },
 );
 
+test("상황 놓기는 사용자 크기를 바꾸지 않는다: 4×4에서 놓으면 3×3 판을 잠시 들고, 섞기·맞춘 상태로·껐다 켜기는 4×4로 돌아오며 크기 고르기만 새 크기를 남긴다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 360 });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  const menu = page.locator("[data-mini-menu]");
+  /** 미니 기록 `cube.mini.v1`에 남은 사용자 크기 */
+  const savedN = () =>
+    page.evaluate(
+      () => JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}").n,
+    );
+  const pickSize = async (n: number) => {
+    await menu.click();
+    await page.locator(`[data-mini-size="${n}"]`).click();
+    await expect(main).toHaveAttribute("data-mini-n", `${n}`);
+    await menu.click();
+  };
+  const placeT = async () => {
+    // 구석 메뉴는 펼쳐 둔 「상황 놓기」와 놓은 묶음을 펼친 채 열 수 있다: 닫힌 것만 연다
+    await menu.click();
+    await expect(page.locator('[data-mini-item="place"]')).toBeVisible();
+    const set = page.locator('[data-mini-place-set="pll"]');
+    const pick = page.locator('[data-mini-place-case="pll-t"]');
+    if ((await set.count()) === 0)
+      await page.locator('[data-mini-item="place"]').click();
+    if ((await pick.count()) === 0) await set.click();
+    await pick.click();
+    await expect(main).toHaveAttribute("data-mini-placed", "pll:pll-t");
+    await expect(main).toHaveAttribute("data-mini-n", "3");
+  };
+
+  await pickSize(4);
+  expect(await savedN()).toBe(4);
+
+  // 놓는 동안은 3×3이지만 저장된 크기는 4, 다른 상황을 골라도 그대로
+  await placeT();
+  expect(await savedN()).toBe(4);
+  await placeT();
+  expect(await savedN()).toBe(4);
+
+  // 섞기(Enter): 놓기가 끝나고 4×4를 섞는다
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-n", "4");
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await expect(main).not.toHaveAttribute("data-mini-placed", /.+/);
+
+  // 맞춘 상태로(Shift+Enter): 맞춘 4×4
+  await placeT();
+  await page.keyboard.press("Shift+Enter");
+  await expect(main).toHaveAttribute("data-mini-n", "4");
+  await expect(main).toHaveAttribute("data-mini-solved", "");
+  await expect(main).not.toHaveAttribute("data-mini-placed", /.+/);
+
+  // 크기 고르기로 끝내면 고른 크기가 새 사용자 크기(지금과 같은 3×3을 골라도 놓은 상황은 끝난다)
+  await placeT();
+  await pickSize(3);
+  await expect(main).not.toHaveAttribute("data-mini-placed", /.+/);
+  await expect(main).toHaveAttribute("data-mini-solved", "");
+  expect(await savedN()).toBe(3);
+  await pickSize(4);
+
+  // 놓은 채 껐다 켜면 4×4
+  await placeT();
+  await page.clock.resume();
+  await page.reload();
+  await expect(main).toHaveAttribute("data-mini-n", "4");
+  await expect(main).not.toHaveAttribute("data-mini-placed", /.+/);
+  expect(await savedN()).toBe(4);
+});
+
 test(
   "섞기 연출: 3×3은 섞기 수를 하나씩 빠르게 돌리고, 키를 누르면 바로 끝내 그 수를 넣는다. 7×7은 0.5초 짧은 연출",
   { tag: ["@3d", "@only-desktop"] },
