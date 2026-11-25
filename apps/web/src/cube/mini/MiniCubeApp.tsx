@@ -46,6 +46,7 @@ import {
   resolveAction,
 } from "../input";
 import { keysForMove } from "../keys/move-keys";
+import { PLACE_STAGES, placeCase } from "../practice/place";
 import { PRACTICE_N } from "../practice/problem";
 import type { PracticeMode } from "../practice/round";
 import { PracticeSession } from "../practice/session";
@@ -103,7 +104,7 @@ import {
   toApp,
 } from "./app-bridge";
 import { outlineFilter } from "./backdrop";
-import { cubieKeymap } from "./cubie-keys";
+import { cubieKeymap, cubieUses } from "./cubie-keys";
 import { FocusClock } from "./focus-clock";
 import {
   algTokens,
@@ -119,6 +120,12 @@ import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import { algKeySpans, spansText } from "./key-spans";
 import { miniMirrorShown } from "./mirror";
 import { ProfileToApp } from "./ProfileToApp";
+import {
+  type MiniPlaced,
+  placeBubbleLines,
+  placeTitle,
+  placeTokens,
+} from "./place";
 import {
   MENU_STAGES,
   MODE_TITLE,
@@ -158,7 +165,9 @@ import "@/cube/mini/mini.css";
  * - 거울은 직접 맞추는 동안만 보인다(포커스가 있고 섞인 큐브, `mirror.ts`). 떠 있을 때의 움직임과 맞춘 큐브에는 없다.
  *   기록 창의 다시 보기는 같은 큐브·거울을 그리고, 거울이 늘 보인다(메뉴에서 끄지 않았으면).
  * - 키는 사이트의 키 배치(두 손·표기·사용자) 그대로다. 섞기는 배치의 「다시 섞기」 키(두 배치 모두 Enter), 되돌리기는
- *   ⌫. 배치의 Esc(맞춘 상태로)는 쓰지 않는다: 앱에서 Esc는 이전 앱으로 돌아가는 키이고, 실수로 진행을 버리지 않게.
+ *   ⌫. 배치의 Esc 자리 맞춘 상태로는 쓰지 않는다(앱에서 Esc는 이전 앱으로, 브라우저는 연습 끝내기). 맞춘 상태로는
+ *   기본 배치의 Shift+Enter와 메뉴로 한다(맞추던 판은 기록 없이 끝난다, docs/47 16-24, `cubie-keys.ts`).
+ * - 상황 놓기(docs/47 16-24): OLL·PLL 상황 하나를 골라 그 모양으로 두고 채점·시간·기록 없이 돌린다(세션은 「마음대로」).
  * - 시간은 포커스가 있는 동안만 잰다(`FocusClock`). 섞은 뒤 첫 면 돌리기부터 맞출 때까지, 살펴보기는 없다.
  * - 포커스가 없으면 이따금 움직인다(`idle.ts`): 맞춘 큐브는 내 판 다시 보기(`replay.ts`, 재료가 없으면 첫 화면
  *   연출 한 판), 섞인 큐브는 조금 섞고 되돌리기. 기록에서 판을 고르면 그 판을 다시 본다(`ReplayBox`).
@@ -690,6 +699,17 @@ function MiniCube() {
   session.inspection = false;
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  /**
+   * 상황 놓기(docs/47 16-24): 놓은 상황과 그 세션. 세션이 바뀌면(크기) 끝난 것으로 본다. 섞기·맞춘 상태로가 지운다
+   */
+  const [placedState, setPlacedState] = useState<
+    (MiniPlaced & { session: SolveSession }) | null
+  >(null);
+  const placed = placedState?.session === session ? placedState : null;
+  const placedRef = useRef(placed);
+  placedRef.current = placed;
+  /** 3×3으로 바꾸는 중에 고른 상황(새 세션이 생기면 놓는다) */
+  const pendingPlace = useRef<MiniPlaced["placed"] | null>(null);
 
   // 3D 장면
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -987,7 +1007,8 @@ function MiniCube() {
     wanted: mirrorWanted,
     fits: mirrorFits,
     focused,
-    solved: practicing ? false : solved,
+    // 놓은 상황도 직접 맞추는 것이라 같다
+    solved: practicing || placed ? false : solved,
     idle: idle.showing !== null,
   });
   // 섞기 연출 동안은 거울(과 그에 따른 카메라 이동)을 연출 전 그대로 둔다. 바뀔 것은 연출이 끝난 뒤에(docs/47 3-1)
@@ -1043,6 +1064,7 @@ function MiniCube() {
         reducedRef.current,
       );
       s.start(made.text, seed, undefined, { hold: kind !== "instant" });
+      setPlacedState(null);
       hintGateRef.current.reset();
       inputsRef.current = [];
       originsRef.current = new Set();
@@ -1170,6 +1192,61 @@ function MiniCube() {
   }, []);
   const stopPracticeRef = useRef(stopPractice);
   stopPracticeRef.current = stopPractice;
+
+  /** 판을 비운다(맞춘 상태로·상황 놓기 앞): 기다리던 섞기·섞기 연출·힌트·입력 방식 */
+  const clearRound = useCallback(() => {
+    scrambleId.current++;
+    preparing.current = false;
+    showRef.current.cancel();
+    idleRef.current.reset();
+    hintGateRef.current.reset();
+    setHint(null);
+    inputsRef.current = [];
+    originsRef.current = new Set();
+  }, []);
+  /**
+   * 맞춘 상태로(메뉴·배치의 Esc 아닌 맞춘 상태로 키, docs/47 16-24): 맞추던 판은 기록 없이 끝난다(묻지 않는다).
+   * 공식 연습 중이면 끝내고 맞추던 판을 맞춘 상태로
+   */
+  const resetCube = useCallback(() => {
+    stopPracticeRef.current();
+    clearRound();
+    pendingPlace.current = null;
+    setPlacedState(null);
+    sessionRef.current.reset();
+    repaintRef.current();
+  }, [clearRound]);
+  /** 놓을 상황이 있고 세션이 3×3이면 놓는다 */
+  const applyPlace = useCallback(() => {
+    const p = pendingPlace.current;
+    const s = sessionRef.current;
+    if (!p || s.n !== PRACTICE_N) return;
+    pendingPlace.current = null;
+    clearRound();
+    // 맞추던 판은 기록 없이 끝나고(세션 「마음대로」), 그 상황의 처음 모양에서 마음대로 돌린다
+    s.reset();
+    s.state = p.start;
+    setPlacedState({ placed: p, revealed: false, session: s });
+    repaintRef.current();
+  }, [clearRound]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 세션이 새로 생기면(3×3으로 바꿈) 기다리던 상황을 놓는다
+  useEffect(() => applyPlace(), [session, applyPlace]);
+  /** 상황 놓기(메뉴): 공식 연습은 끝내고, 3×3이 아니면 3×3으로 바꾼 뒤 놓는다. 같은 상황을 다시 고르면 처음부터 */
+  const placeCaseRef = useRef((_set: string, _id: string) => {});
+  placeCaseRef.current = (set: string, id: string) => {
+    if (!keymap) return;
+    const p = placeCase(set, id, keymap, loadAlgBook());
+    if (!p) return;
+    stopPracticeRef.current();
+    pendingPlace.current = p;
+    if (sessionRef.current.n !== PRACTICE_N) {
+      if (prefs) setPrefs({ ...prefs, n: PRACTICE_N });
+      return;
+    }
+    applyPlace();
+  };
+  const resetCubeRef = useRef(resetCube);
+  resetCubeRef.current = resetCube;
   const startPracticeRef = useRef(startPractice);
   startPracticeRef.current = startPractice;
   const recordsOpenRef = useRef(recordsOpen);
@@ -1194,6 +1271,12 @@ function MiniCube() {
     const p = practiceRef.current;
     if (p) {
       p.peek();
+      return;
+    }
+    // 놓은 상황: 힌트 키는 그 상황 공식 펼치기·접기(제한 없음, docs/47 16-24)
+    const pl = placedRef.current;
+    if (pl) {
+      setPlacedState({ ...pl, revealed: !pl.revealed });
       return;
     }
     const s = sessionRef.current;
@@ -1285,12 +1368,22 @@ function MiniCube() {
           playCubeCue(settingsRef.current, "cubeTurn");
         }
       } else if (r.command === "scramble") void scrambleRef.current();
-      else if (r.command === "peekBack" || r.command === "peekDown") {
+      else if (r.command === "reset") {
+        // 맞춘 상태로(기본 Shift+Enter). 아무것도 함께 누르지 않은 Esc 자리는 쓰지 않는다(`cubie-keys.ts`)
+        const chord = {
+          code: e.code,
+          shift: e.shiftKey,
+          alt: e.altKey,
+          ctrl: e.ctrlKey,
+          action: "reset" as const,
+        };
+        if (cubieUses(chord)) resetCubeRef.current();
+      } else if (r.command === "peekBack" || r.command === "peekDown") {
         const p = PEEK[r.command];
         viewRef.current?.setView(p.yaw, p.pitch);
         peekKey = e.code;
       }
-      // reset(Esc)·inspectionSkip(Space)은 쓰지 않는다
+      // inspectionSkip(Space)은 쓰지 않는다
     };
     const detach = attachKeyboard(
       window,
@@ -1400,6 +1493,12 @@ function MiniCube() {
             stopPracticeRef.current();
             void scrambleRef.current();
             break;
+          case "reset":
+            resetCubeRef.current();
+            break;
+          case "place":
+            placeCaseRef.current(msg.set, msg.id);
+            break;
           case "mirror":
             if (c.prefs)
               setPrefs({ ...c.prefs, mirror: msg.on ?? !c.prefs.mirror });
@@ -1460,8 +1559,11 @@ function MiniCube() {
         practice: practice?.stage.id ?? null,
         practiceMode: practice?.mode ?? practiceMode,
         practiceStages: MENU_STAGES,
+        placed: placed
+          ? { set: placed.placed.stage.id, id: placed.placed.case.id }
+          : null,
       });
-  }, [app, prefs, recordsOpen, keymap, practice, practiceMode]);
+  }, [app, prefs, recordsOpen, keymap, practice, practiceMode, placed]);
   // 기록을 보다가 포커스를 잃으면 닫는다(떠 있는 창은 큐브만)
   useEffect(() => {
     if (!focused && app) setRecordsOpen(false);
@@ -1482,9 +1584,13 @@ function MiniCube() {
     ? bubble && focused
       ? practiceBubbleLines(practice, keymap, { again: againKey })
       : null
-    : bubble && (shownHint || hintMsg)
-      ? hintBubbleLines(shownHint, hintMsg, keymap, n)
-      : null;
+    : placed
+      ? bubble && focused
+        ? placeBubbleLines(placed, keymap)
+        : null
+      : bubble && (shownHint || hintMsg)
+        ? hintBubbleLines(shownHint, hintMsg, keymap, n)
+        : null;
   const bubbleKey = JSON.stringify(bubbleLines);
   const sentBubble = useRef("null");
   // biome-ignore lint/correctness/useExhaustiveDependencies: bubbleKey가 bubbleLines의 내용이다
@@ -1517,6 +1623,12 @@ function MiniCube() {
       }
       data-mini-practice-combo={practice?.round.combo.current}
       data-mini-practice-wrong={practice?.wrong?.token}
+      data-mini-placed={
+        placed
+          ? `${placed.placed.stage.id}:${placed.placed.case.id}`
+          : undefined
+      }
+      data-mini-place-alg={placed?.revealed ? placed.placed.alg : undefined}
       data-mini-hint={shownHint?.alg ?? ""}
       data-mini-hint-before={shownHint?.before ?? undefined}
       data-mini-hint-msg={hintMsg ?? undefined}
@@ -1650,7 +1762,16 @@ function MiniCube() {
         </span>
       )}
 
-      {!practice && !bubble && (shownHint || hintMsg) && (
+      {placed && !practice && !bubble && (
+        <PlaceCard
+          placed={placed}
+          keymap={keymap}
+          shortSide={shortSide}
+          browser={!app}
+        />
+      )}
+
+      {!practice && !placed && !bubble && (shownHint || hintMsg) && (
         <HintCard
           hint={shownHint}
           msg={hintMsg}
@@ -1670,6 +1791,19 @@ function MiniCube() {
             setMenuOpen(false);
             stopPractice();
             void doScramble();
+          }}
+          onReset={() => {
+            setMenuOpen(false);
+            resetCube();
+          }}
+          placed={
+            placed
+              ? { set: placed.placed.stage.id, id: placed.placed.case.id }
+              : null
+          }
+          onPlace={(set, id) => {
+            setMenuOpen(false);
+            placeCaseRef.current(set, id);
           }}
           onMirror={() =>
             prefs && setPrefs({ ...prefs, mirror: !prefs.mirror })
@@ -1732,6 +1866,9 @@ function BrowserMenu({
   n,
   mirror,
   onScramble,
+  onReset,
+  placed,
+  onPlace,
   onMirror,
   onSize,
   onRecords,
@@ -1746,6 +1883,10 @@ function BrowserMenu({
   n: number;
   mirror: boolean;
   onScramble: () => void;
+  onReset: () => void;
+  /** 놓은 상황(묶음 id·상황 id) */
+  placed: { set: string; id: string } | null;
+  onPlace: (set: string, id: string) => void;
   onMirror: () => void;
   onSize: (n: number) => void;
   onRecords: () => void;
@@ -1757,6 +1898,7 @@ function BrowserMenu({
   onPracticeStop: () => void;
 }) {
   const [practiceOpen, setPracticeOpen] = useState(false);
+  const [placeOpen, setPlaceOpen] = useState(false);
   return (
     <div className="absolute top-1 right-1 z-10 flex flex-col items-end gap-1">
       <button
@@ -1773,6 +1915,9 @@ function BrowserMenu({
         <div className="flex max-h-[calc(100dvh-2.5rem)] w-36 flex-col gap-0.5 overflow-y-auto rounded-lg border border-white/15 bg-neutral-900/95 p-1 text-sm shadow-xl">
           <MenuItem onClick={onScramble} data="scramble">
             섞기
+          </MenuItem>
+          <MenuItem onClick={onReset} data="reset">
+            맞춘 상태로
           </MenuItem>
           <MenuItem onClick={onMirror} data="mirror">
             {mirror ? "거울 끄기" : "거울 켜기"}
@@ -1797,6 +1942,10 @@ function BrowserMenu({
               onStop={onPracticeStop}
             />
           )}
+          <MenuItem onClick={() => setPlaceOpen(!placeOpen)} data="place">
+            상황 놓기 {placeOpen ? "▾" : "▸"}
+          </MenuItem>
+          {placeOpen && <PlaceMenu placed={placed} onPick={onPlace} />}
           <a
             href={LEARN_PATH}
             target="_blank"
@@ -2428,6 +2577,117 @@ function PracticeMenu({
       >
         연습 끝내기
       </button>
+    </div>
+  );
+}
+
+/**
+ * 구석 메뉴의 「상황 놓기」 펼침(앱 메뉴 「상황 놓기 ▸」와 같은 항목, docs/47 16-24): 묶음을 펼치면 상황들,
+ * 모양 묶음(OLL의 점·네모 …) 사이에 가는 선
+ */
+function PlaceMenu({
+  placed,
+  onPick,
+}: {
+  placed: { set: string; id: string } | null;
+  onPick: (set: string, id: string) => void;
+}) {
+  const [open, setOpen] = useState<string | null>(placed?.set ?? null);
+  return (
+    <div data-mini-place-menu className="flex flex-col pl-2 text-xs">
+      {PLACE_STAGES.map((s) => (
+        <div key={s.id} className="flex flex-col">
+          <button
+            type="button"
+            data-mini-place-set={s.id}
+            aria-expanded={open === s.id}
+            onClick={() => setOpen(open === s.id ? null : s.id)}
+            className="flex rounded px-2 py-0.5 text-left hover:bg-white/10"
+          >
+            <span className="w-3">{placed?.set === s.id ? "✓" : ""}</span>
+            {s.title} {open === s.id ? "▾" : "▸"}
+          </button>
+          {open === s.id && (
+            <div className="flex flex-col pl-2">
+              {s.cases.map((c, i) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  data-mini-place-case={c.id}
+                  aria-pressed={placed?.set === s.id && placed.id === c.id}
+                  onClick={() => onPick(s.id, c.id)}
+                  className={cn(
+                    "flex break-keep rounded px-2 py-0.5 text-left hover:bg-white/10",
+                    i > 0 &&
+                      s.cases[i - 1]?.group !== c.group &&
+                      "mt-0.5 border-white/10 border-t",
+                  )}
+                >
+                  <span className="w-3 shrink-0">
+                    {placed?.set === s.id && placed.id === c.id ? "✓" : ""}
+                  </span>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 창 안의 놓은 상황(앱 말풍선이 없을 때): 「단계 · 상황 이름」, 힌트 키로 펼치면 공식 낱말과 그 아래 키캡
+ * (수 표기는 고정폭 글자, 키는 키캡 상자, docs/47 4-4). 작은 창이면 이름·공식만 작게
+ */
+function PlaceCard({
+  placed,
+  keymap,
+  shortSide,
+  browser,
+}: {
+  placed: MiniPlaced;
+  keymap: Keymap | null;
+  shortSide: number;
+  browser: boolean;
+}) {
+  const roomy = shortSide >= HINT_INLINE_MIN;
+  const tokens = placeTokens(placed.placed);
+  return (
+    <div
+      data-mini-place-card={roomy ? "full" : "small"}
+      className={cn(
+        "pointer-events-none absolute top-1 left-1 z-10 flex flex-col items-center break-keep rounded-md bg-black/70 text-white",
+        browser ? "right-9" : "right-1",
+        roomy ? "gap-1 p-2 text-xs" : "px-1 py-0.5 text-[9px] leading-tight",
+      )}
+    >
+      <span className="font-semibold" data-mini-place-name>
+        {placeTitle(placed.placed)}
+      </span>
+      {placed.revealed && (
+        <ol
+          data-mini-place-tokens
+          className={cn(
+            "flex flex-wrap justify-center",
+            roomy ? "gap-1" : "gap-x-1",
+          )}
+        >
+          {tokens.map((t, i) => (
+            <li
+              // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
+              key={i}
+              className="flex flex-col items-center font-mono font-semibold"
+            >
+              {t}
+              {roomy && keymap && (
+                <KeyCaps keys={keysForMove(keymap, PRACTICE_N, t)} />
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
