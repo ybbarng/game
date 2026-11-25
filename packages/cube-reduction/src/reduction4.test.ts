@@ -61,8 +61,8 @@ describe.each(SEEDS)("4×4 무작위 상태 %i", (seed) => {
       "나머지 센터",
       "엣지 짝",
       "마지막 두 엣지",
-      "OLL 패리티",
-      "PLL 패리티",
+      "토끼이빨",
+      "바보토끼이빨",
       "3×3",
     ]);
     checkStages(n, state, sol);

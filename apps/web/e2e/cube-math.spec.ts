@@ -78,6 +78,12 @@ test(
 
     // 넷째 카드: 크기를 바꾸면 표의 줄이 바뀐다
     await page.locator("[data-math-next]").click();
+    // 패리티 이름은 토끼이빨·바보토끼이빨(사용자 2026-11-26, docs/47 1-1), 널리 쓰는 영어 이름은 처음에 함께
+    const sizes = page.locator("[data-sizes]");
+    await expect(sizes.locator("thead")).toContainText("토끼이빨");
+    await expect(sizes.locator("thead")).toContainText("바보토끼이빨");
+    await expect(sizes).toContainText("「OLL 패리티」, 「PLL 패리티」");
+    await expect(sizes.locator("thead")).not.toContainText("패리티");
     await page.locator("[data-sizes-tab='5']").click();
     await expect(page.locator("[data-sizes]")).toHaveAttribute(
       "data-sizes",

@@ -14,6 +14,7 @@ import {
   withoutParity,
 } from "./big-test-util";
 import { SOLVE_METHODS, solveHuman } from "./methods";
+import { STAGE_LABELS } from "./solve";
 
 /**
  * 4×4 사람 흉내: 축소법 단계 뒤 같은 단계의 3×3 해법. 패리티는 3×3 단계 도중에 고친다
@@ -72,5 +73,11 @@ describe("4×4 패리티", () => {
     const start = make(EDGE_PARITY_TEXT);
     const list = stageNames(solveHuman("expert", 4, start));
     expect(list.indexOf("oll-parity")).toBe(list.indexOf("three") - 2);
+  });
+
+  // 시연 꼬리표는 한국에서 부르는 이름으로(사용자 2026-11-26, docs/47 1-1·16-29)
+  it("패리티 단계 꼬리표는 토끼이빨·바보토끼이빨이다", () => {
+    expect(STAGE_LABELS["oll-parity"]).toBe("토끼이빨");
+    expect(STAGE_LABELS["pll-parity"]).toBe("바보토끼이빨");
   });
 });
