@@ -3,10 +3,12 @@
 // 해법 지도 시안의 네 안(SolveMapApp). A 펼친 지도와 C 노선도는 같은 자리 자료를 다르게 그리고, 줌·패닝·미니맵 틀
 // (MapFrame) 안에 둔다. B는 갈림길만 두고 구간을 누르면 걸음이 펼쳐진다. D는 해법마다 막대 하나.
 import {
+  createContext,
   type MouseEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -315,6 +317,50 @@ export function MeBadge({ methods }: { methods: MapMethod[] }) {
   );
 }
 
+/** 지도 틀의 지금 배율(A·C 지도 안에서만 1이 아니다) */
+const ZoomK = createContext(1);
+
+/** 이 배율보다 작으면 지점 그림 대신 점(그림이 너무 작아 알아볼 수 없다). 확대하면 그림이 나온다 */
+const PIC_MIN_K = 0.45;
+
+/** 지도 위 「나」: 전체 보기처럼 작게 줄여도 화면에서 이 크기보다 작아지지 않게 */
+export function MeOnMap({ methods }: { methods: MapMethod[] }) {
+  const k = useContext(ZoomK);
+  const s = Math.max(1, 0.9 / k);
+  return (
+    <span
+      className="inline-block"
+      style={{ transform: `scale(${s})`, transformOrigin: "center" }}
+    >
+      <MeBadge methods={methods} />
+    </span>
+  );
+}
+
+/** 지도 위 지점 그림: 작은 배율에서는 같은 자리의 점 하나 */
+function NodePic({ id, ctx, px }: { id: MapNodeId; ctx: MapCtx; px: number }) {
+  const k = useContext(ZoomK);
+  if (k < PIC_MIN_K)
+    return (
+      <span
+        className="flex shrink-0 items-center justify-center"
+        style={{ width: px, height: px * 0.9 }}
+        data-node-part="pic"
+        data-node-dot
+      >
+        <span
+          className="block rounded-full bg-white/80"
+          style={{ width: px * 0.45, height: px * 0.45 }}
+        />
+      </span>
+    );
+  return (
+    <span className="shrink-0" data-node-part="pic">
+      <NodeCube id={id} settings={ctx.settings} px={px} />
+    </span>
+  );
+}
+
 // ── 지점 그림 ─────────────────────────────────────────
 
 export function NodeCube({
@@ -420,42 +466,160 @@ interface Layout {
   height: number;
   pos: Map<MapNodeId, { x: number; y: number }>;
   nodeH: number;
+  /** 줄 높이 */
+  RH: number;
+  /** 칸 사이 빈 길 폭 */
+  G: number;
+  /** 칸마다 왼쪽 끝과 폭(빈 칸은 폭 0) */
+  colLeft: number[];
+  colW: number[];
+}
+
+/** 역·지점 이름 글 폭 어림(11px 글씨, 한글은 넉넉히) */
+const nameW = (s: string) =>
+  [...s].reduce((w, c) => w + (/[가-힣]/.test(c) ? 12 : 7.5), 0);
+
+/** A 지점 상자 폭 */
+const BOX_W = 100;
+/** 노선도 역: 점 왼쪽 끝에서 역 점 가운데까지 */
+const DOT_LEFT = 14;
+
+/** 노선도 역 하나의 폭(점·갈아탈 노선 점·그림·이름 판·「나」 자리) */
+function stationW(id: MapNodeId, methods: readonly MapMethod[]): number {
+  const lines = methods.filter((m) => methodNodes(m).includes(id)).length;
+  const big = lines > 1;
+  return (
+    (big ? 24 : 12) +
+    4 +
+    (big ? Math.min(44, lines * 10) + 4 : 0) +
+    38 +
+    4 +
+    nameW(nodeById(id).title) +
+    10 +
+    28
+  );
 }
 
 function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
   return useMemo(() => {
     const nodes = visibleNodes(ctx.methods);
     const { min, max } = rowRange(nodes);
-    const CW = style === "map" ? 118 : 112;
     const RH = style === "map" ? 158 : 118;
     const PAD = 24;
+    // 칸 사이 빈 길(거터): 칸을 넘는 선과 꼬리표는 여기로만 지난다
+    const G = style === "map" ? 56 : 48;
     const nodeH = style === "map" ? 92 : 0;
     // 지도는 「다 섞임」에서 시작한다(노선도는 역 이름표·노선 이름이 위로 조금 나온다)
     const TOP = PAD + (style === "map" ? 16 : 40);
-    const cols = [...nodes].map((id) => nodeById(id).col);
-    const maxCol = Math.max(...cols);
+    // 칸 폭: 그 칸에서 가장 넓은 지점(A는 상자, 노선도는 점·그림·가장 긴 이름)
+    const maxCol = Math.max(...[...nodes].map((id) => nodeById(id).col));
+    const colW = Array.from({ length: maxCol + 1 }, (_, c) => {
+      const ids = [...nodes].filter((id) => nodeById(id).col === c);
+      if (!ids.length) return 0;
+      return style === "map"
+        ? BOX_W
+        : Math.max(...ids.map((id) => stationW(id, ctx.methods)));
+    });
+    const colLeft: number[] = [];
+    let x = PAD + G / 2;
+    for (const w of colW) {
+      colLeft.push(x);
+      x += w ? w + G : 0;
+    }
     const pos = new Map<MapNodeId, { x: number; y: number }>();
     for (const id of nodes) {
       const n = nodeById(id);
       pos.set(id, {
-        x: PAD + (n.col + 0.5) * CW,
+        x:
+          (colLeft[n.col] as number) + (style === "map" ? BOX_W / 2 : DOT_LEFT),
         y: TOP + (n.row - min) * RH,
       });
     }
     return {
-      width: PAD * 2 + (maxCol + 1) * CW + (style === "metro" ? 70 : 0),
+      width: x - G / 2 + PAD + (style === "metro" ? 40 : 0),
       height: TOP + (max - min) * RH + nodeH + 30 + PAD,
       pos,
       nodeH,
+      RH,
+      G,
+      colLeft,
+      colW,
     };
   }, [ctx.methods, style]);
 }
 
+/**
+ * 길의 경로(꺾은선): 같은 칸 바로 아래면 곧게, 아니면 줄 사이 빈 길과 칸 사이 빈 길로만 지나 지점 그림·이름 위를
+ * 가로지르지 않는다. `a`·`b`는 나가는 점·들어오는 점(A는 상자 아래·위 가운데, 노선도는 역 점)
+ */
+function routeEdge(e: MapEdge, layout: Layout, a: Pt, b: Pt, dx: number): Pt[] {
+  const na = nodeById(e.from);
+  const nb = nodeById(e.to);
+  const { G, RH, nodeH, colLeft, colW, pos } = layout;
+  const gap = RH - nodeH;
+  // 같은 칸에서 사이에 다른 지점이 있는가(있으면 곧게 가면 그 위를 지난다)
+  const between = [...pos.keys()].some((id) => {
+    const n = nodeById(id);
+    return n.col === na.col && n.row > na.row && n.row < nb.row;
+  });
+  if (na.col === nb.col && !between) return [a, b];
+  const ya = a.y + Math.min(gap / 2, (b.y - a.y) / 2);
+  const yb = b.y - Math.min(gap / 2, (b.y - a.y) / 2);
+  const oneRow = nb.row - na.row <= 1;
+  if (oneRow && na.col !== nb.col)
+    return [
+      a,
+      { x: a.x, y: ya },
+      { x: b.x + dx, y: ya },
+      { x: b.x + dx, y: b.y },
+      b,
+    ];
+  // 여러 줄: 칸 사이 빈 길을 따라 내려간다(오른쪽으로 가면 b 칸 왼쪽, 왼쪽·같은 칸이면 b 칸 오른쪽 빈 길)
+  const left = colLeft[nb.col] as number;
+  const gx =
+    nb.col > na.col
+      ? left - G / 2 + dx
+      : left + (colW[nb.col] as number) + G / 2 + dx;
+  return [
+    a,
+    { x: a.x, y: ya },
+    { x: gx, y: ya },
+    { x: gx, y: yb },
+    { x: b.x, y: yb },
+    b,
+  ];
+}
+
+/** 꺾은선을 SVG 경로로(노선마다 조금씩 비켜 겹치지 않게) */
+const polyPath = (ps: Pt[], off: number) =>
+  ps
+    .map(
+      (p, i) =>
+        `${i ? "L" : "M"}${p.x + off},${p.y + (i && i < ps.length - 1 ? off : 0)}`,
+    )
+    .join(" ");
+
+/** 꺾은선에서 길이 절반 지점(꼬리표 자리) */
+function halfway(ps: Pt[]): Pt {
+  const lens = ps.slice(1).map((p, i) => {
+    const q = ps[i] as Pt;
+    return Math.hypot(p.x - q.x, p.y - q.y);
+  });
+  let left = lens.reduce((s, l) => s + l, 0) / 2;
+  for (const [i, l] of lens.entries()) {
+    const p = ps[i] as Pt;
+    const q = ps[i + 1] as Pt;
+    if (left <= l && l > 0)
+      return {
+        x: p.x + ((q.x - p.x) * left) / l,
+        y: p.y + ((q.y - p.y) * left) / l,
+      };
+    left -= l;
+  }
+  return ps[0] as Pt;
+}
+
 type Pt = { x: number; y: number };
-const mid = (a: Pt, b: Pt, c: Pt, d: Pt): Pt => ({
-  x: (a.x + 3 * b.x + 3 * c.x + d.x) / 8,
-  y: (a.y + 3 * b.y + 3 * c.y + d.y) / 8,
-});
 
 /** 글 폭 어림(10px 글씨: 한글 10px, 그 밖 6px) */
 const textW = (s: string) =>
@@ -473,9 +637,10 @@ function labelSize(e: MapEdge, ctx: MapCtx, on: boolean) {
     if (edgeTrain(e, ctx.train)) lines.push("익숙 0/0 · 0.0초");
     if (edgeSolo(e, ctx)) lines.push("내 00.0초");
   }
+  // 어림이 실제보다 작으면 밀어도 겹친다(겹침 화면 시험이 본다). 넉넉히
   return {
-    w: Math.max(...lines.map(textW)) + 14,
-    h: lines.length * 13 + 6,
+    w: Math.max(...lines.map(textW)) + 24,
+    h: lines.length * 14 + 10,
   };
 }
 
@@ -486,17 +651,21 @@ type Box = { x: number; y: number; w: number; h: number };
  */
 function placeLabels(items: Box[], fixed: Box[]): Pt[] {
   const ps = items.map((b) => ({ ...b }));
-  const push = (a: Box, b: Box, share: number) => {
+  // 같은 자리에서 시작한 둘은 같은 쪽으로 함께 밀려 영영 겹치니, 자리가 같으면 순서(tie)로 방향을 가른다
+  const dir = (p: number, q: number, tie: number) =>
+    p > q ? 1 : p < q ? -1 : tie;
+  const push = (a: Box, b: Box, share: number, tie: number) => {
     const ox = (a.w + b.w) / 2 + 8 - Math.abs(a.x - b.x);
     const oy = (a.h + b.h) / 2 + 6 - Math.abs(a.y - b.y);
     if (ox <= 0 || oy <= 0) return;
-    if (ox < oy) a.x += (a.x >= b.x ? 1 : -1) * ox * share;
-    else a.y += (a.y >= b.y ? 1 : -1) * oy * share;
+    if (ox < oy) a.x += dir(a.x, b.x, tie) * ox * share;
+    else a.y += dir(a.y, b.y, tie) * oy * share;
   };
   for (let round = 0; round < 80; round++) {
     for (const [i, a] of ps.entries()) {
-      for (const f of fixed) push(a, f, 1);
-      for (const [j, b] of ps.entries()) if (i !== j) push(a, b, 0.5);
+      for (const f of fixed) push(a, f, 1, 1);
+      for (const [j, b] of ps.entries())
+        if (i !== j) push(a, b, 0.5, i < j ? -1 : 1);
     }
   }
   return ps.map(({ x, y }) => ({ x, y }));
@@ -522,13 +691,6 @@ export function MapView({
   const edges = visibleEdges(ctx.methods);
   const selectedEdges = new Set(ctx.selected.flatMap((m) => m.edges));
   const selectedNodes = new Set(ctx.selected.flatMap(methodNodes));
-  // 처음 가운데 둘 곳: 「나」가 있는 지점(기록이 없으면 「다 섞임」). 지도 범위로 묶여 맨 위·왼쪽 끝이 보인다
-  const meNode =
-    [...ctx.me.keys()].find((k) => layout.pos.has(k)) ??
-    (methodNodes(ctx.selected[0] ?? (ctx.methods[0] as MapMethod))[0] as
-      | MapNodeId
-      | undefined);
-  const focus = (meNode && layout.pos.get(meNode)) || { x: 0, y: 0 };
   // 큰 큐브 「3×3 맞추기」를 펼친 칸: 모든 노선 오른쪽, 「3×3처럼」 높이에서 아래로
   const panel = useMemo(() => {
     const sz = finishPanelSize(ctx);
@@ -620,7 +782,6 @@ export function MapView({
     <MapFrame
       width={width}
       height={height}
-      focus={{ x: focus.x, y: focus.y + layout.nodeH / 2 }}
       fit={fit}
       fitKey={fitKey}
       mini={mini}
@@ -691,13 +852,15 @@ function MapLayer({
     const a = pos.get(e.from);
     const b = pos.get(e.to);
     if (!a || !b) return [];
-    const dx = parallelOffset(e, edges);
-    const p0 = { x: a.x, y: a.y + nodeH };
-    const p3 = { x: b.x, y: b.y };
-    const dy = Math.max(40, (p3.y - p0.y) * 0.45);
-    const p1 = { x: a.x + dx, y: p0.y + dy };
-    const p2 = { x: b.x + dx, y: p3.y - dy };
-    return [{ e, p0, p1, p2, p3, label: mid(p0, p1, p2, p3) }];
+    const dx = parallelOffset(e, edges) * 0.4;
+    const ps = routeEdge(
+      e,
+      layout,
+      { x: a.x, y: a.y + nodeH },
+      { x: b.x, y: b.y },
+      dx,
+    );
+    return [{ e, ps, label: halfway(ps) }];
   });
   // 꼬리표가 지점 그림이나 다른 꼬리표를 가리지 않게 옆으로 민다
   const placed = placeLabels(
@@ -712,13 +875,12 @@ function MapLayer({
     [...pos.values()].map((p) => ({
       x: p.x,
       y: p.y + nodeH / 2,
-      w: 104,
-      h: nodeH + 4,
+      w: BOX_W + 8,
+      h: nodeH + 8,
     })),
   );
   const geo = geo0.map((g, i) => ({ ...g, label: placed[i] as Pt }));
-  const path = (g: (typeof geo)[number], off: number) =>
-    `M${g.p0.x + off},${g.p0.y} C${g.p1.x + off},${g.p1.y} ${g.p2.x + off},${g.p2.y} ${g.p3.x + off},${g.p3.y}`;
+  const path = (g: (typeof geo)[number], off: number) => polyPath(g.ps, off);
   return (
     <div
       className="relative"
@@ -815,20 +977,28 @@ function MapLayer({
         const me = ctx.me.get(id);
         const body = (
           <>
-            <NodeCube id={id} settings={ctx.settings} px={60} />
-            <span className="mt-0.5 text-center text-[11px] leading-tight">
-              {nodeById(id).title}
+            <span
+              className={cn("flex flex-col items-center", !on && "opacity-35")}
+            >
+              <NodePic id={id} ctx={ctx} px={60} />
+              <span
+                className="mt-0.5 text-center text-[11px] leading-tight"
+                data-node-part="name"
+              >
+                {nodeById(id).title}
+              </span>
             </span>
             {me && (
               <span className="-top-2 -right-2 absolute">
-                <MeBadge methods={me} />
+                <MeOnMap methods={me} />
               </span>
             )}
           </>
         );
+        // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게
         const cls = cn(
           "-translate-x-1/2 absolute flex w-[100px] flex-col items-center rounded-lg px-1 py-1",
-          on ? "bg-neutral-800" : "opacity-35",
+          on ? "bg-neutral-800" : "bg-neutral-900",
           shared.length > 1 && "ring-2 ring-white/70",
         );
         const style = { left: p.x, top: p.y, height: layout.nodeH, zIndex: 2 };
@@ -938,24 +1108,24 @@ function MetroLayer({
     const i = ctx.methods.indexOf(m);
     return (i - (ctx.methods.length - 1) / 2) * 4.5;
   };
-  const seg = (a: Pt, b: Pt, off: number, dx: number) => {
-    const dy = b.y - a.y;
-    const y1 = a.y + dy * 0.3;
-    const y2 = b.y - dy * 0.3;
-    return `M${a.x + off},${a.y} L${a.x + off + dx * 0.3},${y1} L${b.x + off + dx * 0.3},${y2} L${b.x + off},${b.y}`;
+  const pts = (e: MapEdge): Pt[] | null => {
+    const a = pos.get(e.from);
+    const b = pos.get(e.to);
+    if (!a || !b) return null;
+    return routeEdge(e, layout, a, b, parallelOffset(e, edges) * 0.3);
+  };
+  const seg = (e: MapEdge, off: number) => {
+    const ps = pts(e);
+    return ps ? polyPath(ps, off) : "";
   };
   const isSel = (m: MapMethod) => ctx.selected.includes(m);
   // 고른 노선의 역 사이 꼬리표(여러 노선이 함께 지나는 길은 첫 노선만). 역 이름과 서로를 가리지 않게 민다
   const raw = ctx.selected.flatMap((m) =>
     m.edges.flatMap((id) => {
       const e = edgeById(id) as MapEdge;
-      const a = pos.get(e.from);
-      const b = pos.get(e.to);
-      if (!a || !b || methodsOfEdge(id, ctx.selected)[0] !== m) return [];
-      const dx = parallelOffset(e, edges) * 0.3;
-      return [
-        { m, e, at: { x: (a.x + b.x) / 2 + dx + 50, y: (a.y + b.y) / 2 } },
-      ];
+      const ps = pts(e);
+      if (!ps || methodsOfEdge(id, ctx.selected)[0] !== m) return [];
+      return [{ m, e, at: halfway(ps) }];
     }),
   );
   // 고른 노선의 이름: 처음 길과 마지막 길 곁(지하철 노선도처럼 처음과 끝)
@@ -983,8 +1153,8 @@ function MetroLayer({
       ...names.map((n) => ({ ...n.at, w: textW(n.m.title) + 16, h: 18 })),
     ],
     [...pos].map(([id, p]) => {
-      const w = 64 + textW(nodeById(id).title) + 30;
-      return { x: p.x - 10 + w / 2, y: p.y, w, h: 40 };
+      const w = stationW(id, ctx.methods);
+      return { x: p.x - DOT_LEFT + w / 2, y: p.y, w: w + 6, h: 46 };
     }),
   );
   const labels = raw.map((r, i) => ({ ...r, at: spots[i] as Pt }));
@@ -1016,13 +1186,11 @@ function MetroLayer({
       >
         {/* 내 경로(노선 아래 흰 띠) */}
         {route.map(({ edge: e, method: m }) => {
-          const a = pos.get(e.from);
-          const b = pos.get(e.to);
-          if (!a || !b) return null;
+          if (!pts(e)) return null;
           return (
             <path
               key={`route-${e.id}`}
-              d={seg(a, b, lineOff(m), parallelOffset(e, edges))}
+              d={seg(e, lineOff(m))}
               fill="none"
               stroke="#fff"
               strokeOpacity={0.35}
@@ -1036,13 +1204,11 @@ function MetroLayer({
         {order.map((m) =>
           m.edges.map((id) => {
             const e = edgeById(id) as MapEdge;
-            const a = pos.get(e.from);
-            const b = pos.get(e.to);
-            if (!a || !b) return null;
+            if (!pts(e)) return null;
             return (
               <path
                 key={`${m.id}-${id}`}
-                d={seg(a, b, lineOff(m), parallelOffset(e, edges))}
+                d={seg(e, lineOff(m))}
                 fill="none"
                 stroke={METHOD_COLOR[m.id]}
                 strokeOpacity={isSel(m) ? 1 : 0.18}
@@ -1155,11 +1321,15 @@ function MetroLayer({
                 ))}
               </span>
             )}
-            <NodeCube id={id} settings={ctx.settings} px={38} />
-            <span className="text-[11px] leading-tight">
+            <NodePic id={id} ctx={ctx} px={38} />
+            {/* 이름 판: 선 위에서도 읽히게 어두운 바탕 */}
+            <span
+              className="rounded bg-neutral-950/90 px-1 text-[11px] leading-tight"
+              data-node-part="name"
+            >
               {nodeById(id).title}
             </span>
-            {me && <MeBadge methods={me} />}
+            {me && <MeOnMap methods={me} />}
           </>
         );
         const cls = cn(
@@ -1196,7 +1366,7 @@ interface View {
   y: number;
   k: number;
 }
-const MIN_K = 0.3;
+const MIN_K = 0.12;
 const MAX_K = 2.5;
 const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
 
@@ -1233,7 +1403,6 @@ function pinch(ps: Pt[]): { mid: Pt; dist: number } | null {
 function MapFrame({
   width,
   height,
-  focus,
   fit,
   fitKey,
   mini,
@@ -1241,8 +1410,6 @@ function MapFrame({
 }: {
   width: number;
   height: number;
-  /** 처음 가운데 둘 점 */
-  focus: Pt;
   /** 해법을 고르면 맞출 영역 */
   fit: { x: number; y: number; w: number; h: number } | null;
   fitKey: string;
@@ -1292,15 +1459,20 @@ function MapFrame({
     [size],
   );
 
-  // 처음: 「나」가 보이는 범위에서 지도 왼쪽 끝을 틀 왼쪽에(「나」를 가운데에 두되 지도 밖 빈칸은 보이지 않게).
-  // 휴대폰은 조금 줄여서
+  // 처음과 「처음 자리로」: 지도 전체(다 섞임~다 맞음)가 한 화면에 들어오는 배율(2026-11-26 사용자).
+  // 틀 크기가 바뀌면(휴대폰 돌리기) 다시 잰다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 틀·지도 크기가 바뀔 때만 다시 잰다
   useEffect(() => {
-    if (!size.w || home.current) return;
-    const k = size.w < 600 ? 0.75 : 1;
-    const v = clampView(centerOn(focus, k), bounds.current);
+    if (!size.w) return;
+    const k = clampK(Math.min(size.w / width, size.h / height, 1));
+    const v = clampView(
+      centerOn({ x: width / 2, y: height / 2 }, k),
+      bounds.current,
+    );
+    const first = !home.current;
     home.current = v;
-    setView(v);
-  }, [size, focus, centerOn, setView]);
+    if (first) setView(v);
+  }, [size, width, height]);
 
   // 고른 해법이 바뀌면 그 길 전체를 맞춘다(처음 한 번은 건너뛴다)
   const firstFit = useRef(true);
@@ -1432,7 +1604,8 @@ function MapFrame({
   return (
     <div
       ref={box}
-      className="relative h-[72dvh] min-h-[420px] w-full touch-none select-none overflow-hidden rounded-xl border border-white/10 bg-neutral-950"
+      // 화면 전체를 쓰는 A·C: 부모(위 얇은 줄 아래 남은 화면)를 끝까지 채운다
+      className="relative h-full min-h-0 w-full flex-1 touch-none select-none overflow-hidden bg-neutral-950"
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
@@ -1461,7 +1634,7 @@ function MapFrame({
         data-map-content
         data-map-zoom={view.k.toFixed(2)}
       >
-        {children}
+        <ZoomK.Provider value={view.k}>{children}</ZoomK.Provider>
       </div>
       <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
         {[

@@ -228,14 +228,16 @@ export interface FrameView {
 
 /**
  * 보기를 지도 범위 안으로: 지도가 틀보다 넓으면 지도 끝이 틀 끝을 넘어 들어오지 않게(지도 밖 빈칸이 보이지 않게),
- * 좁으면 왼쪽·위에 붙인다. `w`·`h`는 틀 크기, `width`·`height`는 지도 크기(배율 1)
+ * 좁으면 가운데에 둔다(전체 보기). `w`·`h`는 틀 크기, `width`·`height`는 지도 크기(배율 1)
  */
 export function clampView(
   v: FrameView,
   b: { w: number; h: number; width: number; height: number },
 ): FrameView {
   const fit = (pos: number, frame: number, content: number) =>
-    content <= frame ? 0 : Math.min(0, Math.max(frame - content, pos));
+    content <= frame
+      ? (frame - content) / 2
+      : Math.min(0, Math.max(frame - content, pos));
   return {
     k: v.k,
     x: fit(v.x, b.w, b.width * v.k),

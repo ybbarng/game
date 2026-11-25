@@ -75,6 +75,105 @@ test("해법 지도 E: 카드를 누르면 해법 화면에서 세부 걸음을 
   ).toHaveAttribute("aria-disabled", "true");
 });
 
+/**
+ * 지도 안 상자(지점 그림·이름, 걸음 꼬리표, 노선 이름, 역 점) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의
+ * 그림·이름·점끼리는 한 덩이라 보지 않는다. 「나」 표시는 지점 모서리에 일부러 걸쳐 두어 뺀다
+ */
+async function overlaps(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const root = document.querySelector("[data-map-content]");
+    if (!root) return ["지도 없음"];
+    type Box = { owner: string; what: string; r: DOMRect };
+    const boxes: Box[] = [];
+    const add = (sel: string, owner: (el: Element) => string) => {
+      for (const el of root.querySelectorAll(sel)) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0)
+          boxes.push({ owner: owner(el), what: sel, r });
+      }
+    };
+    const nodeOf = (el: Element) =>
+      el.closest("[data-node]")?.getAttribute("data-node") ?? "?";
+    add("[data-node] [data-node-part]", (el) => `node:${nodeOf(el)}`);
+    add("[data-node] [data-station]", (el) => `node:${nodeOf(el)}`);
+    add("[data-edge]", (el) => `edge:${el.getAttribute("data-edge")}`);
+    add(
+      "[data-line-name]",
+      (el) => `line:${el.getAttribute("data-line-name")}`,
+    );
+    const out: string[] = [];
+    for (const [i, a] of boxes.entries())
+      for (const b of boxes.slice(i + 1)) {
+        if (a.owner === b.owner) continue;
+        const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+        const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+        if (w > 1 && h > 1) out.push(`${a.owner} × ${b.owner}`);
+      }
+    return out;
+  });
+}
+
+for (const v of ["a", "c"] as const)
+  test(`해법 지도 ${v.toUpperCase()}: 지점 그림·이름·꼬리표·역 점이 서로 겹치지 않는다(전체 보기·확대, 3×3·다른 해법·4×4)`, async ({
+    page,
+  }) => {
+    for (const q of [
+      "n=3&m=beginner&demo=1",
+      "n=3&m=beginner,cfop,zz&demo=1&more=1",
+      "n=4&demo=1",
+    ]) {
+      await page.goto(`/cube/learn-map?v=${v}&${q}`);
+      await expect(page.locator(`[data-solve-map="${v}"]`)).toBeVisible();
+      await expect(page.locator("[data-node]").first()).toBeVisible();
+      expect(await overlaps(page), `${q} 전체 보기`).toEqual([]);
+      const zoom = page.locator("[data-map-content]");
+      const before = await zoom.getAttribute("data-map-zoom");
+      for (let i = 0; i < 3; i++)
+        await page.getByRole("button", { name: "크게" }).click();
+      await expect(zoom).not.toHaveAttribute("data-map-zoom", before ?? "");
+      expect(await overlaps(page), `${q} 확대`).toEqual([]);
+    }
+  });
+
+test("해법 지도 A·C: 처음에는 지도 전체가 한 화면에 들어오고 페이지는 스크롤되지 않는다", async ({
+  page,
+}) => {
+  for (const v of ["a", "c"]) {
+    await page.goto(`/cube/learn-map?v=${v}&m=beginner`);
+    const frame = page.locator("[data-map-frame]");
+    await expect(frame).toBeVisible();
+    const f = await frame.boundingBox();
+    const content = page.locator("[data-map-content]");
+    const c = await content.boundingBox();
+    expect(f && c, v).toBeTruthy();
+    if (!f || !c) return;
+    expect(
+      [
+        c.x >= f.x - 1,
+        c.y >= f.y - 1,
+        c.x + c.width <= f.x + f.width + 1,
+        c.y + c.height <= f.y + f.height + 1,
+      ],
+      v,
+    ).toEqual([true, true, true, true]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight,
+      ),
+      v,
+    ).toBeLessThanOrEqual(0);
+    // 「처음 자리로」도 이 전체 보기로
+    await page.getByRole("button", { name: "크게" }).click();
+    await page.getByRole("button", { name: "처음 자리로" }).click();
+    await expect(content).toHaveAttribute(
+      "data-map-zoom",
+      (await content.getAttribute("data-map-zoom")) ?? "",
+    );
+    const c2 = await content.boundingBox();
+    expect(c2 && Math.round(c2.width), v).toBe(Math.round(c.width));
+  }
+});
+
 test("해법 지도: 폐기한 B 갈림길 주소(v=b)로 열면 A 지도로 연다", async ({
   page,
 }) => {

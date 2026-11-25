@@ -279,129 +279,159 @@ export function SolveMapApp() {
     (m) => ofSize(m) && (!folded(m) || extra || selected.includes(m.id)),
   );
   const chosenIds = chosen.map((m) => m.id);
+  // A·C는 화면 전체가 지도: 위 얇은 줄 하나(넘치면 가로로 밀기) + 그 아래 끝까지 지도. D·E는 그대로
+  const full = variant === "a" || variant === "c";
+  const group = full
+    ? "flex shrink-0 flex-nowrap items-center gap-1.5"
+    : "flex flex-wrap items-center gap-1.5";
   return (
-    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
+    <div
+      data-game="cube"
+      className={cn(
+        "bg-neutral-900 text-white",
+        full ? "fixed inset-0 flex flex-col overflow-hidden" : "min-h-dvh",
+      )}
+    >
       <main
-        className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 break-keep"
+        className={cn(
+          "break-keep",
+          full
+            ? "flex min-h-0 flex-1 flex-col"
+            : "mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4",
+        )}
         data-solve-map={ready ? variant : undefined}
+        data-map-full={full ? "" : undefined}
       >
-        <h1 className="font-bold text-xl">해법 지도</h1>
-        <div className="flex flex-wrap gap-1.5" data-map-variants>
-          {VARIANTS.map((v) => (
+        <div
+          className={cn(
+            full
+              ? "flex shrink-0 flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap border-white/10 border-b px-3 py-1.5"
+              : "contents",
+          )}
+          data-map-bar
+        >
+          <h1
+            className={cn("font-bold", full ? "shrink-0 text-base" : "text-xl")}
+          >
+            해법 지도
+          </h1>
+          <div className={group} data-map-variants>
+            {VARIANTS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={variant === v.id}
+                onClick={() => setVariant(v.id)}
+                className={cn(
+                  "rounded-md border px-2.5 py-1 text-sm",
+                  variant === v.id
+                    ? "border-white bg-white text-neutral-900"
+                    : "border-white/20 text-white/70",
+                )}
+              >
+                {v.title}
+              </button>
+            ))}
             <button
-              key={v.id}
               type="button"
-              aria-pressed={variant === v.id}
-              onClick={() => setVariant(v.id)}
+              aria-pressed={demo}
+              onClick={() => setDemo((d) => !d)}
               className={cn(
                 "rounded-md border px-2.5 py-1 text-sm",
-                variant === v.id
-                  ? "border-white bg-white text-neutral-900"
+                demo
+                  ? "border-amber-300 bg-amber-300 text-neutral-900"
                   : "border-white/20 text-white/70",
               )}
             >
-              {v.title}
+              견본 기록
             </button>
-          ))}
-          <button
-            type="button"
-            aria-pressed={demo}
-            onClick={() => setDemo((d) => !d)}
-            className={cn(
-              "rounded-md border px-2.5 py-1 text-sm",
-              demo
-                ? "border-amber-300 bg-amber-300 text-neutral-900"
-                : "border-white/20 text-white/70",
-            )}
-          >
-            견본 기록
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5" data-map-sizes>
-          {MAP_SIZES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={(ctx.from ?? n) === s}
-              onClick={() => {
-                setN(s);
-                setFrom(null);
-                setOpen(null);
-                setFin(null);
-              }}
-              className={cn(
-                "rounded-md border px-3 py-1 font-semibold text-sm",
-                (ctx.from ?? n) === s
-                  ? "border-white bg-white text-neutral-900"
-                  : "border-white/20 text-white/70",
-              )}
-              data-size={s}
-            >
-              {s}×{s}
-            </button>
-          ))}
-          {ctx.from && (
-            <button
-              type="button"
-              onClick={() => {
-                setN(ctx.from as CubeSize);
-                setFrom(null);
-              }}
-              className="rounded-md border border-white/30 px-2.5 py-1 text-sm"
-              data-map-back
-            >
-              ← {ctx.from}×{ctx.from}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5" data-map-methods>
-          {chips.map((m) => {
-            const on = chosenIds.includes(m.id);
-            const t = methodTotals(m);
-            return (
+          </div>
+          <div className={group} data-map-sizes>
+            {MAP_SIZES.map((s) => (
               <button
-                key={m.id}
+                key={s}
                 type="button"
-                aria-pressed={on}
-                data-method={m.id}
-                onClick={() => ctx.toggle(m.id)}
+                aria-pressed={(ctx.from ?? n) === s}
+                onClick={() => {
+                  setN(s);
+                  setFrom(null);
+                  setOpen(null);
+                  setFin(null);
+                }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm",
-                  on ? "bg-white/10" : "border-white/15 text-white/50",
+                  "rounded-md border px-3 py-1 font-semibold text-sm",
+                  (ctx.from ?? n) === s
+                    ? "border-white bg-white text-neutral-900"
+                    : "border-white/20 text-white/70",
                 )}
-                style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
+                data-size={s}
               >
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
-                  style={{ background: METHOD_COLOR[m.id] }}
-                />
-                <span className="font-medium">{m.title}</span>
-                {t.formulas !== null && (
-                  <span className="whitespace-nowrap text-white/60 text-xs">
-                    공식 {t.formulas}
-                  </span>
-                )}
-                {t.turns !== undefined && (
-                  <span className="whitespace-nowrap text-white/60 text-xs">
-                    {t.turns}수
-                  </span>
-                )}
+                {s}×{s}
               </button>
-            );
-          })}
-          <button
-            type="button"
-            aria-pressed={extra}
-            onClick={() => setExtra((x) => !x)}
-            className={cn(
-              "rounded-full border border-dashed px-2.5 py-1 text-sm",
-              extra
-                ? "border-white/60 text-white"
-                : "border-white/25 text-white/50",
+            ))}
+            {ctx.from && (
+              <button
+                type="button"
+                onClick={() => {
+                  setN(ctx.from as CubeSize);
+                  setFrom(null);
+                }}
+                className="rounded-md border border-white/30 px-2.5 py-1 text-sm"
+                data-map-back
+              >
+                ← {ctx.from}×{ctx.from}
+              </button>
             )}
-          >
-            다른 해법
-          </button>
+          </div>
+          <div className={group} data-map-methods>
+            {chips.map((m) => {
+              const on = chosenIds.includes(m.id);
+              const t = methodTotals(m);
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={on}
+                  data-method={m.id}
+                  onClick={() => ctx.toggle(m.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm",
+                    on ? "bg-white/10" : "border-white/15 text-white/50",
+                  )}
+                  style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: METHOD_COLOR[m.id] }}
+                  />
+                  <span className="font-medium">{m.title}</span>
+                  {t.formulas !== null && (
+                    <span className="whitespace-nowrap text-white/60 text-xs">
+                      공식 {t.formulas}
+                    </span>
+                  )}
+                  {t.turns !== undefined && (
+                    <span className="whitespace-nowrap text-white/60 text-xs">
+                      {t.turns}수
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              aria-pressed={extra}
+              onClick={() => setExtra((x) => !x)}
+              className={cn(
+                "rounded-full border border-dashed px-2.5 py-1 text-sm",
+                extra
+                  ? "border-white/60 text-white"
+                  : "border-white/25 text-white/50",
+              )}
+            >
+              다른 해법
+            </button>
+          </div>
         </div>
         {ready && (
           <>
