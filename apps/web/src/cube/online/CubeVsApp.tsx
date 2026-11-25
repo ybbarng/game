@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { raceClock } from "@/net/race/race-session";
 import { randomId } from "@/net/transport";
 import { MyMethodPick } from "../components/MethodSelect";
+import { SizePicker } from "../components/SizePicker";
+import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import {
   type ShapePick,
   type ShapeStart,
@@ -68,7 +70,8 @@ function testItemDraw(): { drawItem?: typeof drawItem } {
 }
 
 export function CubeVsApp() {
-  const [n, setN] = useState(2);
+  // 지금 크기로 연다(2×2~5×5 밖이면 3×3, docs/47 16-28). 여기서 고르면 지금 크기도 바뀐다
+  const n = sizeFor(SIZES, useCurrentSize());
   /** 단계 글(`levelText`) 또는 「내 실력에 맞춤」(`"fit"`) */
   const [level, setLevel] = useState(levelText("casual"));
   const [botCount, setBotCount] = useState(1);
@@ -188,23 +191,17 @@ export function CubeVsApp() {
 
         {!room ? (
           <section className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-4">
-            <label
-              className={`flex items-center justify-between text-sm ${practiceOn ? "hidden" : ""}`}
-            >
-              크기
-              <select
-                data-cube-vs-size
-                value={n}
-                onChange={(e) => setN(Number(e.target.value))}
-                className="rounded bg-white/10 px-2 py-1"
-              >
-                {SIZES.map((k) => (
-                  <option key={k} value={k} className="bg-neutral-800">
-                    {k}×{k}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!practiceOn && (
+              <div className="flex items-center justify-between gap-2 text-sm">
+                크기
+                <SizePicker
+                  attr="data-cube-vs-size"
+                  sizes={SIZES}
+                  value={n}
+                  onPick={setCurrentSize}
+                />
+              </div>
+            )}
             <BotLevelPicker
               n={practiceOn ? 3 : n}
               average={practiceOn ? averages?.["3"] : myAverage}
