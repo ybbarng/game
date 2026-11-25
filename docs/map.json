@@ -1249,6 +1249,18 @@
           ],
           "status": "decided",
           "decided": "2026-11-12 사용자: 완전 네이티브로 만들어 메모리 사용량을 잰다(그리기는 Core Animation 3D, #260). F2L 전 힌트는 사람 해법 계산도 Rust로 옮긴다. CSS 3D 기본값 안은 버림"
+        },
+        {
+          "id": "cube-2look-bridge",
+          "type": "fork",
+          "title": "초보자 해법과 CFOP 사이 다리 과정(2단계 OLL·PLL)의 자리",
+          "owner": "me",
+          "options": [
+            "새 과정 「마지막 층을 공식으로」(333-2look)로 2단계 단원을 옮기고 CFOP 선행 과정으로",
+            "CFOP 안에 그대로 두기"
+          ],
+          "status": "decided",
+          "decided": "2026-11-25 사용자 「초보자 해법에서 CFOP로 넘어가는 중간 단계로 2 look OLL, 2 look PLL」, 「해당 층의 모양을 전체적인 그림으로 개괄」: 새 과정 333-2look(첫 단원 개괄 평면도 16가지·초보자 견주기, 전체 흐름, 2단계 OLL·PLL, 마무리). 단원 id cfop-2look-oll·pll과 공식 연습 단계 id·묶음(CFOP)은 그대로. docs/47 16-24"
         }
       ]
     },
