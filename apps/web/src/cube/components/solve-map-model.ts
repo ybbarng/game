@@ -1,7 +1,7 @@
 // 해법 지도 시안 화면(SolveMapApp)이 네 안에서 함께 쓰는 계산. 화면을 모르는 순수 함수다.
 import {
+  type CubeSize,
   edgeById,
-  isBigMethod,
   lessonFor,
   MAP_EDGES,
   MAP_MEASURE,
@@ -15,6 +15,9 @@ import {
   methodNodes,
   newFormulas,
   nodeById,
+  PARITY_AT,
+  PARITY_LOOPS,
+  type ParityLoop,
 } from "../learn/solve-map";
 
 /** 해법마다 선 색(어두운 바탕에서 서로 갈리게) */
@@ -32,6 +35,10 @@ export const METHOD_COLOR: Readonly<Record<MapMethodId, string>> = {
   "corners-first": "#fde047",
   "444-reduction": "#fca5a5",
   "444-yau": "#e879f9",
+  "222-beginner": "#f59e0b",
+  "222-from333": "#38bdf8",
+  ortega: "#c084fc",
+  "555-reduction": "#fca5a5",
 };
 
 /** B안에서 처음에 펼쳐 둘 해법(나머지는 「다른 해법」으로 접는다) */
@@ -179,9 +186,44 @@ export function rowRange(nodes: Set<MapNodeId>): { min: number; max: number } {
   return { min: Math.min(...rows), max: Math.max(...rows) };
 }
 
-/** 4×4 해법을 고르거나 펼쳤나 */
-export const anyBig = (methods: readonly MapMethod[]) =>
-  methods.some(isBigMethod);
+export interface Detour {
+  loop: ParityLoop;
+  /** 우회 역을 붙일 지점 */
+  at: MapNodeId;
+}
+
+/**
+ * 패리티 우회 고리: 큰 큐브 지도에서는 「3×3 맞추기」 칸 옆(at = 그 칸이 닿는 다 맞음), 3×3 지도를 큰 큐브에서
+ * 건너와 열었으면 고른 해법의 패리티 자리(PARITY_AT)에. 이름·공식은 PARITY_LOOPS 하나에서
+ */
+export function detours(
+  size: CubeSize,
+  from: 4 | 5 | null,
+  selected: readonly MapMethod[],
+): Detour[] {
+  if (size !== 3) {
+    const loops = PARITY_LOOPS[size];
+    return loops.map((loop) => ({
+      loop,
+      at: `${size}-solved` as MapNodeId,
+    }));
+  }
+  if (!from) return [];
+  const out: Detour[] = [];
+  for (const m of selected) {
+    const at = PARITY_AT[m.id];
+    if (!at) continue;
+    for (const loop of PARITY_LOOPS[from]) {
+      const node = loop.kind === "oll" ? at.oll : at.pll;
+      if (!out.some((d) => d.at === node && d.loop.kind === loop.kind))
+        out.push({ loop, at: node });
+    }
+  }
+  return out;
+}
+
+/** 패리티 고리에 붙일 잰 값: 축소법 판에서 나온 비율과 나왔을 때 친 수(4×4) */
+export const parityMeasure = (kind: "oll" | "pll") => MAP_MEASURE.parity[kind];
 
 /**
  * B안 갈림길: 보일 해법끼리 갈라지거나 합쳐지는 지점(들어오는 길·나가는 길이 둘 이상)과 처음·끝 지점

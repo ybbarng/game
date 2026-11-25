@@ -8,18 +8,23 @@ import {
   edgeById,
   type MapEdge,
   type MapMethod,
+  type MapNodeId,
   methodNodes,
   nodeById,
 } from "../learn/solve-map";
 import { edgeLearn } from "../learn/solve-map-me";
 import {
   EdgeLines,
+  FinishPanel,
+  hrefOf,
+  LoopChip,
   type MapCtx,
   MeBadge,
   NodeCube,
   StartMark,
+  toggleClick,
 } from "./SolveMapViews";
-import { edgeHref, METHOD_COLOR, methodTotals } from "./solve-map-model";
+import { detours, METHOD_COLOR, methodTotals } from "./solve-map-model";
 
 const SKILL_RING = {
   strong: "#6ee7b7",
@@ -73,6 +78,13 @@ function StepArrow({
       />
     </svg>
   );
+}
+
+/** 이 지점 곁에 붙는 패리티 고리(큰 큐브: 다 맞음 곁, 3×3 「4×4에서 옴」: 그 해법의 패리티 자리) */
+function loopsAt(m: MapMethod, id: MapNodeId, ctx: MapCtx) {
+  // 큰 큐브에서 펼쳤으면 고리는 펼친 칸 안에
+  if (ctx.fin && ctx.size !== 3) return [];
+  return detours(ctx.size, ctx.from, [m]).filter((d) => d.at === id);
 }
 
 /** 지점으로 들어오는 길을 끝냈나(첫 지점은 null) */
@@ -135,6 +147,11 @@ function Strip({
               {done ? "✓" : ""}
             </span>
           </li>,
+          ...loopsAt(m, id, ctx).map((d) => (
+            <li key={`${id}-loop-${d.loop.kind}`} className="self-center pb-3">
+              <LoopChip d={d} ctx={ctx} compact />
+            </li>
+          )),
         ];
       })}
     </ol>
@@ -175,6 +192,13 @@ function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
               {done && <span className="text-emerald-300 text-xs">✓</span>}
               {me && <MeBadge methods={[]} />}
             </span>
+            {loopsAt(m, id, ctx).length > 0 && (
+              <span className="ml-10 flex flex-wrap gap-1 pt-1">
+                {loopsAt(m, id, ctx).map((d) => (
+                  <LoopChip key={d.loop.kind} d={d} ctx={ctx} compact />
+                ))}
+              </span>
+            )}
           </li>
         );
       })}
@@ -287,7 +311,7 @@ function MethodScreen({
       <ol className="flex flex-col">
         {m.edges.map((id, i) => {
           const e = edgeById(id) as MapEdge;
-          const href = edgeHref(e, m, ctx.courseOf);
+          const href = hrefOf(e, m, ctx);
           const me = ctx.me.get(e.to)?.includes(m);
           const body = (
             <>
@@ -319,6 +343,8 @@ function MethodScreen({
               {href ? (
                 <a
                   href={href}
+                  onClick={toggleClick(e.jump, ctx)}
+                  aria-expanded={e.jump ? !!ctx.fin : undefined}
                   className="flex items-center gap-2 rounded-lg bg-neutral-800/70 px-2 py-1.5 hover:bg-neutral-800"
                   data-edge={id}
                 >
@@ -332,6 +358,18 @@ function MethodScreen({
                 >
                   {body}
                 </div>
+              )}
+              {e.jump && ctx.fin && (
+                <div className="py-1 pl-[58px]">
+                  <FinishPanel ctx={ctx} />
+                </div>
+              )}
+              {loopsAt(m, e.to, ctx).length > 0 && (
+                <span className="flex flex-wrap gap-2 py-1 pl-[58px]">
+                  {loopsAt(m, e.to, ctx).map((d) => (
+                    <LoopChip key={d.loop.kind} d={d} ctx={ctx} />
+                  ))}
+                </span>
               )}
             </li>
           );

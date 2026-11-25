@@ -13,30 +13,41 @@ import { ALL_ALG_CASES } from "./alg-sets";
 import { TWO_LOOK_OLL } from "./algs-2look";
 import { PLL_CASES } from "./algs-pll";
 import { type PathStageId, play, reps, runStage, TWIST } from "./beginner-path";
-import { playN, runCenters, runEdges444 } from "./big-path";
+import {
+  BEGINNER_222_STAGES,
+  FROM333_222_STAGES,
+  play as play222,
+  solve222,
+} from "./beginner-path-222";
+import { playN } from "./big-path";
+import { solveReduced } from "./big-solve";
 import { COURSES } from "./courses";
 import { goalMet, stateForRule } from "./judge";
 import { yellowCrossByFormula } from "./ll-compare";
 import {
   edgeById,
-  isBigMethod,
   lessonFor,
   MAP_EDGES,
   MAP_LANES,
   MAP_METHODS,
   MAP_NODES,
   MAP_PREP,
+  MAP_SIZES,
   type MapEdge,
   type MapMethodId,
   type MapNodeId,
   methodFormulaCount,
   methodNodes,
+  methodSize,
   newFormulas,
   nodeById,
   nodeMask,
   nodeSize,
+  PARITY_AT,
+  PARITY_FORMULAS,
+  PARITY_LOOPS,
 } from "./solve-map";
-import { solveYau } from "./yau-solve";
+import { methodRun } from "./solve-map-measure";
 import { runZzLl, solveZzByRules, stepMovesLl } from "./zz-path";
 
 const lessons = new Map(
@@ -63,7 +74,8 @@ const yellowCorners = (s: PuzzleState) => {
   const top = [0, 1, 2, 3, 4, 5].find((f) => c[f * 9 + 4] === 3) as number;
   return [0, 2, 6, 8].filter((k) => c[top * 9 + k] === 3).length;
 };
-const REACHED: Record<MapNodeId, (s: PuzzleState) => boolean> = {
+type Reached = (s: PuzzleState) => boolean;
+const REACHED = {
   scrambled: () => true,
   cross: (s) => goalMet(3, s, "white-cross"),
   "first-layer": (s) => goalMet(3, s, "first-layer"),
@@ -91,12 +103,26 @@ const REACHED: Record<MapNodeId, (s: PuzzleState) => boolean> = {
   "petrus-223": (s) => goalMet(3, s, "petrus-223"),
   "petrus-eo": (s) => goalMet(3, s, "petrus-223") && goalMet(3, s, "eo"),
   "corners-first": (s) => cornersOnly(s),
-  // 4×4 지점은 4×4 상태로 본다(아래 「4×4」 시험)
-  "4-scrambled": () => true,
+} satisfies Partial<Record<MapNodeId, Reached>>;
+
+/** 다른 크기 지점(그 크기 상태로 본다) */
+const REACHED_N: Partial<Record<MapNodeId, (s: PuzzleState) => boolean>> = {
+  "2-first-layer": (s) => goalMet(2, s, "2x2-first-layer"),
+  "2-top-face": (s) => goalMet(2, s, "2x2-top-face"),
+  "2-corners-placed": (s) => goalMet(2, s, "2x2-corners-placed"),
+  "2-solved": (s) => goalMet(2, s, "ll"),
   "4-centers": (s) => goalMet(4, s, "centers"),
+  "4-paired": (s) => goalMet(4, s, "edges-paired"),
   "4-ud-centers": (s) => goalMet(4, s, "yau-ud-centers"),
   "4-cross3": (s) => goalMet(4, s, "yau-cross3"),
   "4-yau-centers": (s) => goalMet(4, s, "yau-centers"),
+  "4-yau-cross": (s) => goalMet(4, s, "yau-cross"),
+  "4-yau-paired": (s) =>
+    goalMet(4, s, "yau-cross") && goalMet(4, s, "edges-paired"),
+  "4-solved": (s) => goalMet(4, s, "ll"),
+  "5-centers": (s) => goalMet(5, s, "centers"),
+  "5-paired": (s) => goalMet(5, s, "edges-paired"),
+  "5-solved": (s) => goalMet(5, s, "ll"),
 };
 
 /** 길을 차례로 지나며 지점마다 판정한 결과(닿지 못한 지점 이름 목록, 빈 목록이면 모두 닿음) */
@@ -105,7 +131,8 @@ function walk(start: PuzzleState, legs: [MapNodeId, string][]): string[] {
   const missed: string[] = [];
   for (const [node, moves] of legs) {
     s = play(s, moves);
-    if (!REACHED[node](s)) missed.push(node);
+    if (!(REACHED as Partial<Record<MapNodeId, Reached>>)[node]?.(s))
+      missed.push(node);
   }
   return missed;
 }
@@ -136,22 +163,27 @@ function reach(
 }
 
 describe("그래프", () => {
-  it("해법마다 다 섞임에서 다 맞음까지 길이 끊기지 않고 이어진다", () => {
+  it("해법마다 그 크기의 다 섞임에서 다 맞음까지 길이 끊기지 않고 이어지고, 지점은 모두 해법과 같은 크기다", () => {
     for (const m of MAP_METHODS) {
+      const n = methodSize(m);
       const nodes = methodNodes(m);
-      // 4×4 해법은 4×4 다 섞임에서 출발한다
+      const pre = n === 3 ? "" : `${n}-`;
       expect([m.id, nodes[0], nodes.at(-1)]).toEqual([
         m.id,
-        isBigMethod(m) ? "4-scrambled" : "scrambled",
-        "solved",
+        `${pre}scrambled`,
+        `${pre}solved`,
       ]);
+      expect(
+        nodes.filter((id) => nodeSize(id) !== n),
+        m.id,
+      ).toEqual([]);
       m.edges.forEach((id, i) => {
         expect(edgeById(id)?.from, `${m.id} ${id}`).toBe(nodes[i]);
       });
     }
   });
 
-  it("지점은 그 지점을 지나는 해법 가운데 가장 왼쪽(쉬운) 해법의 칸에 있다", () => {
+  it("지점은 그 지점을 지나는 해법 가운데 가장 왼쪽(쉬운) 해법의 칸에 있다(패리티 역은 곁에)", () => {
     const wrong = MAP_NODES.filter((n) => {
       const lanes = MAP_METHODS.filter((m) =>
         methodNodes(m).includes(n.id),
@@ -216,6 +248,8 @@ describe("그래프", () => {
         "1lll",
         "cf-corners",
         "cf-edges",
+        // 5×5 「3×3 맞추기」(5×5 과정에 3×3처럼 단원이 없다. 누르면 3×3 지도로)
+        "555-reduction:333",
       ],
     );
   });
@@ -229,6 +263,12 @@ describe("그래프", () => {
       "roux",
       "zz",
       "petrus",
+      "222-beginner",
+      "222-from333",
+      "ortega",
+      "444-reduction",
+      "444-yau",
+      "555-reduction",
     ]);
   });
 
@@ -287,12 +327,27 @@ describe("공식 수", () => {
       "1lll": null,
       "cf-corners": null,
       "cf-edges": null,
+      "222-first-layer": 1,
+      "222-top-face": 1,
+      "222-top-layer": 1,
+      "222-corner-place": 1,
+      "222-corner-twist": 1,
+      "ortega-face": 0,
+      "ortega-oll": 7,
+      "ortega-pbl": 5,
       "444-centers": null,
       "444-edges": null,
       "yau-ud-centers": null,
       "yau-cross3": null,
       "yau-side-centers": null,
+      "yau-last-cross": null,
       "yau-edges": null,
+      "555-centers": null,
+      "555-edges": 2,
+      // 큰 큐브 「3×3 맞추기」: 고르는 3×3 해법마다 달라 비운다
+      "444-reduction:333": null,
+      "444-yau:333": null,
+      "555-reduction:333": null,
     });
   });
 
@@ -311,8 +366,13 @@ describe("공식 수", () => {
       "zz-zbll": null,
       "cfop-1lll": null,
       "corners-first": null,
+      "222-beginner": 3,
+      "222-from333": 2,
+      ortega: 12,
+      // 앞부분(센터·엣지) 공식을 셀 기준이 없어 비운다
       "444-reduction": null,
       "444-yau": null,
+      "555-reduction": null,
     });
   });
 
@@ -341,6 +401,8 @@ describe("공식 수", () => {
               st.setup && "alg" in st.setup ? st.setup.alg : "",
             ]) ?? [],
       );
+      // 큰 큐브 뒤 묶음은 3×3 길의 공식을 합친 것이라 그 3×3 길에서 본다
+      if (e.jump) continue;
       for (const f of e.formulas ?? []) {
         if (caseIds.has(f)) continue;
         // 단원 공식 그대로(초보자): 그 길의 단원(단원 없는 길은 초보자 과정 어디든)에 쓰인다
@@ -375,7 +437,8 @@ describe("지점 정의", () => {
       for (const [node, stage] of legs) {
         if (stage === "second") s = play(s, "z2");
         s = runStage(stage, s).state;
-        if (!REACHED[node](s)) missed.push(node);
+        if (!(REACHED as Partial<Record<MapNodeId, Reached>>)[node]?.(s))
+          missed.push(node);
       }
       expect(missed, `씨앗 ${seed}`).toEqual([]);
     }
@@ -515,42 +578,77 @@ describe("지점 정의", () => {
     );
   });
 
-  it("4×4 축소법: 단원 규칙으로 센터 → 엣지 짝(3×3처럼 다 섞인 큐브)", () => {
-    for (const seed of SEEDS.slice(0, 3)) {
-      const start = playN(4, solvedCube(4), scramble("444", seed).text);
-      const centers = runCenters(4, start).state;
-      const paired = runEdges444(centers).state;
-      expect(
-        [REACHED["4-centers"](centers), goalMet(4, paired, "edges-paired")],
-        `씨앗 ${seed}`,
-      ).toEqual([true, true]);
+  it("2×2: 단원 규칙(처음 맞추기·3×3을 아는 사람)으로 단계마다 다음 지점에 닿는다", () => {
+    for (const [stages, nodes] of [
+      [BEGINNER_222_STAGES, ["2-first-layer", "2-top-face", "2-solved"]],
+      [FROM333_222_STAGES, ["2-first-layer", "2-corners-placed", "2-solved"]],
+    ] as const)
+      for (const seed of SEEDS.slice(0, 3)) {
+        let s = play222(solvedCube(2), scramble("222", seed).text);
+        const r = solve222(s, stages);
+        const missed = nodes.filter((node, i) => {
+          s = play222(s, r.moves[i] ?? "");
+          return !REACHED_N[node]?.(s);
+        });
+        expect(missed, `씨앗 ${seed}`).toEqual([]);
+      }
+  });
+
+  it("4×4·5×5: 앞부분 단원 규칙으로 3×3처럼까지, 3×3 맞추기(축소법 풀이, 패리티 포함)로 다 맞음", () => {
+    for (const id of ["444-reduction", "444-yau", "555-reduction"] as const) {
+      const m = method(id);
+      const n = methodSize(m) as 4 | 5;
+      const nodes = methodNodes(m);
+      for (const seed of SEEDS.slice(0, 2)) {
+        const text = scramble(n === 4 ? "444" : "555", seed).text;
+        const run = methodRun(id, text);
+        let s = playN(n, solvedCube(n), text);
+        const missed: string[] = [];
+        m.edges.forEach((e, i) => {
+          // 3×3 맞추기 칸은 패리티 고리의 수도 풀이 차례대로 섞여 있어 축소법 풀이를 그대로 친다
+          const moves = e.endsWith(":333")
+            ? solveReduced(n, s)
+                .stages.map((x) => x.moves)
+                .join(" ")
+            : (run[e] ?? "");
+          s = playN(n, s, moves);
+          const node = nodes[i + 1] as MapNodeId;
+          if (!REACHED_N[node]?.(s)) missed.push(node);
+        });
+        expect(missed, `${id} 씨앗 ${seed}`).toEqual([]);
+      }
     }
   });
 
-  it("4×4 야우: 야우 풀이로 흰·노랑 센터 → 흰 십자 셋 → 옆 센터 → 엣지까지 묶으면 흰 십자가 맞은 3×3", () => {
-    const order: [MapNodeId | "cross4", string[]][] = [
-      ["4-ud-centers", ["centers-ud"]],
-      ["4-cross3", ["cross3"]],
-      ["4-yau-centers", ["centers-rest"]],
-      ["cross4", ["last-cross", "edges"]],
-    ];
-    for (const seed of SEEDS.slice(0, 3)) {
-      let s = playN(4, solvedCube(4), scramble("444", seed).text);
-      const sol = solveYau(s);
-      const missed: string[] = [];
-      for (const [node, ids] of order) {
-        const moves = sol.stages
-          .filter((x) => ids.includes(x.id))
-          .map((x) => x.moves)
-          .join(" ");
-        s = playN(4, s, moves);
-        const ok =
-          node === "cross4"
-            ? goalMet(4, s, "yau-cross") && goalMet(4, s, "edges-paired")
-            : REACHED[node](s);
-        if (!ok) missed.push(node);
-      }
-      expect(missed, `씨앗 ${seed}`).toEqual([]);
+  it("패리티 고리는 4×4에만 둘(OLL·PLL), 이름은 눈에 띄는 자리, 공식은 패리티 공식 모음이다", () => {
+    expect(
+      Object.fromEntries(
+        MAP_SIZES.map((n) => [
+          n,
+          PARITY_LOOPS[n].map((l) => [l.name, l.sub, l.formulas.length]),
+        ]),
+      ),
+    ).toEqual({
+      2: [],
+      3: [],
+      4: [
+        ["토끼이빨", "OLL 패리티 · OLL에서 보임", 1],
+        ["바보토끼이빨", "PLL 패리티 · PLL에서 보임", 1],
+      ],
+      5: [],
+    });
+    expect(PARITY_LOOPS[4].map((l) => l.formulas)).toEqual([
+      PARITY_FORMULAS.oll,
+      PARITY_FORMULAS.pll,
+    ]);
+  });
+
+  it("3×3 지도 「4×4에서 옴」의 패리티 우회 역 자리는 그 해법이 지나는 지점이고, OLL 쪽이 PLL 쪽보다 앞이다", () => {
+    for (const [id, at] of Object.entries(PARITY_AT)) {
+      const nodes = methodNodes(method(id as MapMethodId));
+      const i = nodes.indexOf(at.oll);
+      const j = nodes.indexOf(at.pll);
+      expect([i >= 0, j > i], id).toEqual([true, true]);
     }
   });
 
@@ -562,8 +660,6 @@ describe("지점 정의", () => {
       const nodes = methodNodes(m);
       nodes.slice(1).forEach((to, i) => {
         const from = nodes[i] as MapNodeId;
-        // 4×4에서 3×3처럼으로 넘어가는 길은 크기가 달라 견주지 않는다
-        if (nodeSize(from) !== nodeSize(to)) return;
         const next = new Set(shown(to));
         if (shown(from).some((s) => !next.has(s))) lost.push(`${from}→${to}`);
       });
@@ -571,8 +667,10 @@ describe("지점 정의", () => {
     expect(lost).toEqual([]);
   });
 
-  it("지점 그림은 모두 서로 다르다", () => {
-    const keys = MAP_NODES.map((n) => nodeMask(n.id).join(","));
-    expect(new Set(keys).size).toBe(MAP_NODES.length);
+  it("지점 그림은 같은 크기 안에서 모두 서로 다르다", () => {
+    const keys = MAP_NODES.map(
+      (n) => `${n.size ?? 3}:${nodeMask(n.id).join(",")}`,
+    );
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

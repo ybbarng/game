@@ -15,10 +15,15 @@ import {
   type TrainBook,
 } from "../learn/progress";
 import {
+  type CubeSize,
+  FINISH_METHODS,
+  MAP_LANES,
   MAP_METHODS,
+  MAP_SIZES,
   type MapMethod,
   type MapMethodId,
   type MapNodeId,
+  methodSize,
 } from "../learn/solve-map";
 import {
   DEMO_PROGRESS,
@@ -31,7 +36,11 @@ import {
   myNode,
   solveMethodOf,
 } from "../learn/solve-map-me";
-import { loadMethod, type SolveMethod } from "../progress/methods";
+import {
+  loadMethod,
+  type SolveMethod,
+  usableMethod,
+} from "../progress/methods";
 import { loadRecords, type SolveRecord } from "../records";
 import { useCubeSettings } from "../settings";
 import { CardsView } from "./SolveMapCards";
@@ -67,6 +76,8 @@ const courseOf = (id: string) => lessonCourse.get(id);
 function readQuery() {
   const q = new URLSearchParams(window.location.search);
   const v = q.get("v");
+  const n = Number(q.get("n"));
+  const from = Number(q.get("from"));
   return {
     variant: (VARIANTS.some((x) => x.id === v) ? v : "a") as MapVariant,
     selected: parseSelected(q.get("m")),
@@ -74,23 +85,53 @@ function readQuery() {
     extra: q.get("more") === "1",
     open: (MAP_METHODS.find((m) => m.id === q.get("method"))?.id ??
       null) as MapMethodId | null,
+    n: (MAP_SIZES.includes(n as CubeSize) ? n : 3) as CubeSize,
+    from: (from === 4 || from === 5 ? from : null) as 4 | 5 | null,
+    fin: (FINISH_METHODS.find((m) => m === q.get("x")) ??
+      null) as MapMethodId | null,
   };
 }
 
-function writeQuery(s: {
+interface QueryState {
   variant: MapVariant;
   selected: MapMethodId[];
   demo: boolean;
   extra: boolean;
   open: MapMethodId | null;
-}) {
+  n: CubeSize;
+  from: 4 | 5 | null;
+  fin: MapMethodId | null;
+}
+
+function queryOf(s: QueryState): string {
   const q = new URLSearchParams();
   q.set("v", s.variant);
+  q.set("n", String(s.n));
+  if (s.from && s.n === 3) q.set("from", String(s.from));
+  // 큰 큐브 「3×3 맞추기」를 펼친 해법(3×3 지도에 들렀다 돌아와도 펼친 채로)
+  if (s.fin && (s.n !== 3 || s.from)) q.set("x", s.fin);
   q.set("m", s.selected.join(","));
   if (s.demo) q.set("demo", "1");
   if (s.extra) q.set("more", "1");
   if (s.open && s.variant.startsWith("cards")) q.set("method", s.open);
-  window.history.replaceState(null, "", `?${q.toString()}`);
+  return `?${q.toString()}`;
+}
+
+/** 3×3 지도에 들를 때의 고른 해법: 다른 크기 것은 두고 3×3은 펼친 해법 하나로 */
+function hopSelected(
+  xs: readonly MapMethodId[],
+  fin: MapMethodId | null,
+): MapMethodId[] {
+  const rest = xs.filter((x) => methodSize(methodById(x)) !== 3);
+  return [...rest, fin ?? (FINISH_METHODS[0] as MapMethodId)];
+}
+
+/** 그 크기에서 처음 고를 해법: 기본 해법 가운데 가장 쉬운 것 */
+function defaultOf(n: CubeSize): MapMethodId {
+  return [...MAP_METHODS]
+    .filter((m) => methodSize(m) === n && !m.extra)
+    .sort((a, b) => (MAP_LANES[a.id] ?? 0) - (MAP_LANES[b.id] ?? 0))[0]
+    ?.id as MapMethodId;
 }
 
 export function SolveMapApp() {
@@ -102,9 +143,16 @@ export function SolveMapApp() {
   const [extra, setExtra] = useState(false);
   /** E안에서 연 해법 화면 */
   const [open, setOpen] = useState<MapMethodId | null>(null);
+  /** 지도 크기(크기마다 지도가 따로다) */
+  const [n, setN] = useState<CubeSize>(3);
+  /** 3×3 지도를 큰 큐브에서 건너와 열었나(패리티 우회 역) */
+  const [from, setFrom] = useState<4 | 5 | null>(null);
+  /** 큰 큐브 「3×3 맞추기」를 펼쳤으면 그 안에서 고른 3×3 해법 */
+  const [fin, setFin] = useState<MapMethodId | null>(null);
   const [mine, setMine] = useState<{
     progress: LearnProgress;
     train: TrainBook;
+    /** 크기마다 혼자 맞추기 기록 */
     records: SolveRecord[];
     /** 혼자 맞추기 「내 해법」(구간 기록은 이 해법으로만 읽는다) */
     method: SolveMethod;
@@ -117,50 +165,71 @@ export function SolveMapApp() {
     setDemo(q.demo);
     setExtra(q.extra);
     setOpen(q.open);
-    setMine({
+    setN(q.n);
+    setFrom(q.from);
+    setFin(q.fin);
+    setMine((x) => ({
+      ...x,
       progress: loadLearn(),
       train: loadTrain(),
-      records: loadRecords("solo", 3),
       method: loadMethod(),
-    });
+    }));
     setReady(true);
   }, []);
   useEffect(() => {
-    if (ready) writeQuery({ variant, selected, demo, extra, open });
-  }, [ready, variant, selected, demo, extra, open]);
+    if (ready) setMine((x) => ({ ...x, records: loadRecords("solo", n) }));
+  }, [ready, n]);
+  const state: QueryState = {
+    variant,
+    selected,
+    demo,
+    extra,
+    open,
+    n,
+    from,
+    fin,
+  };
+  useEffect(() => {
+    if (ready) window.history.replaceState(null, "", queryOf(state));
+  });
 
   const record = demo
     ? {
         progress: DEMO_PROGRESS,
         train: DEMO_TRAIN,
-        records: DEMO_RECORDS,
+        records: n === 3 ? DEMO_RECORDS : [],
         method: "layer" as SolveMethod,
       }
     : mine;
-  // B안은 루·ZZ·페트루스도 「다른 해법」으로 접는다
+  const ofSize = (m: MapMethod) => methodSize(m) === n;
+  // B안은 3×3의 루·ZZ·페트루스도 「다른 해법」으로 접는다
   const folded = (m: MapMethod) =>
-    variant === "b" ? !MAIN_METHODS.includes(m.id) : isExtra(m);
-  const methods = visibleMethods(selected, extra, folded);
-  const chosen = selected.map(methodById);
+    variant === "b" && n === 3 ? !MAIN_METHODS.includes(m.id) : isExtra(m);
+  const methods = visibleMethods(selected, extra, folded).filter(ofSize);
+  const picked = selected.filter((id) => ofSize(methodById(id)));
+  const chosen = (picked.length ? picked : [defaultOf(n)]).map(methodById);
   const solo = useMemo(() => {
     const out = new Map<string, Map<string, EdgeSolo>>();
-    // 내가 고른 해법으로 맞춘 판만 그 해법 길에 겹친다(자동이면 판마다 길이 달라 겹치지 않는다)
+    // 내가 고른 해법으로 맞춘 판만 그 해법 길에 겹친다(자동이면 판마다 길이 달라 겹치지 않는다. 2×2는 길이 하나)
     for (const m of MAP_METHODS)
-      if (solveMethodOf(m) === record.method)
+      if (
+        methodSize(m) === n &&
+        solveMethodOf(m) === usableMethod(n, record.method)
+      )
         out.set(m.id, methodSolo(m, record.records));
     return out;
-  }, [record.records, record.method]);
+  }, [record.records, record.method, n]);
   const me = useMemo(() => {
     const out = new Map<MapNodeId | "prep", MapMethod[]>();
     for (const m of MAP_METHODS) {
-      if (m.extra) continue;
+      if (m.extra || methodSize(m) !== n) continue;
       const at = myNode(m, record.progress);
       if (!at) continue;
       out.set(at, [...(out.get(at) ?? []), m]);
     }
     if (!out.size) out.set("prep", []);
     return out;
-  }, [record.progress]);
+  }, [record.progress, n]);
 
   const ctx: MapCtx = {
     settings,
@@ -172,19 +241,44 @@ export function SolveMapApp() {
     me,
     courseOf,
     lessonTitle: (id) => lessonTitle.get(id) ?? id,
+    size: n,
+    from: n === 3 ? from : null,
+    fin: n !== 3 && fin ? methodById(fin) : null,
+    finHref: (id) => queryOf({ ...state, fin: id }),
+    setFin,
+    // 3×3 지도에 들르기: 펼친 해법을 고른 채로, 크기 탭은 그대로(지금 크기를 바꾸지 않는다)
+    hopHref: queryOf({
+      ...state,
+      n: 3,
+      from: n === 4 || n === 5 ? n : null,
+      open: null,
+      selected: hopSelected(selected, fin),
+    }),
+    hop: () => {
+      if (n !== 4 && n !== 5) return;
+      setSelected((xs) => hopSelected(xs, fin));
+      setFrom(n);
+      setN(3);
+      setOpen(null);
+    },
     toggle: (id) =>
-      setSelected((xs) =>
-        xs.includes(id)
-          ? xs.length > 1
-            ? xs.filter((x) => x !== id)
-            : xs
-          : [...xs, id],
-      ),
+      setSelected((xs) => {
+        const mine = xs.filter((x) => ofSize(methodById(x)));
+        const other = xs.filter((x) => !ofSize(methodById(x)));
+        const cur = mine.length ? mine : [defaultOf(n)];
+        const next = cur.includes(id)
+          ? cur.length > 1
+            ? cur.filter((x) => x !== id)
+            : cur
+          : [...cur, id];
+        return [...other, ...next];
+      }),
   };
 
   const chips = MAP_METHODS.filter(
-    (m) => !folded(m) || extra || selected.includes(m.id),
+    (m) => ofSize(m) && (!folded(m) || extra || selected.includes(m.id)),
   );
+  const chosenIds = chosen.map((m) => m.id);
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
@@ -223,9 +317,46 @@ export function SolveMapApp() {
             견본 기록
           </button>
         </div>
+        <div className="flex flex-wrap items-center gap-1.5" data-map-sizes>
+          {MAP_SIZES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={(ctx.from ?? n) === s}
+              onClick={() => {
+                setN(s);
+                setFrom(null);
+                setOpen(null);
+                setFin(null);
+              }}
+              className={cn(
+                "rounded-md border px-3 py-1 font-semibold text-sm",
+                (ctx.from ?? n) === s
+                  ? "border-white bg-white text-neutral-900"
+                  : "border-white/20 text-white/70",
+              )}
+              data-size={s}
+            >
+              {s}×{s}
+            </button>
+          ))}
+          {ctx.from && (
+            <button
+              type="button"
+              onClick={() => {
+                setN(ctx.from as CubeSize);
+                setFrom(null);
+              }}
+              className="rounded-md border border-white/30 px-2.5 py-1 text-sm"
+              data-map-back
+            >
+              ← {ctx.from}×{ctx.from}
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-1.5" data-map-methods>
           {chips.map((m) => {
-            const on = selected.includes(m.id);
+            const on = chosenIds.includes(m.id);
             const t = methodTotals(m);
             return (
               <button

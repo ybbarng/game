@@ -10,6 +10,7 @@ import { PRACTICE_STAGES } from "../practice/stages";
 import { segmentsOf } from "../progress/gold";
 import { methodSplits, type SolveMethod } from "../progress/methods";
 import { parseSplits, type SolveRecord } from "../records";
+import { ALL_ALG_CASES } from "./alg-sets";
 import { averageMs, type LearnProgress, type TrainBook } from "./progress";
 import {
   edgeById,
@@ -61,17 +62,20 @@ export interface RouteLeg {
 
 /**
  * 「내 경로」: 다 섞임에서 끝낸 길을 따라 노선 여럿을 이어 탄 한 줄. 지금 탄 노선에 끝낸 다음 길이 있으면 그대로
- * 가고, 없으면 그 지점에서 끝낸 길이 있는 다른 노선으로 갈아탄다(여럿이면 쉬운 칸 MAP_LANES 차례). 4×4는 보지 않는다
+ * 가고, 없으면 그 지점에서 끝낸 길이 있는 다른 노선으로 갈아탄다(여럿이면 쉬운 칸 MAP_LANES 차례). 넘긴 해법들의
+ * 크기(가장 쉬운 해법의 다 섞임)에서 시작한다
  */
 export function myRoute(
   methods: readonly MapMethod[],
   p: LearnProgress,
 ): RouteLeg[] {
   const legs: RouteLeg[] = [];
-  let at: MapNodeId = "scrambled";
   let cur: MapMethod | undefined;
   const lane = (m: MapMethod) => MAP_LANES[m.id] ?? 99;
   const ordered = [...methods].sort((a, b) => lane(a) - lane(b));
+  const first = ordered[0];
+  if (!first) return legs;
+  let at: MapNodeId = methodNodes(first)[0] as MapNodeId;
   for (let guard = 0; guard < 40; guard++) {
     const next = (m: MapMethod) => {
       const i = methodNodes(m).indexOf(at);
@@ -102,9 +106,11 @@ const BEGINNER_STAGE: Readonly<Record<string, string>> = {
   "beginner-corner-twist": "beginner-twist",
 };
 
-const PRACTICE_CASES = new Set(
-  PRACTICE_STAGES.flatMap((s) => s.cases.map((c) => c.id)),
-);
+/** 공식 연습 상황(연습 단계와 「더 보기」 자유 훈련 묶음: 오르테가·4×4 패리티 등) */
+const PRACTICE_CASES = new Set([
+  ...PRACTICE_STAGES.flatMap((s) => s.cases.map((c) => c.id)),
+  ...ALL_ALG_CASES.map((c) => c.id),
+]);
 
 /** 길의 공식 연습 상황 id(공식 연습에 없는 걸음은 빈 목록) */
 export function edgeCases(edge: MapEdge): string[] {
@@ -150,6 +156,11 @@ const SOLVE_METHOD: Partial<Record<MapMethod["id"], SolveMethod>> = {
   roux: "roux",
   zz: "zz",
   "corners-first": "corners",
+  // 2×2는 단계가 한 길뿐이라 「자동」이 곧 그 길(progress/methods.ts)
+  "222-beginner": "auto",
+  "444-reduction": "layer",
+  "444-yau": "yau",
+  "555-reduction": "layer",
 };
 
 /** 지도 해법의 혼자 맞추기 내 해법(없으면 undefined) */
@@ -172,6 +183,18 @@ const EDGE_SEGMENT: Readonly<Record<string, `${string}>${MilestoneId}`>> = {
   "roux-sb": "roux1>roux2",
   "cf-corners": "start>corners",
   "cf-edges": "corners>ll",
+  "222-first-layer": "start>layer1",
+  "222-top-face": "layer1>oll",
+  "222-top-layer": "oll>ll",
+  "444-centers": "start>centers",
+  "444-edges": "centers>edges",
+  "555-centers": "start>centers",
+  "555-edges": "centers>edges",
+  "yau-ud-centers": "start>centers2",
+  "yau-cross3": "centers2>cross3",
+  "yau-side-centers": "cross3>centers",
+  "yau-last-cross": "centers>cross",
+  "yau-edges": "cross>edges",
 };
 
 /** ZZ의 노란 면 걸음만 「아래 두 층>노란 면」 구간 하나와 같다(2단계는 노란 십자까지 그 구간에 든다) */
@@ -195,7 +218,7 @@ export interface EdgeSolo {
 export const WEAK_RATIO = 1.25;
 export const STRONG_RATIO = 0.8;
 
-/** 해법 하나의 길마다 내 혼자 맞추기 구간 평균(3×3 기록). 구간 기록이 없는 길은 넣지 않는다 */
+/** 해법 하나의 길마다 내 혼자 맞추기 구간 평균(그 해법 크기의 기록). 구간 기록이 없는 길은 넣지 않는다 */
 export function methodSolo(
   m: MapMethod,
   records: readonly SolveRecord[],
@@ -203,11 +226,12 @@ export function methodSolo(
   const out = new Map<string, EdgeSolo>();
   const sm = SOLVE_METHOD[m.id];
   if (!sm) return out;
-  const done = records.filter((r) => r.n === 3 && r.ms !== null && r.splits);
+  const n = m.size ?? 3;
+  const done = records.filter((r) => r.n === n && r.ms !== null && r.splits);
   if (!done.length) return out;
   const laps = new Map<string, number[]>();
   for (const r of done)
-    for (const seg of segmentsOf(methodSplits(3, sm, parseSplits(r.splits)))) {
+    for (const seg of segmentsOf(methodSplits(n, sm, parseSplits(r.splits)))) {
       const xs = laps.get(seg.key) ?? [];
       xs.push(seg.lap);
       laps.set(seg.key, xs);

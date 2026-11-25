@@ -3,6 +3,7 @@
 // 해법 지도 시안의 네 안(SolveMapApp). A 펼친 지도와 C 노선도는 같은 자리 자료를 다르게 그리고, 줌·패닝·미니맵 틀
 // (MapFrame) 안에 둔다. B는 갈림길만 두고 구간을 누르면 걸음이 펼쳐진다. D는 해법마다 막대 하나.
 import {
+  type MouseEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -16,10 +17,14 @@ import {
 import { cn } from "@/lib/cn";
 import type { LearnProgress, TrainBook } from "../learn/progress";
 import {
+  type CubeSize,
   edgeById,
+  FINISH_METHODS,
+  MAP_METHODS,
   MAP_PREP,
   type MapEdge,
   type MapMethod,
+  type MapMethodId,
   type MapNodeId,
   measuredStep,
   methodNodes,
@@ -28,6 +33,8 @@ import {
   nodeMask,
   nodeSize,
   nodeState,
+  PARITY_AT,
+  PARITY_LOOPS,
 } from "../learn/solve-map";
 import {
   type EdgeSolo,
@@ -40,6 +47,8 @@ import { CubePosterPair } from "./CubePosterPair";
 import { ExplodedCube } from "./ExplodedCube";
 import {
   clampView,
+  type Detour,
+  detours,
   edgeFormulaLabel,
   edgeHref,
   edgeTurns,
@@ -48,6 +57,7 @@ import {
   methodsOfEdge,
   methodTotals,
   nodeHref,
+  parityMeasure,
   rowRange,
   type Segment,
   seconds,
@@ -57,6 +67,210 @@ import {
   visibleEdges,
   visibleNodes,
 } from "./solve-map-model";
+
+/** 펼치기·접기 주소(큰 큐브 「3×3 맞추기」) */
+const toggleHref = (ctx: MapCtx) =>
+  ctx.finHref(ctx.fin ? null : (FINISH_METHODS[0] as MapMethodId));
+
+/** 길을 누르면 갈 곳: 큰 큐브 「3×3 맞추기」는 그 자리에서 펼치기·접기, 그 밖은 단원 */
+export function hrefOf(
+  e: MapEdge,
+  m: MapMethod | undefined,
+  ctx: MapCtx,
+): string | null {
+  if (e.jump) return toggleHref(ctx);
+  return edgeHref(e, m, ctx.courseOf);
+}
+
+/** 지점을 누르면 갈 곳: 「3×3처럼」은 다음 칸 펼치기·접기, 그 밖은 들어오는 길의 단원 */
+export function nodeHrefOf(id: MapNodeId, ctx: MapCtx): string | null {
+  if (nodeById(id).jump) return toggleHref(ctx);
+  return nodeHref(id, ctx.selected, ctx.courseOf);
+}
+
+/** 펼치기·접기 칸이면 페이지를 옮기지 않고 그 자리에서 펼친다 */
+export function toggleClick(
+  jump: unknown,
+  ctx: MapCtx,
+): ((ev: MouseEvent) => void) | undefined {
+  if (!jump) return undefined;
+  return (ev) => {
+    ev.preventDefault();
+    ctx.setFin(ctx.fin ? null : (FINISH_METHODS[0] as MapMethodId));
+  };
+}
+
+/**
+ * 큰 큐브 「3×3 맞추기」를 펼친 칸: 고른 3×3 해법(칸 안에서 바꿈)의 걸음을 그 크기 큐브 그림으로, 패리티가 보이는
+ * 자리에 토끼이빨·바보토끼이빨 고리, 3×3 지도에 들르는 링크
+ */
+export function FinishPanel({ ctx }: { ctx: MapCtx }) {
+  const fin = ctx.fin;
+  if (!fin || ctx.size === 3) return null;
+  const n = ctx.size;
+  const at = PARITY_AT[fin.id];
+  const loops = PARITY_LOOPS[n];
+  const one = { ...ctx, selected: [fin] };
+  return (
+    <div
+      className="flex w-[260px] flex-col gap-1.5 rounded-xl border border-white/25 bg-neutral-900/95 p-2"
+      data-finish-panel={fin.id}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {/* 들르는 링크는 머리 줄에(아래쪽은 휴대폰에서 작은 지도에 가린다) */}
+      <span className="flex items-baseline justify-between gap-2">
+        <span className="font-semibold text-sm">3×3 맞추기</span>
+        <a
+          href={ctx.hopHref}
+          onClick={(ev) => {
+            ev.preventDefault();
+            ctx.hop();
+          }}
+          className="text-sky-300 text-xs underline-offset-2 hover:underline"
+          data-finish-hop
+        >
+          3×3 지도에서 보기 →
+        </a>
+      </span>
+      <span className="flex flex-wrap gap-1" data-finish-methods>
+        {FINISH_METHODS.map((id) => {
+          const m = MAP_METHODS.find((x) => x.id === id) as MapMethod;
+          const on = id === fin.id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => ctx.setFin(id)}
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[11px]",
+                on ? "bg-white/10" : "border-white/15 text-white/50",
+              )}
+              style={on ? { borderColor: METHOD_COLOR[id] } : undefined}
+              data-finish-method={id}
+            >
+              {m.title}
+            </button>
+          );
+        })}
+      </span>
+      <ol className="flex flex-col gap-1">
+        {fin.edges.map((id) => {
+          const e = edgeById(id) as MapEdge;
+          const href = edgeHref(e, fin, ctx.courseOf);
+          const done = edgeLearn(e, ctx.progress) === "done";
+          const f = edgeFormulaLabel(e, [fin]);
+          const here = loops.filter(
+            (l) => at && (l.kind === "oll" ? at.oll : at.pll) === e.to,
+          );
+          const body = (
+            <>
+              <NodeCube id={e.to} settings={ctx.settings} px={40} as={n} />
+              <span className="flex min-w-0 flex-col text-[11px] leading-tight">
+                <span className="font-medium text-white">
+                  {done ? "✓ " : ""}
+                  {e.title}
+                </span>
+                {f && <span className="text-white/60">{f}</span>}
+              </span>
+            </>
+          );
+          return (
+            <li key={id} className="flex flex-col gap-1">
+              {href ? (
+                <a
+                  href={href}
+                  className="flex items-center gap-2 rounded-md bg-neutral-800/80 px-1.5 py-1 hover:bg-neutral-800"
+                  data-finish-edge={id}
+                >
+                  {body}
+                </a>
+              ) : (
+                <span
+                  className="flex items-center gap-2 rounded-md bg-neutral-800/40 px-1.5 py-1"
+                  data-finish-edge={id}
+                >
+                  {body}
+                </span>
+              )}
+              {here.map((loop) => (
+                <span key={loop.kind} className="pl-6">
+                  <LoopChip d={{ loop, at: e.to }} ctx={one} />
+                </span>
+              ))}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/** 펼친 칸의 대략 크기(지도 범위를 넓히는 데 쓴다) */
+export function finishPanelSize(ctx: MapCtx): { w: number; h: number } {
+  if (!ctx.fin || ctx.size === 3) return { w: 0, h: 0 };
+  const loops = PARITY_LOOPS[ctx.size].length;
+  return { w: 260, h: 90 + ctx.fin.edges.length * 54 + loops * 70 };
+}
+
+/** 패리티 고리 색(두 고리를 같은 색·모양으로 묶어 「큰 큐브에만 있는 걸음」으로 보이게) */
+export const LOOP_COLOR = "#fbbf24";
+
+/**
+ * 패리티 고리 칸: 한국 이름(토끼이빨·바보토끼이빨), 아래 작은 줄에 널리 쓰는 이름과 어디서 보이는지, 공식 수·잰 수
+ * (축소법 판에서 나온 비율), 공식 연습 기록
+ */
+export function LoopChip({
+  d,
+  ctx,
+  compact = false,
+}: {
+  d: Detour;
+  ctx: MapCtx;
+  compact?: boolean;
+}) {
+  const f = d.loop.formulas.length;
+  const pm = parityMeasure(d.loop.kind);
+  const train = edgeTrain(
+    {
+      id: `loop:${d.loop.kind}`,
+      from: d.at,
+      to: d.at,
+      title: d.loop.name,
+      lessons: [],
+      formulas: d.loop.formulas,
+    },
+    ctx.train,
+  );
+  return (
+    <span
+      className="flex flex-col rounded-md border border-dashed bg-neutral-900/95 px-1.5 py-0.5 text-[10px] leading-tight"
+      style={{ borderColor: LOOP_COLOR }}
+      data-parity-loop={d.loop.kind}
+    >
+      <span
+        className="whitespace-nowrap font-semibold text-xs"
+        style={{ color: LOOP_COLOR }}
+      >
+        {d.loop.name}
+      </span>
+      {!compact && (
+        <>
+          <span className="whitespace-nowrap text-white/60">{d.loop.sub}</span>
+          <span className="whitespace-nowrap text-white/80">
+            {`공식 ${f} · ${pm.turns}수 · ${pm.rate}% 판에 나옴`}
+          </span>
+          {train && (
+            <span className="whitespace-nowrap text-sky-200">
+              익숙 {train.familiar}/{train.total}
+              {train.avgMs !== null ? ` · ${seconds(train.avgMs)}` : ""}
+            </span>
+          )}
+        </>
+      )}
+    </span>
+  );
+}
 
 export interface MapCtx {
   settings: CubeSettings;
@@ -74,6 +288,18 @@ export interface MapCtx {
   /** 단원 id → 단원 제목 */
   lessonTitle: (lessonId: string) => string;
   toggle: (id: MapMethod["id"]) => void;
+  /** 지도 크기 */
+  size: CubeSize;
+  /** 3×3 지도를 큰 큐브에서 건너와 열었으면 그 크기(패리티 우회 역) */
+  from: 4 | 5 | null;
+  /** 큰 큐브 「3×3 맞추기」를 펼쳤으면 그 안에서 고른 3×3 해법(접었으면 null) */
+  fin: MapMethod | null;
+  /** 펼친 해법을 이것으로 바꾼 주소(null이면 접은 주소) */
+  finHref: (id: MapMethodId | null) => string;
+  setFin: (id: MapMethodId | null) => void;
+  /** 3×3 지도에 들르는 주소와 들르기(크기 탭은 그대로) */
+  hopHref: string;
+  hop: () => void;
 }
 
 /** 큐브의 기초 페이지(다른 작업 트리에서 만드는 중, 2026-11-25 사용자 「준비를 밖으로 빼는 걸로 하자」) */
@@ -125,14 +351,17 @@ export function NodeCube({
   id,
   settings,
   px,
+  as,
 }: {
   id: MapNodeId;
   settings: CubeSettings;
   px: number;
+  /** 3×3 지점을 이 크기 큐브로 그린다(큰 큐브 「3×3 맞추기」를 펼친 칸) */
+  as?: CubeSize;
 }) {
-  const n = nodeSize(id);
-  const state = useMemo(() => nodeState(id), [id]);
-  const mask = useMemo(() => nodeMask(id), [id]);
+  const n = as && as !== 3 && nodeSize(id) === 3 ? as : nodeSize(id);
+  const state = useMemo(() => nodeState(id, as), [id, as]);
+  const mask = useMemo(() => nodeMask(id, as), [id, as]);
   return (
     <div style={{ width: px }} data-node-cube={id}>
       <CubePosterPair
@@ -345,8 +574,36 @@ export function MapView({
   const focus = meNode
     ? (layout.pos.get(meNode) as Pt)
     : { x: layout.prep.x, y: layout.prep.y };
-  // 해법을 고르면 고른 길 전체가 보이게
+  // 큰 큐브 「3×3 맞추기」를 펼친 칸: 모든 노선 오른쪽, 「3×3처럼」 높이에서 아래로
+  const panel = useMemo(() => {
+    const sz = finishPanelSize(ctx);
+    if (!sz.w) return null;
+    const xs = [...layout.pos.values()].map((p) => p.x);
+    const starts = ctx.selected
+      .flatMap(methodNodes)
+      .filter((id) => nodeById(id).jump)
+      .map((id) => layout.pos.get(id))
+      .filter((p): p is Pt => !!p);
+    const y = starts.length ? Math.min(...starts.map((p) => p.y)) : 0;
+    return { x: Math.max(...xs) + 110, y, ...sz, from: starts };
+  }, [ctx, layout]);
+  const width = panel
+    ? Math.max(layout.width, panel.x + panel.w + 40)
+    : layout.width;
+  const height = panel
+    ? Math.max(layout.height, panel.y + panel.h + 40)
+    : layout.height;
+  // 해법을 고르면 고른 길 전체가 보이게(펼쳤으면 펼친 칸과 그 앞 「3×3처럼」이 보이게)
   const fit = useMemo(() => {
+    if (panel) {
+      const x0 = Math.min(...panel.from.map((p) => p.x), panel.x) - 70;
+      return {
+        x: x0,
+        y: panel.y - 20,
+        w: panel.x + panel.w + 20 - x0,
+        h: panel.h + 40,
+      };
+    }
     const ps = [...new Set(ctx.selected.flatMap(methodNodes))]
       .map((id) => layout.pos.get(id))
       .filter((p): p is Pt => !!p);
@@ -359,11 +616,21 @@ export function MapView({
       w: Math.max(...xs) - Math.min(...xs) + 140,
       h: Math.max(...ys) - Math.min(...ys) + layout.nodeH + 60,
     };
-  }, [layout, ctx.selected]);
-  const fitKey = ctx.selected.map((m) => m.id).join(",");
+  }, [layout, ctx.selected, panel]);
+  const fitKey = `${ctx.selected.map((m) => m.id).join(",")}|${ctx.fin?.id ?? ""}`;
 
   const mini = (
-    <svg width={layout.width} height={layout.height} aria-hidden>
+    <svg width={width} height={height} aria-hidden>
+      {panel && (
+        <rect
+          x={panel.x}
+          y={panel.y}
+          width={panel.w}
+          height={panel.h}
+          rx={14}
+          fill="#444"
+        />
+      )}
       {edges.map((e) => {
         const a = layout.pos.get(e.from);
         const b = layout.pos.get(e.to);
@@ -418,8 +685,8 @@ export function MapView({
 
   return (
     <MapFrame
-      width={layout.width}
-      height={layout.height}
+      width={width}
+      height={height}
       focus={{ x: focus.x, y: focus.y + layout.nodeH / 2 }}
       fit={fit}
       fitKey={fitKey}
@@ -440,6 +707,34 @@ export function MapView({
           edges={edges}
           selectedNodes={selectedNodes}
         />
+      )}
+      {panel && (
+        <>
+          {/* 「3×3처럼」에서 펼친 칸으로 이어지는 점선 */}
+          <svg
+            className="pointer-events-none absolute inset-0 overflow-visible"
+            width={1}
+            height={1}
+            aria-hidden
+          >
+            {panel.from.map((p) => (
+              <path
+                key={`${p.x},${p.y}`}
+                d={`M${p.x + 50},${p.y + layout.nodeH / 2} C${p.x + 120},${p.y + layout.nodeH / 2} ${panel.x - 60},${panel.y + 20} ${panel.x},${panel.y + 20}`}
+                fill="none"
+                stroke="rgba(255,255,255,0.45)"
+                strokeWidth={2}
+                strokeDasharray="5 4"
+              />
+            ))}
+          </svg>
+          <div
+            className="absolute"
+            style={{ left: panel.x, top: panel.y, zIndex: 5 }}
+          >
+            <FinishPanel ctx={ctx} />
+          </div>
+        </>
       )}
     </MapFrame>
   );
@@ -566,7 +861,7 @@ function MapLayer({
         )
           return null;
         const m = ctx.selected.find((x) => x.edges.includes(g.e.id));
-        const href = edgeHref(g.e, m, ctx.courseOf);
+        const href = hrefOf(g.e, m, ctx);
         const body = (
           <>
             {on && <span className="font-medium text-white">{g.e.title}</span>}
@@ -584,6 +879,8 @@ function MapLayer({
           <a
             key={g.e.id}
             href={href}
+            onClick={toggleClick(g.e.jump, ctx)}
+            aria-expanded={g.e.jump ? !!ctx.fin : undefined}
             className={cls}
             style={style}
             data-edge={g.e.id}
@@ -605,7 +902,7 @@ function MapLayer({
       {[...pos].map(([id, p]) => {
         const on = selectedNodes.has(id);
         const shared = ctx.selected.filter((m) => methodNodes(m).includes(id));
-        const href = nodeHref(id, ctx.selected, ctx.courseOf);
+        const href = nodeHrefOf(id, ctx);
         const me = ctx.me.get(id);
         const body = (
           <>
@@ -627,7 +924,14 @@ function MapLayer({
         );
         const style = { left: p.x, top: p.y, height: layout.nodeH, zIndex: 2 };
         return href ? (
-          <a key={id} href={href} className={cls} style={style} data-node={id}>
+          <a
+            key={id}
+            href={href}
+            onClick={toggleClick(nodeById(id).jump, ctx)}
+            className={cls}
+            style={style}
+            data-node={id}
+          >
             {body}
           </a>
         ) : (
@@ -636,7 +940,76 @@ function MapLayer({
           </div>
         );
       })}
+      <Loops ctx={ctx} pos={pos} dx={62} dy={layout.nodeH / 2} />
     </div>
+  );
+}
+
+/**
+ * 패리티 고리 둘: 지점 곁으로 빠졌다 돌아오는 점선 고리와 고리 칸. 큰 큐브 지도에서는 「3×3 맞추기」 칸이 닿는 다
+ * 맞음 곁(위쪽), 3×3 지도 「4×4에서 옴」에서는 그 해법의 패리티 자리 곁
+ */
+function Loops({
+  ctx,
+  pos,
+  dx,
+  dy,
+}: {
+  ctx: MapCtx;
+  pos: Map<MapNodeId, Pt>;
+  dx: number;
+  dy: number;
+}) {
+  const ds = detours(ctx.size, ctx.from, ctx.selected);
+  // 펼쳤으면 고리는 펼친 칸 안에 그 해법의 자리로 들어간다
+  if (!ds.length || (ctx.fin && ctx.size !== 3)) return null;
+  const big = ctx.size !== 3;
+  // 큰 큐브: 다른 노선과 겹치지 않게 모든 노선 오른쪽, 다 맞음 높이에 위아래로 둘
+  const right = Math.max(...[...pos.values()].map((q) => q.x));
+  const items = ds.flatMap((d) => {
+    const p = pos.get(d.at);
+    if (!p) return [];
+    const i = ds.filter((x) => x.at === d.at).indexOf(d);
+    // 3×3: 그 지점 오른쪽에
+    const at = big
+      ? { x: right + dx, y: p.y - 90 + i * 58 }
+      : { x: p.x + dx + 6, y: p.y + dy - 24 + i * 58 };
+    return [{ d, p, at }];
+  });
+  return (
+    <>
+      <svg
+        className="pointer-events-none absolute inset-0 overflow-visible"
+        width={1}
+        height={1}
+        aria-hidden
+      >
+        {items.map(({ d, p, at }) => {
+          const sx = p.x + 20;
+          const sy = big ? p.y - 30 : p.y + dy;
+          return (
+            <path
+              key={`${d.at}-${d.loop.kind}`}
+              d={`M${sx},${sy - 10} C${sx + 30},${sy - 10} ${at.x - 20},${at.y} ${at.x},${at.y + 12} M${at.x},${at.y + 30} C${at.x - 20},${at.y + 40} ${sx + 30},${sy + 10} ${sx},${sy + 10}`}
+              fill="none"
+              stroke={LOOP_COLOR}
+              strokeOpacity={0.7}
+              strokeWidth={2}
+              strokeDasharray="4 3"
+            />
+          );
+        })}
+      </svg>
+      {items.map(({ d, at }) => (
+        <span
+          key={`${d.at}-${d.loop.kind}`}
+          className="absolute"
+          style={{ left: at.x, top: at.y, zIndex: 4 }}
+        >
+          <LoopChip d={d} ctx={ctx} />
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -806,7 +1179,7 @@ function MetroLayer({
       {/* 고른 노선의 역 사이 공식 수 */}
       {labels.map(({ m, e, at }) => {
         const id = e.id;
-        const href = edgeHref(e, m, ctx.courseOf);
+        const href = hrefOf(e, m, ctx);
         const cls =
           "-translate-x-1/2 -translate-y-1/2 absolute flex flex-col rounded bg-neutral-900/90 px-1 text-[10px] leading-tight text-white/80";
         const style = {
@@ -820,6 +1193,8 @@ function MetroLayer({
           <a
             key={`${m.id}-${id}`}
             href={href}
+            onClick={toggleClick(e.jump, ctx)}
+            aria-expanded={e.jump ? !!ctx.fin : undefined}
             className={cls}
             style={style}
             data-edge={id}
@@ -843,7 +1218,7 @@ function MetroLayer({
         const big = lines.length > 1;
         const on = selectedNodes.has(id);
         const me = ctx.me.get(id);
-        const href = nodeHref(id, ctx.selected, ctx.courseOf);
+        const href = nodeHrefOf(id, ctx);
         const transfer = transfers.has(id);
         const body = (
           <>
@@ -900,7 +1275,14 @@ function MetroLayer({
         );
         const style = { left: p.x - (big ? 12 : 6), top: p.y, zIndex: 2 };
         return href ? (
-          <a key={id} href={href} className={cls} style={style} data-node={id}>
+          <a
+            key={id}
+            href={href}
+            onClick={toggleClick(nodeById(id).jump, ctx)}
+            className={cls}
+            style={style}
+            data-node={id}
+          >
             {body}
           </a>
         ) : (
@@ -909,6 +1291,7 @@ function MetroLayer({
           </div>
         );
       })}
+      <Loops ctx={ctx} pos={pos} dx={150} dy={0} />
       {/* 시발역: 모든 노선이 지나는 첫 역(준비) */}
       <div
         className="-translate-y-1/2 absolute flex items-center gap-1"
@@ -1054,13 +1437,17 @@ function MapFrame({
   const firstFit = useRef(true);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 고른 해법(fitKey)이 바뀔 때만 맞춘다
   useEffect(() => {
-    if (!size.w || !fit) return;
+    // 처음 그릴 때는 맞추지 않는다(틀 크기를 재기 전이어도 「처음」은 이때 한 번뿐)
     if (firstFit.current) {
       firstFit.current = false;
       return;
     }
+    if (!size.w || !fit) return;
     const k = clampK(Math.min(size.w / fit.w, size.h / fit.h, 1.2));
-    setView(centerOn({ x: fit.x + fit.w / 2, y: fit.y + fit.h / 2 }, k));
+    // 영역이 화면보다 길면 머리(위쪽)를 맞춘다
+    const cy =
+      fit.h * k > size.h ? fit.y + size.h / (2 * k) : fit.y + fit.h / 2;
+    setView(centerOn({ x: fit.x + fit.w / 2, y: cy }, k));
   }, [fitKey]);
 
   // 휠·트랙패드: 가리킨 자리를 두고 줌(페이지 스크롤과 싸우지 않게 막는다)
@@ -1160,8 +1547,11 @@ function MapFrame({
 
   // 미니맵
   // 휴대폰은 미니맵이 지도를 덜 가리게 작게
-  const MINI_W = size.w < 600 ? 72 : 120;
-  const ms = MINI_W / width;
+  // 세로로 긴 지도는 오른쪽 위 단추 셋(약 120px) 아래 공간에 맞게 높이를 묶고 폭도 같은 비율로 줄인다
+  const maxMiniW = size.w < 600 ? 72 : 120;
+  const maxMiniH = Math.max(60, size.h - 136);
+  const ms = Math.min(maxMiniW / width, maxMiniH / height);
+  const MINI_W = width * ms;
   const miniH = height * ms;
   const miniMove = (ev: ReactPointerEvent<HTMLDivElement>) => {
     if (ev.buttons === 0 && ev.type === "pointermove") return;
@@ -1185,6 +1575,11 @@ function MapFrame({
           suppress.current = false;
         }
       }}
+      // 지도는 transform으로만 움직인다. 틀 밖에 걸친 링크로 포커스가 가면 브라우저가 틀을 스크롤해 보기가 어긋나니 되돌린다
+      onScroll={(ev) => {
+        ev.currentTarget.scrollTop = 0;
+        ev.currentTarget.scrollLeft = 0;
+      }}
       data-map-frame
     >
       <div
@@ -1199,7 +1594,7 @@ function MapFrame({
       >
         {children}
       </div>
-      <div className="absolute top-2 right-2 flex flex-col gap-1">
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
         {[
           { t: "+", f: () => zoomBy(1.25) },
           { t: "−", f: () => zoomBy(0.8) },
@@ -1367,7 +1762,7 @@ function SegmentCard({
         >
           {seg.edges.map((id) => {
             const e = edgeById(id) as MapEdge;
-            const href = edgeHref(e, m, ctx.courseOf);
+            const href = hrefOf(e, m, ctx);
             const me = ctx.me.get(e.to);
             const body = (
               <>
@@ -1447,8 +1842,21 @@ const PX_PER_TURN = 8;
 const MIN_CELL = 44;
 const UNMEASURED_CELL = 64;
 
+/** 가장 긴 막대 너비 상한(3×3 초보자 127수 × 8px 쯤) */
+const MAX_BAR = 1016;
+/** 패리티 칸 너비 */
+const LOOP_CELL = 132;
+
 export function BarsView({ ctx }: { ctx: MapCtx }) {
   const [open, setOpen] = useState<string | null>(null);
+  // 한 화면의 막대는 같은 눈금. 큰 큐브처럼 수가 많으면 가장 긴 막대가 상한에 들도록 줄인다(패리티 칸 몫은 먼저 뺀다)
+  const longest = Math.max(
+    1,
+    ...ctx.selected.map((m) => methodTotals(m).turns ?? 0),
+  );
+  const loopRoom =
+    detours(ctx.size, ctx.from, ctx.selected.slice(0, 1)).length * LOOP_CELL;
+  const pxPerTurn = Math.min(PX_PER_TURN, (MAX_BAR - loopRoom) / longest);
   return (
     <div className="overflow-x-auto" data-map-bars>
       <div className="flex w-max min-w-full flex-col gap-4 pb-1">
@@ -1520,10 +1928,7 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
                       )}
                       style={{
                         width: measured
-                          ? Math.max(
-                              MIN_CELL,
-                              (c.turns as number) * PX_PER_TURN,
-                            )
+                          ? Math.max(MIN_CELL, (c.turns as number) * pxPerTurn)
                           : UNMEASURED_CELL,
                         background: `${METHOD_COLOR[m.id]}${learn === "done" ? "66" : i % 2 ? "26" : "3a"}`,
                         borderBottom: s?.skill
@@ -1544,6 +1949,36 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
                     </button>
                   );
                 })}
+                {/* 큰 큐브: 3×3 맞추기 칸 뒤에 패리티 고리 두 칸(나올 때만 치는 걸음이라 점선) */}
+                {cells.some((c) => c.key.endsWith(":333")) &&
+                  detours(ctx.size, ctx.from, [m]).map((d) => (
+                    <span
+                      key={d.loop.kind}
+                      className="flex shrink-0 flex-col items-start gap-0.5 rounded-sm border border-dashed px-1 py-1.5 text-[10px] leading-tight"
+                      style={{
+                        borderColor: LOOP_COLOR,
+                        // 이름·작은 줄이 들어가게 넓게(짧은 걸음이라 눈금보다 넓다)
+                        width: Math.max(
+                          LOOP_CELL,
+                          parityMeasure(d.loop.kind).turns * pxPerTurn,
+                        ),
+                      }}
+                      data-cell={`loop:${d.loop.kind}`}
+                    >
+                      <span
+                        className="font-medium"
+                        style={{ color: LOOP_COLOR }}
+                      >
+                        {d.loop.name}
+                      </span>
+                      <span className="break-keep text-white/60">
+                        {d.loop.sub}
+                      </span>
+                      <span className="text-white/70">
+                        {`공식 ${d.loop.formulas.length} · ${parityMeasure(d.loop.kind).turns}수 · ${parityMeasure(d.loop.kind).rate}% 판에 나옴`}
+                      </span>
+                    </span>
+                  ))}
               </div>
               {openCell?.edges.map((e) => (
                 <BarDetail key={e.id} e={e} m={m} ctx={ctx} />
@@ -1557,7 +1992,7 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
 }
 
 function BarDetail({ e, m, ctx }: { e: MapEdge; m: MapMethod; ctx: MapCtx }) {
-  const href = edgeHref(e, m, ctx.courseOf);
+  const href = hrefOf(e, m, ctx);
   return (
     <div
       className="flex items-center gap-3 rounded-lg bg-neutral-800 px-2 py-2"

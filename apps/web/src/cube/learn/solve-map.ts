@@ -6,12 +6,14 @@
 // 공식 수는 자료에서 센다(공식 모음 algs-*.ts·공식 연습 단계 practice/*의 상황 수, 초보자는 단원 공식 상수). 직관으로 하는
 // 걸음(십자·블록 등)은 공식 없음(빈 목록). 평균 수는 단원 규칙이나 컴퓨터 해법으로 잰 값만 둔다(solve-map.test.ts가 다시 잰다).
 import {
+  applyMove,
   B,
   cubeGroups,
   cubeTopology,
   D,
   F,
   L,
+  parseMoves,
   pieceFaces,
   R,
   type StickerVisibility,
@@ -22,18 +24,20 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
+import { EDGES_5X5, PARITY_4X4 } from "./algs-big";
 import { F2L_CASES } from "./algs-f2l";
 import { OLL_CASES } from "./algs-oll";
+import { ORTEGA_OLL, ORTEGA_PBL } from "./algs-ortega";
 import { PLL_CASES } from "./algs-pll";
 import {
   CORNER_CYCLE,
   EDGE_SWAP,
   FROM_RIGHT,
-  play,
   RIGHT,
   TWIST,
   YELLOW_CROSS,
 } from "./beginner-path";
+import { TOP_FACE, TOP_SWAP } from "./beginner-path-222";
 import { ZZ_PAIR_CASES } from "./zz-path";
 
 export type MapNodeId =
@@ -63,28 +67,56 @@ export type MapNodeId =
   | "petrus-223"
   | "petrus-eo"
   | "corners-first"
+  // 2×2
+  | "2-scrambled"
+  | "2-first-layer"
+  | "2-top-face"
+  | "2-corners-placed"
+  | "2-first-face"
+  | "2-both-faces"
+  | "2-solved"
+  // 4×4(끝은 「3×3처럼」: 누르면 3×3 지도로)
   | "4-scrambled"
   | "4-centers"
+  | "4-paired"
   | "4-ud-centers"
   | "4-cross3"
-  | "4-yau-centers";
+  | "4-yau-centers"
+  | "4-yau-cross"
+  | "4-yau-paired"
+  // 4×4 뒤(3×3 맞추기 → 다 맞음, bigTail이 만든다)
+  | "4-solved"
+  // 5×5
+  | "5-scrambled"
+  | "5-centers"
+  | "5-paired"
+  | "5-solved";
+
+export type CubeSize = 2 | 3 | 4 | 5;
+/** 지도 크기 탭 차례 */
+export const MAP_SIZES: readonly CubeSize[] = [2, 3, 4, 5];
 
 export interface MapNode {
   id: MapNodeId;
   title: string;
-  /** 그림 칸 자리(줄은 위에서 아래, 칸은 왼쪽에서 오른쪽. 반 칸도 된다). 4×4 지점은 3×3 다 섞임 위(음수 줄) */
+  /** 그림 칸 자리(줄은 위에서 아래, 칸은 왼쪽에서 오른쪽. 반 칸도 된다). 크기마다 따로 0부터 */
   row: number;
   col: number;
   /** 그림에서 큐브를 쥐는 돌리기(맞은 조각이 잘 보이게) */
   view: string;
-  /** 큐브 크기(없으면 3) */
-  size?: 3 | 4;
+  /** 큐브 크기(없으면 3). 지도는 크기마다 따로다(2026-11-25 사용자 「크기가 다르면 섞일 수가 있나?」) */
+  size?: CubeSize;
+  /** 「3×3처럼」: 누르면 3×3 지도로(이 크기에서 왔다는 표시와 함께) */
+  jump?: { n: 3; from: 4 | 5 };
+  /** 그림은 이 3×3 지점과 같은 조각을 그 크기 큐브에서 맞춘 모습 */
+  as333?: MapNodeId;
 }
 
 /**
- * 해법마다 가로 칸(왼쪽 초보자 → 오른쪽 고급, 2026-11-25 사용자 「왼쪽이 초보자용, 오른쪽이 고급」).
- * 차례는 사이트 과정의 선행 차례(courses.ts REQUIRES: 초보자 → 2단계 → CFOP → 루·ZZ → 페트루스)를 따르고, 같은
- * 줄기의 갈래(코너 방향 먼저)는 바로 옆에, 사이트에 단원이 없는 갈래·코너 먼저는 그 뒤, 4×4는 오른쪽 끝에 둔다.
+ * 해법마다 가로 칸(왼쪽 초보자 → 오른쪽 고급, 2026-11-25 사용자 「왼쪽이 초보자용, 오른쪽이 고급」). 크기마다 따로다.
+ * 3×3 차례는 사이트 과정의 선행 차례(courses.ts REQUIRES: 초보자 → 2단계 → CFOP → 루·ZZ → 페트루스)를 따르고, 같은
+ * 줄기의 갈래(코너 방향 먼저)는 바로 옆에, 사이트에 단원이 없는 갈래·코너 먼저는 그 뒤에 둔다. 2×2는 처음 맞추기 →
+ * 3×3을 아는 사람의 2×2 → 오르테가, 4×4는 축소법 → 야우(REQUIRES 차례).
  * 지점은 그 지점을 지나는 해법 가운데 가장 왼쪽 칸에 둔다(초보자 길이 왼쪽에 곧게 내려온다). solve-map.test.ts가 본다
  */
 export const MAP_LANES: Readonly<Record<string, number>> = {
@@ -99,38 +131,80 @@ export const MAP_LANES: Readonly<Record<string, number>> = {
   "zz-zbll": 7,
   "cfop-1lll": 7,
   "corners-first": 7,
-  "444-reduction": 8,
-  "444-yau": 9,
+  "222-beginner": 0,
+  "222-from333": 1,
+  ortega: 2,
+  "444-reduction": 0,
+  "444-yau": 1,
+  "555-reduction": 0,
 };
 
-export const MAP_NODES: readonly MapNode[] = [
-  // 4×4: 센터·엣지를 묶으면 3×3처럼 맞춘다(축소법은 다 섞인 3×3, 야우는 흰 십자가 맞은 3×3에 닿는다).
-  // 3×3 다 섞임 위(음수 줄) 오른쪽 끝에 따로 둔다
+const BASE_NODES: readonly MapNode[] = [
+  // 2×2
+  { id: "2-scrambled", title: "다 섞임", row: 0, col: 0, view: "", size: 2 },
+  { id: "2-first-layer", title: "첫 층", row: 1, col: 0, view: "", size: 2 },
+  { id: "2-top-face", title: "윗면", row: 2, col: 0, view: "z2", size: 2 },
   {
-    id: "4-scrambled",
-    title: "4×4 다 섞임",
-    row: -4,
-    col: 8,
+    id: "2-corners-placed",
+    title: "코너 자리",
+    row: 2,
+    col: 1,
+    view: "z2",
+    size: 2,
+  },
+  { id: "2-solved", title: "다 맞음", row: 3, col: 0, view: "", size: 2 },
+  { id: "2-first-face", title: "흰 면", row: 1, col: 2, view: "", size: 2 },
+  {
+    id: "2-both-faces",
+    title: "흰·노란 면",
+    row: 2,
+    col: 2,
+    view: "",
+    size: 2,
+  },
+  // 4×4: 센터·엣지를 묶으면 3×3처럼(누르면 3×3 지도로)
+  { id: "4-scrambled", title: "다 섞임", row: 0, col: 0, view: "", size: 4 },
+  { id: "4-centers", title: "센터", row: 1, col: 0, view: "", size: 4 },
+  {
+    id: "4-paired",
+    title: "3×3처럼",
+    row: 2,
+    col: 0,
     view: "",
     size: 4,
+    jump: { n: 3, from: 4 },
   },
-  { id: "4-centers", title: "4×4 센터", row: -3, col: 8, view: "", size: 4 },
   {
     id: "4-ud-centers",
     title: "흰·노랑 센터",
-    row: -3,
-    col: 9,
+    row: 1,
+    col: 1,
     view: "",
     size: 4,
   },
-  { id: "4-cross3", title: "흰 십자 셋", row: -2, col: 9, view: "", size: 4 },
+  { id: "4-cross3", title: "흰 십자 셋", row: 2, col: 1, view: "", size: 4 },
+  { id: "4-yau-centers", title: "옆 센터", row: 3, col: 1, view: "", size: 4 },
+  { id: "4-yau-cross", title: "흰 십자", row: 4, col: 1, view: "", size: 4 },
   {
-    id: "4-yau-centers",
-    title: "옆 센터",
-    row: -1,
-    col: 9,
+    id: "4-yau-paired",
+    title: "3×3처럼",
+    row: 5,
+    col: 1,
     view: "",
     size: 4,
+    jump: { n: 3, from: 4 },
+  },
+  // 5×5
+  { id: "5-scrambled", title: "다 섞임", row: 0, col: 0, view: "", size: 5 },
+  { id: "5-centers", title: "센터", row: 1, col: 0, view: "", size: 5 },
+  {
+    id: "5-paired",
+    title: "3×3처럼",
+    row: 2,
+    col: 0,
+    view: "",
+    size: 5,
+    jump: { n: 3, from: 5 },
   },
   // 초보자 줄기(왼쪽 끝)
   { id: "scrambled", title: "다 섞임", row: 0, col: 0, view: "" },
@@ -186,9 +260,13 @@ export interface MapEdge {
    * null은 저장소에 셀 자료가 없음(COLL·ZBLL처럼 사이트에 없는 공식 모음, 4×4 센터·엣지)
    */
   formulas: readonly string[] | null;
+  /** 큰 큐브의 「3×3처럼」 묶음 칸: 누르면 단원 대신 3×3 지도로(이 크기에서 왔다는 표시와 함께) */
+  jump?: { n: 3; from: 4 | 5 };
 }
 
 const ids = (xs: readonly { id: string }[]) => xs.map((c) => c.id);
+/** 지점·길 표를 다 만들기 전에 길을 찾는다(큰 큐브 뒤 묶음을 만들 때) */
+const edgeOf = (id: string) => BASE_EDGES.find((e) => e.id === id);
 const group = (xs: readonly { id: string; group?: string }[], g: string) =>
   ids(xs.filter((c) => c.group === g));
 
@@ -207,7 +285,7 @@ const Y_PERM = "pll-y";
 
 const LOWER_BEGINNER = ["333-white-cross", "333-first-corners-up"];
 
-export const MAP_EDGES: readonly MapEdge[] = [
+const BASE_EDGES: readonly MapEdge[] = [
   // 초보자 아래 두 층·CFOP 십자
   {
     id: "cross",
@@ -498,7 +576,72 @@ export const MAP_EDGES: readonly MapEdge[] = [
     lessons: [],
     formulas: null,
   },
-  // 4×4(공식 수는 단원 공식을 셀 기준이 아직 없어 비운다)
+  // 2×2(2×2 처음 맞추기·3×3을 아는 사람의 2×2·오르테가)
+  {
+    id: "222-first-layer",
+    from: "2-scrambled",
+    to: "2-first-layer",
+    title: "첫 층",
+    lessons: ["222-first-layer-up", "222-from333-first-layer-up"],
+    formulas: [TWIST],
+  },
+  {
+    id: "222-top-face",
+    from: "2-first-layer",
+    to: "2-top-face",
+    title: "윗면",
+    lessons: ["222-top-face"],
+    formulas: [TOP_FACE],
+  },
+  {
+    id: "222-top-layer",
+    from: "2-top-face",
+    to: "2-solved",
+    title: "위 층 자리",
+    lessons: ["222-top-layer"],
+    formulas: [TOP_SWAP],
+  },
+  {
+    id: "222-corner-place",
+    from: "2-first-layer",
+    to: "2-corners-placed",
+    title: "코너 자리",
+    lessons: ["222-from333-corner-place"],
+    formulas: [CORNER_CYCLE],
+  },
+  {
+    id: "222-corner-twist",
+    from: "2-corners-placed",
+    to: "2-solved",
+    title: "코너 방향",
+    lessons: ["222-from333-corner-twist"],
+    formulas: [TWIST],
+  },
+  {
+    id: "ortega-face",
+    from: "2-scrambled",
+    to: "2-first-face",
+    title: "첫 면",
+    lessons: ["222-ortega"],
+    formulas: [],
+  },
+  {
+    id: "ortega-oll",
+    from: "2-first-face",
+    to: "2-both-faces",
+    title: "반대 면(OLL)",
+    lessons: ["222-ortega"],
+    formulas: ids(ORTEGA_OLL),
+  },
+  {
+    id: "ortega-pbl",
+    from: "2-both-faces",
+    to: "2-solved",
+    title: "두 층 자리(PBL)",
+    lessons: ["222-ortega"],
+    formulas: ids(ORTEGA_PBL),
+  },
+  // 4×4·5×5 앞부분(센터·엣지. 공식 수는 단원 공식을 셀 기준이 아직 없어 비운다)
   {
     id: "444-centers",
     from: "4-scrambled",
@@ -510,7 +653,7 @@ export const MAP_EDGES: readonly MapEdge[] = [
   {
     id: "444-edges",
     from: "4-centers",
-    to: "scrambled",
+    to: "4-paired",
     title: "엣지 짝",
     lessons: ["444-edges"],
     formulas: null,
@@ -540,12 +683,36 @@ export const MAP_EDGES: readonly MapEdge[] = [
     formulas: null,
   },
   {
-    id: "yau-edges",
+    id: "yau-last-cross",
     from: "4-yau-centers",
-    to: "cross",
-    title: "엣지 묶기",
+    to: "4-yau-cross",
+    title: "마지막 십자 엣지",
     lessons: ["yau-edges"],
     formulas: null,
+  },
+  {
+    id: "yau-edges",
+    from: "4-yau-cross",
+    to: "4-yau-paired",
+    title: "엣지 여덟",
+    lessons: ["yau-edges"],
+    formulas: null,
+  },
+  {
+    id: "555-centers",
+    from: "5-scrambled",
+    to: "5-centers",
+    title: "센터",
+    lessons: ["555-centers"],
+    formulas: null,
+  },
+  {
+    id: "555-edges",
+    from: "5-centers",
+    to: "5-paired",
+    title: "엣지 셋 묶기",
+    lessons: ["555-edges", "555-last-two-edges"],
+    formulas: ids(EDGES_5X5),
   },
 ];
 
@@ -571,8 +738,12 @@ export type MapMethodId =
   | "zz-zbll"
   | "cfop-1lll"
   | "corners-first"
+  | "222-beginner"
+  | "222-from333"
+  | "ortega"
   | "444-reduction"
-  | "444-yau";
+  | "444-yau"
+  | "555-reduction";
 
 export interface MapMethod {
   id: MapMethodId;
@@ -583,6 +754,8 @@ export interface MapMethod {
   course?: string;
   /** 지나는 길(다 섞임 → 다 맞음 차례) */
   edges: readonly string[];
+  /** 큐브 크기(없으면 3) */
+  size?: CubeSize;
 }
 
 const BEGINNER_LOWER = ["cross", "first-corners", "second-layer"];
@@ -592,7 +765,8 @@ const TWO_LOOK_LL = [
   "two-look-edges",
 ] as const;
 
-export const MAP_METHODS: readonly MapMethod[] = [
+/** 3×3 해법 */
+const MAP_METHODS_3: readonly MapMethod[] = [
   {
     id: "beginner",
     title: "초보자",
@@ -703,59 +877,250 @@ export const MAP_METHODS: readonly MapMethod[] = [
     extra: true,
     edges: ["cf-corners", "cf-edges"],
   },
+];
+
+// ── 2×2 ─────────────────────────────────────────────
+
+const SMALL_METHODS: MapMethod[] = [
   {
-    id: "444-reduction",
-    title: "4×4 축소법",
-    extra: true,
-    course: "444-reduction",
-    edges: [
-      "444-centers",
-      "444-edges",
-      ...BEGINNER_LOWER,
-      "beginner-yellow-cross",
-      "beginner-edges",
-      "beginner-corner-place",
-      "beginner-corner-twist",
-    ],
+    id: "222-beginner",
+    title: "처음 맞추기",
+    size: 2,
+    course: "222-beginner",
+    edges: ["222-first-layer", "222-top-face", "222-top-layer"],
   },
   {
-    id: "444-yau",
-    title: "4×4 야우",
-    extra: true,
-    course: "444-yau",
-    edges: [
-      "yau-ud-centers",
-      "yau-cross3",
-      "yau-side-centers",
-      "yau-edges",
-      "f2l-pair-1",
-      "f2l-pair-2",
-      "f2l-pair-3",
-      "f2l-pair-4",
-      "oll",
-      "pll",
-    ],
+    id: "222-from333",
+    title: "3×3을 아는 사람",
+    size: 2,
+    course: "222-from333",
+    edges: ["222-first-layer", "222-corner-place", "222-corner-twist"],
+  },
+  {
+    id: "ortega",
+    title: "오르테가",
+    size: 2,
+    course: "222-beginner",
+    edges: ["ortega-face", "ortega-oll", "ortega-pbl"],
   },
 ];
 
-/** 해법이 4×4 지점을 지나나 */
-export const isBigMethod = (m: MapMethod) =>
-  methodNodes(m).some((id) => (nodeById(id).size ?? 3) === 4);
+// ── 4×4·5×5: 앞부분 → 「3×3처럼」 → 「3×3 맞추기」 한 칸(패리티 고리 둘) → 다 맞음 ─────────
+
+/**
+ * 3×3 지도 「4×4에서 옴」에서 패리티가 눈에 띄는 자리(우회 역을 붙일 3×3 지점). OLL 패리티는 마지막 층 방향 걸음
+ * 앞, PLL 패리티는 마지막 층 자리 걸음 앞에서 보인다. 초보자는 축소법 풀이(big-solve.ts solveReduced)·단원
+ * (lessons-big.ts 「3×3처럼 풀기와 패리티」)대로 노란 십자 앞(아래 두 층)과 옆면 맞추기 뒤 코너 자리 앞(위 엣지),
+ * 2단계·CFOP는 OLL 앞과 PLL 앞이다. 고리 이름·공식은 PARITY_LOOPS 하나에서 온다
+ */
+export const PARITY_AT: Readonly<
+  Partial<Record<MapMethodId, { oll: MapNodeId; pll: MapNodeId }>>
+> = {
+  beginner: { oll: "f2l", pll: "yellow-edges" },
+  "beginner-twist-first": { oll: "f2l", pll: "yellow-edges" },
+  "two-look": { oll: "f2l", pll: "oll" },
+  cfop: { oll: "f2l", pll: "oll" },
+};
+
+/**
+ * 큰 큐브 「3×3 맞추기」를 펼쳤을 때 고를 수 있는 3×3 해법(패리티 자리가 정해진 것, 첫째가 기본). 루·ZZ·페트루스는
+ * 패리티가 보이는 자리를 아직 정하지 않았다
+ */
+export const FINISH_METHODS = Object.keys(PARITY_AT) as MapMethodId[];
+
+/** 패리티 공식(공식 모음 algs-big.ts PARITY_4X4) */
+export const PARITY_FORMULAS = {
+  oll: PARITY_4X4.filter((c) => c.id === "parity-4x4-oll").map((c) => c.id),
+  pll: PARITY_4X4.filter((c) => c.id === "parity-4x4-pll").map((c) => c.id),
+} as const;
+
+interface BigHead {
+  id: MapMethodId;
+  title: string;
+  size: 4 | 5;
+  course: string;
+  /** 앞부분 길(다 섞임 → 3×3처럼) */
+  head: string[];
+  /** 「3×3 맞추기」 칸이 가르치는 단원(진행 기록으로 끝냄을 본다) */
+  tailLessons: string[];
+}
+
+const BIG_HEADS: BigHead[] = [
+  {
+    id: "444-reduction",
+    title: "축소법",
+    size: 4,
+    course: "444-reduction",
+    head: ["444-centers", "444-edges"],
+    tailLessons: ["444-as-333"],
+  },
+  {
+    id: "444-yau",
+    title: "야우",
+    size: 4,
+    course: "444-yau",
+    head: [
+      "yau-ud-centers",
+      "yau-cross3",
+      "yau-side-centers",
+      "yau-last-cross",
+      "yau-edges",
+    ],
+    tailLessons: ["yau-finish"],
+  },
+  {
+    id: "555-reduction",
+    title: "축소법",
+    size: 5,
+    course: "555-reduction",
+    head: ["555-centers", "555-edges"],
+    tailLessons: [],
+  },
+];
+
+export interface ParityLoop {
+  kind: "oll" | "pll";
+  /** 한국에서 부르는 이름(2026-11-25 사용자: 「토끼이빨」·「바보토끼이빨」) */
+  name: string;
+  /**
+   * 덧붙는 짧은 줄: 널리 쓰는 이름과 「어디서 눈에 띄나」(처리할 때를 정하지 않는다. 마지막에 처리하는 사람도
+   * 바로 고치는 사람도 있다)
+   */
+  sub: string;
+  /** 공식 모음 상황 id */
+  formulas: readonly string[];
+}
+
+/**
+ * 크기마다 「3×3 맞추기」 칸 옆의 패리티 고리. 4×4만 둘이다(5×5는 홀수라 엣지 짝 걸음 안에서 다룬다, 5×5 「마지막 두
+ * 엣지」 단원). 4×4 지도의 고리와 3×3 지도 「4×4에서 옴」의 우회 역이 모두 이 표 하나를 읽는다
+ */
+export const PARITY_LOOPS: Readonly<Record<CubeSize, readonly ParityLoop[]>> = {
+  2: [],
+  3: [],
+  4: [
+    {
+      kind: "oll",
+      name: "토끼이빨",
+      sub: "OLL 패리티 · OLL에서 보임",
+      formulas: PARITY_FORMULAS.oll,
+    },
+    {
+      kind: "pll",
+      name: "바보토끼이빨",
+      sub: "PLL 패리티 · PLL에서 보임",
+      formulas: PARITY_FORMULAS.pll,
+    },
+  ],
+  5: [],
+};
+
+/**
+ * 큰 큐브 뒤: 앞부분 끝 「3×3처럼」 → 「3×3 맞추기」 한 칸 → 다 맞음. 3×3은 해법별로 쪼개지 않고, 누르면 3×3
+ * 지도로 건너간다(`jump`). 공식 수는 고르는 3×3 해법마다 달라 비운다. 패리티는 이 칸 옆 고리(PARITY_LOOPS)
+ */
+function bigTail(h: BigHead): { nodes: MapNode[]; edges: MapEdge[] } {
+  const n = h.size;
+  const start = (edgeOf(h.head.at(-1) as string) as MapEdge).to;
+  // 같은 크기의 해법들이 함께 지나니 그 크기 과정의 「3×3처럼」 단원을 모두 단다(누르면 해법 과정 것)
+  const tailLessons = [
+    ...new Set(
+      BIG_HEADS.filter((x) => x.size === n).flatMap((x) => x.tailLessons),
+    ),
+  ];
+  // 줄: 앞부분 다음(4×4는 야우 앞부분이 다섯 줄)
+  const row = n === 4 ? 6.5 : 3.5;
+  return {
+    nodes: [
+      {
+        id: `${n}-solved` as MapNodeId,
+        title: "다 맞음",
+        row,
+        col: 0,
+        view: "",
+        size: n,
+        as333: "solved",
+      },
+    ],
+    edges: [
+      {
+        id: `${h.id}:333`,
+        from: start,
+        to: `${n}-solved` as MapNodeId,
+        title: "3×3 맞추기",
+        lessons: tailLessons,
+        formulas: null,
+        jump: { n: 3, from: n },
+      },
+    ],
+  };
+}
+
+const TAILS = BIG_HEADS.map((h) => ({ h, ...bigTail(h) }));
+
+const BIG_METHODS: MapMethod[] = TAILS.map(({ h, edges }) => ({
+  id: h.id,
+  title: h.title,
+  size: h.size,
+  course: h.course,
+  edges: [...h.head, ...edges.map((e) => e.id)],
+}));
+
+export const MAP_METHODS: readonly MapMethod[] = [
+  ...MAP_METHODS_3,
+  ...SMALL_METHODS,
+  ...BIG_METHODS,
+];
+
+/** 지점·길 전체(큰 큐브 뒤 묶음은 위에서 만든 것, 같은 id는 하나만) */
+const uniq = <T extends { id: string }>(xs: T[]) =>
+  // 처음 것을 남긴다(가장 쉬운 해법이 만든 지점의 칸)
+  xs.filter((x, i) => xs.findIndex((y) => y.id === x.id) === i);
+export const MAP_NODES: readonly MapNode[] = uniq([
+  ...BASE_NODES,
+  ...TAILS.flatMap((t) => t.nodes),
+]);
+export const MAP_EDGES: readonly MapEdge[] = uniq([
+  ...BASE_EDGES,
+  ...TAILS.flatMap((t) => t.edges),
+]);
+
+/** 해법의 크기 */
+export const methodSize = (m: MapMethod): CubeSize => m.size ?? 3;
 
 /**
  * 해법마다 잰 평균 수(큐브 전체 돌리기 x·y·z는 빼고 U2·M도 한 수, ll-compare.ts turnCount). 대회 섞기(cube-scramble
  * "333") 씨앗 1~seeds를 맞춘 평균의 반올림(solve-map-measure.ts measureMap). 초보자·2단계·ZZ는 단원 규칙
  * (beginner-path.ts·ll-compare.ts·zz-path.ts), CFOP·루는 컴퓨터 해법(@game/cube-ai solveCfop·solveRoux, 탐색이라
  * 사람보다 짧다). 코너 방향 먼저 하는 초보자와 페트루스는 끝까지 맞추는 규칙·해법이 없어 비운다. 루 컴퓨터 해법은
- * CMLL을 한 번에 풀어 위 코너 방향·자리 두 길을 `cmll` 하나로 잰다. solve-map.test.ts가 다시 잰다
+ * CMLL을 한 번에 풀어 위 코너 방향·자리 두 길을 `cmll` 하나로 잰다. 2×2는 단원 규칙(beginner-path-222.ts, 오르테가는
+ * 규칙이 없어 비움), 4×4·5×5는 앞부분 단원 규칙(big-path.ts·big-edges-555.ts·yau-solve.ts)과 3×3처럼 축소법 풀이
+ * (big-solve.ts solveReduced, 초보자 마무리)로 잰다. CFOP 마무리는 큰 큐브 CFOP 풀이가 없어 뒤 묶음을 비운다.
+ * solve-map-measure.test.ts가 다시 잰다
  */
 export const MAP_MEASURE: {
   seeds: number;
   turns: Partial<Record<MapMethodId, number>>;
   steps: Partial<Record<MapMethodId, Record<string, number>>>;
+  parity: {
+    oll: { rate: number; turns: number };
+    pll: { rate: number; turns: number };
+  };
 } = {
+  parity: { oll: { rate: 63, turns: 17 }, pll: { rate: 40, turns: 7 } },
   seeds: 30,
-  turns: { beginner: 127, "two-look": 114, cfop: 55, roux: 54, zz: 84 },
+  turns: {
+    beginner: 127,
+    "two-look": 114,
+    cfop: 55,
+    roux: 54,
+    zz: 84,
+    "222-beginner": 50,
+    "222-from333": 57,
+    "444-reduction": 366,
+    "444-yau": 314,
+    "555-reduction": 667,
+  },
   steps: {
     beginner: {
       cross: 15,
@@ -799,6 +1164,34 @@ export const MAP_MEASURE: {
       "two-look-face": 8,
       "two-look-corners": 13,
       "two-look-edges": 7,
+    },
+    "222-beginner": {
+      "222-first-layer": 25,
+      "222-top-face": 15,
+      "222-top-layer": 10,
+    },
+    "222-from333": {
+      "222-first-layer": 25,
+      "222-corner-place": 9,
+      "222-corner-twist": 23,
+    },
+    "444-reduction": {
+      "444-centers": 59,
+      "444-edges": 155,
+      "444-reduction:333": 139,
+    },
+    "444-yau": {
+      "yau-ud-centers": 27,
+      "yau-cross3": 17,
+      "yau-side-centers": 27,
+      "yau-last-cross": 18,
+      "yau-edges": 89,
+      "444-yau:333": 123,
+    },
+    "555-reduction": {
+      "555-centers": 188,
+      "555-edges": 350,
+      "555-reduction:333": 129,
     },
   },
 };
@@ -941,7 +1334,8 @@ const petrus223 = allPieces.filter(
 const notIn = (xs: number[], all: number[]) =>
   all.filter((p) => !xs.includes(p));
 
-const LOOKS: Record<MapNodeId, Look> = {
+/** 3×3 지점의 모습. 다른 크기는 lookBig·lookAs333 */
+const LOOKS: Partial<Record<MapNodeId, Look>> = {
   scrambled: { solved: [] },
   cross: { solved: crossP },
   "first-layer": { solved: firstLayer },
@@ -1014,52 +1408,119 @@ const LOOKS: Record<MapNodeId, Look> = {
     oriented: { pieces: notIn(petrus223, edges), colors: EO_COLORS },
   },
   "corners-first": { solved: [...corners, ...centers] },
-  // 4×4 지점은 LOOKS4
-  "4-scrambled": { solved: [] },
-  "4-centers": { solved: [] },
-  "4-ud-centers": { solved: [] },
-  "4-cross3": { solved: [] },
-  "4-yau-centers": { solved: [] },
 };
 
-// 4×4: 센터 블럭은 면마다 넷, 엣지는 날개 둘. 야우 흰 십자 셋은 흰-주황 엣지를 남긴다(옆 센터 뒤 마지막 십자 엣지)
-const T4 = cubeTopology(4);
-const kind4 = (p: number) => T4.pieces[p]?.kind as string;
-const all4 = T4.pieces.map((_, p) => p);
-const centers4 = all4.filter(
-  (p) => kind4(p) === "innerCenter" || kind4(p) === "center",
-);
-const touches4 = (p: number, ...faces: number[]) =>
-  faces.some((f) => pieceFaces(4, p).includes(f));
-const udCenters4 = centers4.filter((p) => touches4(p, WHITE, YELLOW));
-const cross3 = all4.filter(
-  (p) =>
-    (kind4(p) === "wing" || kind4(p) === "edge") &&
-    touches4(p, WHITE) &&
-    !touches4(p, L),
-);
-const LOOKS4: Partial<Record<MapNodeId, number[]>> = {
-  "4-scrambled": [],
-  "4-centers": centers4,
-  "4-ud-centers": udCenters4,
-  "4-cross3": [...udCenters4, ...cross3],
-  "4-yau-centers": [...centers4, ...cross3],
-};
+// ── 다른 크기 ─────────────────────────────────────────
+
+/** 크기 n의 조각 묶음(센터 블럭은 한 면에 여럿, 엣지는 날개 여럿) */
+function partsOf(n: number) {
+  const topo = cubeTopology(n);
+  const all = topo.pieces.map((_, p) => p);
+  const k = (p: number) => topo.pieces[p]?.kind as string;
+  const on = (p: number, ...faces: number[]) =>
+    faces.some((f) => pieceFaces(n, p).includes(f));
+  const isCenter = (p: number) => k(p) === "center" || k(p) === "innerCenter";
+  const isEdge = (p: number) => k(p) === "edge" || k(p) === "wing";
+  const centersN = all.filter(isCenter);
+  const edgesN = all.filter(isEdge);
+  const cornersN = all.filter((p) => k(p) === "corner");
+  return { topo, all, on, centersN, edgesN, cornersN };
+}
+
+/** 3×3 지점의 모습을 크기 n 큐브로: 같은 면에 닿은 조각(날개는 그 엣지, 센터 블럭은 그 면 센터)을 같이 맞춘다 */
+function lookAs333(n: number, id333: MapNodeId): Look {
+  const base = LOOKS[id333] as Look;
+  const key = (faces: number[]) => [...faces].sort((a, b) => a - b).join(",");
+  const mode = new Map<string, "solved" | "oriented" | "placed">();
+  for (const p of base.placed ?? []) mode.set(key(pieceFaces(3, p)), "placed");
+  for (const p of base.oriented?.pieces ?? [])
+    mode.set(key(pieceFaces(3, p)), "oriented");
+  for (const p of base.solved) mode.set(key(pieceFaces(3, p)), "solved");
+  const { all } = partsOf(n);
+  const pick = (m: string) =>
+    all.filter((p) => mode.get(key(pieceFaces(n, p))) === m);
+  return {
+    solved: pick("solved"),
+    ...(base.oriented
+      ? { oriented: { pieces: pick("oriented"), colors: base.oriented.colors } }
+      : {}),
+    ...(base.placed ? { placed: pick("placed") } : {}),
+  };
+}
+
+/** 2×2·4×4·5×5 앞부분 지점(3×3 지도에 없는 상태) */
+function lookBig(n: number, id: MapNodeId): Look {
+  const { on, centersN, edgesN, cornersN } = partsOf(n);
+  const white = cornersN.filter((p) => on(p, WHITE));
+  const yellow = cornersN.filter((p) => on(p, YELLOW));
+  const ud = centersN.filter((p) => on(p, WHITE, YELLOW));
+  const cross = edgesN.filter((p) => on(p, WHITE));
+  // 야우 흰 십자 셋은 흰-주황 엣지를 남긴다(옆 센터 뒤 마지막 십자 엣지)
+  const cross3 = cross.filter((p) => !on(p, L));
+  switch (id) {
+    case "2-first-layer":
+      return { solved: white };
+    case "2-top-face":
+      return { solved: white, oriented: { pieces: yellow, colors: [YELLOW] } };
+    case "2-corners-placed":
+      return { solved: white, placed: yellow };
+    case "2-first-face":
+      return { solved: [], oriented: { pieces: white, colors: [WHITE] } };
+    case "2-both-faces":
+      return {
+        solved: [],
+        oriented: { pieces: cornersN, colors: [WHITE, YELLOW] },
+      };
+    case "2-solved":
+      return { solved: cornersN };
+    case "4-centers":
+    case "5-centers":
+      return { solved: centersN };
+    // 엣지를 묶었지만 제자리는 아니다(회색)
+    case "4-paired":
+    case "5-paired":
+      return { solved: centersN, placed: edgesN };
+    case "4-ud-centers":
+      return { solved: ud };
+    case "4-cross3":
+      return { solved: [...ud, ...cross3] };
+    case "4-yau-centers":
+      return { solved: [...centersN, ...cross3] };
+    case "4-yau-cross":
+      return { solved: [...centersN, ...cross] };
+    case "4-yau-paired":
+      return {
+        solved: [...centersN, ...cross],
+        placed: edgesN.filter((p) => !cross.includes(p)),
+      };
+    default:
+      return { solved: [] };
+  }
+}
 
 /** 지점 그림의 큐브 크기 */
-export const nodeSize = (id: MapNodeId): 3 | 4 => nodeById(id).size ?? 3;
+export const nodeSize = (id: MapNodeId): CubeSize => nodeById(id).size ?? 3;
 
-/** 지점 그림의 가리기(스티커 정체마다) */
-export function nodeMask(id: MapNodeId): StickerVisibility[] {
-  if (nodeSize(id) === 4) {
-    const out = new Array<StickerVisibility>(T4.stickerCount).fill("hidden");
-    for (const p of LOOKS4[id] ?? [])
-      for (const s of T4.pieces[p]?.stickers ?? []) out[s] = "visible";
-    return out;
-  }
-  const look = LOOKS[id];
-  const out = new Array<StickerVisibility>(TOPO.stickerCount).fill("hidden");
-  const stickers = (p: number) => TOPO.pieces[p]?.stickers ?? [];
+/** 지점의 모습(크기 n 조각 번호로) */
+function lookOf(id: MapNodeId): Look {
+  const node = nodeById(id);
+  const n = node.size ?? 3;
+  if (node.as333) return lookAs333(n, node.as333);
+  if (n === 3) return LOOKS[id] as Look;
+  return lookBig(n, id);
+}
+
+/** 3×3 지점을 큰 큐브로 그릴 때의 크기(큰 큐브 「3×3 맞추기」를 펼친 그림). 3×3 지점이 아니면 무시 */
+const drawSize = (id: MapNodeId, as?: CubeSize) =>
+  as && as !== 3 && nodeSize(id) === 3 ? as : nodeSize(id);
+
+/** 지점 그림의 가리기(스티커 정체마다). `as`: 3×3 지점을 그 크기 큐브에서 같은 조각을 맞춘 모습으로 */
+export function nodeMask(id: MapNodeId, as?: CubeSize): StickerVisibility[] {
+  const n = drawSize(id, as);
+  const look = n !== nodeSize(id) ? lookAs333(n, id) : lookOf(id);
+  const topo = cubeTopology(n);
+  const out = new Array<StickerVisibility>(topo.stickerCount).fill("hidden");
+  const stickers = (p: number) => topo.pieces[p]?.stickers ?? [];
   for (const p of look.placed ?? [])
     for (const s of stickers(p)) out[s] = "gray";
   if (look.oriented)
@@ -1067,7 +1528,7 @@ export function nodeMask(id: MapNodeId): StickerVisibility[] {
       // 기준 색 가운데 앞의 것이 붙은 칸 하나(엣지 방향은 위·아래 색, 없으면 앞·뒤 색)
       const ss = stickers(p);
       for (const c of look.oriented.colors) {
-        const s = ss.find((x) => stickerFace(N, x) === c);
+        const s = ss.find((x) => stickerFace(n, x) === c);
         if (s !== undefined) {
           out[s] = "visible";
           break;
@@ -1080,11 +1541,13 @@ export function nodeMask(id: MapNodeId): StickerVisibility[] {
 
 /** 지점의 다 맞은 조각(시험이 판정과 견준다) */
 export const nodeSolvedPieces = (id: MapNodeId): readonly number[] =>
-  LOOKS[id].solved;
+  lookOf(id).solved;
 
 /** 지점 그림의 큐브(맞춘 큐브를 그 지점의 쥐는 돌리기로 쥔 것) */
-export function nodeState(id: MapNodeId): PuzzleState {
-  // 4×4 지점은 흰 면 위 그대로 본다(쥐는 돌리기 없음)
-  if (nodeSize(id) === 4) return solvedCube(4);
-  return play(solvedCube(N), nodeById(id).view);
+export function nodeState(id: MapNodeId, as?: CubeSize): PuzzleState {
+  const n = drawSize(id, as);
+  const view = nodeById(id).view;
+  let s = solvedCube(n);
+  for (const m of parseMoves(n, view)) s = applyMove(n, s, m);
+  return s;
 }

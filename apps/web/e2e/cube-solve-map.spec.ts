@@ -94,3 +94,29 @@ test("해법 지도 견본 기록: 지나온 길에 「나」, 약한 걸음·�
   );
   await expect(second.locator("[data-edge-train]")).toContainText("익숙 2/3");
 });
+
+test("해법 지도 4×4: 「3×3 맞추기」는 그 자리에서 펼치고, 3×3 지도에 들렀다 「← 4×4」로 펼친 채 돌아온다", async ({
+  page,
+}) => {
+  await page.goto("/cube/learn-map?v=a&n=4");
+  await page.locator('[data-edge="444-reduction:333"]').click();
+  const panel = page.locator("[data-finish-panel]");
+  await expect(panel).toHaveAttribute("data-finish-panel", "beginner");
+  await expect(page).toHaveURL(/n=4&x=beginner/);
+  // 고리는 초보자의 패리티 자리(둘째 층 엣지 뒤, 옆면 맞추기 뒤)에 한국 이름으로
+  await expect(panel.locator("[data-parity-loop]")).toHaveText([
+    /^토끼이빨OLL 패리티/,
+    /^바보토끼이빨PLL 패리티/,
+  ]);
+  await panel.locator('[data-finish-method="cfop"]').click();
+  await panel.locator("[data-finish-hop]").click();
+  await expect(page).toHaveURL(/n=3&from=4&x=cfop&m=cfop/);
+  // 들르기라 크기 탭은 4×4 그대로
+  await expect(page.locator('[data-size="4"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.locator("[data-map-back]").click();
+  await expect(page).toHaveURL(/n=4&x=cfop/);
+  await expect(panel).toHaveAttribute("data-finish-panel", "cfop");
+});
