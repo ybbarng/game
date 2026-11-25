@@ -1,4 +1,4 @@
-// 큐브 배우기 단원을 읽는 차례대로 글 자리로 펼친다. 용어 순서 시험(glossary-333.test.ts, course-terms.test.ts)이
+// 큐브 단원(큐브의 기초·해법 배우기)을 읽는 차례대로 글 자리로 펼친다. 용어 순서 시험(glossary-333.test.ts, course-terms.test.ts)이
 // 공통 틀 `@/tutorial/term-order`에 넘긴다. 실제로 쳐 보는 공식 줄(alg)은 시연이라 빼고 글만 읽는다.
 import type { TextPlace } from "@/tutorial/term-order";
 

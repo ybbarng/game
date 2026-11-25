@@ -7,6 +7,14 @@ import { SAFE_P4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
 import { loadLearn as loadKeyLearn } from "../keys/storage";
 import { loadLearn } from "../learn/progress";
+import {
+  BASICS_HREF,
+  BASICS_ICON,
+  BASICS_TITLE,
+  METHODS_HREF,
+  METHODS_ICON,
+  METHODS_TITLE,
+} from "../nav/learn-names";
 import type { NextKind, NextStep } from "../nav/next-step";
 import { loadRecords } from "../records";
 import { CubeHero } from "./CubeHero";
@@ -15,8 +23,8 @@ import "@/cube/components/cube-fx.css";
 /**
  * 큐브 첫 화면(`/cube`, docs/47 16-2). 위에는 섞이고 맞춰지기를 되풀이하는 큐브(`CubeHero`), 그 아래 「다음에 할 것」 칸 하나,
  * 그리고 문 둘(배우기·맞추기·겨루기)과 더 보기. 항목은 아이콘과 짧은 이름만 둔다. 문 아래의 화면(오늘의 섞기,
- * 공식 훈련 등)은 각 문 안에서 고르고, 모든 화면은 기능 지도(`/cube/map`)에 있다. 배우는 곳은 「큐브 배우기」 한 칸이고
- * 해법·과정은 그 안에서 고른다(docs/47 16-26).
+ * 공식 훈련 등)은 각 문 안에서 고르고, 모든 화면은 기능 지도(`/cube/map`)에 있다. 배우는 곳은 「큐브의 기초」(조각·움직임·
+ * 표기)와 「해법 배우기」 두 칸이고 해법·과정은 해법 배우기 안에서 고른다(docs/47 16-26·16-27).
  */
 
 interface Item {
@@ -49,9 +57,15 @@ const GROUPS: Group[] = [
         sameAs: "intro",
       },
       {
-        icon: "🎓",
-        title: "큐브 배우기",
-        href: "/cube/methods",
+        icon: BASICS_ICON,
+        title: BASICS_TITLE,
+        href: BASICS_HREF,
+        attr: "data-cube-basics-link",
+      },
+      {
+        icon: METHODS_ICON,
+        title: METHODS_TITLE,
+        href: METHODS_HREF,
         attr: "data-cube-learn-link",
       },
     ],
@@ -90,13 +104,13 @@ const GROUPS: Group[] = [
 ];
 
 /**
- * 묶음에 보일 칸. 「다음에 할 것」과 같은 칸은 감추고, 그래서 칸 수가 홀수가 되면 마지막 칸이 줄을 채운다.
+ * 묶음에 보일 칸. 「다음에 할 것」과 같은 칸은 감추고, 보일 반 칸 수가 홀수면 마지막 칸이 줄을 채운다(배우기 묶음:
+ * 셋이면 해법 배우기가 한 줄, 사이트 쓰는 법을 감춰 둘이면 반 칸 둘).
  * 다음 걸음이 아직 정해지지 않았으면(`null`) 감출 칸이 있는 묶음은 칸 대신 자리만 둔다(칸이 떴다 사라지지 않게)
  */
 function visibleItems(items: Item[], next: NextKind | null): Item[] | null {
   if (next === null && items.some((i) => i.sameAs)) return null;
   const shown = items.filter((i) => i.sameAs !== next);
-  if (shown.length === items.length) return items;
   const halves = shown.filter((i) => !i.span);
   if (halves.length % 2 === 0) return shown;
   const last = halves[halves.length - 1];

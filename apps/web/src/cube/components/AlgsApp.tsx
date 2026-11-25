@@ -58,6 +58,7 @@ import {
 import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import { movesOf } from "../learn/judge";
 import type { AlgCase, AlgSet } from "../learn/types";
+import { METHODS_TITLE } from "../nav/learn-names";
 import { formatMs } from "../records";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { AlgChips } from "./AlgChips";
@@ -171,7 +172,7 @@ export function AlgsApp() {
             href="/cube/methods"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 큐브 배우기
+            ← {METHODS_TITLE}
           </a>
           <h1 className="font-bold text-lg">내 공식</h1>
           <a

@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import {
+  BASICS_HREF,
+  BASICS_TITLE,
+  METHODS_HREF,
+  METHODS_TITLE,
+} from "../nav/learn-names";
+import {
   CubeIntroSteps,
   FIRST_LESSON,
   MORE_STEPS,
@@ -134,7 +140,7 @@ function NextPart() {
       >
         처음 맞추기
       </a>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2">
         <a
           href="/cube/solo"
           className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
@@ -145,10 +151,17 @@ function NextPart() {
           </span>
         </a>
         <a
-          href="/cube/methods"
+          href={BASICS_HREF}
+          data-intro-basics
           className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
         >
-          <b>큐브 배우기</b>
+          <b>{BASICS_TITLE}</b>
+        </a>
+        <a
+          href={METHODS_HREF}
+          className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
+        >
+          <b>{METHODS_TITLE}</b>
           <span className="block text-white/70 text-xs">
             다른 해법을 배우려면
           </span>

@@ -10,6 +10,7 @@ import type { Command } from "../input";
 import type { Keymap } from "../input/keymaps";
 import { loadKeymap } from "../input/storage";
 import { ALG_SETS } from "../learn/alg-sets";
+import { METHODS_TITLE } from "../nav/learn-names";
 import { PRACTICE_N } from "../practice/problem";
 import type { PracticeMode, RoundSummary } from "../practice/round";
 import { PracticeSession } from "../practice/session";
@@ -151,7 +152,7 @@ export function PracticeApp() {
             href="/cube/methods"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 큐브 배우기
+            ← {METHODS_TITLE}
           </a>
           <h1 className="font-bold text-lg">공식 연습</h1>
           <a
