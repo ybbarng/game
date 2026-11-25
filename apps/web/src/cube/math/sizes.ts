@@ -26,9 +26,9 @@ export interface SizeFacts {
   midges: boolean;
   /** 안쪽 층 하나씩 90° 돌렸을 때 */
   slices: SliceEffect[];
-  /** 3×3처럼 맞추는 단계에서 엣지 하나만 뒤집힌 꼴(OLL 패리티)이 보일 수 있나 */
+  /** 3×3처럼 맞추는 단계에서 엣지 하나만 뒤집힌 꼴(토끼이빨, OLL 패리티)이 보일 수 있나 */
   ollParity: boolean;
-  /** 3×3처럼 맞추는 단계에서 엣지 둘만 바뀐 꼴(PLL 패리티)이 보일 수 있나 */
+  /** 3×3처럼 맞추는 단계에서 엣지 둘만 바뀐 꼴(바보토끼이빨, PLL 패리티)이 보일 수 있나 */
   pllParity: boolean;
   /** 엣지 짝짓기 마지막에 날개 짝 하나가 뒤집힌 꼴이 보일 수 있나(가운데 엣지가 기준이 되는 홀수 크기) */
   pairingParity: boolean;
