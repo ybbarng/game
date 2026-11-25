@@ -3,6 +3,7 @@ import {
   FairGuestSeat,
   FairHostTable,
   hiddenFriend,
+  type OwnAnswers,
   type RoundDeal,
   realAction,
   type SeenFriendView,
@@ -28,35 +29,44 @@ import {
 } from "@/net/fair-verify";
 import { mightyKit } from "./mighty-kit";
 
-/** 마이티 판 끝 다시 계산하기 */
-export const MIGHTY_REPLAY: FairReplayGame = {
-  standing: pickStanding(STANDING_KEYS.mighty ?? []),
-  initial: (rules, seed) =>
-    createMatch({ rules: rules as RuleSet, seed }).state,
-  check: (rules, seed, log, deals, seen) => {
-    const checked = checkReplay(
-      rules as RuleSet,
-      seed,
-      log,
-      deals as ReadonlyMap<number, RoundDeal>,
-    );
-    if (!checked.ok || !seen) return checked;
-    // 걸음별 사건이 없는 참가자는 받은 화면으로 프렌드 숨기기를 찾는다(방장 기기는 걸음별 사건으로 찾는다).
-    // 찾지 않으면 그 뒤 컴퓨터 수가 다시 계산한 것과 달라 정직한 방장을 짚는다.
-    const hidden = hiddenFriend(
-      checked.states,
-      seen.map((v) => JSON.parse(v) as SeenFriendView),
-    );
-    return hidden ? { ok: false, ...hidden } : checked;
-  },
-  viewOf: (state, seat) => viewOf(state as MatchState, seat),
-  realAction: (action, cards) =>
-    realAction(action as Action, cards as ReadonlyMap<number, Card>),
-  annotate: (view, action) =>
-    mightyKit.annotateBotAction
-      ? mightyKit.annotateBotAction(view as PlayerView, action as Action)
-      : action,
-};
+/**
+ * 마이티 판 끝 다시 계산하기. `own`은 이 참가자 기기가 방장 물음에 보낸 답: 받은 화면만으로는 방장이 숨긴 것과
+ * 그 자리가 거짓말한 것을 가리지 못해, 본인 자리만은 자기 답으로 가린다(`ownAnswer`, docs/13 8절)
+ */
+export function mightyReplay(own?: OwnAnswers): FairReplayGame {
+  return {
+    standing: pickStanding(STANDING_KEYS.mighty ?? []),
+    initial: (rules, seed) =>
+      createMatch({ rules: rules as RuleSet, seed }).state,
+    check: (rules, seed, log, deals, seen) => {
+      const checked = checkReplay(
+        rules as RuleSet,
+        seed,
+        log,
+        deals as ReadonlyMap<number, RoundDeal>,
+        undefined,
+        own,
+      );
+      if (!checked.ok || !seen) return checked;
+      // 걸음별 사건이 없는 참가자는 받은 화면으로 프렌드 숨기기를 찾는다(방장 기기는 걸음별 사건으로 찾는다).
+      // 찾지 않으면 그 뒤 컴퓨터 수가 다시 계산한 것과 달라 정직한 방장을 짚는다.
+      const hidden = hiddenFriend(
+        checked.states,
+        seen.map((v) => JSON.parse(v) as SeenFriendView),
+        log,
+        own,
+      );
+      return hidden ? { ok: false, ...hidden } : checked;
+    },
+    viewOf: (state, seat) => viewOf(state as MatchState, seat),
+    realAction: (action, cards) =>
+      realAction(action as Action, cards as ReadonlyMap<number, Card>),
+    annotate: (view, action) =>
+      mightyKit.annotateBotAction
+        ? mightyKit.annotateBotAction(view as PlayerView, action as Action)
+        : action,
+  };
+}
 
 /**
  * 마이티 멘탈 포커 판(3~7마): 방장은 `FairHostTable`, 참가자는 `FairGuestSeat`(방장의 죽이기·프렌드 물음에 답한다).
@@ -95,7 +105,8 @@ export const mightyFairTable: KitFairTable<
     };
   },
   guest: ({ sendTo: _, ...options }) => new FairGuestSeat(options),
-  replay: () => MIGHTY_REPLAY,
+  replay: ({ seat }) =>
+    mightyReplay(seat instanceof FairGuestSeat ? seat.ownAnswers : undefined),
   finishedRound: (view) => finishedRoundOf("mighty", view),
   // 열쇠를 공개한 판이 다 열리길 기다린다(화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다).
   whenEndOpened: (seat) => (seat as FairGuestSeat).whenRevealedOpened(),

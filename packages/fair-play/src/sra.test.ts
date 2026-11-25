@@ -21,6 +21,18 @@ describe("SRA 교환 가능한 암호", () => {
     },
   );
 
+  it.each([GROUP_1024, GROUP_2048])(
+    "$name: 원소 확인은 항등원 1을 받지 않고, 카드·생성원·잠근 카드는 받는다",
+    (g) => {
+      const card = encodeIndex(g, 0);
+      expect(
+        [g.one, card, g.generator, g.pow(card, newKey(g))].map((x) =>
+          g.isElement(x),
+        ),
+      ).toEqual([false, true, true, true]);
+    },
+  );
+
   it("잠근 순서와 상관없이 풀린다", () => {
     const g = GROUP_1024;
     const m = encodeIndex(g, 7);

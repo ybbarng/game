@@ -8,7 +8,7 @@ import {
   trickWinnerIndex,
 } from "@game/mighty-engine";
 
-import type { FairLogged, RoundDeal } from "./audit";
+import type { FairLogged, OwnAnswers, RoundDeal } from "./audit";
 import { cardText, tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
 import {
@@ -52,6 +52,12 @@ export interface GuestSeatOptions {
   clock?: Clock;
 }
 
+/**
+ * 물음을 받고 다음 화면이 이보다 늦게 오면 내 답이 방장에게 닿았다고 보지 않는다. 방장은 답을 15초 기다린다
+ * (`FairHostTableOptions.answerTimeoutMs`): 한참 먼저 왔으면 방장은 기다리다 넘어간 것이 아니라 답을 받고 진행했다
+ */
+const SURE_ANSWER_MS = 5_000;
+
 export class FairGuestSeat {
   readonly seat: number;
   readonly rules: RuleSet;
@@ -64,6 +70,21 @@ export class FairGuestSeat {
   private last: PlayerView | null = null;
   /** 답한 죽이기 물음: 다음 화면에 그 카드로 죽이기를 했어야 한다 */
   private expectKill: Card | null = null;
+  /** 받은 물음(답할 때 무엇에 답했는지 남긴다)과 받은 시각 */
+  private readonly queries = new Map<
+    string,
+    { query: FairQuery; at: number }
+  >();
+  /**
+   * 방장 물음에 보낸 답(판 끝 검증에서 본인 자리를 가린다, `ownAnswers`). `delivered`가 null이면 아직 다음 화면을
+   * 받지 못했다
+   */
+  private readonly sent: {
+    query: FairQuery;
+    have: boolean;
+    at: number;
+    delivered: boolean | null;
+  }[] = [];
   private readonly logs = new Map<number, FairLogged[]>();
   readonly deals = new Map<number, RoundDeal>();
   private readonly clock: Clock;
@@ -127,6 +148,11 @@ export class FairGuestSeat {
 
   /** 방장 화면. `resync`면 다시 연결할 때 보낸 지금 화면(사건 없음) */
   snapshot(view: PlayerView, events: GameEvent[], resync = false): void {
+    // 답 뒤 첫 화면: 끊기지 않고 제때 왔으면 방장이 내 답을 받고 진행했다고 본다. 다시 연결한 화면이면 답이
+    // 닿았는지 모른다.
+    for (const s of this.sent)
+      if (s.delivered === null)
+        s.delivered = !resync && this.clock.now() - s.at < SURE_ANSWER_MS;
     if (resync) {
       this.last = view;
       this.queue.push({ view, events: [] });
@@ -227,7 +253,13 @@ export class FairGuestSeat {
         this.device.receive(message, from);
         break;
       case "query":
-        if (from === 0) this.onQuery(message.id, message.query);
+        if (from === 0) {
+          this.queries.set(message.id, {
+            query: message.query,
+            at: this.clock.now(),
+          });
+          this.onQuery(message.id, message.query);
+        }
         break;
       case "log":
         if (from === 0) {
@@ -240,7 +272,29 @@ export class FairGuestSeat {
     }
   }
 
+  /** 방장 물음에 보낸 답. 다음 화면을 아직 받지 못했으면 닿았는지 모른다 */
+  get ownAnswers(): OwnAnswers {
+    return {
+      seat: this.seat,
+      answers: this.sent.map((s) => ({
+        query: s.query,
+        have: s.have,
+        delivered: s.delivered === true,
+      })),
+    };
+  }
+
   private answer(id: string, have: boolean, slot?: number): void {
+    const asked = this.queries.get(id);
+    if (asked) {
+      this.queries.delete(id);
+      this.sent.push({
+        query: asked.query,
+        have,
+        at: asked.at,
+        delivered: null,
+      });
+    }
     this.options.broadcast({
       t: "fp",
       k: "answer",
