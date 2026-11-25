@@ -172,6 +172,12 @@ export function parseFromApp(d: unknown): FromApp | null {
         : null;
     case "scramble":
       return { type: "scramble" };
+    case "reset":
+      return { type: "reset" };
+    case "place":
+      return typeof x.set === "string" && typeof x.id === "string"
+        ? { type: "place", set: x.set, id: x.id }
+        : null;
     case "mirror":
       return typeof x.on === "boolean"
         ? { type: "mirror", on: x.on }

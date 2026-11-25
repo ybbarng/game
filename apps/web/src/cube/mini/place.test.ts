@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { notationKeymap, twoHandKeymap } from "../input/keymaps";
 import { placeCase } from "../practice/place";
+import { parseFromApp } from "./app-bridge";
 import { cubieKeymap, cubieUses } from "./cubie-keys";
 import { placeBubbleLines } from "./place";
 
@@ -28,6 +29,19 @@ describe("상황 놓기 말풍선", () => {
     expect(
       spans.every((s) => ["key", "plain", "arrow"].includes(s.style)),
     ).toBe(true);
+  });
+});
+
+describe("다리: reset·place 메시지", () => {
+  it("맞춘 상태로와 상황 놓기를 읽고, 꼴이 틀린 놓기는 버린다", () => {
+    expect(parseFromApp({ type: "reset" })).toEqual({ type: "reset" });
+    expect(parseFromApp({ type: "place", set: "pll", id: "pll-t" })).toEqual({
+      type: "place",
+      set: "pll",
+      id: "pll-t",
+    });
+    expect(parseFromApp({ type: "place", set: "pll" })).toBeNull();
+    expect(parseFromApp({ type: "place", set: 3, id: "pll-t" })).toBeNull();
   });
 });
 

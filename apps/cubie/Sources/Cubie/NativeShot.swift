@@ -151,6 +151,12 @@ enum NativeShot {
             v.paintShown()
           } && ok
       }
+      // 상황 놓기(docs/47 16-24): PLL T 퍼뮤를 놓은 큐브(거울 보임, 맞추는 중과 같다)
+      ok =
+        shoot("native-place-pll-t", after: 1) { v in
+          v.place(set: "pll", id: "pll-t", algBook: "")
+          v.setMirror(true)
+        } && ok
     }
 
     // 홈 시연(docs/52 5-6): `CUBIE_NATIVE_SHOT_HERO=<해법>:<씨앗>`이면 그 판의 멈춤 자리 몇 곳(앞 걸음과 0.4초 넘게 떨어진 수
@@ -199,6 +205,20 @@ enum NativeShot {
       let lines = "Enter".withCString { a in NativeCore.string { cubie_game_practice_lines(practiceView.game, a, $0, $1) } }
       let parsed = lines.split(separator: "\n").map { BubbleLines.line(String($0)) }
       ok = shoot2D("native-practice", HintBubble().layoutForShot(lines: parsed)) && ok
+    }
+    // 상황 놓기 말풍선(docs/47 16-24): 접힌 것(상황 이름)과 힌트 키로 펼친 것(공식 + 키캡)
+    let placeView = CACubeView(frame: NSRect(x: 0, y: 0, width: side, height: side), n: 3)
+    if placeView.place(set: "pll", id: "pll-t", algBook: "") {
+      let read = {
+        NativeCore.string { cubie_game_place_lines(placeView.game, $0, $1) }.split(separator: "\n")
+          .map { BubbleLines.line(String($0)) }
+      }
+      ok = shoot2D("native-place", HintBubble().layoutForShot(lines: read())) && ok
+      _ = cubie_game_place_reveal(placeView.game)
+      ok = shoot2D("native-place-revealed", HintBubble().layoutForShot(lines: read())) && ok
+    } else {
+      print("[shot] 상황을 놓지 못했다")
+      ok = false
     }
     // 공식 연습에서 틀린 장면(docs/47 4-4 「수 표기와 키」): `CUBIE_NATIVE_SHOT_PRACTICE=oll:20,oll:79`(단계:씨앗).
     // 첫 수와 다른 수의 키를 쳐서 틀린 줄을 띄운다. `-plain`은 낱말 꼴을 뺀 줄(옛 앱·옛 줄이 그리던 모양)
