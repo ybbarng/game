@@ -11,6 +11,8 @@ final class NativeCubeWindow: FloatingWindow {
   private(set) var cube: CACubeView
   let store: KeyValueStore
   let book: MiniBook
+  /// 사용자 크기와 상황 놓기가 잠시 드는 3×3(docs/47 16-24)
+  private let size: MiniSize
   private(set) var settings = CubeSettings()
   private(set) var keymap = StoredKeymap()
   private(set) var state = CubeState()
@@ -57,6 +59,7 @@ final class NativeCubeWindow: FloatingWindow {
     // 재기는 사용자 기록·설정을 읽지도 쓰지도 않는다(늘 같은 처음 상태에서 잰다)
     store = Config.measure ? MemoryStore() : DefaultsStore()
     book = MiniBook(store: store, math: RustTierMath())
+    size = MiniSize(book: book)
     clock = FocusClock(base: realClock)
     practiceClock = FocusClock(base: realClock)
     if !Config.measure {
@@ -163,8 +166,16 @@ final class NativeCubeWindow: FloatingWindow {
     if !ok, Config.debug { print("[cubie] keymap rejected preset=\(keymap.preset)"); fflush(stdout) }
   }
 
-  /// 크기를 바꾼다(새 한 판, 기록도 크기별). 맞추던 판은 버린다(사이트와 같다)
+  /// 크기를 고른다(메뉴·재기): 고른 크기가 사용자 크기가 되고 놓은 상황은 끝난다
   private func setSize(_ n: Int) {
+    guard MiniBook.sizes.contains(n) else { return }
+    size.pick(n)
+    showSize(n)
+  }
+
+  /// 그 크기의 새 한 판을 보인다(기록도 크기별). 맞추던 판은 버린다(사이트와 같다). 사용자 크기는 저장하지 않는다
+  /// (상황 놓기가 잠시 드는 3×3과 놓기가 끝나 사용자 크기로 돌아올 때도 이 길)
+  private func showSize(_ n: Int) {
     guard MiniBook.sizes.contains(n) else { return }
     stopPractice()
     idle.reset()
@@ -173,7 +184,6 @@ final class NativeCubeWindow: FloatingWindow {
     cube = CACubeView(frame: host.bounds, n: n)
     install(cube)
     state.n = n
-    book.savePrefs(n: n, mirror: state.mirror)
     refreshProfile()
     syncPlaced()
     updateMirror()
@@ -192,7 +202,8 @@ final class NativeCubeWindow: FloatingWindow {
       placeCase(set, id)
     case .toggleMirror:
       state.mirror.toggle()
-      book.savePrefs(n: state.n, mirror: state.mirror)
+      // 크기는 사용자 크기 그대로(상황을 놓는 동안 보이는 3×3을 저장하지 않는다)
+      size.saveMirror(state.mirror)
       updateMirror()
       onState?()
     case .hint:
@@ -293,9 +304,17 @@ final class NativeCubeWindow: FloatingWindow {
     let r = cube.press(keyCode: e.keyCode, flags: CACubeView.flags(e), seed: seed)
     switch r {
     case Int32(CUBIE_KEY_SCRAMBLED):
-      startedScramble()
+      // 상황을 놓느라 잠시 든 3×3이면 사용자 크기로 돌아가 그 큐브를 섞는다(섞인 3×3은 버린다)
+      if let n = size.release() {
+        showSize(n)
+        scramble()
+      } else {
+        startedScramble()
+      }
     case Int32(CUBIE_KEY_RESET):
-      // 맞춘 상태로 키(기본 Shift+Enter): 맞추던 판은 기록 없이 끝났다(코어), 묻지 않는다
+      // 맞춘 상태로 키(기본 Shift+Enter): 맞추던 판은 기록 없이 끝났다(코어), 묻지 않는다.
+      // 상황을 놓느라 잠시 든 3×3이면 사용자 크기의 맞춘 큐브로
+      if let n = size.release() { showSize(n) }
       resetDone()
     case Int32(CUBIE_KEY_MOVED), Int32(CUBIE_KEY_SOLVED):
       moved(origin: origin)
@@ -322,6 +341,8 @@ final class NativeCubeWindow: FloatingWindow {
   /// 섞기(메뉴·재기). 섞기 연출은 설정을 따르고, 동작 줄이기면 바로. 공식 연습 중이면 끝내고 섞는다
   private func scramble() {
     stopPractice()
+    // 상황을 놓느라 잠시 든 3×3이면 사용자 크기로 돌아가 섞는다
+    if let n = size.release() { showSize(n) }
     idle.setActive(false)
     let seed = UInt32.random(in: 0...UInt32.max)
     cubie_game_set_now(cube.game, clock.now())
@@ -357,7 +378,8 @@ final class NativeCubeWindow: FloatingWindow {
   private func resetCube() {
     stopPractice()
     idle.setActive(false)
-    cube.reset()
+    // 상황을 놓느라 잠시 든 3×3이면 사용자 크기의 맞춘 큐브로(새 한 판)
+    if let n = size.release() { showSize(n) } else { cube.reset() }
     resetDone()
   }
 
@@ -374,12 +396,12 @@ final class NativeCubeWindow: FloatingWindow {
     onState?()
   }
 
-  /// 상황 놓기(메뉴): 공식 연습은 끝내고, 3×3이 아니면 3×3으로 바꾼 뒤 그 상황의 처음 모양으로. 같은 상황을 다시 고르면
-  /// 처음부터. 내 공식은 `cube.algs.v1`(없으면 키가 싼 대표 공식)
+  /// 상황 놓기(메뉴): 공식 연습은 끝내고, 3×3이 아니면 3×3 판을 잠시 든 뒤(사용자 크기는 저장하지 않는다) 그 상황의
+  /// 처음 모양으로. 같은 상황을 다시 고르면 처음부터. 내 공식은 `cube.algs.v1`(없으면 키가 싼 대표 공식)
   private func placeCase(_ set: String, _ id: String) {
     stopPractice()
     idle.setActive(false)
-    if cube.n != 3 { setSize(3) }
+    if let n = size.holdForPlace() { showSize(n) }
     guard cube.place(set: set, id: id, algBook: store.string(Self.algsKey) ?? "") else { return }
     hintGate.reset()
     hideHint()
