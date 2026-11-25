@@ -38,6 +38,7 @@ import {
   savePick,
   stageCount,
 } from "../challenge";
+import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import {
   beginDaily,
   DAILY_SIZES,
@@ -122,6 +123,7 @@ import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { MethodSelect, TheoryBestLine, useSolveMethod } from "./MethodSelect";
 import { useMoveKeys } from "./MoveChip";
 import { RivalPanel, RivalSelect } from "./RivalPanel";
+import { SizePicker } from "./SizePicker";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
 import "@/cube/components/cube-fx.css";
 
@@ -204,6 +206,8 @@ export function SolveApp({
   challenge?: boolean;
 }) {
   const settings = useCubeSettings();
+  // 지금 크기로 연다(docs/47 16-28). 판이 도는 동안 다른 탭에서 바꾸면 판이 끝난 뒤에 따라간다
+  const currentSize = useCurrentSize();
   const [n, setN] = useState(3);
   const sizes: readonly number[] = daily
     ? DAILY_SIZES
@@ -220,8 +224,8 @@ export function SolveApp({
   const [lastEntry, setLastEntry] = useState<ChallengeEntry | null>(null);
   useEffect(() => {
     if (!challenge) return;
+    // 크기는 지금 크기를 따른다(고른 크기 `pick.n`은 옛 저장값이라 읽지 않는다)
     const p = loadPick();
-    setN(p.n);
     setKind(p.kind);
     setLevel(p.level);
     setChallenges(loadChallenges());
@@ -699,6 +703,33 @@ export function SolveApp({
   const challengeLive =
     challenge &&
     (phase === "inspect" || phase === "ready" || phase === "solving");
+  /** 크기를 바꾸기 전에 지금 판에 매인 것(다시 보기·섞기 요청·시도·컴퓨터)을 치운다 */
+  const leaveSize = () => {
+    stopReplay();
+    scrambleRequest.current++;
+    setPreparing(false);
+    setAttempt(null);
+    setRun(null);
+    setLastEntry(null);
+    setRival(null);
+    setRivalStart(null);
+  };
+  const leaveSizeRef = useRef(leaveSize);
+  leaveSizeRef.current = leaveSize;
+  // 지금 크기를 따른다: 처음 열 때, 다른 화면·탭에서 바꿨을 때(판이 돌거나 섞는 중이면 끝난 뒤에)
+  const wantN = sizeFor(sizes, currentSize);
+  const busy = preparing || session.running;
+  useEffect(() => {
+    if (busy || wantN === n) return;
+    leaveSizeRef.current();
+    setN(wantN);
+  }, [busy, wantN, n]);
+  const pickSize = (k: number) => {
+    leaveSize();
+    if (challenge) savePick({ ...pick, n: k });
+    setCurrentSize(k);
+    setN(k);
+  };
   const choosePick = (next: Partial<ChallengePick>) => {
     const p = { ...pick, ...next };
     savePick(p);
@@ -895,36 +926,18 @@ export function SolveApp({
               <MethodSelect n={n} value={method} onChange={pickMethod} />
             </div>
           )}
-          <label
-            className={`${challenge || daily || (mode === "solo" && n !== 2) ? "" : "ml-auto "}flex items-center gap-1 text-sm`}
-          >
-            크기
-            <select
-              data-cube-size
-              value={n}
-              disabled={preparing || officialLive || challengeLive}
-              onChange={(e) => {
-                stopReplay();
-                scrambleRequest.current++;
-                setPreparing(false);
-                setAttempt(null);
-                setRun(null);
-                setLastEntry(null);
-                setRival(null);
-                setRivalStart(null);
-                if (challenge) savePick({ ...pick, n: Number(e.target.value) });
-                setN(Number(e.target.value));
-                e.target.blur();
-              }}
-              className="rounded bg-white/10 px-2 py-1 disabled:opacity-60"
-            >
-              {sizes.map((s) => (
-                <option key={s} value={s} className="bg-neutral-800">
-                  {s}×{s}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SizePicker
+            attr="data-cube-size"
+            sizes={sizes}
+            value={n}
+            disabled={preparing || officialLive || challengeLive}
+            onPick={pickSize}
+            className={
+              challenge || daily || (mode === "solo" && n !== 2)
+                ? ""
+                : "ml-auto"
+            }
+          />
           <button
             type="button"
             data-cube-scramble-button
