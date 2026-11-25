@@ -458,6 +458,14 @@ function MapLayer({
       </svg>
       {geo.map((g) => {
         const on = selectedEdges.has(g.e.id);
+        // 흐린 길에 적을 값이 없으면(셀 자료 없음·단원 있음) 꼬리표를 두지 않는다
+        if (
+          !on &&
+          !edgeFormulaLabel(g.e, ctx.selected) &&
+          g.e.lessons.length &&
+          edgeLearn(g.e, ctx.progress) !== "done"
+        )
+          return null;
         const m = ctx.selected.find((x) => x.edges.includes(g.e.id));
         const href = edgeHref(g.e, m, ctx.courseOf);
         const body = (
