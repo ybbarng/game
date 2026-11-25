@@ -245,15 +245,15 @@ export function ExplodedCube({
         nrm[axis] = sign;
         const facing = dot(nrm, eye);
         if (facing <= 0.01) continue;
-        const a = (axis + 1) % 3;
-        const b = (axis + 2) % 3;
-        const corner = (s: number, u: number, v: number) => {
-          const p: V3 = [...o];
-          p[axis] += sign * HALF;
-          p[a] += u * HALF * s;
-          p[b] += v * HALF * s;
-          return project(p);
-        };
+        // 면 위 두 방향(축이 아닌 두 축)
+        const ua: V3 = [0, 0, 0];
+        ua[(axis + 1) % 3] = 1;
+        const ub: V3 = [0, 0, 0];
+        ub[(axis + 2) % 3] = 1;
+        const corner = (s: number, u: number, v: number) =>
+          project(
+            add(add(add(o, nrm, HALF), ua, u * HALF * s), ub, v * HALF * s),
+          );
         const ring = (s: number) => [
           corner(s, -1, -1),
           corner(s, 1, -1),
