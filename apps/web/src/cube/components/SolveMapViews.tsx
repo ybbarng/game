@@ -36,15 +36,14 @@ import {
   myRoute,
 } from "../learn/solve-map-me";
 import type { CubeSettings } from "../settings";
-import { CoreCube } from "./CoreCube";
 import { CubePosterPair } from "./CubePosterPair";
+import { ExplodedCube } from "./ExplodedCube";
 import {
   clampView,
   edgeFormulaLabel,
   edgeHref,
   edgeTurns,
   formulaText,
-  lessonHref,
   METHOD_COLOR,
   methodsOfEdge,
   methodTotals,
@@ -77,79 +76,27 @@ export interface MapCtx {
   toggle: (id: MapMethod["id"]) => void;
 }
 
+/** 큐브의 기초 페이지(다른 작업 트리에서 만드는 중, 2026-11-25 사용자 「준비를 밖으로 빼는 걸로 하자」) */
+export const BASICS_HREF = "/cube/basics";
+
 /**
- * 준비(출발점): 큐브 상태를 바꾸지 않는 지식 단원 셋. 모든 해법의 길이 여기서 출발한다(2026-11-25 사용자
- * 「준비도 지도 안에 들어가야지」). `box`는 그림 위·단원 아래(지도·갈림길), `row`는 그림 곁에 단원(노선도·카드).
- * 기록이 없는 사람의 「나」는 여기
+ * 출발 표시: 지도 맨 위 작은 링크 하나. 「큐브의 기초」(큐브 상태를 바꾸지 않는 지식: 큐브와 만나기·조각의 움직임·
+ * 표기 읽기)를 다 끝냈으면 ✓, 기록이 없으면 「나」. 그림은 조각을 떼어 놓은 작은 SVG(3D 없음)
  */
-export function PrepNode({
-  ctx,
-  look = "box",
-  px = 56,
-  live = false,
-}: {
-  ctx: MapCtx;
-  look?: "box" | "row" | "picture";
-  px?: number;
-  /** 3D 장면으로(지도에 하나만). 아니면 그 장면을 찍은 정지 그림 */
-  live?: boolean;
-}) {
-  const here = ctx.me.has("prep");
-  const picture = (
-    <span className="relative shrink-0">
-      <CoreCube colors={ctx.settings.colors} size={px} live={live} />
-      {here && (
-        <span className="-top-1 -left-2 absolute">
-          <MeBadge methods={[]} />
-        </span>
-      )}
-    </span>
-  );
-  if (look === "picture") return picture;
-  const lessons = (
-    <ul className="flex flex-col gap-0.5">
-      {MAP_PREP.map((id) => {
-        const done = ctx.progress.lessons[id]?.done;
-        return (
-          <li key={id}>
-            <a
-              href={lessonHref(id)}
-              className={cn(
-                "block whitespace-nowrap rounded border px-1 text-[10px] leading-4",
-                done
-                  ? "border-emerald-400/50 text-emerald-300"
-                  : "border-white/20 text-white/80",
-              )}
-              data-prep-lesson={id}
-              data-done={done ? "" : undefined}
-            >
-              {done ? "✓ " : ""}
-              {ctx.lessonTitle(id)}
-            </a>
-          </li>
-        );
-      })}
-    </ul>
-  );
+export function StartMark({ ctx }: { ctx: MapCtx }) {
+  const done = MAP_PREP.every((id) => ctx.progress.lessons[id]?.done);
   return (
-    <div
-      className={cn(
-        "flex gap-1.5 rounded-lg bg-neutral-800 px-2 py-1.5",
-        look === "box" ? "flex-col items-center" : "items-center",
-      )}
+    <a
+      href={BASICS_HREF}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-neutral-800 py-0.5 pr-3 pl-1 text-sm"
       data-map-prep
+      data-done={done ? "" : undefined}
     >
-      {picture}
-      <span
-        className={cn(
-          "flex gap-1",
-          look === "box" ? "flex-col items-center" : "flex-col",
-        )}
-      >
-        <span className="font-semibold text-xs">준비</span>
-        {lessons}
-      </span>
-    </div>
+      <ExplodedCube colors={ctx.settings.colors} size={28} simple />
+      <span>큐브의 기초</span>
+      {done && <span className="text-emerald-300">✓</span>}
+      {ctx.me.has("prep") && <MeBadge methods={[]} />}
+    </a>
   );
 }
 
@@ -289,8 +236,9 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
     const PAD = 24;
     const nodeH = style === "map" ? 92 : 0;
     // 준비 칸 높이와 그 아래 간격(지도는 그림 + 이름 + 단원 셋이 세로로, 노선도는 한 줄)
-    const prepH = style === "map" ? 178 : 0;
-    const TOP = PAD + prepH + (style === "map" ? 60 : RH);
+    // 출발 표시(「큐브의 기초」 작은 링크) 높이와 그 아래 간격
+    const prepH = style === "map" ? 34 : 0;
+    const TOP = PAD + prepH + (style === "map" ? 56 : 84);
     const cols = [...nodes].map((id) => nodeById(id).col);
     const maxCol = Math.max(...cols);
     const pos = new Map<MapNodeId, { x: number; y: number }>();
@@ -605,7 +553,7 @@ function MapLayer({
         className="-translate-x-1/2 absolute"
         style={{ left: layout.prep.x, top: layout.prep.y, zIndex: 2 }}
       >
-        <PrepNode ctx={ctx} look="box" px={84} live />
+        <StartMark ctx={ctx} />
       </div>
       {geo.map((g) => {
         const on = selectedEdges.has(g.e.id);
@@ -983,7 +931,7 @@ function MetroLayer({
             />
           ))}
         </span>
-        <PrepNode ctx={ctx} look="row" px={72} live />
+        <StartMark ctx={ctx} />
       </div>
     </div>
   );
@@ -1309,10 +1257,10 @@ export function HubView({ ctx }: { ctx: MapCtx }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <ol className="flex flex-col gap-2" data-map-hubs>
-      {/* 출발점: 준비 → 다 섞임 */}
+      {/* 출발 표시: 큐브의 기초 → 다 섞임 */}
       <li className="flex flex-col gap-2" data-hub="prep">
         <span className="self-start">
-          <PrepNode ctx={ctx} look="row" px={84} live />
+          <StartMark ctx={ctx} />
         </span>
         <span className="ml-6 h-4 w-0.5 bg-white/30" aria-hidden />
       </li>
@@ -1494,31 +1442,6 @@ function barCells(m: MapMethod): BarCell[] {
   return out;
 }
 
-/** 막대 맨 앞 준비 칸 너비(수가 없는 칸이라 모든 막대에서 같은 고정 너비) */
-const PREP_CELL = 76;
-
-/** 막대 맨 앞 준비 칸: 분해한 큐브 그림, 다 끝냈으면 ✓, 기록이 없으면 「나」. 누르면 아직 안 한 첫 준비 단원 */
-function PrepCell({ ctx }: { ctx: MapCtx }) {
-  const done = MAP_PREP.every((id) => ctx.progress.lessons[id]?.done);
-  const next = MAP_PREP.find((id) => !ctx.progress.lessons[id]?.done);
-  return (
-    <a
-      href={lessonHref(next ?? (MAP_PREP[0] as string))}
-      className="relative flex shrink-0 items-center gap-1 bg-white/10 px-1 py-1 text-[10px] leading-tight"
-      style={{ width: PREP_CELL }}
-      data-cell="prep"
-    >
-      <CoreCube colors={ctx.settings.colors} size={30} />
-      <span className="font-medium text-white">{done ? "✓ " : ""}준비</span>
-      {ctx.me.has("prep") && (
-        <span className="absolute top-0 right-0">
-          <MeBadge methods={[]} />
-        </span>
-      )}
-    </a>
-  );
-}
-
 /** 한 수의 막대 길이(px). 모든 막대가 같은 눈금이라 길이를 바로 견준다 */
 const PX_PER_TURN = 8;
 const MIN_CELL = 44;
@@ -1529,6 +1452,9 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
   return (
     <div className="overflow-x-auto" data-map-bars>
       <div className="flex w-max min-w-full flex-col gap-4 pb-1">
+        <span className="self-start">
+          <StartMark ctx={ctx} />
+        </span>
         {ctx.selected.map((m) => {
           const t = methodTotals(m);
           const cells = barCells(m);
@@ -1561,7 +1487,6 @@ export function BarsView({ ctx }: { ctx: MapCtx }) {
                 className="flex gap-px overflow-hidden rounded-md self-start"
                 data-bar-measured={measured ? "" : undefined}
               >
-                <PrepCell ctx={ctx} />
                 {cells.map((c, i) => {
                   const k = `${m.id}:${c.key}`;
                   const learn = c.edges.every(

@@ -11,13 +11,13 @@ import {
   methodNodes,
   nodeById,
 } from "../learn/solve-map";
-import { edgeLearn, prepDone } from "../learn/solve-map-me";
+import { edgeLearn } from "../learn/solve-map-me";
 import {
   EdgeLines,
   type MapCtx,
   MeBadge,
   NodeCube,
-  PrepNode,
+  StartMark,
 } from "./SolveMapViews";
 import { edgeHref, METHOD_COLOR, methodTotals } from "./solve-map-model";
 
@@ -103,23 +103,6 @@ function Strip({
       className="flex items-end gap-1 overflow-x-auto pb-1"
       data-card-strip="row"
     >
-      {/* 맨 앞 준비(분해한 큐브), 그다음 다 섞임 */}
-      <li
-        className="relative flex shrink-0 flex-col items-center"
-        data-strip-node="prep"
-      >
-        <PrepNode ctx={ctx} look="picture" px={44} />
-        <span className="h-3 text-[10px] text-emerald-300 leading-3">
-          {prepDone(ctx.progress) ? "✓" : ""}
-        </span>
-      </li>
-      <li aria-hidden className="self-center pb-3">
-        <StepArrow
-          dir="right"
-          color={METHOD_COLOR[m.id]}
-          done={prepDone(ctx.progress)}
-        />
-      </li>
       {nodes.map((id, i) => {
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
@@ -164,22 +147,6 @@ function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
   const solo = ctx.solo.get(m.id);
   return (
     <ol className="flex flex-col" data-card-strip="column">
-      <li className="flex flex-col" data-strip-node="prep">
-        <span className="flex items-center gap-2">
-          <PrepNode ctx={ctx} look="picture" px={44} />
-          <span className="text-sm leading-tight">준비</span>
-          {prepDone(ctx.progress) && (
-            <span className="text-emerald-300 text-xs">✓</span>
-          )}
-        </span>
-        <span aria-hidden className="ml-4 flex py-0.5">
-          <StepArrow
-            dir="down"
-            color={METHOD_COLOR[m.id]}
-            done={prepDone(ctx.progress)}
-          />
-        </span>
-      </li>
       {nodes.map((id, i) => {
         const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
         const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
@@ -226,50 +193,64 @@ export function CardsView({
   open: MapMethod | null;
   onOpen: (m: MapMethod | null) => void;
 }) {
+  // 맨 위 출발 표시(큐브의 기초): 해법마다 다른 걸음이 아니라 카드 밖에 하나
+  const start = (
+    <span className="self-start">
+      <StartMark ctx={ctx} />
+    </span>
+  );
   if (open)
-    return <MethodScreen m={open} ctx={ctx} onBack={() => onOpen(null)} />;
+    return (
+      <>
+        {start}
+        <MethodScreen m={open} ctx={ctx} onBack={() => onOpen(null)} />
+      </>
+    );
   return (
-    <div
-      className={cn(
-        dir === "v"
-          ? "flex flex-col gap-3"
-          : "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2",
-      )}
-      data-map-cards={dir}
-    >
-      {ctx.methods.map((m) => {
-        const on = ctx.selected.includes(m);
-        return (
-          // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
-          <a
-            key={m.id}
-            href={`?v=cards-${dir}&method=${m.id}`}
-            onClick={(ev) => {
-              ev.preventDefault();
-              onOpen(m);
-            }}
-            className={cn(
-              "flex flex-col gap-2 rounded-xl border bg-neutral-800/70 p-3 text-left",
-              dir === "h" && "w-[300px] shrink-0 snap-start",
-              on ? "" : "border-white/10",
-            )}
-            style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
-            data-card={m.id}
-          >
-            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span
-                className="font-semibold text-lg"
-                style={{ color: METHOD_COLOR[m.id] }}
-              >
-                {m.title}
+    <>
+      {start}
+      <div
+        className={cn(
+          dir === "v"
+            ? "flex flex-col gap-3"
+            : "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2",
+        )}
+        data-map-cards={dir}
+      >
+        {ctx.methods.map((m) => {
+          const on = ctx.selected.includes(m);
+          return (
+            // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
+            <a
+              key={m.id}
+              href={`?v=cards-${dir}&method=${m.id}`}
+              onClick={(ev) => {
+                ev.preventDefault();
+                onOpen(m);
+              }}
+              className={cn(
+                "flex flex-col gap-2 rounded-xl border bg-neutral-800/70 p-3 text-left",
+                dir === "h" && "w-[300px] shrink-0 snap-start",
+                on ? "" : "border-white/10",
+              )}
+              style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
+              data-card={m.id}
+            >
+              <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span
+                  className="font-semibold text-lg"
+                  style={{ color: METHOD_COLOR[m.id] }}
+                >
+                  {m.title}
+                </span>
+                <Totals m={m} />
               </span>
-              <Totals m={m} />
-            </span>
-            <Strip m={m} ctx={ctx} column={dir === "h"} />
-          </a>
-        );
-      })}
-    </div>
+              <Strip m={m} ctx={ctx} column={dir === "h"} />
+            </a>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -304,17 +285,6 @@ function MethodScreen({
       </div>
       <Strip m={m} ctx={ctx} />
       <ol className="flex flex-col">
-        {/* 맨 앞 준비: 그림과 단원 셋 */}
-        <li data-edge="prep">
-          <PrepNode ctx={ctx} look="row" px={56} />
-          <span aria-hidden className="flex py-0.5 pl-[58px]">
-            <StepArrow
-              dir="down"
-              color={METHOD_COLOR[m.id]}
-              done={prepDone(ctx.progress)}
-            />
-          </span>
-        </li>
         {m.edges.map((id, i) => {
           const e = edgeById(id) as MapEdge;
           const href = edgeHref(e, m, ctx.courseOf);
