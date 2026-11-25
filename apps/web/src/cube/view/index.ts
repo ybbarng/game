@@ -12,6 +12,15 @@ export function loadCubeView(): Promise<typeof import("./cube-view")> {
 }
 
 /**
+ * 분해한 큐브의 속 3D 장면(`core-scene.ts`, 큐브의 기초 맨 위)을 늦게 불러온다. 「3D 끄기」 시험에서는 실패해
+ * 그림(SVG)으로 대신한다
+ */
+export function loadCoreScene(): Promise<typeof import("./core-scene")> {
+  if (testNo3d()) return Promise.reject(new Error("시험이 3D 그리기를 껐다"));
+  return import("./core-scene");
+}
+
+/**
  * CSS 3D 장면(`css-cube-view.ts`, docs/52 5-4)을 늦게 불러온다. Cubie 미니 화면의 실험 주소 `?render=css`만 쓴다.
  * three.js를 받지 않고 GPU 그리기도 쓰지 않아, 화면 시험의 「3D 끄기」와 상관없이 그린다
  */
