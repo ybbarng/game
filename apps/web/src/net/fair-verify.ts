@@ -18,7 +18,7 @@ export interface FairReplayGame {
     seen?: readonly string[],
   ):
     | { ok: true; states: { roundNumber: number }[]; upTo: number }
-    | { ok: false; index: number; seat: number; reason: string };
+    | { ok: false; index: number; seat: number | null; reason: string };
   viewOf(state: unknown, seat: number): unknown;
   realAction(action: unknown, cards: ReadonlyMap<number, unknown>): unknown;
   annotate?(view: unknown, action: unknown): unknown;

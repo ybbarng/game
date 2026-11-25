@@ -8,7 +8,15 @@ import {
 } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
-import { FRIEND_HIDDEN, hiddenFriend, type SeenFriendView } from "./audit";
+import {
+  type FairLogged,
+  FRIEND_ANSWERED,
+  FRIEND_HIDDEN,
+  FRIEND_UNSURE,
+  hiddenFriend,
+  type OwnAnswers,
+  type SeenFriendView,
+} from "./audit";
 
 /**
  * 경기 5마(점수를 따면 프렌드가 드러남). 주공 0번, ♥A 프렌드(2번이 가짐). 손패 둘이라 턴 둘.
@@ -69,6 +77,83 @@ describe("참가자 길 프렌드 숨기기 찾기(hiddenFriend)", () => {
       index: 4,
       seat: 2,
       reason: FRIEND_HIDDEN,
+    });
+  });
+
+  describe("프렌드 본인 기기는 그 턴 물음에 보낸 답으로 가린다", () => {
+    // 첫 턴을 끝낸 카드(4번 ◆5)의 자리 번호. 방장은 그 자리를 실어 2번에게 묻는다.
+    const ENDING_SLOT = 24;
+    const log: FairLogged[] = [
+      [0, "D2"],
+      [1, "D3"],
+      [2, "DK"],
+      [3, "D4"],
+      [4, "D5"],
+      [2, "HA"],
+    ].map(([seat, card], i) => ({
+      seat: seat as number,
+      action: {
+        type: "play",
+        card: card as Card,
+        deckSlot: i === 4 ? ENDING_SLOT : 30 + i,
+      } as FairLogged["action"],
+    }));
+    // 점수 턴 뒤 받은 화면이 프렌드를 숨겼다(2번 기기가 받은 화면도 프렌드 칸은 같다).
+    const seen = seenBy3(scored).map((v, i) =>
+      i >= 5 ? { ...v, friendRevealed: false } : v,
+    );
+    const round = scored[0]?.roundNumber as number;
+    const own = (have: boolean, delivered = true, slot = ENDING_SLOT) =>
+      ({
+        seat: 2,
+        answers: [
+          {
+            query: { kind: "friend", deal: round, seat: 2, slot },
+            have,
+            delivered,
+          },
+        ],
+      }) satisfies OwnAnswers;
+
+    it("「맞다」고 답했고 방장이 받았으면 방장을 짚는다", () => {
+      expect(hiddenFriend(scored, seen, log, own(true))).toEqual({
+        index: 4,
+        seat: 0,
+        reason: FRIEND_ANSWERED,
+      });
+    });
+
+    it("「아니다」고 답했으면 다른 기기처럼 자기 자리를 짚는다", () => {
+      expect(hiddenFriend(scored, seen, log, own(false))).toEqual({
+        index: 4,
+        seat: 2,
+        reason: FRIEND_HIDDEN,
+      });
+    });
+
+    it("답이 방장에게 닿았는지 모르면 누구도 짚지 않는다", () => {
+      expect(hiddenFriend(scored, seen, log, own(true, false))).toEqual({
+        index: 4,
+        seat: null,
+        reason: FRIEND_UNSURE,
+      });
+    });
+
+    it("그 턴 물음을 받지 못했으면(다른 턴 물음에만 답함) 누구도 짚지 않는다", () => {
+      expect(hiddenFriend(scored, seen, log, own(false, true, 99))).toEqual({
+        index: 4,
+        seat: null,
+        reason: FRIEND_UNSURE,
+      });
+    });
+
+    it("다른 자리 기기의 답은 쓰지 않는다(받은 화면대로 프렌드를 짚는다)", () => {
+      const others: OwnAnswers = { ...own(true), seat: 3 };
+      expect(hiddenFriend(scored, seen, log, others)).toEqual({
+        index: 4,
+        seat: 2,
+        reason: FRIEND_HIDDEN,
+      });
     });
   });
 
