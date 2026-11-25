@@ -829,8 +829,9 @@ test(
     });
     expect(fits).toEqual({ scroll: true, bottom: true });
     await expect.poll(() => overflowingKeyText(page)).toEqual([]);
-    // Cubie가 쓰지 않는 동작(Esc 처음으로·Space 살펴보기)은 표에 없다
-    await expect(panel).not.toContainText("처음으로");
+    // Cubie가 쓰지 않는 자리(Esc 처음으로·Space 살펴보기)는 표에 없고, 맞춘 상태로는 Shift+Enter 자리에만 있다(docs/47 16-24)
+    await expect(panel.getByText("처음으로")).toHaveCount(1);
+    await expect(panel.locator("[data-key='Enter']")).toContainText("처음으로");
     await expect(panel).not.toContainText("살펴보기");
     await shot(page, "mini-keys-panel", info.project.name);
 
