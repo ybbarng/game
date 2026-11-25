@@ -7,6 +7,20 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.12.1</title>
+      <pubDate>Wed, 25 Nov 2026 16:55:30 +0000</pubDate>
+      <sparkle:version>0.12.1</sparkle:version>
+      <sparkle:shortVersionString>0.12.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;상황 놓기를 쓴 뒤에도 4×4 같은 내 큐브 크기가 그대로 남아요. 전에는 상황 놓기를 한 번 쓰면 크기가 3×3으로 바뀌어 남았어요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.12.1/Cubie.zip" length="10729551" type="application/octet-stream" sparkle:edSignature="Ihy0RKD87yV5bY3ZrOpFuqaXbfng+6APSbkFiiQB0Vp/lL/pZYC9QaJ7k7PYj5QwooI/zcSCBcLLosUpLp0vAg=="/>
+      <sparkle:deltas>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.0-0.12.1.delta" sparkle:deltaFrom="0.12.0" length="193294" type="application/octet-stream" sparkle:edSignature="HYEdr32OOX7noqUceB7NG0A/HCxxcz0CP0KLCwaNrCKO5VCqaLo3TXjXaq/lrS4WQXmrI9qzMaMqoOvhetjwDA=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.6-0.12.1.delta" sparkle:deltaFrom="0.11.6" length="335726" type="application/octet-stream" sparkle:edSignature="6v2toy0g/w+71faM6TZUgWNC2+xh11uTa/7/ZRSqcxMdSoMRK5rkSkVu2uNBNNv2N8Lc67OMkgeCsuPvJ3MaCA=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.5-0.12.1.delta" sparkle:deltaFrom="0.11.5" length="518130" type="application/octet-stream" sparkle:edSignature="Drj0tyEttBBXDCyOAN7Wm3hQxxsLntLkDzZmCLA4mpDvdcuU5oX4k2fFNIgbfs37vSaqNrCZZ4QZ+Ux9gxHxDg=="/>
+      </sparkle:deltas>
+    </item>
+    <item>
       <title>Cubie 0.12.0</title>
       <pubDate>Wed, 25 Nov 2026 14:47:49 +0000</pubDate>
       <sparkle:version>0.12.0</sparkle:version>
@@ -14,11 +28,6 @@
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <description>&lt;p&gt;큐브를 바로 맞춘 모양으로 되돌리는 「맞춘 상태로」(메뉴, Shift+Enter)를 넣었어요. 맞추던 판은 기록 없이 끝나요. 메뉴 「상황 놓기」에서 OLL·PLL 상황을 골라 큐브를 그 모양으로 두고 채점·기록 없이 연습할 수 있어요. \ 키로 내 공식을 펼쳐 봐요.&lt;/p&gt;</description>
       <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.12.0/Cubie.zip" length="10727373" type="application/octet-stream" sparkle:edSignature="TL/2rMAQgrKkm8ZJdNYIHSW2hera0eC2YTYOJuWwYinh5epggYL4hpUOeanTCFIG8tQufMQsN9TaFtTL+poIAA=="/>
-      <sparkle:deltas>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.6-0.12.0.delta" sparkle:deltaFrom="0.11.6" length="326570" type="application/octet-stream" sparkle:edSignature="O0vEV3ArCa+vgVL7kn6ei1ATms+ruPYfdAYzuH05tsyIuEFUk8rx4QoUEzMOcSL39vsHJ2p5k/kD0Qe/5OiJCQ=="/>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.5-0.12.0.delta" sparkle:deltaFrom="0.11.5" length="517190" type="application/octet-stream" sparkle:edSignature="bR3+EnULcIDrIScmNWIWHaYftb5GOKkO7qP6/b9MHSz/cmsQ2VrFdURsEnBgUIvz0n8ccvycMhAg7luqOe94AA=="/>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.11.4-0.12.0.delta" sparkle:deltaFrom="0.11.4" length="555682" type="application/octet-stream" sparkle:edSignature="BjhcoCSAeaMbF0In69/xwJCfu2ZQ/p4dJJhX/S+1zZlgJGHRumH7WddqqnBfwXDzoCdcnRYrUfHv7GCcEwIDAQ=="/>
-      </sparkle:deltas>
     </item>
     <item>
       <title>Cubie 0.11.6</title>
