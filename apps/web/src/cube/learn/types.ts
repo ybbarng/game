@@ -317,6 +317,11 @@ export interface Course {
   requires?: string[];
   /** 이 과정을 다 끝냈으면 목록에서 눈에 띄게 한다(예: 3×3 초보자 → 3×3을 아는 사람의 2×2) */
   recommendAfter?: string;
+  /**
+   * 이 과정 바로 뒤에 이어 읽는 과정 id(큐브의 기초 → 3×3 초보자, docs/47 16-27). 마지막 단원의 「다음 단원」은
+   * 그 과정 첫 단원이고, 용어 순서 시험은 이 과정을 그 과정 앞에 이어 읽는다
+   */
+  continues?: string;
   /** 큰 단계(준비 단원·마무리는 넣지 않는다). 단원 머리에 「n단계 중 k단계」 띠를 보인다 */
   stages?: CourseStage[];
   /** 단계 지도 시연(단계마다 나눈 수, stage-map.ts) */

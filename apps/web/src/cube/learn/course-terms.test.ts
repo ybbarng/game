@@ -15,9 +15,15 @@ import { COURSES, courseById } from "./index";
 import { coursePlaces, courseSummaries } from "./term-places";
 import { type Course, GOALS } from "./types";
 
-/** 먼저 배우는 과정부터 차례로(겹치면 한 번만) */
+/**
+ * 먼저 배우는 과정부터 차례로(겹치면 한 번만). 바로 앞에 이어 읽는 과정(`continues`, 큐브의 기초 → 3×3 초보자)도
+ * 먼저 배우는 과정으로 본다
+ */
 function chain(course: Course, seen = new Set<string>()): Course[] {
-  const before = (course.requires ?? []).flatMap((id) => {
+  const lead = COURSES.filter((c) => c.continues === course.id).map(
+    (c) => c.id,
+  );
+  const before = [...(course.requires ?? []), ...lead].flatMap((id) => {
     const c = courseById(id);
     return c && !seen.has(id) ? chain(c, seen) : [];
   });

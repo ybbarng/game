@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
 import { PARITY_4X4 } from "./algs-big";
 import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "./bld";
+import { BASICS, findLesson, METHOD_COURSES, nextLesson } from "./courses";
 import { COURSES, courseById, nextCourses } from "./index";
 import { goalMet } from "./judge";
 import {
@@ -663,6 +664,25 @@ describe("과정 끝과 먼저 배울 과정", () => {
       "333-2look",
       "444-reduction",
     ]);
+  });
+
+  it("큐브의 기초는 해법 목록 밖이고, 마지막 단원 다음은 초보자 과정 첫 단원이다", () => {
+    expect(BASICS.lessons.map((l) => l.id)).toEqual([
+      "333-start",
+      "333-piece-moves",
+      "333-notation",
+    ]);
+    expect(METHOD_COURSES.map((c) => c.id)).not.toContain(BASICS.id);
+    expect(COURSES[0]?.id).toBe(BASICS.id);
+    const beginner = courseById("333-beginner");
+    expect(nextLesson(BASICS, "333-start")?.id).toBe("333-piece-moves");
+    expect(nextLesson(BASICS, "333-notation")?.id).toBe(
+      beginner?.lessons[0]?.id,
+    );
+    expect(findLesson("333-notation")?.course.id).toBe(BASICS.id);
+    // 이어 읽는 과정이 없는 과정의 마지막 단원은 다음 단원이 없다(과정 끝 「다음에 할 것」)
+    const last = beginner?.lessons.at(-1);
+    expect(beginner && last && nextLesson(beginner, last.id)).toBeNull();
   });
 
   it("초보자 → 마지막 층을 공식으로 → CFOP 차례이고, 2단계 단원은 다리 과정에만 있다", () => {

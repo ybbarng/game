@@ -1413,15 +1413,27 @@ const llCornerTwist: Lesson = {
   ],
 };
 
+/**
+ * 큐브의 기초(`/cube/basics`, docs/47 16-27): 큐브 상태를 바꾸지 않는 지식(조각·움직임·표기). 해법과 상관없이
+ * 모두가 먼저 보는 단원이라 3×3 초보자 과정에서 떼어 냈다. 단원 id는 그대로라 진도가 이어지고, 마지막 단원의
+ * 「다음 단원」은 초보자 과정 첫 단원으로 잇는다(`continues`). 용어 순서 시험은 이 과정 다음에 초보자 과정을 이어 읽는다.
+ */
+export const BASICS_333: Course = {
+  id: "cube-basics",
+  size: 3,
+  title: "큐브의 기초",
+  summary:
+    "큐브를 이루는 조각과 면을 돌릴 때 조각이 움직이는 법, 돌리기를 적는 글자를 알아봐요.",
+  continues: "333-beginner",
+  lessons: [start, pieces, notation],
+};
+
 export const BEGINNER_333: Course = {
   id: "333-beginner",
   size: 3,
   title: "3×3 처음 맞추기(층별)",
   summary: "큐브를 처음 만지는 사람도 순서대로 따라 하면 끝까지 맞춰요.",
   lessons: [
-    start,
-    pieces,
-    notation,
     safeTurns,
     whiteCross,
     firstCorners,

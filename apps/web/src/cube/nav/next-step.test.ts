@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { COURSES, courseById } from "../learn";
 import type { LearnProgress } from "../learn/progress";
-import { type NextInput, nextStep } from "./next-step";
+import { firstSolveLessons, type NextInput, nextStep } from "./next-step";
 
 const beginner = courseById("333-beginner");
 const bridge = courseById("333-2look");
@@ -37,10 +37,27 @@ describe("다음에 할 것", () => {
     });
   });
 
-  it("키 익히기를 했으면 처음 맞추기 첫 단원", () => {
+  it("키 익히기를 했으면 처음 맞추기 첫 단원(큐브의 기초 「큐브와 만나기」)", () => {
     expect(nextStep(input({ keysDone: 3 }), COURSES)).toMatchObject({
       kind: "first-solve",
       title: "처음 맞추기",
+      href: "/cube/learn?lesson=333-start",
+    });
+  });
+
+  it("처음 맞추기는 기초 단원 셋 다음에 초보자 과정 단원 차례", () => {
+    expect(firstSolveLessons(COURSES).map((l) => l.id)).toEqual([
+      "333-start",
+      "333-piece-moves",
+      "333-notation",
+      ...beginner.lessons.map((l) => l.id),
+    ]);
+    // 기초를 다 끝냈으면 초보자 과정 첫 단원으로 이어진다
+    expect(
+      nextStep(input({ learn: { lessons: doneAll("cube-basics") } }), COURSES),
+    ).toMatchObject({
+      kind: "first-solve",
+      title: `처음 맞추기 이어서: ${beginner.lessons[0]?.title}`,
       href: `/cube/learn?lesson=${beginner.lessons[0]?.id}`,
     });
   });
@@ -66,7 +83,10 @@ describe("다음에 할 것", () => {
 
   it("처음 맞추기를 끝냈고 혼자 완성 기록이 없으면 초보자 해법 연습", () => {
     expect(
-      nextStep(input({ learn: { lessons: doneAll("333-beginner") } }), COURSES),
+      nextStep(
+        input({ learn: { lessons: doneAll("cube-basics", "333-beginner") } }),
+        COURSES,
+      ),
     ).toMatchObject({
       kind: "beginner-practice",
       href: "/cube/train?set=beginner-cross",
@@ -85,7 +105,7 @@ describe("다음에 할 것", () => {
         input({
           anySolo: true,
           solo3: 5,
-          learn: { lessons: doneAll("333-beginner") },
+          learn: { lessons: doneAll("cube-basics", "333-beginner") },
         }),
         COURSES,
       ),
@@ -102,7 +122,9 @@ describe("다음에 할 것", () => {
         input({
           anySolo: true,
           solo3: 5,
-          learn: { lessons: doneAll("333-beginner", "333-2look") },
+          learn: {
+            lessons: doneAll("cube-basics", "333-beginner", "333-2look"),
+          },
         }),
         COURSES,
       ),
@@ -121,6 +143,7 @@ describe("다음에 할 것", () => {
           solo3: 12,
           learn: {
             lessons: doneAll(
+              "cube-basics",
               "333-beginner",
               "333-2look",
               "cfop",
