@@ -187,6 +187,19 @@ describe("본문 속 수 찾기", () => {
     expect(moves("F 퍼뮤테이션")).toEqual([]);
   });
 
+  test("여러 안쪽 층(2-3Rw)과 7×7 넷째 층은 한 수로 본다(6×6·7×7로 넓히기)", () => {
+    expect(moves("2-3Rw2 B2 U2 2-3Lw' 3Uw2 4R")).toEqual([
+      "2-3Rw2",
+      "B2",
+      "U2",
+      "2-3Lw'",
+      "3Uw2",
+      "4R",
+    ]);
+    // 키 하나로 치는 수가 아니라 키는 없다(3Rw와 R'을 따로 친다)
+    expect(caps(keysForMove(twoHand, 6, "2-3Rw"))).toBe(null);
+  });
+
   test("글자 범위(A~D)는 수가 아니다", () => {
     expect(moves("위 A~D, 왼쪽 E~H, 앞 I~L")).toEqual([]);
   });
