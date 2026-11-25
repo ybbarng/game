@@ -56,7 +56,7 @@ export function BasicsApp() {
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-4"
-        data-cube-basics
+        data-cube-basics=""
       >
         <header className="flex items-center gap-3">
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
@@ -123,7 +123,7 @@ export function BasicsApp() {
         </section>
         <a
           href={METHODS_HREF}
-          data-basics-methods
+          data-basics-methods=""
           className="flex min-h-14 min-w-0 items-center gap-3 rounded-2xl border border-sky-300/50 bg-sky-500/15 px-4 py-3 transition hover:bg-sky-500/25 active:scale-[0.98]"
         >
           <span aria-hidden className="text-2xl">

@@ -23,13 +23,15 @@ test(
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     await useNotationKeys(page);
-    // 옛 과정 목록 주소는 큐브 배우기로 넘어간다(docs/47 16-6·16-26)
+    // 옛 과정 목록 주소는 해법 배우기로 넘어간다(docs/47 16-6·16-26·16-27)
     await page.goto("/cube/learn");
     await expect(page).toHaveURL(/\/cube\/methods$/);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "큐브 배우기",
+      "해법 배우기",
     );
-    await expect(page).toHaveTitle("큐브 배우기");
+    await expect(page).toHaveTitle("해법 배우기");
+    // 기초 단원은 해법 목록에 없다(큐브의 기초 페이지에 있다)
+    await expect(page.locator('[data-lesson="333-notation"]')).toHaveCount(0);
     await expect(page.locator("[data-course]").first()).toBeVisible();
     // 해법마다 배우기와 연습이 한 카드에
     await expect(
@@ -44,6 +46,7 @@ test(
     ).toHaveCount(1);
     await shot(page, "learn-list", info.project.name);
 
+    await page.goto("/cube/basics");
     await page.locator('[data-lesson="333-notation"]').click();
     await expect(page.locator("main")).toHaveAttribute(
       "data-cube-learn",
@@ -69,10 +72,22 @@ test(
     );
     await shot(page, "learn-try-passed", info.project.name);
 
-    // 진도가 이 기기에 남는다
-    await page.goto("/cube/methods");
-    await expect(page.locator('[data-lesson="333-notation"]')).toContainText(
-      "해보기 1/",
+    // 진도가 이 기기에 남는다(단원 id는 기초로 옮기기 전 그대로)
+    expect(
+      await page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem("cube.learn.v1") ?? "{}").lessons?.[
+            "333-notation"
+          ]?.passed?.length,
+      ),
+    ).toBe(1);
+    // 기초 단원의 돌아가기는 큐브의 기초로
+    await expect(page.locator("[data-lesson-back]")).toHaveText(
+      "← 큐브의 기초",
+    );
+    await expect(page.locator("[data-lesson-back]")).toHaveAttribute(
+      "href",
+      "/cube/basics",
     );
   },
 );

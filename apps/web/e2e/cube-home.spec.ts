@@ -69,7 +69,11 @@ test(
     const nextCard = page.locator("[data-cube-next]");
     await expect(nextCard).toHaveAttribute("data-cube-next", "intro");
     await expect(nextCard).toHaveAttribute("href", "/cube/intro");
-    // 배우는 곳은 「큐브 배우기」 한 칸이고, 해법·단원은 첫 화면에 펼치지 않는다(docs/47 16-26)
+    // 배우는 곳은 「큐브의 기초」와 「해법 배우기」 두 칸이고, 해법·단원은 첫 화면에 펼치지 않는다(docs/47 16-26·16-27)
+    await expect(page.locator("[data-cube-basics-link]")).toHaveAttribute(
+      "href",
+      "/cube/basics",
+    );
     await expect(page.locator("[data-cube-learn-link]")).toHaveAttribute(
       "href",
       "/cube/methods",
@@ -206,7 +210,7 @@ async function learnCells(page: Page) {
 }
 
 test(
-  "기록이 없으면 사이트 쓰는 법은 다음에 할 것에만 있고, 배우기 묶음은 큐브 배우기 한 줄",
+  "기록이 없으면 사이트 쓰는 법은 다음에 할 것에만 있고, 배우기 묶음은 큐브의 기초·해법 배우기 한 줄",
   { tag: "@no-phone-landscape" },
   async ({ page }, info) => {
     // 배치가 세로 휴대폰과 같다
@@ -218,7 +222,8 @@ test(
     // 다음 걸음이 정해진 뒤의 자리(읽기 전 자리는 사라졌다)
     await expect(page.locator("[data-cube-group-pending]")).toHaveCount(0);
     expect(await learnCells(page)).toEqual([
-      ["큐브 배우기", "/cube/methods", true],
+      ["큐브의 기초", "/cube/basics", false],
+      ["해법 배우기", "/cube/methods", false],
     ]);
     await expect(page.locator("[data-cube-intro-link]")).toHaveCount(0);
     if (SAVE_SCREENSHOTS) {
@@ -245,9 +250,11 @@ test("기록이 있으면 다음에 할 것은 다른 걸음이고, 배우기 �
   const next = page.locator("[data-cube-next]");
   await expect(next).toHaveAttribute("data-cube-next", "first-solve");
   await expect(page.locator("[data-cube-group-pending]")).toHaveCount(0);
+  // 칸이 셋이면 마지막 칸(해법 배우기)이 한 줄을 채운다
   expect(await learnCells(page)).toEqual([
     ["사이트 쓰는 법", "/cube/intro", false],
-    ["큐브 배우기", "/cube/methods", false],
+    ["큐브의 기초", "/cube/basics", false],
+    ["해법 배우기", "/cube/methods", true],
   ]);
   await expect(page.locator("[data-cube-intro-link]")).toHaveAttribute(
     "href",
@@ -370,8 +377,11 @@ test(
     await expect(page.locator('[data-map-item="/cube/daily"]')).toContainText(
       "오늘의 섞기",
     );
+    await expect(page.locator('[data-map-item="/cube/basics"]')).toContainText(
+      "큐브의 기초",
+    );
     await expect(page.locator('[data-map-item="/cube/methods"]')).toContainText(
-      "큐브 배우기",
+      "해법 배우기",
     );
     expect(
       await page.evaluate(
