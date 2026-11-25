@@ -64,7 +64,9 @@ function group(name: string, hex: string): ModGroup {
     flatPow: false,
     pow: (x, e) => modPow(x, e, p),
     mul: (a, b) => (a * b) % p,
-    isElement: (x) => x > 0n && x < p && jacobi(x, p) === 1,
+    // 항등원 1은 뺀다(ristretto255처럼). 1을 받으면 V와 잠근 값을 모두 1로 둔 지수 0 진술(카드를 지워 버림)이
+    // 두 식을 맞춘다. 카드(2 이상의 제곱)와 그 거듭(지수는 q로 나눠 0이 아님)은 1이 되지 않는다.
+    isElement: (x) => x > 1n && x < p && jacobi(x, p) === 1,
     // 카드 번호 i를 이차잉여 (i + 2)² mod p로 나타낸다
     encodeIndex: (index) => {
       const x = BigInt(index + 2);

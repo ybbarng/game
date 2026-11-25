@@ -12,6 +12,7 @@ import {
   combine,
   encodeIndex,
   GROUP_1024,
+  GROUP_2048,
   newKey,
   newPassKey,
   type SraGroup,
@@ -192,21 +193,28 @@ describe("열쇠 증명: 군 밖의 값으로 맞춘 증명", () => {
     }
   });
 
-  it("r255: 지수 0(항등원)으로 잠갔다는 진술은 두 식이 맞아도 거절한다", async () => {
-    const g = TEST_GROUPS.find(([name]) => name === "r255")?.[1] as SraGroup;
-    // V = 항등원이고 잠근 값을 모두 항등원으로 두면(카드를 지워 버림) u = 0으로 B = A^0 = 항등원이 맞는 진술이 된다.
-    const { st } = relockedIn(g);
-    const lie: KeyStatement = {
-      ...st,
-      v: g.one,
-      items: st.items.map((item) => ({ ...item, output: g.one })),
-    };
-    const f = await forgeWith(g, lie, 0n, newKey(g));
-    expect(g.pow(g.generator, f.z)).toBe(g.mul(f.a, g.pow(lie.v, f.c)));
-    expect(g.pow(f.A, f.z)).toBe(g.mul(f.b, g.pow(f.B, f.c)));
-    expect([lie.v, f.B].map((x) => g.isElement(x))).toEqual([false, false]);
-    expect(await verifyKeys(g, lie, f.proof)).toBe(false);
-  });
+  // 곱셈군(옛 방·보안 설명 데모)과 r255 모두. 곱셈군은 1을 원소로 받아 이 진술이 통과했다(2026-11-25 고침).
+  it.each([
+    ["1024", GROUP_1024],
+    ["2048", GROUP_2048],
+    ["r255", TEST_GROUPS.find(([name]) => name === "r255")?.[1] as SraGroup],
+  ] as const)(
+    "%s: 지수 0(항등원)으로 잠갔다는 진술은 두 식이 맞아도 거절한다",
+    async (_, g) => {
+      // V = 항등원이고 잠근 값을 모두 항등원으로 두면(카드를 지워 버림) u = 0으로 B = A^0 = 항등원이 맞는 진술이 된다.
+      const { st } = relockedIn(g);
+      const lie: KeyStatement = {
+        ...st,
+        v: g.one,
+        items: st.items.map((item) => ({ ...item, output: g.one })),
+      };
+      const f = await forgeWith(g, lie, 0n, newKey(g));
+      expect(g.pow(g.generator, f.z)).toBe(g.mul(f.a, g.pow(lie.v, f.c)));
+      expect(g.pow(f.A, f.z)).toBe(g.mul(f.b, g.pow(f.B, f.c)));
+      expect([lie.v, f.B].map((x) => g.isElement(x))).toEqual([false, false]);
+      expect(await verifyKeys(g, lie, f.proof)).toBe(false);
+    },
+  );
 
   it("r255: 점의 표준 인코딩이 아닌 값을 낸 증명은 계산 오류 없이 거절한다", async () => {
     const g = TEST_GROUPS.find(([name]) => name === "r255")?.[1] as SraGroup;
