@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { obj, topic } from "@/lib/josa";
+import { sizeFor, useCurrentSize } from "../../current-size";
 import { PARITY_4X4 } from "../../learn/algs-big";
 import { invertText, stateAfter } from "../../math/pieces";
 import { sizeFacts } from "../../math/sizes";
@@ -12,6 +13,7 @@ import type { CubeSettings } from "../../settings";
 import { AlgPicture } from "../AlgPicture";
 import { CubePosterPair } from "../CubePosterPair";
 import { DemoCube } from "../DemoCube";
+import { SizePicker } from "../SizePicker";
 import { Lead, Notation, Pill, Quiz, Source } from "./ui";
 
 const SIZES = [4, 5, 6, 7] as const;
@@ -19,7 +21,10 @@ const yes = (b: boolean) => (b ? "생겨요" : "없어요");
 
 /** 크기와 패리티: 짝수 큐브에만 3×3 단계의 이상한 모양이 생기는 까닭 */
 export function SizesCard({ settings }: { settings: CubeSettings }) {
-  const [n, setN] = useState<(typeof SIZES)[number]>(4);
+  // 보는 화면: 지금 크기로 열고(4×4~7×7 밖이면 4×4), 여기서 바꿔도 지금 크기는 그대로(docs/47 16-28)
+  const current = useCurrentSize();
+  const [viewing, setN] = useState<number | null>(null);
+  const n = viewing ?? sizeFor(SIZES, current);
   const facts = useMemo(() => SIZES.map((s) => sizeFacts(s)), []);
   const f = facts.find((x) => x.n === n) ?? facts[0];
   const [slice, setSlice] = useState(0);
@@ -108,21 +113,16 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
       </Lead>
       <Notation />
 
-      <div className="flex flex-wrap gap-1.5">
-        {SIZES.map((s) => (
-          <Pill
-            key={s}
-            active={s === n}
-            onClick={() => {
-              setN(s);
-              setSlice(0);
-            }}
-            attr={{ "data-sizes-tab": String(s) }}
-          >
-            {s}×{s}
-          </Pill>
-        ))}
-      </div>
+      <SizePicker
+        optionAttr="data-sizes-tab"
+        sizes={SIZES}
+        value={n}
+        onPick={(s) => {
+          setN(s);
+          setSlice(0);
+        }}
+        className="self-start"
+      />
       <p className="break-keep text-white/60 text-xs">
         아래 표의 날개 묶음은 서로 자리를 바꿀 수 있는 날개끼리의 무리예요.
         6×6부터는 코너 블럭 쪽 바깥 날개와 안쪽 날개가 서로 섞이지 않아 묶음이
