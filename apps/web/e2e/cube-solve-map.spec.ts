@@ -53,6 +53,26 @@ test("해법 지도 D: 막대 길이는 잰 수에 맞고(CFOP가 초보자보�
   );
 });
 
+test("해법 지도 E: 카드를 누르면 해법 화면에서 세부 걸음을 모두 보고, 단원 없는 걸음은 누를 수 없다", async ({
+  page,
+}) => {
+  await page.goto("/cube/learn-map?v=cards-v&m=beginner");
+  const card = page.locator('[data-card="cfop"]');
+  await expect(card.locator("[data-strip-node]")).toHaveCount(8);
+  await expect(card.locator("[data-card-total]")).toHaveText("공식 119 · 55수");
+  await card.click();
+  await expect(page).toHaveURL(/method=cfop/);
+  await expect(
+    page.locator('[data-method-screen="cfop"] li [data-edge]'),
+  ).toHaveCount(7);
+  await page.goto(
+    "/cube/learn-map?v=cards-h&m=beginner&method=beginner-twist-first",
+  );
+  await expect(
+    page.locator('[data-method-screen] [data-edge="twist-first-place"]'),
+  ).toHaveAttribute("aria-disabled", "true");
+});
+
 test("해법 지도 B: 갈림길 구간을 누르면 그 구간의 걸음이 펼쳐진다", async ({
   page,
 }) => {

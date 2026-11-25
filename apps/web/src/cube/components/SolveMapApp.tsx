@@ -1,7 +1,8 @@
 "use client";
 
-// 큐브 해법 지도 시안(`/cube/learn-map`, 2026-11-25). 같은 자료(learn/solve-map.ts)를 네 가지로 그려 견준다:
-// A 펼친 지도(`?v=a`), B 갈림길만(`?v=b`), C 노선도(`?v=c`), D 길 견주기 막대(`?v=d`). 고른 해법은 `?m=a,b`,
+// 큐브 해법 지도 시안(`/cube/learn-map`, 2026-11-25). 같은 자료(learn/solve-map.ts)를 여러 가지로 그려 견준다:
+// A 펼친 지도(`?v=a`), B 갈림길만(`?v=b`), C 노선도(`?v=c`), D 길 견주기 막대(`?v=d`), E 해법 카드 세로·가로
+// (`?v=cards-v`·`?v=cards-h`, 카드를 누르면 `&method=`로 해법 화면). 고른 해법은 `?m=a,b`,
 // 견본 기록은 `?demo=1`(화면 안에서만). 시안 바꾸기·견본 기록 단추는 시안 때만 두고 고르면 지운다.
 import { useEffect, useMemo, useState } from "react";
 
@@ -35,6 +36,7 @@ import { loadMethod, type SolveMethod } from "../progress/methods";
 import { loadRecords, type SolveRecord } from "../records";
 import { useCubeSettings } from "../settings";
 import { ExplodedCube } from "./ExplodedCube";
+import { CardsView } from "./SolveMapCards";
 import {
   BarsView,
   HubView,
@@ -52,12 +54,14 @@ import {
   visibleMethods,
 } from "./solve-map-model";
 
-export type MapVariant = "a" | "b" | "c" | "d";
+export type MapVariant = "a" | "b" | "c" | "d" | "cards-v" | "cards-h";
 const VARIANTS: { id: MapVariant; title: string }[] = [
   { id: "a", title: "A 지도" },
   { id: "b", title: "B 갈림길" },
   { id: "c", title: "C 노선도" },
   { id: "d", title: "D 막대" },
+  { id: "cards-v", title: "E 카드 세로" },
+  { id: "cards-h", title: "E 카드 가로" },
 ];
 
 const lessonCourse = new Map(
@@ -76,6 +80,8 @@ function readQuery() {
     selected: parseSelected(q.get("m")),
     demo: q.get("demo") === "1",
     extra: q.get("more") === "1",
+    open: (MAP_METHODS.find((m) => m.id === q.get("method"))?.id ??
+      null) as MapMethodId | null,
   };
 }
 
@@ -84,12 +90,14 @@ function writeQuery(s: {
   selected: MapMethodId[];
   demo: boolean;
   extra: boolean;
+  open: MapMethodId | null;
 }) {
   const q = new URLSearchParams();
   q.set("v", s.variant);
   q.set("m", s.selected.join(","));
   if (s.demo) q.set("demo", "1");
   if (s.extra) q.set("more", "1");
+  if (s.open && s.variant.startsWith("cards")) q.set("method", s.open);
   window.history.replaceState(null, "", `?${q.toString()}`);
 }
 
@@ -100,6 +108,8 @@ export function SolveMapApp() {
   const [selected, setSelected] = useState<MapMethodId[]>(["beginner"]);
   const [demo, setDemo] = useState(false);
   const [extra, setExtra] = useState(false);
+  /** E안에서 연 해법 화면 */
+  const [open, setOpen] = useState<MapMethodId | null>(null);
   const [mine, setMine] = useState<{
     progress: LearnProgress;
     train: TrainBook;
@@ -114,6 +124,7 @@ export function SolveMapApp() {
     setSelected(q.selected);
     setDemo(q.demo);
     setExtra(q.extra);
+    setOpen(q.open);
     setMine({
       progress: loadLearn(),
       train: loadTrain(),
@@ -123,8 +134,8 @@ export function SolveMapApp() {
     setReady(true);
   }, []);
   useEffect(() => {
-    if (ready) writeQuery({ variant, selected, demo, extra });
-  }, [ready, variant, selected, demo, extra]);
+    if (ready) writeQuery({ variant, selected, demo, extra, open });
+  }, [ready, variant, selected, demo, extra, open]);
 
   const record = demo
     ? {
@@ -275,6 +286,17 @@ export function SolveMapApp() {
             {variant === "c" && <MapView ctx={ctx} style="metro" />}
             {variant === "b" && <HubView ctx={ctx} />}
             {variant === "d" && <BarsView ctx={ctx} />}
+            {variant.startsWith("cards") && (
+              <CardsView
+                ctx={ctx}
+                dir={variant === "cards-h" ? "h" : "v"}
+                open={open ? methodById(open) : null}
+                onOpen={(m) => {
+                  setOpen(m?.id ?? null);
+                  window.scrollTo({ top: 0 });
+                }}
+              />
+            )}
           </>
         )}
       </main>

@@ -132,7 +132,7 @@ const SKILL_COLOR = {
 } as const;
 
 /** 길 꼬리표 안의 줄들: 공식·잰 수, 공식 연습, 혼자 맞추기 */
-function EdgeLines({
+export function EdgeLines({
   e,
   ctx,
   full,

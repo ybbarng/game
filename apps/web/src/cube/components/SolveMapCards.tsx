@@ -1,0 +1,215 @@
+"use client";
+
+// 해법 지도 시안 E안(해법 카드): 해법마다 카드 하나에 「다 섞임 → … → 다 맞음」 지점 그림 띠, 총 공식 수·잰 평균 수,
+// 내 진행(✓·「나」·잘하는·약한 걸음 색). 세로로 늘어놓는 꼴(`?v=cards-v`)과 가로로 늘어놓는 꼴(`?v=cards-h`).
+// 카드를 누르면 그 해법 화면(`&method=`)에서 세부 걸음을 모두 본다.
+import { cn } from "@/lib/cn";
+import {
+  edgeById,
+  type MapEdge,
+  type MapMethod,
+  methodNodes,
+  nodeById,
+} from "../learn/solve-map";
+import { edgeLearn } from "../learn/solve-map-me";
+import { EdgeLines, type MapCtx, MeBadge, NodeCube } from "./SolveMapViews";
+import { edgeHref, METHOD_COLOR, methodTotals } from "./solve-map-model";
+
+const SKILL_RING = {
+  strong: "#6ee7b7",
+  weak: "#fdba74",
+  even: "transparent",
+} as const;
+
+function Totals({ m }: { m: MapMethod }) {
+  const t = methodTotals(m);
+  const parts = [
+    t.formulas !== null ? `공식 ${t.formulas}` : null,
+    t.turns !== undefined ? `${t.turns}수` : null,
+  ].filter(Boolean);
+  return parts.length ? (
+    <span className="whitespace-nowrap text-sm text-white/80" data-card-total>
+      {parts.join(" · ")}
+    </span>
+  ) : null;
+}
+
+/** 지점 그림 띠: 지점마다 그림, 들어오는 길을 끝냈으면 ✓, 내 구간이 약하거나 잘하면 그림 테두리 색 */
+function Strip({ m, ctx, wrap }: { m: MapMethod; ctx: MapCtx; wrap: boolean }) {
+  const nodes = methodNodes(m);
+  const solo = ctx.solo.get(m.id);
+  return (
+    <ol
+      className={cn(
+        "flex items-end gap-1",
+        wrap ? "flex-wrap" : "overflow-x-auto pb-1",
+      )}
+      data-card-strip
+    >
+      {nodes.map((id, i) => {
+        const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
+        const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
+        const skill = e ? solo?.get(e.id)?.skill : undefined;
+        const me = ctx.me.get(id)?.includes(m);
+        return (
+          <li
+            key={id}
+            className="relative flex shrink-0 flex-col items-center"
+            data-strip-node={id}
+          >
+            {me && (
+              <span className="-top-2 -right-1 absolute z-10">
+                <MeBadge methods={[]} />
+              </span>
+            )}
+            <div
+              className="rounded-md border-2 p-0.5"
+              style={{ borderColor: skill ? SKILL_RING[skill] : "transparent" }}
+              data-strip-skill={skill ?? undefined}
+            >
+              <NodeCube id={id} settings={ctx.settings} px={40} />
+            </div>
+            <span className="h-3 text-[10px] text-emerald-300 leading-3">
+              {done ? "✓" : ""}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+export function CardsView({
+  ctx,
+  dir,
+  open,
+  onOpen,
+}: {
+  ctx: MapCtx;
+  dir: "v" | "h";
+  open: MapMethod | null;
+  onOpen: (m: MapMethod | null) => void;
+}) {
+  if (open)
+    return <MethodScreen m={open} ctx={ctx} onBack={() => onOpen(null)} />;
+  return (
+    <div
+      className={cn(
+        dir === "v"
+          ? "flex flex-col gap-3"
+          : "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2",
+      )}
+      data-map-cards={dir}
+    >
+      {ctx.methods.map((m) => {
+        const on = ctx.selected.includes(m);
+        return (
+          // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
+          <a
+            key={m.id}
+            href={`?v=cards-${dir}&method=${m.id}`}
+            onClick={(ev) => {
+              ev.preventDefault();
+              onOpen(m);
+            }}
+            className={cn(
+              "flex flex-col gap-2 rounded-xl border bg-neutral-800/70 p-3 text-left",
+              dir === "h" && "w-[300px] shrink-0 snap-start",
+              on ? "" : "border-white/10",
+            )}
+            style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
+            data-card={m.id}
+          >
+            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span
+                className="font-semibold text-lg"
+                style={{ color: METHOD_COLOR[m.id] }}
+              >
+                {m.title}
+              </span>
+              <Totals m={m} />
+            </span>
+            <Strip m={m} ctx={ctx} wrap={dir === "h"} />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 해법 화면: 세부 걸음마다 지점 그림·공식 수·단원·내 기록 */
+function MethodScreen({
+  m,
+  ctx,
+  onBack,
+}: {
+  m: MapMethod;
+  ctx: MapCtx;
+  onBack: () => void;
+}) {
+  const one = { ...ctx, selected: [m] };
+  return (
+    <section className="flex flex-col gap-3" data-method-screen={m.id}>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-md border border-white/20 px-2.5 py-1 text-sm"
+        >
+          ← 해법 카드
+        </button>
+        <h2
+          className="font-semibold text-xl"
+          style={{ color: METHOD_COLOR[m.id] }}
+        >
+          {m.title}
+        </h2>
+        <Totals m={m} />
+      </div>
+      <Strip m={m} ctx={ctx} wrap={false} />
+      <ol className="flex flex-col gap-1.5">
+        {m.edges.map((id, i) => {
+          const e = edgeById(id) as MapEdge;
+          const href = edgeHref(e, m, ctx.courseOf);
+          const me = ctx.me.get(e.to)?.includes(m);
+          const body = (
+            <>
+              <span className="w-5 shrink-0 text-right text-sm text-white/50">
+                {i + 1}
+              </span>
+              <NodeCube id={e.to} settings={ctx.settings} px={56} />
+              <span className="flex flex-col text-[11px] leading-tight">
+                <span className="font-medium text-sm">
+                  {e.title} → {nodeById(e.to).title}
+                </span>
+                <EdgeLines e={e} ctx={one} full />
+              </span>
+              {me && <MeBadge methods={[]} />}
+            </>
+          );
+          return (
+            <li key={id}>
+              {href ? (
+                <a
+                  href={href}
+                  className="flex items-center gap-2 rounded-lg bg-neutral-800/70 px-2 py-1.5 hover:bg-neutral-800"
+                  data-edge={id}
+                >
+                  {body}
+                </a>
+              ) : (
+                <div
+                  className="flex items-center gap-2 rounded-lg bg-neutral-800/40 px-2 py-1.5 opacity-70"
+                  data-edge={id}
+                  aria-disabled
+                >
+                  {body}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
