@@ -284,6 +284,18 @@ describe("CFOP 2단계 OLL", () => {
       expect(yellowAt(held(c.algs[0] as string)), c.id).toEqual(LOOK[c.id]);
   });
 
+  it("수네·안티수네 가르기: 위를 보는 코너 블럭을 앞-왼쪽에 두면 수네 모양은 앞-오른쪽 노랑이 앞, 안티수네 모양은 오른쪽(U2 뒤)", () => {
+    const of = (id: string) =>
+      held(TWO_LOOK_OLL.find((c) => c.id === id)?.algs[0] ?? "");
+    expect(yellowAt(of("2look-oll-27"))).toMatchObject({ UFL: "U", UFR: "F" });
+    const anti = of("2look-oll-26");
+    expect(yellowAt(anti)).toMatchObject({ UBR: "U" });
+    expect(yellowAt(play(3, "U2", anti))).toMatchObject({
+      UFL: "U",
+      UFR: "R",
+    });
+  });
+
   it("모양 이름 문제: 답의 공식만 윗면을 노랗게 한다", () => {
     const st = step(lessonOf("cfop-2look-oll"), "quiz", 1);
     const s = stateOf(st);

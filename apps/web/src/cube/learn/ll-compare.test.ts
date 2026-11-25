@@ -59,12 +59,17 @@ describe("마지막 층 두 길", () => {
     expect(twoLook.filter((a) => !full.includes(a))).toEqual([]);
   });
 
-  it("2단계 공식 16개는 R·U 수가 절반을 넘는다(단원 글 「공식 대부분이 R과 U를 오가서」)", () => {
-    const moves = [...TWO_LOOK_OLL, ...TWO_LOOK_PLL].flatMap((c) =>
-      (c.algs[0] as string).split(" "),
+  it("노란 면 걸음 공식 7개 가운데 R과 U만 쓰는 것은 4개다(단원 글 「7개 가운데 4개는 R과 U만」)", () => {
+    const onlyRU = TWO_LOOK_OLL.filter((c) => c.group === "corners").filter(
+      (c) =>
+        parseMoves(3, c.algs[0] as string).length > 0 &&
+        (c.algs[0] as string).split(" ").every((m) => /^[RU]['2]?$/.test(m)),
     );
-    const ru = moves.filter((m) => /^[RU]/.test(m)).length;
-    expect(parseMoves(3, moves.join(" "))).toHaveLength(moves.length);
-    expect(ru / moves.length).toBeGreaterThan(0.5);
+    expect(onlyRU.map((c) => c.id).sort()).toEqual([
+      "2look-oll-21",
+      "2look-oll-22",
+      "2look-oll-26",
+      "2look-oll-27",
+    ]);
   });
 });

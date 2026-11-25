@@ -24,18 +24,18 @@ const pick = (list: AlgCase[], id: string, caption: string, alg?: string) => {
 
 export const TWO_LOOK_GROUPS: CaseGroup[] = [
   {
-    title: "1. 노란 십자(2단계 OLL 엣지 단계)",
+    title: "1. 노란 십자(2단계 OLL 첫 걸음)",
     look: "위를 보는 노란 엣지 블럭이 노란 센터와 만드는 모양을 봐요.",
     set: "2look-oll",
     mask: "ll-cross",
     cases: [
-      pick(TWO_LOOK_OLL, "2look-oll-line", "가로줄"),
+      pick(TWO_LOOK_OLL, "2look-oll-line", "가로줄(일자)"),
       pick(TWO_LOOK_OLL, "2look-oll-l", "ㄱ자"),
       pick(TWO_LOOK_OLL, "2look-oll-dot", "점"),
     ],
   },
   {
-    title: "2. 노란 면(2단계 OLL 코너 단계)",
+    title: "2. 노란 면(2단계 OLL 둘째 걸음)",
     look: "위를 보는 노란 코너 블럭 수(0·1·2개)와 옆면에 보이는 노란 스티커 자리를 봐요.",
     set: "2look-oll",
     cases: [
@@ -49,8 +49,8 @@ export const TWO_LOOK_GROUPS: CaseGroup[] = [
     ],
   },
   {
-    title: "3. 코너 자리(2단계 PLL 코너 단계)",
-    look: "옆면 윗줄 양 끝의 코너 스티커 둘이 같은 색인 옆면(이런 옆면을 「헤드라이트」라고 불러요)이 하나 있는지, 하나도 없는지 봐요.",
+    title: "3. 코너 자리(2단계 PLL 첫 걸음)",
+    look: "옆면 윗줄 양 끝의 코너 블럭 둘이 서로 바르게 이웃한 옆면이 하나 있는지, 하나도 없는지 봐요. 그런 옆면은 그 표시로 윗줄 양 끝 두 스티커가 같은 색이고, 이런 옆면을 「헤드라이트」라고 불러요.",
     set: "2look-pll",
     cases: [
       pick(TWO_LOOK_PLL, "2look-pll-headlights", "헤드라이트 하나"),
@@ -58,12 +58,12 @@ export const TWO_LOOK_GROUPS: CaseGroup[] = [
     ],
   },
   {
-    title: "4. 엣지 자리(2단계 PLL 엣지 단계)",
+    title: "4. 엣지 자리(2단계 PLL 둘째 걸음)",
     look: "위 층 코너 블럭이 제자리에 든 뒤, 위 층 엣지 블럭 넷이 어떻게 자리를 바꿨는지(셋이 돌았나, 맞은편끼리인가, 이웃끼리 두 쌍인가) 봐요.",
     set: "2look-pll",
     cases: [
-      pick(TWO_LOOK_PLL, "2look-pll-ua", "셋이 돌아요"),
-      pick(TWO_LOOK_PLL, "2look-pll-ub", "셋이 반대로 돌아요"),
+      pick(TWO_LOOK_PLL, "2look-pll-ua", "셋이 돌아요(한쪽)"),
+      pick(TWO_LOOK_PLL, "2look-pll-ub", "셋이 돌아요(다른 쪽)"),
       pick(TWO_LOOK_PLL, "2look-pll-h", "맞은편끼리"),
       pick(TWO_LOOK_PLL, "2look-pll-z", "이웃끼리 두 쌍", Z_PERM_AUF),
     ],

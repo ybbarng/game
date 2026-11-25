@@ -50,6 +50,8 @@ export interface StageDemo {
 export interface StageSpec {
   stages: CourseStage[];
   demo?: StageDemo;
+  /** 지도 단원 첫 단계 첫머리에 붙일 맥락(지금까지 한 것 → 이번에 할 것) */
+  lead?: string;
   /** 지도 단원에 더할 고르기 문제(자동 「다음 단계」 문제 뒤) */
   quizzes?: QuizSpec[];
 }
@@ -266,10 +268,12 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
   },
   "333-2look": {
     stages: [
+      // 칸 이름에 「2단계」를 쓰지 않는다: 띠의 「3단계 중 2단계」와 겹쳐 「둘째 단계」로 읽힌다(독자 검토)
       { title: "아래 두 층", lessons: [], goal: "second-layer" },
-      { title: "2단계 OLL", lessons: ["cfop-2look-oll"], goal: "oll" },
-      { title: "2단계 PLL", lessons: ["cfop-2look-pll"], goal: "solved" },
+      { title: "OLL(방향)", lessons: ["cfop-2look-oll"], goal: "oll" },
+      { title: "PLL(자리)", lessons: ["cfop-2look-pll"], goal: "solved" },
     ],
+    lead: "앞 단원에서 초보자 해법의 마지막 층이 어떻게 바뀌는지 봤어요. 이번에는 섞인 큐브 하나를 이 과정의 차례대로 끝까지 맞추는 것을 봐요. 아래 두 층은 초보자 해법 그대로예요.",
     demo: {
       scramble: BEGINNER_333_SCRAMBLE,
       moves: twoLookDemoMoves(BEGINNER_333_SCRAMBLE),
@@ -468,11 +472,12 @@ export const mapLessonId = (courseId: string) => `${courseId}-map`;
 export function mapLesson(course: Course, spec: StageSpec): Lesson {
   const order = spec.stages.map((s) => s.title).join(" → ");
   const steps: LessonStep[] = [];
+  const lead = spec.lead ? `${spec.lead} ` : "";
   if (spec.demo)
     steps.push({
       kind: "demo",
       stageMap: true,
-      body: `섞인 큐브가 ${spec.stages.length}단계를 거쳐 맞춰져요(${order}). 단계마다 멈춰요. 띠의 칸을 누르거나 「다음 단계」로 이어 보세요.`,
+      body: `${lead}섞인 큐브가 ${spec.stages.length}단계를 거쳐 맞춰져요(${order}). 단계마다 멈춰요. 띠의 칸을 누르거나 「다음 단계」로 이어 보세요.`,
       setup: { alg: spec.demo.scramble },
       alg: spec.demo.moves.join(" "),
     });
