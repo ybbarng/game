@@ -483,6 +483,23 @@ final class CACubeView: NSView {
     paintShown()
   }
 
+  /// 상황 놓기(docs/47 16-24, 3×3만): 그 상황의 처음 모양으로 바로 칠한다. 못 놓으면 false(그대로)
+  @discardableResult
+  func place(set: String, id: String, algBook: String) -> Bool {
+    let ok = set.withCString { s in id.withCString { c in algBook.withCString { b in cubie_game_place(game, s, c, b) } } }
+    guard ok else { return false }
+    stopRunning()
+    cancelSpin()
+    paintShown()
+    return true
+  }
+
+  /// 놓은 상황(단계 id·상황 id). 없으면 nil
+  var placed: (set: String, id: String)? {
+    let f = NativeCore.string { cubie_game_placed(game, $0, $1) }.split(separator: "\t").map(String.init)
+    return f.count == 2 ? (f[0], f[1]) : nil
+  }
+
   private func startScrambleShow() {
     stopRunning()
     cancelSpin()

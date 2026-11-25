@@ -82,6 +82,7 @@ final class NativeCubeWindow: FloatingWindow {
       let f = $0.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
       return f.count == 3 ? PracticeStageItem(id: f[0], title: f[1], group: f[2]) : nil
     }
+    state.placeSets = PlaceSetItem.list(from: NativeCore.string { cubie_place_menu($0, $1) })
     readSettings()
     install(cube)
     refreshProfile()
@@ -109,8 +110,10 @@ final class NativeCubeWindow: FloatingWindow {
     hitRects = cube.hitRects
   }
 
-  /// 맞추는 중(섞은 뒤 아직 맞추지 않은 판·공식 연습)
-  var solving: Bool { state.practice != nil || (cubie_game_solving(cube.game) && !cube.solved) }
+  /// 맞추는 중(섞은 뒤 아직 맞추지 않은 판·공식 연습·놓은 상황). 거울을 보일지 정할 때 쓴다
+  var solving: Bool {
+    state.practice != nil || state.placedCase != nil || (cubie_game_solving(cube.game) && !cube.solved)
+  }
 
   /// 큐브 위 오른쪽 클릭 메뉴(앱이 메뉴 막대 메뉴와 같은 길로 만든다, `AppDelegate+Menu` `buildMenu(forWindow: true)`)
   override func contextMenu() -> NSMenu? { menuProvider?() }
@@ -120,6 +123,9 @@ final class NativeCubeWindow: FloatingWindow {
     settings = CubeSettings.parse(store.string(CubeSettings.key))
     keymap = StoredKeymap.parse(store.string(StoredKeymap.key))
     state.scrambleKey = keymap.scrambleKey.flatMap {
+      MenuKey.fromWeb(code: $0.code, shift: $0.shift, alt: $0.alt, ctrl: $0.ctrl)
+    }
+    state.resetKey = keymap.resetKey.flatMap {
       MenuKey.fromWeb(code: $0.code, shift: $0.shift, alt: $0.alt, ctrl: $0.ctrl)
     }
   }
@@ -169,6 +175,7 @@ final class NativeCubeWindow: FloatingWindow {
     state.n = n
     book.savePrefs(n: n, mirror: state.mirror)
     refreshProfile()
+    syncPlaced()
     updateMirror()
     onState?()
   }
@@ -179,6 +186,10 @@ final class NativeCubeWindow: FloatingWindow {
     switch command {
     case .scramble:
       scramble()
+    case .reset:
+      resetCube()
+    case .place(let set, let id):
+      placeCase(set, id)
     case .toggleMirror:
       state.mirror.toggle()
       book.savePrefs(n: state.n, mirror: state.mirror)
@@ -200,8 +211,12 @@ final class NativeCubeWindow: FloatingWindow {
     applySettings()
     refreshProfile()
     onReady?()
-    // 앱이 `onReady`에서 말풍선을 숨긴다. 공식 연습 중이면 줄이 그대로여도 다시 그린다
-    if state.practice != nil { practiceChanged(force: true) }
+    // 앱이 `onReady`에서 말풍선을 숨긴다. 공식 연습 중·놓은 상황이 있으면 줄이 그대로여도 다시 그린다
+    if state.practice != nil {
+      practiceChanged(force: true)
+    } else if state.placedCase != nil {
+      placeChanged(force: true)
+    }
   }
 
   /// 설정 창이 값을 바꿨다: 설정·키 배치만 다시 읽어 큐브에 넣는다(프로필·말풍선은 그대로, 끄는 동안 여러 번 불린다)
@@ -264,6 +279,7 @@ final class NativeCubeWindow: FloatingWindow {
           _ = cubie_game_practice_peek(cube.game)
           practiceChanged()
         } else {
+          // 놓은 상황이면 공식 펼치기·접기(`requestHint`가 가른다)
           requestHint()
         }
       }
@@ -278,6 +294,9 @@ final class NativeCubeWindow: FloatingWindow {
     switch r {
     case Int32(CUBIE_KEY_SCRAMBLED):
       startedScramble()
+    case Int32(CUBIE_KEY_RESET):
+      // 맞춘 상태로 키(기본 Shift+Enter): 맞추던 판은 기록 없이 끝났다(코어), 묻지 않는다
+      resetDone()
     case Int32(CUBIE_KEY_MOVED), Int32(CUBIE_KEY_SOLVED):
       moved(origin: origin)
     case Int32(CUBIE_KEY_PEEK_BACK):
@@ -321,14 +340,80 @@ final class NativeCubeWindow: FloatingWindow {
     }
   }
 
-  /// 섞었다: 새 판(섞기 글·씨앗·시간은 코어 한 판 세션이 들고 있다)
+  /// 섞었다: 새 판(섞기 글·씨앗·시간은 코어 한 판 세션이 들고 있다). 놓은 상황은 끝난다
   private func startedScramble() {
     hintGate.reset()
     hideHint()
     inputs = []
     origins = []
     idle.reset()
+    syncPlaced()
     updateMirror()
+  }
+
+  // MARK: 맞춘 상태로·상황 놓기(docs/47 16-24)
+
+  /// 맞춘 상태로(메뉴): 공식 연습 중이면 끝내고 맞추던 판을 맞춘 상태로. 맞추던 판은 기록 없이 끝난다(묻지 않는다)
+  private func resetCube() {
+    stopPractice()
+    idle.setActive(false)
+    cube.reset()
+    resetDone()
+  }
+
+  /// 맞춘 상태로 뒤: 판이 새로 비었다(힌트 제한·입력 방식·놓은 상황)
+  private func resetDone() {
+    hintGate.reset()
+    hideHint()
+    inputs = []
+    origins = []
+    idle.reset()
+    syncPlaced()
+    updateMirror()
+    sendFocus()
+    onState?()
+  }
+
+  /// 상황 놓기(메뉴): 공식 연습은 끝내고, 3×3이 아니면 3×3으로 바꾼 뒤 그 상황의 처음 모양으로. 같은 상황을 다시 고르면
+  /// 처음부터. 내 공식은 `cube.algs.v1`(없으면 키가 싼 대표 공식)
+  private func placeCase(_ set: String, _ id: String) {
+    stopPractice()
+    idle.setActive(false)
+    if cube.n != 3 { setSize(3) }
+    guard cube.place(set: set, id: id, algBook: store.string(Self.algsKey) ?? "") else { return }
+    hintGate.reset()
+    hideHint()
+    inputs = []
+    origins = []
+    idle.reset()
+    syncPlaced(force: true)
+    updateMirror()
+    sendFocus()
+    onState?()
+  }
+
+  /// 코어가 들고 있는 놓은 상황을 메뉴 상태·말풍선에 맞춘다(섞기·맞춘 상태로·크기가 끝낸다)
+  private func syncPlaced(force: Bool = false) {
+    let p = cube.placed
+    let changed = state.placedSet != p?.set || state.placedCase != p?.id
+    state.placedSet = p?.set
+    state.placedCase = p?.id
+    if force || changed { placeChanged(force: true) }
+  }
+
+  private var placeLines: [String] = []
+
+  /// 놓은 상황의 말풍선(상황 이름, 펼쳤으면 공식과 키). 놓은 상황이 없으면 닫는다
+  private func placeChanged(force: Bool = false) {
+    let lines = NativeCore.string { cubie_game_place_lines(cube.game, $0, $1) }.split(separator: "\n").map(String.init)
+    guard force || lines != placeLines else { return }
+    let had = !placeLines.isEmpty
+    placeLines = lines
+    if !lines.isEmpty {
+      onHint?(lines.map(BubbleLines.line))
+    } else if had || force {
+      onHint?(nil)
+    }
   }
 
   private func moved(origin: String) {
@@ -367,6 +452,11 @@ final class NativeCubeWindow: FloatingWindow {
   // MARK: 힌트(docs/47 15-15)
 
   private func requestHint() {
+    // 놓은 상황: 힌트 키는 그 상황 공식 펼치기·접기(공식 연습 보고 치기처럼, 제한 없음)
+    if state.placedCase != nil {
+      _ = cubie_game_place_reveal(cube.game)
+      return placeChanged()
+    }
     guard cubie_game_solving(cube.game) else { return flash("섞은 뒤 맞추는 동안 볼 수 있어요") }
     guard cube.n == 2 || cube.n == 3 else { return flash("이 크기는 힌트 없음") }
     let (kind, out) = Self.hintLines(game: cube.game)
@@ -481,6 +571,8 @@ final class NativeCubeWindow: FloatingWindow {
       install(main)
     }
     onHint?(nil)
+    // 연습 전에 놓은 상황이 있었으면 그 말풍선을 다시
+    if state.placedCase != nil { placeChanged(force: true) }
     sendFocus()
     onState?()
   }

@@ -16,7 +16,7 @@ extension AppDelegate {
     let entries = MenuLayout.main(
       forWindow: forWindow, hotKeyOK: hotKeyOK,
       pendingUpdate: updater.pendingVersion != nil, updaterAvailable: updater.isAvailable,
-      practiceAvailable: !cube.state.practiceStages.isEmpty)
+      practiceAvailable: !cube.state.practiceStages.isEmpty, placeAvailable: !cube.state.placeSets.isEmpty)
     return menu(of: entries)
   }
 
@@ -79,8 +79,21 @@ extension AppDelegate {
       return [item(cube.panel.isVisible ? "숨기기" : "보이기", #selector(menuToggleVisible))]
     case .scramble:
       return [item(title, #selector(menuScramble), key: s.scrambleKey)]
+    case .reset:
+      return [item(title, #selector(menuReset), key: s.resetKey)]
     case .hint:
       return [item(title, #selector(menuHint), key: MenuKey.hint)]
+    case .place:
+      return [submenu(title, menu(of: MenuLayout.place(sets: s.placeSets)))]
+    case .placeSet(let id, _):
+      guard let set = s.placeSets.first(where: { $0.id == id }) else { return [] }
+      let i = submenu(title, menu(of: MenuLayout.placeCases(set)))
+      i.state = s.placedSet == id ? .on : .off
+      return [i]
+    case .placeCase(let set, let id, _):
+      let i = item(title, #selector(menuPlace(_:)), on: s.placedSet == set && s.placedCase == id)
+      i.representedObject = [set, id]
+      return [i]
     case .practice:
       return [submenu(title, menu(of: MenuLayout.practice(stages: s.practiceStages)))]
     case .practiceGroup:
@@ -170,6 +183,14 @@ extension AppDelegate {
   }
 
   @objc func menuScramble() { cube.send(.scramble) }
+  /// 맞춘 상태로(맞추던 판은 기록 없이 끝난다, 묻지 않는다). 공식 연습 중이면 끝내고 맞추던 판을 맞춘 상태로
+  @objc func menuReset() { cube.send(.reset) }
+  /// 상황 놓기(같은 상황을 다시 고르면 처음부터). 바로 돌릴 수 있게 큐브에 키 입력을 준다
+  @objc func menuPlace(_ sender: NSMenuItem) {
+    guard let f = sender.representedObject as? [String], f.count == 2 else { return }
+    cube.send(.place(set: f[0], id: f[1]))
+    if !cube.focused { focusCube() }
+  }
   @objc func menuMirror() { cube.send(.toggleMirror) }
   @objc func menuHint() { cube.send(.hint) }
   /// 공식 연습 단계 고르기(지금 하는 단계를 다시 고르면 새 판). 키를 바로 칠 수 있게 큐브에 키 입력을 준다

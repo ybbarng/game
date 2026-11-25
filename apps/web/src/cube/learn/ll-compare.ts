@@ -1,4 +1,4 @@
-// 마지막 층 두 길(docs/47 16-24): 초보자 해법의 네 단계(beginner-path.ts 단원 규칙)와 2단계 OLL·PLL(단원 공식).
+// 마지막 층 두 길(docs/47 16-25): 초보자 해법의 네 단계(beginner-path.ts 단원 규칙)와 2단계 OLL·PLL(단원 공식).
 // 「마지막 층을 공식으로」 과정의 지도 시연과 「초보자 해법과 견주기」 숫자가 쓴다. 숫자(LL_COMPARE)는
 // ll-compare.test.ts가 같은 섞기로 다시 재서 확인한다(자료가 바뀌면 시험이 숫자를 고치라고 알린다).
 import { isRotation, parseMoves } from "@game/cube-engine";

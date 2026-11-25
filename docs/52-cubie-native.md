@@ -542,6 +542,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 섞기(WCA, 씨앗)·섞기 키(배치의 「다시 섞기」) | 섞기 워커 | 코어 섞기 | 옮김 |
 | 되돌리기 ⌫·살짝 보기(←·↓, 누르는 동안)·처음 각도·큐브 통째 돌리기 | `MiniCubeApp` | 코어 해석기 + `CACubeView.setPeek` | 옮김 |
 | Esc·Space 명령(미니는 쓰지 않음) | 앱이 Esc를 가로챔 | 코어가 먹기만 함 | 옮김 |
+| 맞춘 상태로(Esc 아닌 키, 기본 Shift+Enter·메뉴)·상황 놓기(OLL·PLL 상황 하나, 기록 없음) | `cubie-keys.ts`·`practice/place.ts`·`mini/place.ts` | 코어 `keys::cubie_uses`·`practice::place_case`·`cubie-native/place.rs` | 옮김(2026-11-25, 5-21, docs/47 16-24) |
 | 시간 재기(포커스 있을 때만, 살펴보기 없음) | `FocusClock`·`SolveSession` | `FocusClock`(Swift) + 코어 `session.rs` | 옮김 |
 | 기록 한 판(시간·수·섞기·씨앗·다시 보기 글·구간·콤보·입력·키 출처·힌트 수) | `SolveSession`·`addMiniRecord` | 코어 세션(공통 시험 자료 어긋남 0) + 앱(입력·출처·힌트) | 옮김 |
 | 기록 보관(크기마다 100판, 다시 보기 30판 + 최고 5판, 자리 모자라면 5판) | `store.ts` | `MiniBook`(같은 JSON 꼴) | 옮김 |
@@ -1063,6 +1064,17 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 확인: `test.sh`(머리 파일 시험 4개 + Swift 시험 237개). 화면 밖 스크린샷을 지우기 전 판(태그)과 견줬다: 보통 창 25장(기록·티어표·설정·메뉴 프로필 칸·흔들기)과 말풍선·단축키 표 그림은 바이트까지 같고, 3D 큐브 그림은 같은 판끼리도 몇 화소씩 달라(GPU 그리기 흔들림) 그만큼만 달랐다. 번들 id·프로세스 이름을 바꾼 시험 사본(`CUBIE_DEBUG=1`)에서 디버그 명령으로 기록·티어표·설정 창과 「모든 설정…」 사이트 창이 열리고(Dock 노출 `regular`), 사이트 창을 그 프로세스만 겨눈 닫기 단추 누르기로 닫으면 합치기가 돈다(`set=[] removed=[]`). 설정 창 「사용자」 편집기에서 「키 지정」 칩에 손쉬운 사용으로 포커스를 주고 누르면 다시 만든 뒤에도 같은 칩(「키 기다리는 중」)에 포커스가 남는다. 키 입력(Esc·F1·Tab)은 앞 앱에 키를 보내지 않으려고 보지 않았다(갈 곳은 `KeyRouteTests`).
 - 확인하다 찾은 것: 웹 저장소 옮기기가 번들 id를 `kr.byb.cubie`로 박아 두어, 번들 id를 바꾼 시험 사본도 처음 띄울 때 설치된 앱의 웹 저장소(사용자 기록)를 읽어 제 저장소로 옮겼다(읽기만 하고 지우지 않음, 시험 사본 저장소는 지웠다). 이제 지금 번들 id의 웹 저장소를 읽는다(실행 파일만 띄우면 번들 id가 없어 예전처럼 `kr.byb.cubie`).
 - **Cubie 새 판이 필요하다**(앱 코드가 바뀌었다, 사용자에게 보이는 동작은 같다).
+
+### 5-21. 맞춘 상태로·상황 놓기(2026-11-25)
+
+정한 것은 docs/47 16-24. 앱 쪽 자리만 적는다.
+
+- **코어**: 한 판(`cubie-native` `game.rs`)이 맞춘 상태로 명령을 받으면 판을 기록 없이 끝내고 `KEY_RESET`을 돌려준다(예전에는 먹기만 했다). 아무것도 함께 누르지 않은 Esc 자리는 먹기만 한다(앱이 먼저 가로챈다). 상황 놓기는 `place.rs`(`Game::place`·`place_reveal`·`place_lines`, 메뉴 `place_menu_lines`), C ABI `cubie_place_menu`·`cubie_game_place`·`cubie_game_placed`·`cubie_game_place_reveal`·`cubie_game_place_lines`(머리 파일과 `header_abi.rs`). 키 목록·F1 표 거르기는 코어 `keys::cubie_uses` 하나(사이트 `mini/cubie-keys.ts`와 같은 규칙).
+- **앱**: `MenuLayout`에 `.reset`·`.place`·`.placeSet`·`.placeCase`(`PlaceSetItem.list`가 코어 글을 읽음), `CubeCommand.reset`·`.place`, `NativeCubeWindow.resetCube`·`placeCase`·`syncPlaced`·`placeChanged`(말풍선), `CACubeView.place`·`placed`. 확인용 디버그 알림 `reset`·`hint`·`place:<묶음>,<상황>`(`CUBIE_DEBUG=1`).
+- **웹 미니**: 다리 메시지 `reset`·`place`(`parseFromApp`), `state.placed`. 앱이 웹 화면을 쓰지 않은 뒤로(5-20) 화면 시험과 비교 그림이 앱 흉내로 쓴다.
+- **비교 그림**: `CUBIE_NATIVE_SHOT`에 `native-place-pll-t`(PLL T 퍼뮤를 놓은 큐브, 거울)·`native-place`·`native-place-revealed`(말풍선 접힘·펼침), `native-compare.mjs`가 같은 장면을 웹(WebKit)으로 찍어 얹는다. `docs/cubie-native/compare-place.webp`(바탕 넷 × 큐브, 오른쪽 두 칸이 상황 놓기: 웹·네이티브가 같은 모양), `compare-place-panels.webp`(말풍선과 웹 창 안 칸, F1 표 Enter 칸의 Shift 줄 「처음으로」). 웹은 이 작업 트리의 빌드(`out/`)를 로컬로 띄워 찍었다.
+- 키 입력 자체(Shift+Enter, `\`)는 앞 앱에 키를 보내지 않으려고 이 맥에서 보지 않았다(고정 규칙 4절). 판단은 코어 시험과 화면 시험이 본다.
+- **Cubie 새 판이 필요하다**(메뉴·큐브 창 동작이 바뀌었다).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

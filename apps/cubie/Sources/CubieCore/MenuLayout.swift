@@ -1,10 +1,12 @@
 /// Cubie 메뉴의 짜임(무엇을 어떤 차례로, 어디에 구분선을 둘지, docs/47 15-19). 메뉴 막대 메뉴와 큐브 위 오른쪽 클릭
 /// 메뉴가 같이 쓴다. AppKit 항목은 앱(`AppDelegate+Menu` `buildMenu`)이 이 차례대로 만들고, 차례는 화면 없이 시험한다.
-/// - (메뉴 막대 메뉴만) 프로필 칸 / 맞추기(섞기·힌트·공식 연습·큐브 크기) / 기록(기록 보기·티어표) / 사이트로 나가기(대결하기·배우기) /
+/// - (메뉴 막대 메뉴만) 프로필 칸 / 맞추기(섞기·맞춘 상태로·힌트·공식 연습·상황 놓기·큐브 크기) / 기록(기록 보기·티어표) /
+///   사이트로 나가기(대결하기·배우기) /
 ///   창과 키(창 ▸·키 배치·색…·단축키 보기) / 문제 해결과 앱(다시 불러오기·업데이트 확인…·끝내기)
 /// - 「창」 하위 메뉴: 창 크기 넷 / 화면 옮기기(모니터 둘 이상) · 거울 / 자리 처음으로.
 ///   거울은 창에 무엇을 그릴지 정하는 보기 설정이고 창이 작으면 접히므로 창 크기 옆에 둔다.
 /// - 「공식 연습」 하위 메뉴(docs/47 16-11): 묶음(초보자·CFOP)마다 이름 줄과 단계 / 보고 치기 / 연습 끝내기.
+/// - 「상황 놓기」 하위 메뉴(docs/47 16-24): 묶음(2단계 OLL·2단계 PLL·OLL·PLL) ▸ 상황(모양 묶음 사이에 구분선).
 public enum MenuEntry: Equatable, Sendable {
   case separator
   /// 맨 위 프로필 칸(이름·사진·지금 크기의 티어, 누르면 기록 보기). 메뉴 막대 메뉴에만
@@ -17,6 +19,8 @@ public enum MenuEntry: Equatable, Sendable {
   /// 「숨기기」/「보이기」(지금 보이는지에 따라 앱이 고른다)
   case toggleVisible
   case scramble
+  /// 맞춘 상태로(docs/47 16-24): 맞추던 판은 기록 없이 끝난다
+  case reset
   case hint
   /// 하위 메뉴: `MenuLayout.practice`
   case practice
@@ -28,6 +32,12 @@ public enum MenuEntry: Equatable, Sendable {
   case practiceSee
   /// 「공식 연습」 맨 아래 연습 끝내기(연습 중일 때만 누를 수 있다)
   case practiceStop
+  /// 하위 메뉴: `MenuLayout.place`(상황 놓기, docs/47 16-24)
+  case place
+  /// 「상황 놓기」 안의 묶음 하나(2단계 OLL·2단계 PLL·OLL·PLL). 하위 메뉴: `MenuLayout.placeCases`
+  case placeSet(id: String, title: String)
+  /// 묶음 안의 상황 하나(누르면 그 상황을 처음부터 놓는다, 놓은 상황에 체크)
+  case placeCase(set: String, id: String, title: String)
   /// 하위 메뉴: 2×2 … 7×7
   case cubeSize
   case records
@@ -54,12 +64,16 @@ public enum MenuEntry: Equatable, Sendable {
     switch self {
     case .focus: "큐브로 가기"
     case .scramble: "섞기"
+    case .reset: "맞춘 상태로"
     case .hint: "힌트"
     case .practice: "공식 연습"
     case .practiceGroup(let name): name
     case .practiceStage(_, let title): title
     case .practiceSee: "보고 치기"
     case .practiceStop: "연습 끝내기"
+    case .place: "상황 놓기"
+    case .placeSet(_, let title): title
+    case .placeCase(_, _, let title): title
     case .cubeSize: "큐브 크기"
     case .records: "기록 보기"
     case .tiers: "티어표"
@@ -84,17 +98,19 @@ public enum MenuLayout {
   /// 「업데이트 확인…」은 메뉴 막대 메뉴에만 둔다). 「Cubie 끝내기」와 새 판 알림은 둘 다에 둔다: 메뉴 막대 아이콘이
   /// 노치·숨기기 앱에 가려지면 오른쪽 클릭이 앱을 끄고 새 판을 설치하는 유일한 길이다(2026-11-16, docs/47 15-12·15-19)
   /// `practiceAvailable`: 웹이 연습 단계를 알려 줬나(0.1.6 이하 화면이면 「공식 연습」을 두지 않는다)
+  /// `placeAvailable`: 상황 놓기 묶음이 있나(없으면 「상황 놓기」를 두지 않는다)
   public static func main(
     forWindow: Bool, hotKeyOK: Bool, pendingUpdate: Bool, updaterAvailable: Bool,
-    practiceAvailable: Bool
+    practiceAvailable: Bool, placeAvailable: Bool = false
   ) -> [MenuEntry] {
     var m: [MenuEntry] = []
     if !forWindow { m += [.profile, .separator] }
     if !hotKeyOK { m += [.hotKeyWarning, .separator] }
     if pendingUpdate { m += [.installUpdate, .separator] }
     if !forWindow { m += [.focus, .toggleVisible, .separator] }
-    m += [.scramble, .hint]
+    m += [.scramble, .reset, .hint]
     if practiceAvailable { m.append(.practice) }
+    if placeAvailable { m.append(.place) }
     m += [.cubeSize, .separator]
     m += [.records, .tiers, .separator]
     m += [.versus, .learn, .separator]
@@ -119,6 +135,23 @@ public enum MenuLayout {
     }
     if !m.isEmpty { m.append(.separator) }
     m += [.practiceSee, .separator, .practiceStop]
+    return m
+  }
+
+  /// 「상황 놓기」 하위 메뉴: 묶음마다 한 줄(코어가 보낸 차례)
+  public static func place(sets: [PlaceSetItem]) -> [MenuEntry] {
+    sets.map { .placeSet(id: $0.id, title: $0.title) }
+  }
+
+  /// 묶음 하나의 상황들. 모양 묶음(OLL의 점·네모 …)이 바뀌는 곳에 구분선(이름 줄은 두지 않는다)
+  public static func placeCases(_ set: PlaceSetItem) -> [MenuEntry] {
+    var m: [MenuEntry] = []
+    var group: String?
+    for c in set.cases {
+      if !m.isEmpty, c.group != group { m.append(.separator) }
+      group = c.group
+      m.append(.placeCase(set: set.id, id: c.id, title: c.title))
+    }
     return m
   }
 
@@ -153,5 +186,47 @@ public struct PracticeStageItem: Equatable, Sendable {
       else { return nil }
       return PracticeStageItem(id: id, title: title, group: group)
     }
+  }
+}
+
+/// 「상황 놓기」 묶음 하나(코어 `cubie_place_menu`의 단계)와 그 상황들
+public struct PlaceSetItem: Equatable, Sendable {
+  public struct Case: Equatable, Sendable {
+    public let id: String
+    public let title: String
+    /// 모양 묶음(OLL의 점·네모 …). 없으면 빈 글
+    public let group: String
+
+    public init(id: String, title: String, group: String) {
+      self.id = id
+      self.title = title
+      self.group = group
+    }
+  }
+
+  public let id: String
+  public let title: String
+  public let cases: [Case]
+
+  public init(id: String, title: String, cases: [Case]) {
+    self.id = id
+    self.title = title
+    self.cases = cases
+  }
+
+  /// 코어 글(줄마다 「단계 id\t단계 이름\t상황 id\t상황 이름\t모양 묶음」) → 묶음들(나온 차례). 칸이 모자란 줄은 버린다
+  public static func list(from text: String) -> [PlaceSetItem] {
+    var sets: [PlaceSetItem] = []
+    for line in text.split(separator: "\n") {
+      let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+      guard f.count == 5, !f[0].isEmpty, !f[2].isEmpty else { continue }
+      let c = Case(id: f[2], title: f[3], group: f[4])
+      if let last = sets.last, last.id == f[0] {
+        sets[sets.count - 1] = PlaceSetItem(id: last.id, title: last.title, cases: last.cases + [c])
+      } else {
+        sets.append(PlaceSetItem(id: f[0], title: f[1], cases: [c]))
+      }
+    }
+    return sets
   }
 }

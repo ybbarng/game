@@ -108,7 +108,7 @@ test("배우기: 마지막 층을 공식으로 첫 단원은 모양 16가지 평
 test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인드 글자 표", async ({
   page,
 }, info) => {
-  // 목록: 먼저 배울 과정이 보인다(잠그지 않음). 초보자 → 마지막 층을 공식으로 → CFOP(docs/47 16-24)
+  // 목록: 먼저 배울 과정이 보인다(잠그지 않음). 초보자 → 마지막 층을 공식으로 → CFOP(docs/47 16-25)
   await page.goto("/cube/methods");
   await expect(
     page.locator('[data-course="cfop"] [data-course-requires]'),

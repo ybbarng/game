@@ -5,7 +5,8 @@ mod json;
 
 use cube_core::keys::keymap::KeyBinding;
 use cube_core::keys::{
-    key_table, keycaps_for_move, preset_keymap, KeyInput, KeyInterpreter, KeyResult, Keymap, Preset,
+    cubie_uses, key_table, keycaps_for_move, preset_keymap, KeyInput, KeyInterpreter, KeyResult,
+    Keymap, Preset,
 };
 use cube_core::notation::AXIS_NAMES;
 use json::Json;
@@ -187,10 +188,8 @@ fn key_table_matches_site() {
             "custom" => custom.clone(),
             id => preset_keymap(Preset::from_id(id).expect("배치")),
         };
-        // Cubie 표는 처음으로·살펴보기를 뺀다(사이트 `KeysPanelPage`)
-        keymap
-            .bindings
-            .retain(|b| b.action != "reset" && b.action != "inspectionSkip");
+        // Cubie 표는 살펴보기와 Esc 자리의 처음으로를 뺀다(사이트 `KeysPanelPage`·`mini/cubie-keys.ts`)
+        keymap.bindings.retain(cubie_uses);
         let n = c.get("n").num() as usize;
         let want: Vec<String> = c
             .get("cells")

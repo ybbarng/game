@@ -9,7 +9,8 @@
 //   node apps/cubie/scripts/native-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr]
 //
 // 결과: <폴더>/web-float.png·web-solving.png·web-mirror.png(웹 투명 바탕), <폴더>/compare.png(비교판),
-// <폴더>/web-keys-3.png·web-keys-7.png(웹 F1 표), <폴더>/compare-panels.png(말풍선·F1 표 비교판).
+// <폴더>/web-keys-3.png·web-keys-7.png(웹 F1 표), <폴더>/web-place-*.png(상황 놓기), <폴더>/compare-panels.png(말풍선·
+// 상황 놓기 칸·F1 표 비교판).
 // 네이티브 그림 중 없는 것(wgpu는 native-mirror.png가 없다)은 칸을 빼고 얹는다.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -108,6 +109,15 @@ try {
     );
   }
   await fromApp(page, { type: "practice", stage: null });
+  // 상황 놓기(docs/47 16-24): PLL T 퍼뮤를 놓은 큐브(거울 보임). 96px 창이라 창 안 칸은 작은 이름 줄이다
+  await fromApp(page, { type: "mirror", on: true });
+  await fromApp(page, { type: "place", set: "pll", id: "pll-t" });
+  await page.waitForSelector("main[data-mini-placed='pll:pll-t']", {
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(800);
+  const webPlace = await page.screenshot({ omitBackground: true, type: "png" });
+  writeFileSync(path.join(dir, "web-place-pll-t.png"), webPlace);
 
   const img = (buf) => `data:image/png;base64,${buf.toString("base64")}`;
   const native = (name) => {
@@ -131,6 +141,8 @@ try {
     ["네이티브 · 공식 연습 십자(가리기)", native("native-practice-cross.png")],
     ["웹 · 공식 연습 노란 십자", webPractice["beginner-yellow-cross"]],
     ["네이티브 · 공식 연습 노란 십자", native("native-practice-llcross.png")],
+    ["웹 · 상황 놓기 PLL T", webPlace],
+    ["네이티브 · 상황 놓기 PLL T", native("native-place-pll-t.png")],
   ].filter(([, b]) => b);
   const cell = (desk, buf) =>
     `<div class="c" style="background:${desk}"><img src="${img(buf)}"></div>`;
@@ -191,6 +203,35 @@ try {
   writeFileSync(path.join(dir, "web-keys-colorblind.png"), webKeysColorblind);
   await cbCtx.close();
 
+  // 상황 놓기 창 안 칸(넉넉한 창 360px, 웹은 앱 말풍선이 없을 때 창 안에 그린다): 접힌 것과 힌트 키로 펼친 것
+  const placeCtx = await browser.newContext({
+    viewport: { width: 360, height: 360 },
+    deviceScaleFactor: 2,
+    reducedMotion: "reduce",
+    colorScheme: "dark",
+  });
+  await placeCtx.addInitScript(appLike);
+  const pp = await placeCtx.newPage();
+  await pp.goto(`${BASE}/cube/mini`);
+  await pp.waitForSelector("main[data-mini][data-input-ready]", {
+    timeout: 60_000,
+  });
+  await fromApp(pp, { type: "focus", focused: true });
+  await fromApp(pp, { type: "place", set: "pll", id: "pll-t" });
+  await pp.waitForSelector("[data-mini-place-card]", { timeout: 30_000 });
+  const webPlaceCard = await pp
+    .locator("[data-mini-place-card]")
+    .screenshot({ type: "png" });
+  await fromApp(pp, { type: "hint" });
+  await pp.waitForSelector("[data-mini-place-tokens]", { timeout: 30_000 });
+  await pp.waitForTimeout(300);
+  const webPlaceRevealed = await pp
+    .locator("[data-mini-place-card]")
+    .screenshot({ type: "png" });
+  writeFileSync(path.join(dir, "web-place-card.png"), webPlaceCard);
+  writeFileSync(path.join(dir, "web-place-revealed.png"), webPlaceRevealed);
+  await placeCtx.close();
+
   // 말풍선·단축키 표: 네이티브(앱이 그림)와 웹(README 그림, WebKit으로 찍은 사이트 화면)을 나란히(docs/52 5-6)
   const docs = path.join(here, "../docs");
   const file = (f) => (existsSync(f) ? readFileSync(f) : null);
@@ -204,6 +245,14 @@ try {
     ],
     // 두 칸 격자: 네이티브 표와 웹 표가 한 줄에 나란히 오게 빈칸을 둔다
     ["", null, "spacer"],
+    ["네이티브 · 상황 놓기 말풍선", native("native-place.png"), "png"],
+    ["웹 · 상황 놓기 창 안 칸", webPlaceCard, "png"],
+    [
+      "네이티브 · 상황 놓기 말풍선(힌트 키로 펼침)",
+      native("native-place-revealed.png"),
+      "png",
+    ],
+    ["웹 · 상황 놓기 창 안 칸(힌트 키로 펼침)", webPlaceRevealed, "png"],
     ["네이티브 · F1 단축키 표 3×3(J 누름)", native("native-keys.png"), "png"],
     ["웹 · F1 단축키 표 3×3", webKeys[3], "png"],
     ["네이티브 · F1 단축키 표 7×7", native("native-keys-7.png"), "png"],
@@ -228,7 +277,7 @@ try {
     .join("")}</div>`;
   const ps = await browser.newPage({
     deviceScaleFactor: 2,
-    viewport: { width: 1200, height: 1300 },
+    viewport: { width: 1200, height: 1800 },
   });
   await ps.setContent(panelHtml);
   await ps

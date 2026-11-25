@@ -8,9 +8,10 @@ use std::collections::HashMap;
 use cube_core::keys::{notation_to_move, preset_keymap, Preset};
 use cube_core::notation::AXIS_NAMES;
 use cube_core::practice::{
-    board_for, case_start, draw_round, key_cost, menu_stages, pick_alg, problem_of, stage_by_id,
-    AlgBook, CaseAlgs, CaseStats, DrawOptions, PracticeEvent, PracticeInput, PracticeMode,
-    PracticePhase, PracticeRecord, PracticeSession, TrainBook, PRACTICE_N, ROUND_SIZE,
+    board_for, case_start, draw_round, key_cost, menu_stages, pick_alg, place_case, place_stages,
+    placed_solves, problem_of, stage_by_id, AlgBook, CaseAlgs, CaseStats, DrawOptions,
+    PracticeEvent, PracticeInput, PracticeMode, PracticePhase, PracticeRecord, PracticeSession,
+    TrainBook, PRACTICE_N, ROUND_SIZE,
 };
 use cube_core::state::{face_colors, State};
 use json::Json;
@@ -178,6 +179,41 @@ fn practice_matches_site() {
                     have,
                     want,
                 );
+            }
+            continue;
+        }
+
+        // 상황 놓기: 상황 차례·묶음, 시작 모양, 배치마다 보일 공식
+        if c.get("kind").str() == "place" {
+            let ids: Vec<(String, Option<String>)> = stage
+                .cases
+                .iter()
+                .map(|x| (x.id.to_string(), x.group.map(str::to_string)))
+                .collect();
+            let want_ids: Vec<(String, Option<String>)> = c
+                .get("cases")
+                .arr()
+                .iter()
+                .map(|x| {
+                    (
+                        x.get("id").str().to_string(),
+                        x.get("group").opt_str().map(str::to_string),
+                    )
+                })
+                .collect();
+            bad.check(&format!("{} 놓기 상황", stage.id), ids, want_ids);
+            for x in c.get("cases").arr() {
+                for (p, want_alg) in obj(x.get("algs")) {
+                    total += 1;
+                    let km = preset_keymap(preset(p));
+                    let placed = place_case(stage.id, x.get("id").str(), &km, &AlgBook::new())
+                        .expect("놓기");
+                    bad.check(
+                        &format!("{} {} {p} 놓기", stage.id, x.get("id").str()),
+                        (colors(&placed.start), placed.alg.clone()),
+                        (x.get("start").str().to_string(), want_alg.str().to_string()),
+                    );
+                }
             }
             continue;
         }
@@ -377,6 +413,19 @@ fn practice_matches_site() {
             book_text(&book_of(c.get("train"))),
         );
     }
+    // 상황 놓기 단계는 모두 자료에 있다
+    let placed_in_fixture: Vec<&str> = root
+        .get("cases")
+        .arr()
+        .iter()
+        .filter(|c| c.get("kind").str() == "place")
+        .map(|c| c.get("stage").str())
+        .collect();
+    bad.check(
+        "놓기 단계",
+        placed_in_fixture,
+        place_stages().iter().map(|s| s.id).collect(),
+    );
     println!("공식 연습: 사례 {total}개, 어긋남 {}개", bad.0.len());
     assert!(total > 0);
     assert!(
@@ -390,4 +439,31 @@ fn practice_matches_site() {
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// 상황 놓기: 마지막 층 네 단계의 모든 상황에서, 놓은 모양에 보일 공식을 두면 그 단계가 풀린다(두 배치 모두).
+/// 상황 놓기 단계가 아니면 놓지 않는다
+#[test]
+fn every_placed_case_is_solved_by_its_alg() {
+    let ids: Vec<&str> = place_stages().iter().map(|s| s.id).collect();
+    assert_eq!(ids, ["2look-oll", "2look-pll", "oll", "pll"]);
+    let mut count = 0;
+    for stage in place_stages() {
+        for case in stage.cases {
+            for p in [Preset::TwoHand, Preset::Notation] {
+                let placed = place_case(stage.id, case.id, &preset_keymap(p), &AlgBook::new())
+                    .expect("놓기");
+                assert_eq!(placed.start, case_start(stage, case, ""), "{}", case.id);
+                assert!(placed_solves(&placed), "{} {} {:?}", stage.id, case.id, p);
+                count += 1;
+            }
+        }
+    }
+    assert_eq!(
+        count,
+        2 * place_stages().iter().map(|s| s.cases.len()).sum::<usize>()
+    );
+    let km = preset_keymap(Preset::TwoHand);
+    assert!(place_case("f2l", "f2l-1", &km, &AlgBook::new()).is_none());
+    assert!(place_case("pll", "nope", &km, &AlgBook::new()).is_none());
 }

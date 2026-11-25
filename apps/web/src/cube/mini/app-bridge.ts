@@ -27,6 +27,10 @@ export type FromApp =
   /** 창이 화면에 보이는가(숨기면 떠 있을 때 움직임도 쉰다) */
   | { type: "visible"; visible: boolean }
   | { type: "scramble" }
+  /** 맞춘 상태로(docs/47 16-24): 맞추던 판은 기록 없이 끝난다. 공식 연습 중이면 끝낸다 */
+  | { type: "reset" }
+  /** 상황 놓기(docs/47 16-24): 그 묶음(단계 id)의 상황 하나를 처음 모양으로 둔다 */
+  | { type: "place"; set: string; id: string }
   /** 거울 켜고 끄기. `on`이 없으면 뒤집는다 */
   | { type: "mirror"; on?: boolean }
   | { type: "size"; n: number }
@@ -95,6 +99,8 @@ export type ToApp =
       practice: string | null;
       practiceMode: "follow" | "see";
       practiceStages: { id: string; title: string; group: string }[];
+      /** 놓은 상황(묶음 id·상황 id, 없으면 null, docs/47 16-24) */
+      placed?: { set: string; id: string } | null;
     }
   /**
    * 큐브·거울 판이 차지하는 사각형들([x, y, 너비, 높이], 화면 왼쪽 위 기준 CSS px). 앱의 투명 창은 이 밖의
@@ -166,6 +172,12 @@ export function parseFromApp(d: unknown): FromApp | null {
         : null;
     case "scramble":
       return { type: "scramble" };
+    case "reset":
+      return { type: "reset" };
+    case "place":
+      return typeof x.set === "string" && typeof x.id === "string"
+        ? { type: "place", set: x.set, id: x.id }
+        : null;
     case "mirror":
       return typeof x.on === "boolean"
         ? { type: "mirror", on: x.on }

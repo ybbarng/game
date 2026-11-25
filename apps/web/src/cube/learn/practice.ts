@@ -48,7 +48,7 @@ export function practiceLinks(
     method === "beginner"
       ? BEGINNER_LINKS
       : course.id === TWO_LOOK_COURSE
-        ? // 마지막 층을 공식으로: CFOP 연습 단계 가운데 2단계 둘(docs/47 16-24)
+        ? // 마지막 층을 공식으로: CFOP 연습 단계 가운데 2단계 둘(docs/47 16-25)
           LL_STAGES.flatMap((id) => {
             const s = stageById(id);
             return s ? [{ id: s.id, title: s.title }] : [];

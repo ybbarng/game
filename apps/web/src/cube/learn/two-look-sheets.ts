@@ -1,4 +1,4 @@
-// 「마지막 층을 공식으로」 첫 단원의 표 둘(docs/47 16-24): 2단계 네 걸음의 모양을 모두 평면도로 늘어놓은 개괄,
+// 「마지막 층을 공식으로」 첫 단원의 표 둘(docs/47 16-25): 2단계 네 걸음의 모양을 모두 평면도로 늘어놓은 개괄,
 // 초보자 해법 마지막 층과 나란히 놓은 견주기. 화면은 TwoLookSheets.tsx가 그린다. 글은 term-places.ts가 단계 글과 함께
 // 읽어 용어 순서 시험(course-terms.test.ts)이 본다.
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";

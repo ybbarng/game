@@ -829,8 +829,9 @@ test(
     });
     expect(fits).toEqual({ scroll: true, bottom: true });
     await expect.poll(() => overflowingKeyText(page)).toEqual([]);
-    // Cubie가 쓰지 않는 동작(Esc 처음으로·Space 살펴보기)은 표에 없다
-    await expect(panel).not.toContainText("처음으로");
+    // Cubie가 쓰지 않는 자리(Esc 처음으로·Space 살펴보기)는 표에 없고, 맞춘 상태로는 Shift+Enter 자리에만 있다(docs/47 16-24)
+    await expect(panel.getByText("처음으로")).toHaveCount(1);
+    await expect(panel.locator("[data-key='Enter']")).toContainText("처음으로");
     await expect(panel).not.toContainText("살펴보기");
     await shot(page, "mini-keys-panel", info.project.name);
 
@@ -1586,6 +1587,108 @@ test(
     await page.keyboard.press("Escape");
     await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
     await expect(summary).toHaveCount(0);
+  },
+);
+
+/** 공식 낱말 하나 → 「표기」 배치 키(넓게 w·소문자는 Alt, '는 Shift, 2는 두 번) */
+function tokenKeys(token: string): string[] {
+  const m = /^([RLUDFBMESxyzrludfb])(w)?(2|')?$/.exec(token);
+  if (!m) throw new Error(`표기 키로 못 치는 낱말: ${token}`);
+  const face = m[1] as string;
+  const wide = m[2] === "w" || /^[rludfb]$/.test(face);
+  const code = `Key${face.toUpperCase()}`;
+  const mods = `${wide ? "Alt+" : ""}${m[3] === "'" ? "Shift+" : ""}`;
+  return m[3] === "2"
+    ? [`${mods}${code}`, `${mods}${code}`]
+    : [`${mods}${code}`];
+}
+
+test(
+  "맞춘 상태로·상황 놓기: Shift+Enter는 맞추던 판을 기록 없이 끝내고, 상황 놓기는 3×3 그 모양으로 두며 힌트 키로 공식·키캡을 펼치고, 맞춰도 기록이 없다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.setViewportSize({ width: 360, height: 360 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    const menu = page.locator("[data-mini-menu]");
+    // 4×4에서 섞고 한 수 둔 뒤 맞춘 상태로(Shift+Enter): 묻지 않고 맞춘 큐브, 기록 없음
+    await menu.click();
+    await page.locator('[data-mini-size="4"]').click();
+    await expect(main).toHaveAttribute("data-mini-n", "4");
+    await menu.click();
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await page.keyboard.press("KeyR");
+    await expect(main).toHaveAttribute("data-mini-phase", "solving");
+    await page.keyboard.press("Shift+Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "free");
+    await expect(main).toHaveAttribute("data-mini-solved", "");
+    await expect(main).toHaveAttribute("data-mini-moves", "0");
+
+    // 상황 놓기: 구석 메뉴 → PLL → T 퍼뮤. 3×3으로 바뀌고 그 상황 이름만 보인다(공식은 접혀 있다)
+    await menu.click();
+    await page.locator('[data-mini-item="place"]').click();
+    await page.locator('[data-mini-place-set="pll"]').click();
+    await page.locator('[data-mini-place-case="pll-t"]').click();
+    await expect(main).toHaveAttribute("data-mini-n", "3");
+    await expect(main).toHaveAttribute("data-mini-placed", "pll:pll-t");
+    await expect(main).not.toHaveAttribute("data-mini-solved", "");
+    await expect(main).toHaveAttribute("data-mini-phase", "free");
+    const card = page.locator("[data-mini-place-card]");
+    await expect(card.locator("[data-mini-place-name]")).toHaveText(
+      "PLL · T 퍼뮤",
+    );
+    await expect(card.locator("[data-mini-place-tokens]")).toHaveCount(0);
+
+    // 힌트 키(\): 공식 낱말과 그 아래 키캡
+    await page.keyboard.press("Backslash");
+    const alg = (await main.getAttribute("data-mini-place-alg")) as string;
+    expect(alg.length).toBeGreaterThan(0);
+    const tokens = card.locator("[data-mini-place-tokens] li");
+    await expect(tokens).toHaveCount(alg.split(" ").length);
+    await expect(tokens.first().locator("kbd")).not.toHaveCount(0);
+    await shot(page, "mini-place-revealed", info.project.name);
+
+    // 공식대로 돌리고 윗면만 맞춰 큐브를 다 맞춰도 기록이 생기지 않는다(채점·시간 없음)
+    for (const t of alg.split(" "))
+      for (const k of tokenKeys(t)) await page.keyboard.press(k);
+    for (let i = 0; i < 4; i++) {
+      if ((await main.getAttribute("data-mini-solved")) !== null) break;
+      await page.keyboard.press("KeyU");
+    }
+    await expect(main).toHaveAttribute("data-mini-solved", "");
+    await expect(main).toHaveAttribute("data-mini-phase", "free");
+    await expect(page.locator("[data-mini-cheer]")).toHaveCount(0);
+
+    // 같은 상황을 다시 고르면 처음부터(구석 메뉴는 펼쳐 둔 「상황 놓기」와 놓은 묶음을 펼친 채 연다)
+    await menu.click();
+    await expect(
+      page.locator('[data-mini-place-case="pll-t"]'),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.locator('[data-mini-place-case="pll-t"]').click();
+    await expect(main).not.toHaveAttribute("data-mini-solved", "");
+    await expect(main).toHaveAttribute("data-mini-placed", "pll:pll-t");
+
+    // 맞춘 상태로(메뉴)는 놓은 상황도 끝낸다
+    await menu.click();
+    await page.locator('[data-mini-item="reset"]').click();
+    await expect(main).not.toHaveAttribute("data-mini-placed", /.+/);
+    await expect(main).toHaveAttribute("data-mini-solved", "");
+
+    // 3×3·4×4 모두 기록이 없다(미니 기록 `cube.mini.v1`의 크기별 목록)
+    const counts = await page.evaluate(() => {
+      const book = JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}");
+      const records = (book.records ?? {}) as Record<string, unknown[]>;
+      return [records["3"]?.length ?? 0, records["4"]?.length ?? 0];
+    });
+    expect(counts).toEqual([0, 0]);
   },
 );
 

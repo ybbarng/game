@@ -130,6 +130,8 @@ pub struct Game {
     pub(crate) practice: Option<cube_core::practice::PracticeSession>,
     /// 진행기가 알린 일(비트: 1 다시 칠함 · 2 문제 맞춤 · 4 틀린 수 · 8 판 끝), 앱이 꺼내 간다
     pub(crate) practice_events: u32,
+    /// 상황 놓기로 둔 상황(docs/47 16-24). 섞기·맞춘 상태로에서 지운다
+    pub(crate) placed: Option<crate::place::Placed>,
 }
 
 impl Game {
@@ -155,6 +157,7 @@ impl Game {
             milestone: false,
             practice: None,
             practice_events: 0,
+            placed: None,
         }
     }
 
@@ -296,9 +299,18 @@ impl Game {
             }
             Some(KeyResult::Command { command, .. }) => match command {
                 Command::Scramble => self.scramble(seed),
-                // 미니 모드는 「맞춘 상태로」(Esc)·살펴보기 건너뛰기(Space)를 쓰지 않는다(사이트 `MiniCubeApp`, docs/47 15-4).
-                // Esc는 앱이 먼저 가로채고, 사용자 배치가 다른 키에 놓았어도 진행을 버리지 않는다
-                Command::Reset | Command::InspectionSkip => Outcome::Consumed,
+                // 맞춘 상태로(docs/47 16-24): 맞추던 판은 기록 없이 끝난다. 아무것도 함께 누르지 않은 Esc 자리는 쓰지 않는다
+                // (앱이 먼저 가로채 단축키 표 닫기 → 연습 끝내기 → 이전 앱으로 쓴다, `ffi_game::cubie_uses`). 기본 배치는
+                // Shift+Enter에도 있다. 살펴보기 건너뛰기(Space)는 미니 모드에 없다(사이트 `MiniCubeApp`, docs/47 15-4)
+                Command::Reset => {
+                    if input.code == "Escape" && !input.shift && !input.alt && !input.ctrl {
+                        Outcome::Consumed
+                    } else {
+                        self.reset();
+                        Outcome::Reset
+                    }
+                }
+                Command::InspectionSkip => Outcome::Consumed,
                 Command::Undo => match self.history.pop() {
                     Some(m) => {
                         self.last_undo = true;
@@ -383,6 +395,7 @@ impl Game {
         }
         self.jump(st);
         self.scrambled = true;
+        self.placed = None;
         self.record = None;
         self.milestone = false;
         let _ = self.session.start(&s.text, Some(seed), self.now);
@@ -395,11 +408,14 @@ impl Game {
         Outcome::Scrambled { text: s.text }
     }
 
+    /// 맞춘 상태로: 맞추던 판은 기록 없이 끝나고(코어 세션 「마음대로」), 놓은 상황도 끝난다
     pub fn reset(&mut self) {
         self.jump(solved_cube(self.n));
         self.scrambled = false;
         self.session.reset();
         self.record = None;
+        self.milestone = false;
+        self.placed = None;
     }
 
     fn jump(&mut self, st: State) {

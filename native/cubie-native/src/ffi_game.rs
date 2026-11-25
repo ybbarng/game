@@ -11,7 +11,7 @@ use crate::keycode::mac_key_code;
 use cube_core::hint::{pick_hint, HintAnswer};
 use cube_core::keys::actions::parse_action;
 use cube_core::keys::keymap::KeyBinding;
-use cube_core::keys::{preset_keymap, Command, KeyInput, Keymap, Preset};
+use cube_core::keys::{cubie_uses, preset_keymap, Command, KeyInput, Keymap, Preset};
 use cube_core::replay::replay_steps;
 use cube_core::solved_cube;
 use cube_core::state::face_colors;
@@ -416,8 +416,9 @@ pub unsafe extern "C" fn cubie_game_take_record(g: *mut CubieGame, out: *mut u8,
     need
 }
 
-/// 지금 키 배치에서 크기 `n`에 쓰는 키(단축키 표): 줄마다 「KeyboardEvent.code\t조합(Shift 1·Alt 2·Ctrl 4)\t동작 이름」.
-/// Cubie가 쓰지 않는 동작(맞춘 상태로·살펴보기 건너뛰기)과 그 크기에서 쓸 수 없는 동작은 뺀다(사이트 `KeysPanelPage`)
+/// 지금 키 배치에서 크기 `n`에 쓰는 키(단축키 표·메뉴 단축키 표시): 줄마다
+/// 「KeyboardEvent.code\t조합(Shift 1·Alt 2·Ctrl 4)\t동작 이름」. Cubie가 쓰지 않는 키([`cubie_uses`])와 그 크기에서 쓸 수
+/// 없는 동작은 뺀다(사이트 `KeysPanelPage`)
 ///
 /// # Safety
 /// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
@@ -435,7 +436,7 @@ pub unsafe extern "C" fn cubie_game_key_bindings(
         .keymap()
         .bindings
         .iter()
-        .filter(|b| b.action != "reset" && b.action != "inspectionSkip")
+        .filter(|b| cubie_uses(b))
         .filter(|b| cube_core::keys::actions::is_available(n, &b.action))
         .map(|b| format!("{}\t{}\t{}", b.code, b.mods, b.action))
         .collect();
@@ -444,7 +445,7 @@ pub unsafe extern "C" fn cubie_game_key_bindings(
 
 /// 단축키 표(F1)의 칸마다 적는 글(사이트 Cubie 미니 표와 같다, 코어 `keys::table`): 줄마다
 /// 「KeyboardEvent.code\t조합(Shift 1·Alt 2)\t쓸 수 있나(1/0)\t동작 이름\t칸 글」. 한 키의 줄은 위에서부터 차례로 온다.
-/// Cubie가 쓰지 않는 동작(맞춘 상태로·살펴보기 건너뛰기)은 뺀다
+/// Cubie가 쓰지 않는 키([`cubie_uses`])는 뺀다
 ///
 /// # Safety
 /// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
@@ -457,9 +458,7 @@ pub unsafe extern "C" fn cubie_game_key_table(
 ) -> u32 {
     let g = unsafe { &*g };
     let mut keymap = g.game.keymap().clone();
-    keymap
-        .bindings
-        .retain(|b| b.action != "reset" && b.action != "inspectionSkip");
+    keymap.bindings.retain(cubie_uses);
     let n = n as usize;
     let lines: Vec<String> = cube_core::keys::key_table(&keymap, n)
         .iter()
@@ -622,6 +621,71 @@ pub unsafe extern "C" fn cubie_game_practice_record(
         return 0;
     };
     unsafe { write_str(if which == 0 { &rec } else { &train }, out, len) }
+}
+
+/// 상황 놓기 메뉴(docs/47 16-24): 줄마다 「단계 id\t단계 이름\t상황 id\t상황 이름\t모양 묶음(없으면 빈칸)」. 글 바이트 수를
+/// 돌려준다
+///
+/// # Safety
+/// `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_place_menu(out: *mut u8, len: u32) -> u32 {
+    unsafe { write_str(&crate::place::place_menu_lines().join("\n"), out, len) }
+}
+
+/// 상황 하나를 놓는다(3×3, 공식 연습 밖). 맞추던 판은 기록 없이 끝난다. 내 공식은 사이트와 같은 JSON. 못 놓으면 false
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. 글은 NUL로 끝나는 C 글(NULL이면 빈 글).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_place(
+    g: *mut CubieGame,
+    stage: *const c_char,
+    case_id: *const c_char,
+    alg_book: *const c_char,
+) -> bool {
+    let g = unsafe { &mut *g };
+    let s = |p| unsafe { c_str(p) }.unwrap_or("");
+    let (stage, case_id, book) = (s(stage), s(case_id), s(alg_book));
+    g.game.place(stage, case_id, book)
+}
+
+/// 놓은 상황(「단계 id\t상황 id」, 없으면 빈 글)을 `out`에 쓴다. 글 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_placed(g: *const CubieGame, out: *mut u8, len: u32) -> u32 {
+    let g = unsafe { &*g };
+    let text = g
+        .game
+        .placed()
+        .map(|p| format!("{}\t{}", p.stage, p.case))
+        .unwrap_or_default();
+    unsafe { write_str(&text, out, len) }
+}
+
+/// 놓은 상황의 공식 펼치기·접기(힌트 키). 펼쳤으면 true
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_place_reveal(g: *mut CubieGame) -> bool {
+    unsafe { &mut *g }.game.place_reveal()
+}
+
+/// 놓은 상황의 말풍선 줄(공식 연습 줄과 같은 꼴, 줄바꿈으로 이음). 놓은 상황이 없으면 빈 글. 글 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_place_lines(
+    g: *const CubieGame,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    let g = unsafe { &*g };
+    unsafe { write_str(&g.game.place_lines().join("\n"), out, len) }
 }
 
 /// 다시 보기 글 → 걸음(사이트 `solveSteps`, 수 사이 멈춤은 `max_pause_ms`까지, 첫 수가 `offset`). 걸음마다 한 줄
@@ -1027,6 +1091,43 @@ mod tests {
             // ⌫ = 되돌리기: 거꾸로 돌린 수 표기
             assert_eq!(cubie_game_key(g, 51, 0, 0), KEY_MOVED);
             assert_eq!(notation(g), "R'");
+            cubie_game_free(g);
+        }
+    }
+
+    /// 맞춘 상태로(docs/47 16-24): 앱 키 목록·단축키 표에 Shift+Enter가 들고 Esc 자리는 빠진다. Shift+Enter를 누르면
+    /// 맞추던 판은 기록 없이 끝나 맞춘 큐브가 된다. Esc는 맞춘 상태로가 아니다(앱이 먼저 가로챈다)
+    #[test]
+    fn reset_key_is_listed_and_abandons_the_solve_without_record() {
+        unsafe {
+            let g = cubie_game_new(3);
+            let mut buf = vec![0u8; 8192];
+            let k = cubie_game_key_bindings(g, 3, buf.as_mut_ptr(), 8192) as usize;
+            let text = std::str::from_utf8(&buf[..k]).unwrap().to_string();
+            assert!(text.lines().any(|l| l == "Enter\t1\treset"), "{text}");
+            assert!(!text.lines().any(|l| l.starts_with("Escape\t")), "{text}");
+            let k = cubie_game_key_table(g, 3, buf.as_mut_ptr(), 8192) as usize;
+            let table = std::str::from_utf8(&buf[..k]).unwrap();
+            assert!(
+                table.lines().any(|l| l == "Enter\t1\t1\treset\t처음으로\t"),
+                "{table}"
+            );
+            cubie_game_set_now(g, 0.0);
+            cubie_game_scramble(g, 42, SHOW_INSTANT);
+            cubie_game_set_now(g, 500.0);
+            assert_eq!(cubie_game_key(g, 34, 0, 0), KEY_MOVED);
+            assert_eq!(cubie_game_key(g, 53, 0, 0), KEY_CONSUMED);
+            assert!(cubie_game_solving(g));
+            assert_eq!(cubie_game_key(g, 36, FLAG_SHIFT, 0), KEY_RESET);
+            assert!(cubie_game_is_solved(g));
+            assert!(!cubie_game_solving(g) && !cubie_game_is_scrambled(g));
+            assert_eq!(cubie_game_move_count(g), 0);
+            assert_eq!(cubie_game_take_record(g, buf.as_mut_ptr(), 8192), 0);
+            // 맞춘 큐브를 다시 돌려 맞춰도 기록은 없다(섞어야 판이 열린다)
+            assert_eq!(cubie_game_key(g, 34, 0, 0), KEY_MOVED);
+            assert_eq!(cubie_game_key(g, 40, 0, 0), KEY_MOVED);
+            assert!(cubie_game_is_solved(g));
+            assert_eq!(cubie_game_take_record(g, buf.as_mut_ptr(), 8192), 0);
             cubie_game_free(g);
         }
     }

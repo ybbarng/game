@@ -12,6 +12,7 @@ import {
   type Layer,
   MODIFIER_LABEL,
 } from "../keys/layout";
+import { cubieKeymap } from "../mini/cubie-keys";
 import { fixtureJson } from "./core-fixtures";
 import { layeredKeymap } from "./core-fixtures-keycaps";
 
@@ -29,15 +30,8 @@ export const KEYMAPS: Record<string, () => Keymap> = {
   custom: layeredKeymap,
 };
 
-/** Cubie 표는 Cubie가 쓰지 않는 동작(처음으로·살펴보기)을 뺀다(`KeysPanelPage`) */
-export function forCubie(k: Keymap): Keymap {
-  return {
-    ...k,
-    bindings: k.bindings.filter(
-      (b) => b.action !== "reset" && b.action !== "inspectionSkip",
-    ),
-  };
-}
+/** Cubie 표는 Cubie가 쓰지 않는 키(살펴보기, Esc 자리의 처음으로)를 뺀다(`KeysPanelPage`, `mini/cubie-keys.ts`) */
+export const forCubie = cubieKeymap;
 
 /** 칸 하나: [code, [[조합 키, 글, 쓸 수 있나(1/0)], …]]. 화살표 칸은 그냥 칠 때 한 줄(`Arrows`) */
 function cells(keymap: Keymap, n: number): unknown[] {

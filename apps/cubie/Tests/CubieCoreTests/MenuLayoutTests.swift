@@ -27,12 +27,14 @@ struct MenuLayoutTests {
   }
 
   @Test func 메뉴_막대_메뉴의_차례() {
-    let m = MenuLayout.main(forWindow: false, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true, practiceAvailable: true)
+    let m = MenuLayout.main(
+      forWindow: false, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true, practiceAvailable: true,
+      placeAvailable: true)
     #expect(
       titles(m) == [
         "(프로필)", "—",
         "큐브로 가기", "(숨기기·보이기)", "—",
-        "섞기", "힌트", "공식 연습", "큐브 크기", "—",
+        "섞기", "맞춘 상태로", "힌트", "공식 연습", "상황 놓기", "큐브 크기", "—",
         "기록 보기", "티어표", "—",
         "대결하기", "배우기", "—",
         "창", "키 배치·색…", "단축키 보기", "—",
@@ -41,10 +43,12 @@ struct MenuLayoutTests {
   }
 
   @Test func 오른쪽_클릭_메뉴는_큐브로_가기와_업데이트_확인이_없고_끝내기는_맨_끝에() {
-    let m = MenuLayout.main(forWindow: true, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true, practiceAvailable: true)
+    let m = MenuLayout.main(
+      forWindow: true, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true, practiceAvailable: true,
+      placeAvailable: true)
     #expect(
       titles(m) == [
-        "섞기", "힌트", "공식 연습", "큐브 크기", "—",
+        "섞기", "맞춘 상태로", "힌트", "공식 연습", "상황 놓기", "큐브 크기", "—",
         "기록 보기", "티어표", "—",
         "대결하기", "배우기", "—",
         "창", "키 배치·색…", "단축키 보기", "—",
@@ -102,6 +106,7 @@ struct MenuLayoutTests {
       MenuLayout.window(multipleScreens: false), MenuLayout.window(multipleScreens: true),
       MenuLayout.practice(stages: stages), MenuLayout.practice(stages: []),
     ]
+    all += PlaceSetItem.list(from: placeText).map(MenuLayout.placeCases)
     for forWindow in [false, true] {
       for hotKeyOK in [false, true] {
         for pending in [false, true] {
@@ -109,7 +114,7 @@ struct MenuLayoutTests {
             all.append(
               MenuLayout.main(
                 forWindow: forWindow, hotKeyOK: hotKeyOK, pendingUpdate: pending, updaterAvailable: avail,
-                practiceAvailable: avail))
+                practiceAvailable: avail, placeAvailable: avail))
           }
         }
       }
@@ -143,6 +148,46 @@ struct MenuLayoutTests {
       forWindow: false, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true, practiceAvailable: false)
     #expect(!m.contains(.practice))
     #expect(m.contains(.hint))
+  }
+
+  /// 코어 `cubie_place_menu` 꼴(단계 id·단계 이름·상황 id·상황 이름·모양 묶음)
+  private let placeText = [
+    "2look-oll\t2단계 OLL\t2look-oll-line\t엣지: 가로줄\tedges",
+    "2look-oll\t2단계 OLL\t2look-oll-l\t엣지: ㄱ자(작은 L)\tedges",
+    "2look-oll\t2단계 OLL\t2look-oll-h\t코너: H 모양\tcorners",
+    "pll\tPLL\tpll-ua\tUa 퍼뮤\tedges-only",
+    "pll\tPLL\tpll-t\tT 퍼뮤\tadjacent",
+    "pll\t칸이 모자람",
+    "\t빈 단계\tx\ty\t",
+  ].joined(separator: "\n")
+
+  @Test func 상황_놓기는_묶음_하위_메뉴_안에_상황_모양_묶음_사이에_구분선() {
+    let sets = PlaceSetItem.list(from: placeText)
+    #expect(sets.map(\.id) == ["2look-oll", "pll"])
+    #expect(titles(MenuLayout.place(sets: sets)) == ["2단계 OLL", "PLL"])
+    #expect(
+      titles(MenuLayout.placeCases(sets[0])) == ["엣지: 가로줄", "엣지: ㄱ자(작은 L)", "—", "코너: H 모양"])
+    #expect(MenuLayout.placeCases(sets[1]).last == .placeCase(set: "pll", id: "pll-t", title: "T 퍼뮤"))
+    #expect(PlaceSetItem.list(from: "").isEmpty)
+  }
+
+  @Test func 상황_놓기_묶음이_없으면_메뉴에_없다() {
+    let m = MenuLayout.main(
+      forWindow: false, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true, practiceAvailable: true)
+    #expect(!m.contains(.place))
+    #expect(m.contains(.reset))
+  }
+
+  @Test func 맞춘_상태로_키는_기본_배치면_Shift_Enter_사용자_배치는_Esc_자리를_고르지_않는다() {
+    #expect(StoredKeymap(preset: "twoHand").resetKey == .init(code: "Enter", shift: true, action: "reset"))
+    #expect(StoredKeymap(preset: "notation").resetKey == .init(code: "Enter", shift: true, action: "reset"))
+    let custom = StoredKeymap(
+      preset: "custom",
+      bindings: [
+        .init(code: "Escape", action: "reset"), .init(code: "KeyR", shift: true, action: "reset"),
+      ])
+    #expect(custom.resetKey == .init(code: "KeyR", shift: true, action: "reset"))
+    #expect(StoredKeymap(preset: "custom", bindings: [.init(code: "Escape", action: "reset")]).resetKey == nil)
   }
 
   @Test func 연습_단계_목록_읽기는_틀린_줄을_버린다() {
