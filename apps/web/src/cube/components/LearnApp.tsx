@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
+import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import {
   BASICS,
   COURSES,
@@ -56,6 +57,7 @@ import {
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
 import { useNoKeyboard } from "./PracticeCube";
+import { SizePicker } from "./SizePicker";
 import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
@@ -150,10 +152,13 @@ function CourseList({
   const found = progress.last ? findLesson(progress.last) : null;
   const last = found && found.course.id !== BASICS.id ? found : null;
   const pickedCourse = picked ? courseById(picked) : undefined;
-  // 처음 보이는 크기: 고른 해법, 마지막으로 연 단원의 크기, 없으면 3×3
-  const [size, setSize] = useState<number>(
-    () => pickedCourse?.size ?? last?.course.size ?? 3,
+  // 보이는 크기: 지금 크기(이 화면에 없으면 3×3, docs/47 16-28). `?m=`로 연 해법은 그 해법 크기를 보이되 지금 크기는
+  // 그대로 둔다(보기). 크기 탭을 누르면 지금 크기도 바뀐다
+  const current = useCurrentSize();
+  const [viewing, setViewing] = useState<number | null>(
+    () => pickedCourse?.size ?? null,
   );
+  const size = viewing ?? sizeFor(COURSE_SIZES, current);
   useEffect(() => {
     if (pickedCourse)
       document
@@ -208,41 +213,22 @@ function CourseList({
         </a>
       </p>
       {/* 크기 탭: 고급 해법까지 모두 펼치면 2×2까지 한참 내려가야 했다(2026-11-04 점검) */}
-      <div
-        role="tablist"
-        aria-label="큐브 크기"
-        className="flex gap-1 self-start rounded-xl bg-white/5 p-1"
-      >
-        {COURSES_BY_SIZE.map(([s, courses]) => (
-          <button
-            key={s}
-            type="button"
-            role="tab"
-            aria-selected={s === size}
-            data-size-tab={s}
-            onClick={(e) => {
-              setSize(s);
-              e.currentTarget.blur();
-            }}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition active:scale-[0.97]",
-              s === size
-                ? "bg-white/15 font-semibold text-white"
-                : "text-white/60 hover:bg-white/10 hover:text-white",
-            )}
-          >
-            {s}×{s}
-            <span className="ml-1 text-[11px] text-white/45">
-              {courses.length}
-            </span>
-          </button>
-        ))}
-      </div>
+      <SizePicker
+        attr="data-course-sizes"
+        optionAttr="data-size-tab"
+        sizes={COURSE_SIZES}
+        value={size}
+        onPick={(s) => {
+          setViewing(null);
+          setCurrentSize(s);
+        }}
+        badge={(s) => COURSES_BY_SIZE.find(([k]) => k === s)?.[1].length ?? 0}
+        className="self-start"
+      />
       {COURSES_BY_SIZE.filter(([s]) => s === size).map(([s, courses]) => (
         <section
           key={s}
           data-course-size={s}
-          role="tabpanel"
           className="cube-rise flex flex-col gap-2"
         >
           <CourseGrid
@@ -263,6 +249,8 @@ const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5]
     METHOD_COURSES.filter((c) => c.size === size),
   ])
   .filter(([, list]) => list.length > 0);
+/** 해법 배우기에서 고를 수 있는 크기(과정이 있는 크기) */
+const COURSE_SIZES = COURSES_BY_SIZE.map(([s]) => s);
 
 function CourseGrid({
   courses,

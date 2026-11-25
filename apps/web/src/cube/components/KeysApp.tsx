@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import { MAX_N, MIN_N } from "../input/actions";
 import { type Keymap, PRESET_LABEL } from "../input/keymaps";
 import { loadKeymap } from "../input/storage";
@@ -13,6 +14,13 @@ import {
   searchRows,
 } from "../keys/layout";
 import { dotOf, KeyboardMap, KeyLegend, type LayerView } from "./KeyboardMap";
+import { SizePicker } from "./SizePicker";
+
+/** 단축키 표를 볼 수 있는 크기 */
+const KEY_SIZES = Array.from(
+  { length: MAX_N - MIN_N + 1 },
+  (_, i) => i + MIN_N,
+);
 
 /**
  * 단축키 표(`/cube/keys`, docs/47 4절). 지금 배치를 실제 키보드 모양으로 그리고, 아래에 동작 → 키 목록(찾기)을 둔다.
@@ -87,7 +95,8 @@ export function useKeymap(): Keymap | null {
 
 export function KeysApp() {
   const keymap = useKeymap();
-  const [n, setN] = useState(3);
+  // 지금 크기로 연다. 고르면 지금 크기도 바뀐다(docs/47 16-28)
+  const n = sizeFor(KEY_SIZES, useCurrentSize());
   const [layer, setLayer] = useState<LayerView>("all");
   const [query, setQuery] = useState("");
   const rows = useMemo(
@@ -113,23 +122,12 @@ export function KeysApp() {
         </h2>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm print:hidden">
-          <div className="flex items-center gap-1">
-            <span className="text-white/60">크기</span>
-            {Array.from({ length: MAX_N - MIN_N + 1 }, (_, i) => i + MIN_N).map(
-              (s) => (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={s === n}
-                  data-size={s}
-                  onClick={() => setN(s)}
-                  className={chip(s === n)}
-                >
-                  {s}
-                </button>
-              ),
-            )}
-          </div>
+          <SizePicker
+            optionAttr="data-size"
+            sizes={KEY_SIZES}
+            value={n}
+            onPick={setCurrentSize}
+          />
           <div className="flex items-center gap-1">
             <span className="text-white/60">층</span>
             {LAYER_VIEWS.map((l) => (
