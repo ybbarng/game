@@ -9,6 +9,8 @@ export interface FinaleSpec {
   stages: string[];
   /** 이 마무리 뒤에 이어 할 공식 훈련 묶음 */
   drill?: AlgSet;
+  /** 이 과정에 단원이 없는 단계를 어디서 다시 볼지(고르기 풀이 끝에 붙인다) */
+  elsewhere?: string;
 }
 
 /** 차례 고르기 문제의 틀린 보기: 센터 둘을 바꾼 것, 뒤 둘을 바꾼 것 */
@@ -43,7 +45,7 @@ export function finaleLesson(course: Course, spec: FinaleSpec): Lesson {
           // 답 자리를 가운데에 둔다
           choices: [wrongA as string, order, wrongB as string],
           answer: 1,
-          why: `${order} 차례예요. 막히면 그 단원으로 돌아가 다시 봐도 돼요.`,
+          why: `${order} 차례예요. 막히면 그 단원으로 돌아가 다시 봐도 돼요.${spec.elsewhere ? ` ${spec.elsewhere}` : ""}`,
         },
       },
       {

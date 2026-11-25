@@ -2,11 +2,13 @@
 // 공통 틀 `@/tutorial/term-order`에 넘긴다. 실제로 쳐 보는 공식 줄(alg)은 시연이라 빼고 글만 읽는다.
 import type { TextPlace } from "@/tutorial/term-order";
 
+import { sheetText } from "./two-look-sheets";
 import type { Course, LessonStep } from "./types";
 
 export const stepText = (s: LessonStep) =>
   [
     s.body,
+    s.sheet ? sheetText(s.sheet) : "",
     s.beside?.caption ?? "",
     s.quiz?.question ?? "",
     ...(s.quiz?.choices ?? []),

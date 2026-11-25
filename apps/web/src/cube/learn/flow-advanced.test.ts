@@ -15,6 +15,13 @@ import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "./bld";
 import { COURSES, courseById, nextCourses } from "./index";
 import { goalMet } from "./judge";
 import {
+  INTRO_LL,
+  T_PERM,
+  TWO_LOOK_LL,
+  Y_PERM,
+  Z_PERM_AUF,
+} from "./lessons-2look";
+import {
   CENTER_LAST_TWO_SETUP,
   CENTER_YELLOW,
   CENTER_YELLOW_SETUP,
@@ -42,12 +49,10 @@ import {
   PAIR_FRONT,
   PAIR_RIGHT,
   SPLIT_RIGHT,
-  T_PERM,
   WHITE_UP,
-  Y_PERM,
-  Z_PERM_AUF,
 } from "./lessons-cfop";
 import { setupFor } from "./notation";
+import { TWO_LOOK_GROUPS } from "./two-look-sheets";
 import type { Lesson, LessonStep, QuizSpec } from "./types";
 
 const play = (n: number, alg: string, s: PuzzleState = solvedCube(n)) =>
@@ -222,6 +227,40 @@ describe("CFOP F2L 짝", () => {
   });
 });
 
+describe("마지막 층을 공식으로: 첫 단원 그림", () => {
+  it("아래 두 층은 맞고 위 층은 흐트러졌으며, 가로줄 → 수네 → T퍼뮤 → Ua퍼뮤로 걸음마다 그 걸음의 목표가 된다", () => {
+    const intro = lessonOf("333-2look-intro");
+    let s = stateOf(step(intro, "quiz", 0));
+    expect(goalMet(3, s, "f2l")).toBe(true);
+    const goals = ["yellow-cross", "oll", "yellow-corners", "solved"] as const;
+    for (const g of goals) expect(goalMet(3, s, g), g).toBe(false);
+    INTRO_LL.forEach((alg, i) => {
+      s = play(3, alg, s);
+      expect(goalMet(3, s, goals[i] as (typeof goals)[number])).toBe(true);
+    });
+  });
+});
+
+describe("마지막 층을 공식으로: 모양 16가지 개괄", () => {
+  it("걸음마다 3·7·2·4가지, 모두 그 걸음 전 모양이고 그 공식을 치면 그 걸음의 목표가 된다", () => {
+    const goals = ["yellow-cross", "oll", "yellow-corners", "solved"] as const;
+    expect(TWO_LOOK_GROUPS.map((g) => g.cases.length)).toEqual([3, 7, 2, 4]);
+    TWO_LOOK_GROUPS.forEach((g, i) => {
+      const goal = goals[i] as (typeof goals)[number];
+      for (const c of g.cases) {
+        const s = held(c.alg);
+        expect(goalMet(3, s, goal), c.id).toBe(false);
+        expect(goalMet(3, play(3, c.alg, s), goal), c.id).toBe(true);
+        // 앞 걸음까지는 끝난 모양이다
+        if (i > 0)
+          expect(goalMet(3, s, goals[i - 1] as (typeof goals)[number])).toBe(
+            true,
+          );
+      }
+    });
+  });
+});
+
 describe("CFOP 2단계 OLL", () => {
   /** 위 코너마다 노랑(D)이 보는 면 */
   const yellowAt = (s: PuzzleState) =>
@@ -243,6 +282,18 @@ describe("CFOP 2단계 OLL", () => {
   it("코너 일곱 모양: 알아보는 법(note)이 상황과 맞는다", () => {
     for (const c of TWO_LOOK_OLL.filter((x) => x.group === "corners"))
       expect(yellowAt(held(c.algs[0] as string)), c.id).toEqual(LOOK[c.id]);
+  });
+
+  it("수네·안티수네 가르기: 위를 보는 코너 블럭을 앞-왼쪽에 두면 수네 모양은 앞-오른쪽 노랑이 앞, 안티수네 모양은 오른쪽(U2 뒤)", () => {
+    const of = (id: string) =>
+      held(TWO_LOOK_OLL.find((c) => c.id === id)?.algs[0] ?? "");
+    expect(yellowAt(of("2look-oll-27"))).toMatchObject({ UFL: "U", UFR: "F" });
+    const anti = of("2look-oll-26");
+    expect(yellowAt(anti)).toMatchObject({ UBR: "U" });
+    expect(yellowAt(play(3, "U2", anti))).toMatchObject({
+      UFL: "U",
+      UFR: "R",
+    });
   });
 
   it("모양 이름 문제: 답의 공식만 윗면을 노랗게 한다", () => {
@@ -585,10 +636,11 @@ describe("블라인드 외우기", () => {
 // ── 과정 끝 ──────────────────────────────────────────────
 
 describe("과정 끝과 먼저 배울 과정", () => {
-  it("3×3·2×2·CFOP·4×4 과정 끝에 섞인 큐브를 처음부터 맞추는 마무리가 있다", () => {
+  it("3×3·2×2·마지막 층을 공식으로·CFOP·4×4 과정 끝에 섞인 큐브를 처음부터 맞추는 마무리가 있다", () => {
     for (const id of [
       "333-beginner",
       "222-beginner",
+      "333-2look",
       "cfop",
       "444-reduction",
     ]) {
@@ -608,19 +660,34 @@ describe("과정 끝과 먼저 배울 과정", () => {
     const base = courseById("333-beginner");
     expect(base && nextCourses(base).map((c) => c.id)).toEqual([
       "222-from333",
-      "cfop",
+      "333-2look",
       "444-reduction",
     ]);
   });
 
-  it("CFOP 단원은 훈련 묶음으로 이어진다", () => {
+  it("초보자 → 마지막 층을 공식으로 → CFOP 차례이고, 2단계 단원은 다리 과정에만 있다", () => {
+    expect(courseById("333-2look")?.requires).toEqual(["333-beginner"]);
+    expect(courseById("cfop")?.requires).toEqual(["333-2look"]);
+    const where = (id: string) =>
+      COURSES.filter((c) => c.lessons.some((l) => l.id === id)).map(
+        (c) => c.id,
+      );
+    // 단원 id는 CFOP에 있던 때 그대로(진행 기록·힌트가 이 id를 쓴다)
+    expect(where("cfop-2look-oll")).toEqual(["333-2look"]);
+    expect(where("cfop-2look-pll")).toEqual(["333-2look"]);
+  });
+
+  it("CFOP·다리 과정 단원은 훈련 묶음으로 이어진다", () => {
     expect(CFOP_INTRO.lessons.map((l) => l.drill)).toEqual([
       undefined,
       undefined,
       "f2l",
+      "pll",
+    ]);
+    expect(TWO_LOOK_LL.lessons.map((l) => l.drill)).toEqual([
+      undefined,
       "2look-oll",
       "2look-pll",
-      "pll",
     ]);
   });
 });

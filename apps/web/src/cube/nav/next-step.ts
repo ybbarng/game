@@ -31,8 +31,14 @@ export interface NextInput {
 
 /** 처음 맞추기 과정 */
 export const BEGINNER = "333-beginner";
-/** 처음 맞추기 뒤에 권하는 해법(차례대로, 다 끝낸 것은 건너뛴다) */
-export const NEXT_METHODS = ["cfop", "roux", "zz", "petrus"] as const;
+/** 처음 맞추기 뒤에 권하는 해법(차례대로, 다 끝낸 것은 건너뛴다). 첫째는 CFOP로 가는 다리(docs/47 16-24) */
+export const NEXT_METHODS = [
+  "333-2look",
+  "cfop",
+  "roux",
+  "zz",
+  "petrus",
+] as const;
 /** 처음 맞추기를 끝낸 사람에게 권하는 연습(공식 연습의 초보자 십자 단계) */
 export const BEGINNER_PRACTICE = "/cube/train?set=beginner-cross";
 /** 기록 재기를 권하는 동안(5번 평균이 나올 때까지) */

@@ -57,6 +57,26 @@ test("배우기: 3×3 초보자 지도는 일곱 단계 띠와 단계별 시연,
   ).toHaveAttribute("data-stage", "4");
 });
 
+test("배우기: 마지막 층을 공식으로 지도는 아래 두 층 → OLL → PLL 세 단계, 2단계 OLL 단원은 둘째 단계", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=333-2look-map");
+  const demo = page.locator("[data-stage-demo]");
+  await expect(demo).toHaveAttribute("data-stage-demo", "0");
+  await expect(page.locator("[data-stage-strip='3'] li")).toHaveCount(3);
+  await page.locator("[data-stage-next]").click();
+  await expect(demo).toHaveAttribute("data-stage-demo", "1");
+  await expect(page.locator("[data-stage-now]")).toContainText("OLL(방향)");
+  await shot(page, "learn-2look-map", info.project.name);
+
+  await page.goto("/cube/learn?lesson=cfop-2look-oll");
+  await expect(page.locator("[data-stage-label]")).toHaveText("3단계 중 2단계");
+  // CFOP 지도의 OLL·PLL 칸은 앞 과정에서 배워 이 과정 단원으로 잇지 않는다
+  await page.goto("/cube/learn?lesson=cfop-f2l-pair");
+  await expect(page.locator("[data-stage-header] li")).toHaveCount(4);
+  await expect(page.locator("[data-stage-header] li a")).toHaveCount(2);
+});
+
 test("배우기: 4×4 야우 지도도 다섯 단계를 단계별로 시연한다(야우 풀이 함수의 수)", async ({
   page,
 }, info) => {
