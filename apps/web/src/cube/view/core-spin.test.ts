@@ -33,9 +33,9 @@ describe("분해한 큐브의 속 3D 돌기", () => {
     );
   });
 
-  it("동작 줄이기면 엣지 블럭이 옆으로 보이는 각도에 멈춘다", () => {
+  it("동작 줄이기면 코너·엣지 블럭 다리가 옆으로 보이는 각도(240°)에 멈춘다", () => {
     expect(nextYaw(state(), 1_000, 16, true)).toBe(REST_YAW);
-    expect(REST_YAW).toBeCloseTo((150 * Math.PI) / 180, 9);
+    expect(REST_YAW).toBeCloseTo((240 * Math.PI) / 180, 9);
   });
 
   it("끄는 동안은 저절로 돌지 않고, 민 만큼 따라 돈다", () => {
