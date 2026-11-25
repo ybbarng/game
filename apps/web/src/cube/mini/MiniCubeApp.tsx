@@ -103,6 +103,7 @@ import {
   toApp,
 } from "./app-bridge";
 import { outlineFilter } from "./backdrop";
+import { cubieKeymap } from "./cubie-keys";
 import { FocusClock } from "./focus-clock";
 import {
   algTokens,
@@ -403,17 +404,11 @@ const DEPTH_RULE =
   "숫자 n 다음 면 키는 그 면의 n번째 층 하나, 숫자 n 다음 Shift + 면 키는 바깥 n층을 같이 돌려요(7×7 바깥 세 층은 3 → Shift+I).";
 
 /**
- * 저장된 키 배치에서 Cubie가 쓰지 않는 동작(처음으로·살펴보기, `MiniCube`의 키 처리)을 뺀 것. Esc는 앱의 「이전 앱으로」다.
+ * 저장된 키 배치에서 Cubie가 쓰지 않는 키(살펴보기, Esc 자리의 처음으로, `cubie-keys.ts`)를 뺀 것. Esc는 앱의 「이전 앱으로」다.
  * 쓰지 않는 키를 글로 덧붙여 알리지 않고 표에서 뺀다(고정 규칙 3절)
  */
-function cubieKeymap(): Keymap {
-  const k = loadKeymap();
-  return {
-    ...k,
-    bindings: k.bindings.filter(
-      (b) => b.action !== "reset" && b.action !== "inspectionSkip",
-    ),
-  };
+function storedCubieKeymap(): Keymap {
+  return cubieKeymap(loadKeymap());
 }
 
 /**
@@ -425,7 +420,7 @@ function KeysPage() {
   const [keymap, setKeymap] = useState<Keymap | null>(null);
   useEffect(() => {
     const reload = () => {
-      setKeymap(cubieKeymap());
+      setKeymap(storedCubieKeymap());
       setN(loadMiniPrefs().n);
     };
     reload();
@@ -512,7 +507,7 @@ function KeysPanelPage() {
     const q = Number(new URLSearchParams(window.location.search).get("n"));
     return isMiniSize(q) ? q : loadMiniPrefs().n;
   });
-  const [keymap] = useState<Keymap>(cubieKeymap);
+  const [keymap] = useState<Keymap>(storedCubieKeymap);
   const [pressed, setPressed] = useState<{ code: string; id: number } | null>(
     null,
   );

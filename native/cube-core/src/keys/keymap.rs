@@ -40,6 +40,17 @@ pub struct KeyBinding {
     pub action: String,
 }
 
+/// Cubie(앱·사이트 미니 화면)가 쓰는 키인가(사이트 `mini/cubie-keys.ts` `cubieUses`, docs/47 16-24): 살펴보기 건너뛰기는
+/// 쓰지 않고, 맞춘 상태로는 아무것도 함께 누르지 않은 Esc 자리만 뺀다(앱은 Esc를 단축키 표 닫기 → 연습 끝내기 → 이전
+/// 앱으로 쓴다). 기본 배치는 Shift+Enter에도 맞춘 상태로가 있다
+pub fn cubie_uses(b: &KeyBinding) -> bool {
+    match b.action.as_str() {
+        "inspectionSkip" => false,
+        "reset" => !(b.code == "Escape" && b.mods == 0),
+        _ => true,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Keymap {
     pub preset: Preset,

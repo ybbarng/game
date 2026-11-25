@@ -190,6 +190,9 @@ const COMMON_COMMANDS: KeyBinding[] = [
   key("Backspace", "undo"),
   key("KeyZ", "undo", { ctrl: true }),
   key("Escape", "reset"),
+  // Cubie·미니 화면은 Esc를 창 닫기·연습 끝내기·이전 앱으로 쓰므로 맞춘 상태로를 섞기 키 옆에 하나 더 둔다
+  // (잘못 눌러도 Enter 섞기처럼 판을 버리는 것과 같다, docs/47 16-24)
+  key("Enter", "reset", { shift: true }),
   key("Enter", "scramble"),
   key("Space", "inspectionSkip"),
   key("ArrowLeft", "peekBack"),

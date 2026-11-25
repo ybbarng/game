@@ -5,7 +5,7 @@ mod json;
 
 use cube_core::keys::keymap::KeyBinding;
 use cube_core::keys::paint::{calm_line, calm_tint, stripe_tint, striped_color};
-use cube_core::keys::{key_paint, key_table, preset_keymap, KeyPaint, Keymap, Preset};
+use cube_core::keys::{cubie_uses, key_paint, key_table, preset_keymap, KeyPaint, Keymap, Preset};
 use cube_core::mask::{mask_at_slots, mask_for, Visibility};
 use cube_core::practice::{case_start, stage_by_id, PRACTICE_N};
 use cube_core::state::face_colors;
@@ -90,9 +90,7 @@ fn key_paint_matches_site() {
                     "custom" => custom.clone(),
                     id => preset_keymap(Preset::from_id(id).expect("배치")),
                 };
-                keymap
-                    .bindings
-                    .retain(|b| b.action != "reset" && b.action != "inspectionSkip");
+                keymap.bindings.retain(cubie_uses);
                 let n = c.get("n").num() as usize;
                 let want: Vec<String> = c
                     .get("cells")
