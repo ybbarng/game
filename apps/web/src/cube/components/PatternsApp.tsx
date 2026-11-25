@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { cn } from "@/lib/cn";
+import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import {
   LEVEL_LABEL,
   levelOf,
@@ -29,6 +30,7 @@ import { type CubeSettings, useCubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import { DemoCube } from "./DemoCube";
 import { PatternTry } from "./PatternTry";
+import { SizePicker } from "./SizePicker";
 
 /**
  * 패턴 보기(`/cube/patterns`의 「보기」 탭, docs/47 16-2). 크기별 패턴 카드 → 카드를 열면 시연과 「직접 만들어 보기」.
@@ -36,7 +38,8 @@ import { PatternTry } from "./PatternTry";
  */
 
 const MINE_PREFIX = "mine-";
-const SIZE_LABEL = (n: number) => `${n}×${n}`;
+/** 내 패턴으로 넣을 수 있는 크기 */
+const MINE_SIZES = [2, 3, 4, 5] as const;
 
 /** 내 패턴을 패턴 카드 모양으로 */
 function fromMine(m: MyPattern): Pattern {
@@ -145,46 +148,39 @@ function PatternList({
   onOpen: (id: string) => void;
   onMine: (list: MyPattern[]) => void;
 }) {
+  // 지금 크기의 패턴만 보인다(이 화면에 없는 크기면 3×3). 여기서 고르면 지금 크기도 바뀐다(docs/47 16-28)
+  const n = sizeFor(PATTERN_SIZES, useCurrentSize());
   return (
     <>
       {header}
       <div className="flex flex-wrap items-center gap-3">
-        <nav aria-label="크기" className="flex flex-wrap gap-1.5 text-sm">
-          {PATTERN_SIZES.map((n) => (
-            <a
-              key={n}
-              href={`#size-${n}`}
-              className="rounded-full bg-white/10 px-3 py-1 hover:bg-white/15"
-            >
-              {SIZE_LABEL(n)}
-            </a>
-          ))}
-          <a
-            href="#mine"
-            className="rounded-full bg-white/10 px-3 py-1 hover:bg-white/15"
-          >
-            내 패턴
-          </a>
-        </nav>
+        <SizePicker
+          attr="data-pattern-sizes"
+          sizes={PATTERN_SIZES}
+          value={n}
+          onPick={setCurrentSize}
+        />
+        <a
+          href="#mine"
+          className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
+        >
+          내 패턴
+        </a>
       </div>
 
-      {PATTERN_SIZES.map((n) => (
-        <section
-          key={n}
-          id={`size-${n}`}
-          className="flex scroll-mt-4 flex-col gap-2"
-          data-pattern-size={n}
-        >
-          <h2 className="font-semibold text-white/90">{SIZE_LABEL(n)}</h2>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {PATTERNS.filter((p) => p.size === n).map((p) => (
-              <li key={p.id}>
-                <PatternCard pattern={p} settings={settings} onOpen={onOpen} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <section
+        key={n}
+        className="cube-rise flex flex-col gap-2"
+        data-pattern-size={n}
+      >
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {PATTERNS.filter((p) => p.size === n).map((p) => (
+            <li key={p.id}>
+              <PatternCard pattern={p} settings={settings} onOpen={onOpen} />
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <MinePatterns
         settings={settings}
@@ -259,7 +255,8 @@ function MinePatterns({
   onOpen: (id: string) => void;
   onMine: (list: MyPattern[]) => void;
 }) {
-  const [size, setSize] = useState(3);
+  // 넣을 패턴의 크기도 지금 크기(2×2~5×5 밖이면 3×3)
+  const size = sizeFor(MINE_SIZES, useCurrentSize());
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const read = useMemo(
@@ -289,24 +286,13 @@ function MinePatterns({
             setText("");
           }}
         >
-          <fieldset aria-label="크기" className="flex gap-1.5">
-            {[2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={n === size}
-                onClick={() => setSize(n)}
-                className={cn(
-                  "rounded-full px-3 py-1",
-                  n === size
-                    ? "bg-sky-500 font-semibold text-black"
-                    : "bg-white/10 hover:bg-white/15",
-                )}
-              >
-                {SIZE_LABEL(n)}
-              </button>
-            ))}
-          </fieldset>
+          <SizePicker
+            attr="data-mine-size"
+            sizes={MINE_SIZES}
+            value={size}
+            onPick={setCurrentSize}
+            className="self-start"
+          />
           <label className="flex flex-col gap-1">
             <span className="text-white/70 text-xs">공식</span>
             <input
@@ -424,7 +410,7 @@ function PatternView({
           {p.name}
         </h1>
         <span className="flex items-center gap-1.5 text-sm text-white/70">
-          {SIZE_LABEL(n)} · {count}수 <LevelBadge level={levelOf(count)} />
+          {n}×{n} · {count}수 <LevelBadge level={levelOf(count)} />
         </span>
       </header>
       <p className="text-white/80">{p.look}</p>

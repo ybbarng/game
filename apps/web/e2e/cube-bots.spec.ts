@@ -1,4 +1,11 @@
-import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
+import {
+  installClock,
+  no3d,
+  pauseClock,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, type Page, test } from "./test";
 
 /**
@@ -90,7 +97,7 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
 }, info) => {
   await page.clock.install();
   await page.goto("/cube/vs");
-  await page.locator("[data-cube-vs-size]").selectOption("3");
+  await pickSize(page, "[data-cube-vs-size]", 3);
   // 기록이 없으니 「내 실력에 맞춤」은 초보 목표(약 1분)
   for (const [value, label, time] of [
     ["6:novice", "입문", "약 2분"],
@@ -104,7 +111,7 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
     await expect(b).toContainText(label);
     await expect(b).toContainText(time);
   }
-  await page.locator("[data-cube-vs-size]").selectOption("2");
+  await pickSize(page, "[data-cube-vs-size]", 2);
   await expect(page.locator('[data-cube-bot-level="6:pro"]')).toContainText(
     "약 3초",
   );
@@ -142,7 +149,7 @@ for (const [value, label, time, step] of [
   }, info) => {
     await page.clock.install();
     await page.goto("/cube/vs");
-    await page.locator("[data-cube-vs-size]").selectOption("4");
+    await pickSize(page, "[data-cube-vs-size]", 4);
     await expect(
       page.locator(`[data-cube-bot-level="${value}"]`),
     ).toContainText(time);
@@ -183,7 +190,7 @@ test("오늘의 섞기: 컴퓨터와 겨루면 같은 섞기를 나란히 맞추
     { timeout: SCRAMBLE_TIMEOUT },
   );
   await pauseClock(page);
-  await page.locator("[data-cube-size]").selectOption("2");
+  await pickSize(page, "[data-cube-size]", 2);
   // 2×2 초고수(평균 약 3초): 수 사이 1초씩 느리게 맞추면 컴퓨터가 이긴다
   await page.locator("[data-cube-rival-pick]").selectOption("6:pro");
   const text = await receiveWithRival(page);
@@ -229,7 +236,7 @@ test("제한 도전: 컴퓨터도 같은 체력 규칙으로 겨루고, 점수�
     { timeout: SCRAMBLE_TIMEOUT },
   );
   await pauseClock(page);
-  await page.locator("[data-cube-size]").selectOption("2");
+  await pickSize(page, "[data-cube-size]", 2);
   // 2×2 입문(평균 약 45초): 빨리 맞추면 내가 이긴다
   await page.locator("[data-cube-rival-pick]").selectOption("6:novice");
   const text = await receiveWithRival(page);

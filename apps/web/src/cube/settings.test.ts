@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { effectiveHeroChoice } from "./hero/methods";
 import {
   COLOR_SCHEMES,
   DEFAULT_SETTINGS,
@@ -74,26 +75,26 @@ describe("큐브 설정 저장", () => {
     ).toEqual(COLOR_SCHEMES.standard);
   });
 
-  it("첫 화면 큐브: 옛 저장값에 칸이 없으면 3×3·번갈아, 크기에 맞지 않는 해법은 번갈아", () => {
+  it("첫 화면 큐브: 옛 저장값에 칸이 없으면 번갈아, 표에 없는 해법은 번갈아", () => {
     const old = parseSettings(
       JSON.stringify({ version: 1, colorScheme: "standard", sound: false }),
     );
-    expect(old.heroSize).toBe(3);
     expect(old.heroMethod).toBe("alternate");
     expect(old.sound).toBe(false);
+    const bad = parseSettings(JSON.stringify({ heroMethod: "없는 해법" }));
+    expect(bad.heroMethod).toBe("alternate");
+  });
 
-    const ok = parseSettings(
-      JSON.stringify({ heroSize: 2, heroMethod: "2-algs" }),
-    );
-    expect([ok.heroSize, ok.heroMethod]).toEqual([2, "2-algs"]);
-    const mismatch = parseSettings(
+  it("첫 화면 큐브: 없앤 연출 크기(heroSize)는 읽지 않고, 다른 크기의 해법도 그대로 둔다", () => {
+    const s = parseSettings(
       JSON.stringify({ heroSize: 4, heroMethod: "3-cfop" }),
     );
-    expect([mismatch.heroSize, mismatch.heroMethod]).toEqual([4, "alternate"]);
-    const bad = parseSettings(
-      JSON.stringify({ heroSize: 8, heroMethod: "없는 해법" }),
-    );
-    expect([bad.heroSize, bad.heroMethod]).toEqual([3, "alternate"]);
+    expect("heroSize" in s).toBe(false);
+    // 연출 크기는 지금 크기라 쓸 때 맞춘다: 3×3이면 프리드리히, 4×4면 번갈아
+    expect(s.heroMethod).toBe("3-cfop");
+    expect(effectiveHeroChoice(s.heroMethod, 3)).toBe("3-cfop");
+    expect(effectiveHeroChoice(s.heroMethod, 4)).toBe("alternate");
+    expect(effectiveHeroChoice("alternate", 2)).toBe("alternate");
   });
 
   it("수 흐름 띠: 옛 저장값·모르는 값은 켬, 고른 값은 그대로", () => {

@@ -23,6 +23,8 @@ import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
 import { MyMethodPick } from "../components/MethodSelect";
+import { SizePicker } from "../components/SizePicker";
+import { loadCurrentSize, setCurrentSize } from "../current-size";
 import { shapeSupports } from "../patterns/race";
 import { ShapeRulePicker } from "../patterns/ShapeRulePicker";
 import { stageById } from "../practice/stages";
@@ -36,7 +38,14 @@ import { PracticeRulePicker } from "./PracticeRulePicker";
 import { PARTY_MODE_LABELS, PARTY_MODES } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
-import { CubeRoom, MAX_PLAYERS, NAME_MAX, TIME_LIMIT_SEC } from "./room";
+import {
+  CubeRoom,
+  initialRoomSettings,
+  MAX_PLAYERS,
+  NAME_MAX,
+  ROOM_SIZES,
+  TIME_LIMIT_SEC,
+} from "./room";
 import { sessionSeatStore } from "./seat";
 import {
   FORMAT_LABELS,
@@ -224,6 +233,8 @@ export function CubeOnlineApp() {
         // 방장·손님 모두 자리를 남기고 되찾는다(방장은 손님마다 방장 자리 증명을 확인받는다, docs/47 9-11)
         seat: sessionSeatStore(roomCode),
         name: trimmed,
+        // 방장: 처음 방 크기는 내 지금 크기(손님은 방 크기를 따르고 지금 크기를 바꾸지 않는다, docs/47 16-28)
+        ...(isHost ? { settings: initialRoomSettings(loadCurrentSize()) } : {}),
         ...withAverages(),
         scrambler: scrambleInWorker,
         botPlan: planInWorker,
@@ -489,26 +500,24 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
       </section>
       <section className="flex flex-col gap-3 self-start rounded-2xl bg-white/5 p-3 text-sm">
         <h2 className="font-semibold">판 설정 {host ? "" : "(방장이 정함)"}</h2>
-        <Field label="종목">
-          <select
-            disabled={!host}
+        {/* 크기 단추는 label 안에 두지 않는다(글을 누르면 첫 단추가 눌린다) */}
+        <div className="flex items-center justify-between gap-2">
+          종목
+          <SizePicker
+            attr="data-cube-room-size"
+            sizes={ROOM_SIZES}
             value={s.n}
-            onChange={(e) => {
-              const k = Number(e.target.value);
+            disabled={!host}
+            onPick={(k) => {
+              // 방장이 고르면 방장의 지금 크기도 바뀐다(손님은 단추가 막혀 있다)
+              setCurrentSize(k);
               room.setSettings({
                 n: k,
                 timeLimitSec: TIME_LIMIT_SEC[k] ?? s.timeLimitSec,
               });
             }}
-            className="rounded bg-white/10 px-2 py-1"
-          >
-            {[2, 3, 4, 5].map((k) => (
-              <option key={k} value={k} className="bg-neutral-800">
-                {k}×{k}
-              </option>
-            ))}
-          </select>
-        </Field>
+          />
+        </div>
         <Field label="규칙">
           <select
             disabled={!host}

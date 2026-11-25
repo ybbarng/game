@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { sizeFor, useCurrentSize } from "../current-size";
+import {
+  effectiveHeroChoice,
+  HERO_SIZES,
+  type HeroSize,
+} from "../hero/methods";
 import { HERO_BOX, heroPosterSrc } from "../hero/poster";
 import type { HeroHandle } from "../hero/run";
 import { useCubeSettings } from "../settings";
@@ -20,7 +26,7 @@ import { CubePoster } from "./CubePoster";
  * - 화면에 안 보이거나 탭이 숨으면 멈춘다(휴대폰 전지·발열).
  * - 창을 최소화했다 돌아오는 등으로 WebGL 문맥을 잃으면 연출을 치우고 대기 그림을 다시 보인 뒤, 화면이 보일 때
  *   새 캔버스로 다시 띄운다(맞춘 큐브부터).
- * - 크기·해법·강조는 설정(「첫 화면 큐브」), 색은 설정의 색을 따른다.
+ * - 크기는 지금 크기(`current-size.ts`, docs/47 16-28), 해법·강조는 설정(「첫 화면 큐브」), 색은 설정의 색을 따른다.
  */
 
 /** 3D가 대기 그림 위로 나타나는 시간(ms) */
@@ -48,7 +54,10 @@ export function CubeHero() {
   const highlightRef = useRef(settings.heroHighlight);
   highlightRef.current = settings.heroHighlight;
 
-  const { heroSize: n, heroMethod: choice, quality, stickerless } = settings;
+  // 크기는 지금 크기(docs/47 16-28). 고른 해법이 다른 크기의 것이면 「번갈아」
+  const n = sizeFor(HERO_SIZES, useCurrentSize()) as HeroSize;
+  const choice = effectiveHeroChoice(settings.heroMethod, n);
+  const { quality, stickerless } = settings;
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
@@ -159,7 +168,7 @@ export function CubeHero() {
     handleRef.current?.setHighlight(settings.heroHighlight);
   }, [settings.heroHighlight]);
 
-  const src = heroPosterSrc(settings);
+  const src = heroPosterSrc(n, settings);
   const posterSrc = src !== null && src !== failedSrc ? src : null;
   const imageReady = posterSrc !== null && loadedSrc === posterSrc;
   /**
@@ -178,6 +187,7 @@ export function CubeHero() {
     <div
       ref={wrapRef}
       data-cube-hero
+      data-hero-n={n}
       data-hero-ready={live ? "" : undefined}
       data-hero-shown={live && shown ? "" : undefined}
       className="flex w-full flex-col items-center"

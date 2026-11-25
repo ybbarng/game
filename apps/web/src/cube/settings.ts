@@ -5,12 +5,9 @@ import {
   type HeroHighlight,
 } from "./hero/highlight";
 import {
-  DEFAULT_HERO_SIZE,
   findHeroMethod,
   HERO_ALTERNATE,
   type HeroChoice,
-  type HeroSize,
-  isHeroSize,
 } from "./hero/methods";
 import { SCRAMBLE_SHOW_LABEL, type ScrambleShowSetting } from "./scramble-show";
 import { DEFAULT_COLORS, type Quality } from "./view/types";
@@ -136,9 +133,11 @@ export interface CubeSettings {
    * 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출. 움직임 줄이기를 켠 기기는 늘 바로
    */
   scrambleShow: ScrambleShowSetting;
-  /** 첫 화면 큐브 연출의 크기 */
-  heroSize: HeroSize;
-  /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
+  /**
+   * 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id. 연출 크기는 지금 크기(`current-size.ts`)를
+   * 따르고, 고른 해법이 그 크기의 것이 아니면 「번갈아」로 돈다(`effectiveHeroChoice`). 예전 칸 `heroSize`(설정 「첫 화면
+   * 큐브 크기」)는 2026-11-26 없앴다: 읽지 않고, 3이 아닌 값은 지금 크기가 없을 때 한 번 지금 크기로 옮긴다(docs/47 16-28)
+   */
   heroMethod: HeroChoice;
   /** 첫 화면 큐브의 조각 강조(넣을 곳·찾은 조각·맞춘 조각): 끄기 / 잠깐 / 계속 */
   heroHighlight: HeroHighlight;
@@ -164,7 +163,6 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   flowStrip: "on",
   raceAlerts: "on",
   scrambleShow: "auto",
-  heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
   heroHighlight: DEFAULT_HERO_HIGHLIGHT,
 };
@@ -216,11 +214,9 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     d.quality === "high" || d.quality === "medium" || d.quality === "low"
       ? d.quality
       : DEFAULT_SETTINGS.quality;
-  const heroSize = isHeroSize(d.heroSize) ? d.heroSize : DEFAULT_HERO_SIZE;
-  // 그 크기의 해법이 아니면(표에서 빠졌거나 크기가 바뀜) 「번갈아」
+  // 표에 없는 해법(빠졌거나 틀린 값)은 「번갈아」. 크기는 보지 않는다(연출 크기는 지금 크기라 쓸 때 맞춘다)
   const heroMethod =
-    typeof d.heroMethod === "string" &&
-    findHeroMethod(d.heroMethod)?.size === heroSize
+    typeof d.heroMethod === "string" && findHeroMethod(d.heroMethod)
       ? d.heroMethod
       : HERO_ALTERNATE;
   const bool = (v: unknown, fallback: boolean) =>
@@ -261,7 +257,6 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
       Object.hasOwn(SCRAMBLE_SHOW_LABEL, d.scrambleShow)
         ? (d.scrambleShow as ScrambleShowSetting)
         : DEFAULT_SETTINGS.scrambleShow,
-    heroSize,
     heroMethod,
     heroHighlight: (HERO_HIGHLIGHTS as readonly unknown[]).includes(
       d.heroHighlight,

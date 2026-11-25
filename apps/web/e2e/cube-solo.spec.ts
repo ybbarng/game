@@ -1,4 +1,11 @@
-import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
+import {
+  installClock,
+  no3d,
+  pauseClock,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /**
@@ -399,7 +406,7 @@ test(
     // 고른 해법은 새로 고쳐도 남고, 2×2는 고를 것이 하나라 고르기가 없다
     await page.reload();
     await expect(page.locator("select[data-cube-method]")).toHaveValue("cfop");
-    await page.locator("[data-cube-size]").selectOption("2");
+    await pickSize(page, "[data-cube-size]", 2);
     await expect(page.locator("select[data-cube-method]")).toHaveCount(0);
   },
 );
@@ -444,7 +451,7 @@ test(
     // 3×3에는 야우가 없다
     await expect(yau).toHaveCount(0);
 
-    await page.locator("[data-cube-size]").selectOption("4");
+    await pickSize(page, "[data-cube-size]", 4);
     await expect(
       page.locator("[data-cube-stage][data-input-ready]"),
     ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
@@ -465,7 +472,7 @@ test(
     await shot(page, "solo-method-yau", info.project.name);
 
     // 5×5에는 야우 풀이가 없어 고르기에도 없고, 고른 야우는 자동으로 보인다
-    await page.locator("[data-cube-size]").selectOption("5");
+    await pickSize(page, "[data-cube-size]", 5);
     await expect(method).toHaveValue("auto");
     await expect(yau).toHaveCount(0);
   },
@@ -598,7 +605,7 @@ test(
     await expect(page.locator("[data-cube-moves]")).toHaveText("1");
 
     // 6×6: 크기와 상관없이 0.5초 짧은 연출
-    await page.locator("[data-cube-size]").selectOption("6");
+    await pickSize(page, "[data-cube-size]", 6);
     await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
       "data-cube-ready",
       "",

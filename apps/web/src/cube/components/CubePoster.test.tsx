@@ -121,23 +121,24 @@ describe("첫 화면 대기 그림 고르기", () => {
   const base = { ...DEFAULT_SETTINGS, colors: [...DEFAULT_COLORS] };
 
   it("색 묶음이면 찍은 이미지, 직접 고른 색·스티커 없는 모양이면 SVG(null)", () => {
-    expect(heroPosterSrc(base)).toBe("/cube/hero/3-standard.webp");
+    expect(heroPosterSrc(3, base)).toBe("/cube/hero/3-standard.webp");
+    // 크기는 지금 크기(설정의 첫 화면 연출 크기는 없앴다)
     expect(
-      heroPosterSrc({
+      heroPosterSrc(5, {
         ...base,
-        heroSize: 5,
         colorScheme: "colorblind",
         colors: [...COLOR_SCHEMES.colorblind],
       }),
     ).toBe("/cube/hero/5-colorblind.webp");
+    expect(heroPosterSrc(8, base)).toBeNull();
     const custom = [...DEFAULT_COLORS];
     custom[0] = 0x123456;
     expect(
-      heroPosterSrc({ ...base, colorScheme: "custom", colors: custom }),
+      heroPosterSrc(3, { ...base, colorScheme: "custom", colors: custom }),
     ).toBeNull();
-    expect(heroPosterSrc({ ...base, stickerless: true })).toBeNull();
+    expect(heroPosterSrc(3, { ...base, stickerless: true })).toBeNull();
     // 이름은 묶음인데 색이 다르면 쓰지 않는다
-    expect(heroPosterSrc({ ...base, colors: custom })).toBeNull();
+    expect(heroPosterSrc(3, { ...base, colors: custom })).toBeNull();
   });
 
   // 그림 파일은 vitest.config.ts forceRerunTriggers(public/cube/hero)로 바뀌면 전부 돈다

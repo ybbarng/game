@@ -594,7 +594,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
    - `taught.rs`: 배우는 방식 3×3 초보자(사이트 `solveBeginner3(state, { taught: true })`, `taught.ts`·`cross-front.ts`): 흰 면 위 십자를 F·D·y로만, 첫 층 코너 지름길, z2 뒤 둘째 층은 앞-오른쪽 칸만, 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향. 살피는 자리 앞뒤 수를 합치지 않는다(`look_barrier`).
    - `hero_show.rs`: 조각 강조(`piece-marks.ts`), 보여 주기 변환(`present.ts` 전부: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 보이는 세 면에서 찾는 돌리기, 이미 맞은 조각 확인, 마지막 층 맞출 칸·알아볼 모양, 쉬는 자리), 연출 걸음과 시간(`loop.ts` `heroTiming`·`randomScramble`·`orientForSolve`·`scrambleSteps`·`orientSteps`·`solveSteps` 강조 「잠깐」·`heroMoveMs`), 꼬리표(`heroStageLabel`). 걸음은 시각표(`hero_timeline`: 시각·수·회전 시간, 「맞춤」 멈춤이 시작하는 때)로 앱에 준다.
    - 공통 자료 `fixtures/hero-show.json`(씨앗 8개 × 초보자·프리드리히): 씨앗 → 섞기·쥐는 방향, 첫 면 색, 변환 뒤 수·단계·살피는 자리·찾는 돌리기·쉬는 자리·강조(스티커까지), 연출 걸음 전부. 어긋남 0. 씨앗 150개 × 둘(300판)로도 한 번 견줘 어긋남 0이었다(자료에는 8개만 남김).
-   - 앱: C ABI `cubie_hero_steps(해법, 씨앗)` → `NativeCubeWindow.startHero`가 맞춘 큐브에서 시각표대로 돌리고 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다(사이트 미니와 같다). 해법은 설정 `heroSize`·`heroMethod`를 사이트와 같은 규칙으로 읽는다(`CubeSettings.heroMethodId`, 시험 `HeroSettingsTests`).
+   - 앱: C ABI `cubie_hero_steps(해법, 씨앗)` → `NativeCubeWindow.startHero`가 맞춘 큐브에서 시각표대로 돌리고 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다(사이트 미니와 같다). 해법은 설정 `heroSize`·`heroMethod`를 사이트와 같은 규칙으로 읽는다(`CubeSettings.heroMethodId`, 시험 `HeroSettingsTests`). (2026-11-26) 사이트가 `heroSize`를 없애 앱도 `heroMethod`만 읽는다(5-22).
    - 비교 그림 `docs/cubie-native/compare-hero.webp`: 초보자 해법 씨앗 5의 멈춤 자리 열 곳(섞인 뒤 · 흰 십자 · 첫 층 · 뒤집은 뒤 · 둘째 층 · 마지막 층 단계)을 웹(배포된 사이트를 WebKit, 시계를 멈추고 Math.random을 같은 mulberry32로)과 네이티브(화면 밖 스크린샷)로 나란히. 장면마다 칸 색이 같다(카메라 원근 차이는 5-5부터 있던 것). 다시 만들기: `CUBIE_NATIVE_SHOT=<폴더> CUBIE_NATIVE_SHOT_HERO=3-beginner:5 apps/cubie/Cubie.app/Contents/MacOS/Cubie` 뒤 `node apps/cubie/scripts/hero-compare.mjs <폴더>`.
    - ~~남은 차례: 루·ZZ·2×2 초보자·공식, 4×4~7×7 축소법~~(2026-11-16 옮김, 5-10). 조각 강조 빛(사이트 `onMarks`)은 미니 화면도 그리지 않아 옮기지 않았다(멈춤 시간에는 들어 있다).
 2. ~~공식 연습 가리기~~(2026-11-12 옮김, 위 기능 표).
@@ -1076,6 +1076,15 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - **비교 그림**: `CUBIE_NATIVE_SHOT`에 `native-place-pll-t`(PLL T 퍼뮤를 놓은 큐브, 거울)·`native-place`·`native-place-revealed`(말풍선 접힘·펼침), `native-compare.mjs`가 같은 장면을 웹(WebKit)으로 찍어 얹는다. `docs/cubie-native/compare-place.webp`(바탕 넷 × 큐브, 오른쪽 두 칸이 상황 놓기: 웹·네이티브가 같은 모양), `compare-place-panels.webp`(말풍선과 웹 창 안 칸, F1 표 Enter 칸의 Shift 줄 「처음으로」). 웹은 이 작업 트리의 빌드(`out/`)를 로컬로 띄워 찍었다.
 - 키 입력 자체(Shift+Enter, `\`)는 앞 앱에 키를 보내지 않으려고 이 맥에서 보지 않았다(고정 규칙 4절). 판단은 코어 시험과 화면 시험이 본다.
 - **Cubie 새 판이 필요하다**(메뉴·큐브 창 동작이 바뀌었다).
+
+### 5-22. 사이트 「지금 크기」와 앱 크기(2026-11-26)
+
+정한 것은 docs/47 16-28. 앱은 메뉴 「큐브 크기」(`cube.mini.v1`의 `n`, `MiniSize.pick`)가 지금 크기 구실을 하고 사이트의 `cube.size.v1`과 맞추지 않는다.
+
+- `CubeSettings.swift`: 사이트가 없앤 `heroSize`를 읽지 않는다. `heroMethod`는 해법 표에 있으면 크기와 상관없이 남기고, 홈 시연은 앱 큐브 크기의 해법이 아니면 그 크기 첫 해법(`heroMethodId(n:)`, 그대로). 시험 `HeroSettingsTests`.
+- 메뉴 「티어표」와 처음 여는 티어표 창은 고른 크기(`book.n`)로 연다. 예전에는 보이는 크기(`cube.state.n`)라 상황 놓기로 3×3을 잠시 든 동안 3×3 티어표가 떴다(기록 창은 이미 `book.n`).
+- 기록 창·티어표 창 안의 크기 단추는 구경이라 저장하지 않는다(이미 그랬다).
+- **Cubie 새 판이 필요하다**(메뉴 「티어표」 동작이 바뀌었다).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

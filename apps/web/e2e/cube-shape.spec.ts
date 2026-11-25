@@ -1,4 +1,11 @@
-import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
+import {
+  inputReady,
+  keysFor,
+  no3d,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { NO_PHONE_LANDSCAPE } from "./projects";
 import {
   expect,
@@ -76,7 +83,7 @@ test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () =>
     });
     await page.clock.install();
     await page.goto("/cube/vs");
-    await page.locator("[data-cube-vs-size]").selectOption("2");
+    await pickSize(page, "[data-cube-vs-size]", 2);
     await page.getByRole("button", { name: "입문", exact: true }).click();
     await page.locator('[data-cube-vs-party="shape"]').click();
     await expect(page.locator('[data-cube-shape-pick="easy"]')).toHaveAttribute(
@@ -277,7 +284,7 @@ test.describe("목표 그림: 거울 판을 단 3D 큐브", {
       w.__cubeVsSeed = "shape";
     });
     await page.goto("/cube/vs");
-    await page.locator("[data-cube-vs-size]").selectOption("3");
+    await pickSize(page, "[data-cube-vs-size]", 3);
     await page.getByRole("button", { name: "입문", exact: true }).click();
     await page.locator('[data-cube-vs-party="shape"]').click();
     await page.getByLabel("15초 살펴보기").uncheck();

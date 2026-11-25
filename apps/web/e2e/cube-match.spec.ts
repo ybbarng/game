@@ -1,4 +1,4 @@
-import { no3d } from "./cube";
+import { no3d, pickSize } from "./cube";
 import {
   expect,
   fastForwardUntil,
@@ -61,6 +61,7 @@ test(
     test.setTimeout(150_000);
     await page.clock.install();
     await page.goto("/cube/vs");
+    await pickSize(page, "[data-cube-vs-size]", 2);
     await page.getByRole("button", { name: "초고수", exact: true }).click();
     await page.locator('[data-cube-vs-rounds="3"]').click();
     await expect(page.locator("[data-cube-vs-scoring]")).toHaveValue("wins");

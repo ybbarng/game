@@ -13,6 +13,7 @@ import type {
   SuspicionRules,
 } from "@/net/race/types";
 import { randomId, type Transport } from "@/net/transport";
+import { sizeFor } from "../current-size";
 import {
   type ShapeRule,
   shapeFor,
@@ -176,6 +177,17 @@ export const TIME_LIMIT_SEC: Record<number, number> = {
   4: 1200,
   5: 2400,
 };
+
+/** 방에서 고를 수 있는 크기 */
+export const ROOM_SIZES = [2, 3, 4, 5] as const;
+
+/**
+ * 방장이 방을 만들 때의 처음 크기(docs/47 16-28): 방장의 지금 크기, 방에서 못 고르는 크기면 3×3. 제한 시간도 그 크기 것
+ */
+export function initialRoomSettings(current: number): Partial<RoomSettings> {
+  const n = sizeFor(ROOM_SIZES, current);
+  return { n, timeLimitSec: TIME_LIMIT_SEC[n] ?? 300 };
+}
 
 export const DEFAULT_SETTINGS: RoomSettings = {
   n: 3,
@@ -2387,7 +2399,7 @@ function isRoomState(
       s.players.length <= MAX_PLAYERS &&
       typeof s.round === "number" &&
       typeof s.settings?.n === "number" &&
-      [2, 3, 4, 5].includes(s.settings.n) &&
+      (ROOM_SIZES as readonly number[]).includes(s.settings.n) &&
       typeof s.settings.timeLimitSec === "number" &&
       pointsSettingsOk(s.settings) &&
       partySettingsOk(s.settings) &&

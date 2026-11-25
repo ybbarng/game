@@ -1,4 +1,4 @@
-import { inputReady, no3d, shot, useNotationKeys } from "./cube";
+import { inputReady, no3d, pickSize, shot, useNotationKeys } from "./cube";
 import { expect, type Page, test } from "./test";
 
 /**
@@ -27,7 +27,7 @@ async function start(page: Page) {
   }, BOTS);
   await page.clock.install();
   await page.goto("/cube/vs");
-  await page.locator("[data-cube-vs-size]").selectOption("2");
+  await pickSize(page, "[data-cube-vs-size]", 2);
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await page.getByLabel("15초 살펴보기").uncheck();
   await page.locator("[data-cube-vs-start]").click();

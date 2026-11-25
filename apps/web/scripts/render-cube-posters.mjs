@@ -72,9 +72,11 @@ try {
         reducedMotion: "no-preference",
       });
       await context.addInitScript(
-        ([settings]) => {
+        ([settings, size]) => {
           sessionStorage.setItem("mighty-splash-seen", "1");
           localStorage.setItem("cube.settings.v1", settings);
+          // 연출 크기는 지금 크기(docs/47 16-28, 예전 설정 heroSize)
+          localStorage.setItem("cube.size.v1", size);
           // 연출이 「화면에 안 보임」으로 멈춰 있게(맞춘 첫 장면 그대로)
           window.IntersectionObserver = class {
             observe() {}
@@ -85,7 +87,10 @@ try {
             }
           };
         },
-        [JSON.stringify({ version: 1, colorScheme: scheme, heroSize: n })],
+        [
+          JSON.stringify({ version: 1, colorScheme: scheme }),
+          JSON.stringify({ v: 1, n }),
+        ],
       );
       const page = await context.newPage();
       await page.goto(`${base}/cube`);

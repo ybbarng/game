@@ -441,11 +441,12 @@ describe("주소 → spec", () => {
   });
 
   it("게임 폴더 파일도 닿는 주소로: 큐브 타이머만 쓰는 것은 cube-timer만, 모든 큐브 화면이 쓰는 CubeView는 큐브 전부", () => {
+    // 타이머 주소를 여는 spec은 타이머 시험과 지금 크기 시험(타이머가 지금 크기로 열리는지) 둘
     expect(pick("apps/web/src/cube/timer/CubeTimerApp.tsx").specs).toEqual(
-      ["cube-timer", ...BASE_SPECS].sort(),
+      ["cube-current-size", "cube-timer", ...BASE_SPECS].sort(),
     );
     expect(pick("apps/web/src/app/cube/timer/page.tsx").specs).toEqual(
-      ["cube-timer", ...BASE_SPECS].sort(),
+      ["cube-current-size", "cube-timer", ...BASE_SPECS].sort(),
     );
     expect(pick("apps/web/src/cube/view/cube-view.ts").specs).toEqual(
       [...cubeSpecs, ...BASE_SPECS].sort(),
