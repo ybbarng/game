@@ -152,11 +152,12 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
 test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 센터 여섯 세기 → 표준 색 배치 → 분해·조립", async ({
   page,
 }, info) => {
-  await page.goto("/cube/methods");
-  // 3×3 처음 맞추기의 첫 단원
-  await expect(
-    page.locator('[data-course="333-beginner"] [data-lesson]').first(),
-  ).toHaveAttribute("data-lesson", "333-start");
+  await page.goto("/cube/basics");
+  // 큐브의 기초 첫 단원(docs/47 16-27)
+  await expect(page.locator("[data-lesson]").first()).toHaveAttribute(
+    "data-lesson",
+    "333-start",
+  );
 
   await page.goto("/cube/learn?lesson=333-start");
   const section = page.locator("[data-step-kind]");

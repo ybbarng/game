@@ -9,20 +9,32 @@ import { stagesOf } from "../practice/stages";
 import { GLOSSARY_333, loosePieceWords, movedPieceWords } from "./glossary-333";
 import { BEGINNER_222 } from "./lessons-222";
 import { FROM_333_222 } from "./lessons-222-from333";
-import { BEGINNER_333 } from "./lessons-333";
-import { coursePlaces, courseSummaries } from "./term-places";
+import { BASICS_333, BEGINNER_333 } from "./lessons-333";
+import {
+  chainPlaces,
+  chainSummaries,
+  coursePlaces,
+  courseSummaries,
+} from "./term-places";
 import type { Course } from "./types";
 
-const PLACES = coursePlaces(BEGINNER_333);
+// 처음 맞추기는 큐브의 기초 단원 셋 다음에 초보자 과정을 읽는다(docs/47 16-27). 초보자 과정은 기초에서 뜻을 준 말을
+// 그대로 쓴다
+const FIRST_SOLVE = [BASICS_333, BEGINNER_333];
+const PLACES = chainPlaces(FIRST_SOLVE);
 
-describe("3×3 처음 맞추기 용어", () => {
+describe("3×3 처음 맞추기 용어(큐브의 기초 → 초보자 과정)", () => {
+  it("큐브의 기초 다음에 이어 읽는 과정은 초보자 과정이다", () => {
+    expect(BASICS_333.continues).toBe(BEGINNER_333.id);
+  });
+
   it(`용어 ${GLOSSARY_333.length}개: 모두 뜻을 알린 뒤에 쓴다`, () => {
     expect(earlyUses(PLACES, GLOSSARY_333)).toEqual([]);
   });
 
   it("단원 요약은 그 단원까지 뜻을 알린 용어만 쓴다", () => {
     expect(
-      earlySummaryUses(courseSummaries(BEGINNER_333), PLACES, GLOSSARY_333),
+      earlySummaryUses(chainSummaries(FIRST_SOLVE), PLACES, GLOSSARY_333),
     ).toEqual([]);
   });
 });
@@ -63,7 +75,7 @@ describe("조각 이름(블럭)", () => {
     );
   });
 
-  for (const c of [BEGINNER_333, BEGINNER_222, FROM_333_222])
+  for (const c of [BASICS_333, BEGINNER_333, BEGINNER_222, FROM_333_222])
     it(`${c.title}: 홀로 쓴 엣지·코너·센터가 없다`, () => {
       const loose = courseTexts(c).flatMap(({ where, text }) =>
         [...loosePieceWords(text), ...movedPieceWords(text)].map(

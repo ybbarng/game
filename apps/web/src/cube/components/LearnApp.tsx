@@ -5,7 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
-import { COURSES, courseById } from "../learn/courses";
+import {
+  BASICS,
+  COURSES,
+  courseById,
+  findLesson as findCourseLesson,
+  METHOD_COURSES,
+  nextLesson,
+} from "../learn/courses";
 import {
   demoBodyParts,
   demoOffersTurn,
@@ -26,6 +33,7 @@ import {
   resumeStep,
 } from "../learn/progress";
 import type { BesideCube, Course, Lesson, LessonStep } from "../learn/types";
+import { BASICS_ICON, BASICS_TITLE, METHODS_TITLE } from "../nav/learn-names";
 import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
@@ -55,18 +63,14 @@ import { TryPanel } from "./TryPanel";
 import "@/cube/components/cube-fx.css";
 
 /**
- * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 큐브 배우기(`MethodsApp`, `/cube/methods`)로 옮겼다.
+ * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 배우기(`MethodsApp`, `/cube/methods`)로,
+ * 기초 단원 목록은 큐브의 기초(`BasicsApp`, `/cube/basics`)로 옮겼다.
  * 단원은 `?lesson=<id>`로 연다. 진도는 이 기기에 남고, 다음 단원을 잠그지는 않지만 차례를 보여 준다.
  */
 
 function findLesson(id: string): { course: Course; lesson: Lesson } | null {
   // 새로 짠 단원의 옛 주소(`?lesson=<옛 id>`)도 새 단원으로 연다
-  const want = LESSON_RENAMES[id] ?? id;
-  for (const course of COURSES) {
-    const lesson = course.lessons.find((l) => l.id === want);
-    if (lesson) return { course, lesson };
-  }
-  return null;
+  return findCourseLesson(LESSON_RENAMES[id] ?? id);
 }
 
 export function LearnApp() {
@@ -84,7 +88,7 @@ export function LearnApp() {
   }, []);
 
   const found = lessonId ? findLesson(lessonId) : null;
-  // 과정 목록은 큐브 배우기(`/cube/methods`)로 옮겼다(docs/47 16-6): 단원이 없는 주소는 그리로 넘긴다
+  // 과정 목록은 해법 배우기(`/cube/methods`)로 옮겼다(docs/47 16-6): 단원이 없는 주소는 그리로 넘긴다
   useEffect(() => {
     if (lessonId !== undefined && !found)
       window.location.replace(
@@ -112,7 +116,7 @@ export function LearnApp() {
 }
 
 /**
- * 큐브 배우기(`/cube/methods`, docs/47 16-2·16-26, 예전 이름 「해법 익히기」): 해법(과정)을 고르면 그 해법의 배우기(단원)와 연습(공식 훈련 묶음·십자 훈련·
+ * 해법 배우기(`/cube/methods`, docs/47 16-2·16-26·16-27, 예전 이름 「해법 익히기」·「큐브 배우기」): 해법(과정)을 고르면 그 해법의 배우기(단원)와 연습(공식 훈련 묶음·십자 훈련·
  * 내 공식)이 한 카드에 보인다. `?m=<과정 id>`로 열면 그 해법 카드를 보인다. 예전 배우기 과정 목록(`/cube/learn`)을 옮겼다.
  */
 export function MethodsApp() {
@@ -142,7 +146,9 @@ function CourseList({
   progress: LearnProgress;
   picked: string | null;
 }) {
-  const last = progress.last ? findLesson(progress.last) : null;
+  // 이어서 하기는 해법 과정 단원만(기초 단원은 큐브의 기초 페이지에 있다)
+  const found = progress.last ? findLesson(progress.last) : null;
+  const last = found && found.course.id !== BASICS.id ? found : null;
   const pickedCourse = picked ? courseById(picked) : undefined;
   // 처음 보이는 크기: 고른 해법, 마지막으로 연 단원의 크기, 없으면 3×3
   const [size, setSize] = useState<number>(
@@ -160,7 +166,7 @@ function CourseList({
         <a href="/cube" className="text-sm text-white/70 hover:text-white">
           ← 큐브
         </a>
-        <h1 className="font-bold text-lg">큐브 배우기</h1>
+        <h1 className="font-bold text-lg">{METHODS_TITLE}</h1>
         <a
           href="/cube/train"
           className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
@@ -192,6 +198,13 @@ function CourseList({
           className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
         >
           👋 사이트 쓰는 법
+        </a>
+        <a
+          href="/cube/basics"
+          data-learn-basics
+          className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
+        >
+          {BASICS_ICON} {BASICS_TITLE}
         </a>
       </p>
       {/* 크기 탭: 고급 해법까지 모두 펼치면 2×2까지 한참 내려가야 했다(2026-11-04 점검) */}
@@ -247,7 +260,7 @@ function CourseList({
 const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5]
   .map((size): [number, Course[]] => [
     size,
-    COURSES.filter((c) => c.size === size),
+    METHOD_COURSES.filter((c) => c.size === size),
   ])
   .filter(([, list]) => list.length > 0);
 
@@ -450,7 +463,9 @@ function LessonView({
   const [masked, setMasked] = useState(true);
   const step = lesson.steps[at] ?? lesson.steps[0];
   const lessonIndex = course.lessons.indexOf(lesson);
-  const next = course.lessons[lessonIndex + 1];
+  // 기초 단원의 마지막은 초보자 과정 첫 단원으로 이어진다(docs/47 16-27)
+  const next = nextLesson(course, lesson.id);
+  const basics = course.id === BASICS.id;
   const passed = progress.lessons[lesson.id]?.passed ?? [];
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 단원을 열 때 한 번
@@ -515,10 +530,11 @@ function LessonView({
     <>
       <header className="flex flex-wrap items-center gap-3">
         <a
-          href={`/cube/methods?m=${course.id}`}
+          href={basics ? "/cube/basics" : `/cube/methods?m=${course.id}`}
+          data-lesson-back
           className="text-sm text-white/70 hover:text-white"
         >
-          ← 큐브 배우기
+          ← {basics ? BASICS_TITLE : METHODS_TITLE}
         </a>
         <h1 className="font-bold text-lg">
           {lessonIndex + 1}. {lesson.title}

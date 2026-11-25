@@ -1,5 +1,5 @@
 // 첫 화면 맨 위 「다음에 할 것」(docs/47 16-5). 이미 있는 진도·기록만 읽고 저장 형식을 새로 만들지 않는다.
-// 권하는 차례: 사이트 쓰는 법 → 처음 맞추기 → 초보자 해법 연습 → (처음 완성 뒤) 혼자 맞추기 기록 재기 → 다음 해법.
+// 권하는 차례: 사이트 쓰는 법 → 처음 맞추기(큐브의 기초 단원 → 3×3 초보자 단원) → 초보자 해법 연습 → (처음 완성 뒤) 혼자 맞추기 기록 재기 → 다음 해법.
 
 import type { LearnProgress } from "../learn/progress";
 import type { Course, Lesson } from "../learn/types";
@@ -46,8 +46,22 @@ export const SOLO_GOAL = 5;
 
 const lessonHref = (id: string) => `/cube/learn?lesson=${id}`;
 
-function firstUndone(course: Course, learn: LearnProgress): Lesson | undefined {
-  return course.lessons.find((l) => !learn.lessons[l.id]?.done);
+function firstUndone(
+  lessons: readonly Lesson[],
+  learn: LearnProgress,
+): Lesson | undefined {
+  return lessons.find((l) => !learn.lessons[l.id]?.done);
+}
+
+/**
+ * 처음 맞추기의 단원 차례: 초보자 과정 앞에 이어 읽는 과정(큐브의 기초, `continues`)의 단원, 그다음 초보자 과정 단원.
+ * 기초 단원을 초보자 과정에서 떼어 냈어도(docs/47 16-27) 처음 맞추기는 예전처럼 「큐브와 만나기」부터다
+ */
+export function firstSolveLessons(courses: readonly Course[]): Lesson[] {
+  const beginner = courses.find((c) => c.id === BEGINNER);
+  if (!beginner) return [];
+  const lead = courses.filter((c) => c.continues === BEGINNER);
+  return [...lead.flatMap((c) => c.lessons), ...beginner.lessons];
 }
 
 export function nextStep(input: NextInput, courses: Course[]): NextStep {
@@ -61,16 +75,16 @@ export function nextStep(input: NextInput, courses: Course[]): NextStep {
       href: "/cube/intro",
     };
 
-  const beginner = courses.find((c) => c.id === BEGINNER);
-  if (input.solo3 === 0 && beginner) {
-    const undone = firstUndone(beginner, learn);
+  const path = firstSolveLessons(courses);
+  if (input.solo3 === 0 && path.length > 0) {
+    const undone = firstUndone(path, learn);
     if (undone) {
       // 처음 맞추기를 보던 중이면 그 단원부터
-      const last = beginner.lessons.find(
+      const last = path.find(
         (l) => l.id === learn.last && !learn.lessons[l.id]?.done,
       );
       const at = last ?? undone;
-      const started = beginner.lessons.some((l) => learn.lessons[l.id]);
+      const started = path.some((l) => learn.lessons[l.id]);
       return {
         kind: "first-solve",
         icon: started ? "▶️" : "🧩",
@@ -96,7 +110,7 @@ export function nextStep(input: NextInput, courses: Course[]): NextStep {
   if (input.solo3 < SOLO_GOAL) return solo;
   for (const id of NEXT_METHODS) {
     const course = courses.find((c) => c.id === id);
-    const undone = course && firstUndone(course, learn);
+    const undone = course && firstUndone(course.lessons, learn);
     if (course && undone)
       return {
         kind: "method",

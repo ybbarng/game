@@ -1,4 +1,4 @@
-// 큐브 배우기 단원을 읽는 차례대로 글 자리로 펼친다. 용어 순서 시험(glossary-333.test.ts, course-terms.test.ts)이
+// 큐브 단원(큐브의 기초·해법 배우기)을 읽는 차례대로 글 자리로 펼친다. 용어 순서 시험(glossary-333.test.ts, course-terms.test.ts)이
 // 공통 틀 `@/tutorial/term-order`에 넘긴다. 실제로 쳐 보는 공식 줄(alg)은 시연이라 빼고 글만 읽는다.
 import type { TextPlace } from "@/tutorial/term-order";
 
@@ -33,3 +33,31 @@ export const courseSummaries = (course: Course) =>
     group: li,
     text: `${l.title}\n${l.summary}`,
   }));
+
+/**
+ * 이어 읽는 과정들(예: 큐브의 기초 → 3×3 초보자, `continues`)을 한 과정처럼 펼친다. 단원 번호는 앞 과정부터 이어 센다
+ * (요약 검사가 앞 과정 단원을 먼저 읽은 것으로 보게)
+ */
+export function chainPlaces(courses: readonly Course[]): TextPlace[] {
+  let base = 0;
+  return courses.flatMap((c) => {
+    const places = coursePlaces(c).map((p) => ({
+      ...p,
+      group: p.group + base,
+    }));
+    base += c.lessons.length;
+    return places;
+  });
+}
+
+export function chainSummaries(courses: readonly Course[]) {
+  let base = 0;
+  return courses.flatMap((c) => {
+    const out = courseSummaries(c).map((s) => ({
+      ...s,
+      group: s.group + base,
+    }));
+    base += c.lessons.length;
+    return out;
+  });
+}

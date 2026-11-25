@@ -9,7 +9,7 @@ const title = (set: string) =>
 const set = (href: string) =>
   new URL(href, "https://x").searchParams.get("set");
 
-describe("큐브 배우기의 연습 칸", () => {
+describe("해법 배우기의 연습 칸", () => {
   it("공식 연습 칸은 모두 있는 단계, 자유 훈련 칸은 「더 보기」 묶음으로 열린다", () => {
     for (const c of COURSES)
       for (const l of practiceLinks(c, title)) {

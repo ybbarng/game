@@ -33,6 +33,7 @@ import {
   DEFAULT_CONDITIONS,
 } from "../cross/session";
 import type { Command } from "../input";
+import { METHODS_TITLE } from "../nav/learn-names";
 import { formatMs } from "../records";
 import { hexColor, useCubeSettings } from "../settings";
 import { useRenewable } from "../use-renewable";
@@ -309,7 +310,7 @@ export function CrossTrainApp() {
             href="/cube/methods"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 큐브 배우기
+            ← {METHODS_TITLE}
           </a>
           <h1 className="font-bold text-lg">십자 훈련</h1>
           <a

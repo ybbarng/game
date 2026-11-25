@@ -54,7 +54,7 @@ describe("단계 지도", () => {
     },
   );
 
-  it("3×3 초보자: 준비(조각·표기) → 지도 → 일곱 단계 → 마무리", () => {
+  it("3×3 초보자: 지도 → 일곱 단계 → 마무리(준비인 조각·표기는 큐브의 기초로 옮겼다)", () => {
     const c = courseOf("333-beginner");
     expect(c.stages?.map((s) => s.title)).toEqual([
       "흰 십자",
@@ -66,14 +66,13 @@ describe("단계 지도", () => {
       "코너 방향",
     ]);
     const ids = c.lessons.map((l) => l.id);
-    expect(ids.indexOf("333-beginner-map")).toBe(
-      ids.indexOf("333-safe-turns") - 1,
-    );
+    expect(ids.slice(0, 2)).toEqual(["333-beginner-map", "333-safe-turns"]);
+    for (const id of ["333-start", "333-piece-moves", "333-notation"])
+      expect(ids).not.toContain(id);
     expect(lessonPlace(c, "333-safe-turns")).toEqual({
       kind: "stage",
       index: 0,
     });
-    expect(lessonPlace(c, "333-notation")).toEqual({ kind: "prep" });
     expect(lessonPlace(c, "333-beginner-map")).toEqual({ kind: "map" });
     expect(lessonPlace(c, "333-ll-edges")).toEqual({ kind: "stage", index: 4 });
     expect(lessonPlace(c, "333-beginner-finale")).toEqual({ kind: "after" });

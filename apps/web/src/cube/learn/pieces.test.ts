@@ -66,7 +66,7 @@ const UF = { colors: ["U", "F"] } as FindTarget;
 
 describe("과정 맨 앞의 조각 단원", () => {
   it.each([
-    ["333-beginner", "333-start"],
+    ["cube-basics", "333-start"],
     ["222-beginner", "222-pieces"],
     ["444-reduction", "444-pieces"],
     ["555-reduction", "555-pieces"],

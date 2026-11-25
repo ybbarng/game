@@ -22,7 +22,7 @@ import {
   saveKeymap,
 } from "../input";
 import { TWO_HAND_RULE, TWO_HAND_RULES } from "../keys/two-hand";
-import { COURSES } from "../learn/courses";
+import { BASICS } from "../learn/courses";
 import {
   FACE_WORDS,
   INTRO_TRIES,
@@ -83,9 +83,8 @@ export const READ_STEPS = [
 /** 「다음」 부분의 더 알아보기(키 익히기와 겹쳐 본 흐름에서 뺀 것) */
 export const MORE_STEPS = ["rotate", "slices", "wide", "keys"] as const;
 
-/** 배우기 첫 단원: 3×3 초보자 과정의 맨 앞. 과정이 바뀌어도 따라간다 */
-export const FIRST_LESSON = COURSES.find((c) => c.id === "333-beginner")
-  ?.lessons[0];
+/** 배우기 첫 단원: 큐브의 기초 맨 앞(처음 맞추기의 첫걸음, docs/47 16-27). 과정이 바뀌어도 따라간다 */
+export const FIRST_LESSON = BASICS.lessons[0];
 
 const FACE_NAME = ["위", "오른쪽", "앞", "아래", "왼쪽", "뒤"];
 

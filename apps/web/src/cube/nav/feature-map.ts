@@ -3,6 +3,15 @@
 // 설명은 처음 오는 사람이 읽는다. 해법·기능 이름은 하는 일로 먼저 풀고, 위에서 아래로 읽을 때 뜻을 알린 뒤에
 // 쓴다(`feature-map.test.ts`, docs/standing-rules.md 1·3절).
 
+import {
+  BASICS_HREF,
+  BASICS_ICON,
+  BASICS_TITLE,
+  METHODS_HREF,
+  METHODS_ICON,
+  METHODS_TITLE,
+} from "./learn-names";
+
 export interface FeatureItem {
   icon: string;
   title: string;
@@ -43,9 +52,15 @@ export const FEATURE_MAP: FeatureSection[] = [
         what: "화면에 뜬 돌리기를 키로 치거나, 키를 보고 어떤 돌리기인지 맞히거나, 공식을 따라 쳐요.",
       },
       {
-        icon: "🎓",
-        title: "큐브 배우기",
-        href: "/cube/methods",
+        icon: BASICS_ICON,
+        title: BASICS_TITLE,
+        href: BASICS_HREF,
+        what: "큐브를 이루는 조각과 가운데 축, 면을 돌릴 때 조각이 움직이는 법, 돌리기를 적는 표기를 단원 셋으로 배워요. 어느 해법을 배우든 먼저 보는 기초예요.",
+      },
+      {
+        icon: METHODS_ICON,
+        title: METHODS_TITLE,
+        href: METHODS_HREF,
         what: "3×3을 한 층씩 처음 맞추는 해법부터 골라 배우고 연습해요. 처음 맞추는 해법의 마지막 층을 공식으로 바꿔 빠른 해법으로 넘어가는 과정, 이름이 CFOP·루·ZZ인 빠른 해법 셋, 4×4 이상의 큰 큐브를 맞추는 법, 눈을 가리고 맞추는 블라인드도 있어요.",
       },
       {
