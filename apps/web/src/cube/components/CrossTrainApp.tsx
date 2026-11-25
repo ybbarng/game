@@ -309,7 +309,7 @@ export function CrossTrainApp() {
             href="/cube/methods"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 해법 익히기
+            ← 큐브 배우기
           </a>
           <h1 className="font-bold text-lg">십자 훈련</h1>
           <a

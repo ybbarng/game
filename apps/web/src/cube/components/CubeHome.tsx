@@ -14,8 +14,9 @@ import "@/cube/components/cube-fx.css";
 
 /**
  * 큐브 첫 화면(`/cube`, docs/47 16-2). 위에는 섞이고 맞춰지기를 되풀이하는 큐브(`CubeHero`), 그 아래 「다음에 할 것」 칸 하나,
- * 그리고 문 셋(처음이라면·해법 익히기·맞추기·겨루기)과 더 보기. 항목은 아이콘과 짧은 이름만 둔다. 문 아래의 화면(오늘의 섞기,
- * 공식 훈련 등)은 각 문 안에서 고르고, 모든 화면은 기능 지도(`/cube/map`)에 있다.
+ * 그리고 문 둘(배우기·맞추기·겨루기)과 더 보기. 항목은 아이콘과 짧은 이름만 둔다. 문 아래의 화면(오늘의 섞기,
+ * 공식 훈련 등)은 각 문 안에서 고르고, 모든 화면은 기능 지도(`/cube/map`)에 있다. 배우는 곳은 「큐브 배우기」 한 칸이고
+ * 해법·과정은 그 안에서 고른다(docs/47 16-26).
  */
 
 interface Item {
@@ -33,10 +34,10 @@ interface Group {
   items: Item[];
 }
 
-/** 문 셋과 더 보기. 칸 수가 홀수인 묶음은 한 칸이 줄을 채운다 */
+/** 문 둘과 더 보기. 칸 수가 홀수인 묶음은 한 칸이 줄을 채운다 */
 const GROUPS: Group[] = [
   {
-    title: "처음이라면",
+    title: "배우기",
     items: [
       {
         icon: "👋",
@@ -45,22 +46,10 @@ const GROUPS: Group[] = [
         attr: "data-cube-intro-link",
       },
       {
-        icon: "🧩",
-        title: "처음 맞추기",
-        href: "/cube/learn?lesson=333-start",
-        attr: "data-cube-first-solve-link",
-      },
-    ],
-  },
-  {
-    title: "해법 익히기",
-    items: [
-      {
         icon: "🎓",
-        title: "해법 고르기",
+        title: "큐브 배우기",
         href: "/cube/methods",
-        span: true,
-        attr: "data-cube-methods-link",
+        attr: "data-cube-learn-link",
       },
     ],
   },
