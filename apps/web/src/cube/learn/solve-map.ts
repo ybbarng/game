@@ -109,7 +109,33 @@ export interface MapNode {
   jump?: { n: 3; from: 4 | 5 };
   /** 그림은 이 3×3 지점과 같은 조각을 그 크기 큐브에서 맞춘 모습 */
   as333?: MapNodeId;
+  /**
+   * 엣지 짝 지점: 쥐기 전에 맞춘 큐브에 한 바깥 층 돌리기(센터는 그대로, 엣지는 짝인 채 자리만 옮겨진다)와
+   * 그 뒤 두 날개 모두 제 색으로 보일 엣지 자리 둘(면 둘씩, 그림에서 보이는 위·앞·오른쪽 면에 걸친 자리).
+   * 나머지 엣지는 회색이라 「짝은 맞았지만 제자리는 아님」이 보인다(2026-11-26 사용자)
+   */
+  paired?: { turns: string; show: readonly (readonly [number, number])[] };
 }
+
+/**
+ * 큰 큐브 엣지 짝 그림: 바깥 층만 돌려 UR·UF 자리에 다른 엣지가 오게 한다. 두 엣지의 칸이 모두 옆 센터와 다른
+ * 색이라(같은 색이면 센터 줄처럼 보인다) 짝으로 또렷하다
+ */
+const PAIRED_BIG = {
+  turns: "F R F'",
+  show: [
+    [U, R],
+    [U, F],
+  ],
+} as const;
+/** 야우 엣지 짝 그림: 흰 십자(위 엣지)는 그대로 두고 FR·FL 자리에 아래 층 엣지가 오게 한다 */
+const PAIRED_YAU = {
+  turns: "R' D R F' D' F",
+  show: [
+    [F, R],
+    [F, L],
+  ],
+} as const;
 
 /**
  * 해법마다 가로 칸(왼쪽 초보자 → 오른쪽 고급, 2026-11-25 사용자 「왼쪽이 초보자용, 오른쪽이 고급」). 크기마다 따로다.
@@ -172,6 +198,7 @@ const BASE_NODES: readonly MapNode[] = [
     view: "",
     size: 4,
     jump: { n: 3, from: 4 },
+    paired: PAIRED_BIG,
   },
   {
     id: "4-ud-centers",
@@ -192,6 +219,7 @@ const BASE_NODES: readonly MapNode[] = [
     view: "",
     size: 4,
     jump: { n: 3, from: 4 },
+    paired: PAIRED_YAU,
   },
   // 5×5
   { id: "5-scrambled", title: "다 섞임", row: 0, col: 0, view: "", size: 5 },
@@ -204,6 +232,7 @@ const BASE_NODES: readonly MapNode[] = [
     view: "",
     size: 5,
     jump: { n: 3, from: 5 },
+    paired: PAIRED_BIG,
   },
   // 초보자 줄기(왼쪽 끝)
   { id: "scrambled", title: "다 섞임", row: 0, col: 0, view: "" },
@@ -1295,6 +1324,8 @@ interface Look {
   oriented?: { pieces: number[]; colors: number[] };
   /** 자리만 맞은 조각(회색) */
   placed?: number[];
+  /** 맞지 않았지만 제 색으로 보이는 조각(엣지 짝 그림의 짝 둘) */
+  shown?: number[];
 }
 
 const centers = G.centers as number[];
@@ -1461,10 +1492,10 @@ function lookBig(n: number, id: MapNodeId): Look {
     case "4-centers":
     case "5-centers":
       return { solved: centersN };
-    // 엣지를 묶었지만 제자리는 아니다(회색)
+    // 엣지를 묶었지만 제자리는 아니다(회색, 바깥 층을 돌려 옮겨 둔 짝 둘만 제 색)
     case "4-paired":
     case "5-paired":
-      return { solved: centersN, placed: edgesN };
+      return { solved: centersN, placed: edgesN, shown: pairedShown(n, id) };
     case "4-ud-centers":
       return { solved: ud };
     case "4-cross3":
@@ -1477,10 +1508,46 @@ function lookBig(n: number, id: MapNodeId): Look {
       return {
         solved: [...centersN, ...cross],
         placed: edgesN.filter((p) => !cross.includes(p)),
+        shown: pairedShown(n, id),
       };
     default:
       return { solved: [] };
   }
+}
+
+/** 맞춘 큐브에 돌리기를 한 상태 */
+const turned = (n: number, moves: string) => {
+  let s = solvedCube(n);
+  for (const m of parseMoves(n, moves)) s = applyMove(n, s, m);
+  return s;
+};
+
+/** 조각이 지금 놓인 자리의 면들(스티커 정체 → 지금 칸의 면) */
+export function pieceFacesNow(
+  n: number,
+  state: PuzzleState,
+  piece: number,
+): number[] {
+  const nn = n * n;
+  const slotOf = new Map<number, number>();
+  state.perm.forEach((sticker, slot) => {
+    slotOf.set(sticker as number, slot);
+  });
+  return (cubeTopology(n).pieces[piece]?.stickers ?? []).map((s) =>
+    Math.floor((slotOf.get(s) as number) / nn),
+  );
+}
+
+/** 엣지 짝 지점에서 제 색으로 보일 엣지 조각(돌리기 뒤 `show` 자리에 온 날개·가운데 엣지 블럭 모두) */
+function pairedShown(n: number, id: MapNodeId): number[] {
+  const paired = nodeById(id).paired;
+  if (!paired) return [];
+  const { edgesN } = partsOf(n);
+  const s = turned(n, paired.turns);
+  const key = (fs: readonly number[]) =>
+    [...fs].sort((a, b) => a - b).join(",");
+  const want = new Set(paired.show.map(key));
+  return edgesN.filter((p) => want.has(key(pieceFacesNow(n, s, p))));
 }
 
 /** 지점 그림의 큐브 크기 */
@@ -1508,6 +1575,8 @@ export function nodeMask(id: MapNodeId, as?: CubeSize): StickerVisibility[] {
   const stickers = (p: number) => topo.pieces[p]?.stickers ?? [];
   for (const p of look.placed ?? [])
     for (const s of stickers(p)) out[s] = "gray";
+  for (const p of look.shown ?? [])
+    for (const s of stickers(p)) out[s] = "visible";
   if (look.oriented)
     for (const p of look.oriented.pieces) {
       // 기준 색 가운데 앞의 것이 붙은 칸 하나(엣지 방향은 위·아래 색, 없으면 앞·뒤 색)
@@ -1533,11 +1602,9 @@ export function nodeMask(id: MapNodeId, as?: CubeSize): StickerVisibility[] {
 export const nodeSolvedPieces = (id: MapNodeId): readonly number[] =>
   lookOf(id).solved;
 
-/** 지점 그림의 큐브(맞춘 큐브를 그 지점의 쥐는 돌리기로 쥔 것) */
+/** 지점 그림의 큐브(맞춘 큐브를 그 지점의 쥐는 돌리기로 쥔 것, 엣지 짝 지점은 그 전에 바깥 층 돌리기) */
 export function nodeState(id: MapNodeId, as?: CubeSize): PuzzleState {
   const n = drawSize(id, as);
-  const view = nodeById(id).view;
-  let s = solvedCube(n);
-  for (const m of parseMoves(n, view)) s = applyMove(n, s, m);
-  return s;
+  const node = nodeById(id);
+  return turned(n, `${node.paired?.turns ?? ""} ${node.view}`.trim());
 }

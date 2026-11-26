@@ -4,7 +4,13 @@
 // 3. 지점 정의: 단원 규칙(또는 단원이 쓰는 공식)으로 앞 지점에서 다음 지점에 닿는다. 그림은 해법을 따라 맞은 칸이 늘기만 한다.
 // 4. 평균 수: MAP_MEASURE가 지금 규칙·해법으로 잰 값이다.
 import { solveCfop, solveRoux } from "@game/cube-ai";
-import { cubeTopology, faceColors, solvedCube } from "@game/cube-engine";
+import {
+  cubeTopology,
+  faceColors,
+  pieceFaces,
+  solvedCube,
+  stickerFace,
+} from "@game/cube-engine";
 import { scramble } from "@game/cube-scramble";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
@@ -42,9 +48,11 @@ import {
   nodeById,
   nodeMask,
   nodeSize,
+  nodeState,
   PARITY_AT,
   PARITY_FORMULAS,
   PARITY_LOOPS,
+  pieceFacesNow,
 } from "./solve-map";
 import { methodRun } from "./solve-map-measure";
 import { runZzLl, solveZzByRules, stepMovesLl } from "./zz-path";
@@ -705,5 +713,131 @@ describe("지점 정의", () => {
       (n) => `${n.size ?? 3}:${nodeMask(n.id).join(",")}`,
     );
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("큰 큐브 엣지 짝 그림(짝은 맞았지만 제자리는 아님)", () => {
+  const FACE = "URFDLB";
+  const PAIRED: MapNodeId[] = ["4-paired", "5-paired", "4-yau-paired"];
+  const key = (fs: readonly number[]) =>
+    [...fs]
+      .sort((a, b) => a - b)
+      .map((f) => FACE[f])
+      .join("");
+  /** 엣지(날개·가운데 엣지 블럭)를 맞춘 상태의 면 둘로 묶는다 */
+  const edgeGroups = (n: number, pieces: readonly number[]) => {
+    const out = new Map<string, number[]>();
+    for (const p of pieces) {
+      const k = key(pieceFaces(n, p));
+      out.set(k, [...(out.get(k) ?? []), p]);
+    }
+    return out;
+  };
+  const isEdge = (kind: string) => kind === "wing" || kind === "edge";
+
+  it("그림 큐브는 맞춘 큐브에 바깥 한 층 돌리기만 한 것이고 센터 블럭은 모두 제 면에 있다", () => {
+    for (const id of PAIRED) {
+      const node = nodeById(id);
+      const n = nodeSize(id);
+      expect(
+        (node.paired?.turns ?? "")
+          .split(" ")
+          .every((t) => /^[URFDLB]['2]?$/.test(t)),
+        id,
+      ).toBe(true);
+      const s = nodeState(id);
+      const off = cubeTopology(n).pieces.flatMap((p, i) =>
+        (p.kind === "center" || p.kind === "innerCenter") &&
+        pieceFacesNow(n, s, i).some(
+          (f) => f !== (pieceFaces(n, i)[0] as number),
+        )
+          ? [i]
+          : [],
+      );
+      expect(off, id).toEqual([]);
+    }
+  });
+
+  it("두 날개 모두 제 색으로 보이는 엣지는 둘이고, 각각 날개가 모두 같은 엣지(짝)이며 위·앞·오른쪽 면에 걸친 남의 자리에 있다", () => {
+    const got = Object.fromEntries(
+      PAIRED.map((id) => {
+        const n = nodeSize(id);
+        const topo = cubeTopology(n);
+        const mask = nodeMask(id);
+        const s = nodeState(id);
+        const shown = topo.pieces.flatMap((p, i) =>
+          isEdge(p.kind) && p.stickers.every((x) => mask[x] === "visible")
+            ? [i]
+            : [],
+        );
+        // 야우의 흰 십자 엣지는 제자리라 따로 본다
+        const moved = shown.filter(
+          (p) => key(pieceFacesNow(n, s, p)) !== key(pieceFaces(n, p)),
+        );
+        const groups = [...edgeGroups(n, moved)].map(([home, ps]) => {
+          const now = new Set(ps.map((p) => key(pieceFacesNow(n, s, p))));
+          // 칸마다 놓인 면의 색(= 그 면 센터 색)과 다르면 「다름」: 센터 줄과 섞여 보이지 않는다
+          const differ = ps.every((p) =>
+            pieceFacesNow(n, s, p).every(
+              (f, k) =>
+                f !== stickerFace(n, topo.pieces[p]?.stickers[k] as number),
+            ),
+          );
+          return `${home}→${[...now].join("|")}:${ps.length}${differ ? " 다름" : ""}`;
+        });
+        return [id, groups.sort()];
+      }),
+    );
+    // 4×4 엣지는 날개 둘, 5×5는 날개 둘과 가운데 엣지 블럭 하나. 지금 자리는 그림의 보이는 면(U·R·F)에 걸친다
+    expect(got).toEqual({
+      "4-paired": ["RD→UF:2 다름", "UF→UR:2 다름"],
+      "5-paired": ["RD→UF:3 다름", "UF→UR:3 다름"],
+      "4-yau-paired": ["FD→RF:2 다름", "RD→FL:2 다름"],
+    });
+  });
+
+  it("나머지 엣지는 회색이고 코너 블럭은 가리며, 야우 흰 십자 엣지는 제자리에서 제 색이다", () => {
+    const got = Object.fromEntries(
+      PAIRED.map((id) => {
+        const n = nodeSize(id);
+        const topo = cubeTopology(n);
+        const mask = nodeMask(id);
+        const s = nodeState(id);
+        const count: Record<string, number> = {};
+        topo.pieces.forEach((p, i) => {
+          if (p.kind !== "corner" && !isEdge(p.kind)) return;
+          const v = [...new Set(p.stickers.map((x) => mask[x]))].join("/");
+          const home =
+            key(pieceFacesNow(n, s, i)) === key(pieceFaces(n, i))
+              ? "제자리"
+              : "남의 자리";
+          const label =
+            `${p.kind === "corner" ? "corner" : "edge"} ${v} ${v === "visible" ? home : ""}`.trim();
+          count[label] = (count[label] ?? 0) + 1;
+        });
+        return [id, count];
+      }),
+    );
+    expect(got).toEqual({
+      // 4×4 엣지 날개 24 = 보이는 짝 둘(날개 넷) + 회색 20
+      "4-paired": {
+        "corner hidden": 8,
+        "edge visible 남의 자리": 4,
+        "edge gray": 20,
+      },
+      // 5×5 엣지 조각 36 = 보이는 짝 둘(조각 여섯) + 회색 30
+      "5-paired": {
+        "corner hidden": 8,
+        "edge visible 남의 자리": 6,
+        "edge gray": 30,
+      },
+      // 흰 십자 넷(날개 여덟)은 제자리, 보이는 짝 둘(날개 넷), 회색 12
+      "4-yau-paired": {
+        "corner hidden": 8,
+        "edge visible 제자리": 8,
+        "edge visible 남의 자리": 4,
+        "edge gray": 12,
+      },
+    });
   });
 });
