@@ -158,8 +158,11 @@ test(
     // GPU 없는 브라우저는 첫 장면이 느려 상한을 넉넉히
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     const yaw = async () => Number(await canvas.getAttribute("data-core-yaw"));
-    // 엣지 블럭의 스티커와 혀가 보이는 멈춘 각(core-spin.ts REST_YAW, 150°)
-    await expect.poll(yaw).toBeCloseTo((150 * Math.PI) / 180, 2);
+    // 코너·엣지 블럭 다리가 보이는 멈춘 각(core-spin.ts REST_YAW, 240°)
+    const rest = (240 * Math.PI) / 180;
+    await expect.poll(yaw).toBeCloseTo(rest, 2);
+    // 정적 도형은 재질별로 합쳐 그린다: 검은 플라스틱·쇠·면 색 여섯(core-model.ts)
+    await expect(canvas).toHaveAttribute("data-core-calls", "8");
     const box = await canvas.boundingBox();
     if (!box) throw new Error("캔버스 자리가 없다");
     const y = box.y + box.height / 2;
@@ -168,7 +171,7 @@ test(
     await page.mouse.move(box.x + box.width / 2 + 100, y, { steps: 5 });
     await page.mouse.up();
     // 100px × 0.012 = 1.2라디안 돌고, 손을 떼도 그대로
-    await expect.poll(yaw).toBeCloseTo((150 * Math.PI) / 180 + 1.2, 2);
+    await expect.poll(yaw).toBeCloseTo(rest + 1.2, 2);
     await shot(page, "basics-3d", info.project.name);
   },
 );

@@ -19,9 +19,15 @@ final class NativeCubeWindow: FloatingWindow {
   private(set) var profile = Profile.placeholder
   private let realClock = RealClock()
   private let clock: FocusClock
-  private var hintGate: HintGate!
+  // 힌트 제한·떠 있을 때 움직임은 self를 붙잡는 닫힘이 있어 `super.init()` 앞에 만들 수 없다. 그렇다고 `!`로 두면
+  // `super.init()` 안에서 저장한 창 크기를 놓을 때(크기 바뀜 알림 → `updateMirror`) 아직 nil이라 트랩한다
+  // (0.11.6~0.12.3 켜자마자 충돌, docs/52 5-23). 처음 읽을 때 만든다
+  private lazy var hintGate: HintGate = HintGate(clock: realClock) { [weak self] in
+    guard let self, !self.hintGate.showing, self.hintMsgCancel == nil else { return }
+    self.onHint?(nil)
+  }
   private let sound = CubieSound()
-  private var idle: IdleShow!
+  private lazy var idle: IdleShow = IdleShow(clock: realClock, hooks: idleHooks())
   private var idleTurn = 0
   /// 이번 판의 입력 방식(사이트 `inputs`, 처음 쓴 차례)과 키 출처(`keyOrigin`)
   private var inputs: [String] = []
@@ -74,11 +80,6 @@ final class NativeCubeWindow: FloatingWindow {
     let n = book.n
     cube = CACubeView(frame: NSRect(origin: .zero, size: Config.defaultSize), n: n)
     super.init()
-    hintGate = HintGate(clock: realClock) { [weak self] in
-      guard let self, !self.hintGate.showing, self.hintMsgCancel == nil else { return }
-      self.onHint?(nil)
-    }
-    idle = IdleShow(clock: realClock, hooks: idleHooks())
     state.n = n
     state.mirror = book.mirror
     state.practiceStages = NativeCore.string { cubie_practice_menu($0, $1) }.split(separator: "\n").compactMap {
