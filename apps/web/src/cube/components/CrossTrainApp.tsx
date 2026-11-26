@@ -9,6 +9,7 @@ import {
 import { realClock } from "@game/fair-play/clock";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { addCrossRecord, crossStats, loadCrossRecords } from "../cross/records";
 import {
@@ -41,7 +42,6 @@ import { crossRoundInWorker } from "../worker";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { DemoCube } from "./DemoCube";
 import { MoveChip, useMoveKeys } from "./MoveChip";
-import { ToggleSwitch } from "./ToggleSwitch";
 
 /**
  * 십자 훈련(`/cube/train/cross`, docs/47 8절). 조건을 골라 섞고, 살펴본 뒤 몇 수 안에 십자를 만드는지 잰다.

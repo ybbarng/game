@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { LottoBall } from "@/stardraw/components/parts";
 import {
@@ -350,19 +351,13 @@ function BumpLab() {
             {label}
           </button>
         ))}
-        <button
-          type="button"
-          aria-pressed={twin}
-          onClick={() => setTwin((v) => !v)}
-          className={cn(
-            "rounded-full border px-3 py-1 text-sm",
-            twin
-              ? "border-amber-200 bg-amber-200/15"
-              : "border-white/25 hover:bg-white/10",
-          )}
+        <ToggleSwitch
+          on={twin}
+          onChange={setTwin}
+          className="rounded-full border border-white/25 px-3 py-1 text-sm hover:bg-white/10"
         >
           봉우리 둘
-        </button>
+        </ToggleSwitch>
       </div>
     </div>
   );

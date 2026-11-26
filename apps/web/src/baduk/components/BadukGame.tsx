@@ -25,6 +25,7 @@ import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundEndButtons } from "@/components/RoundEndButtons";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import {
   MissionOverlay,
   type MissionProps,
@@ -393,17 +394,13 @@ export function BadukGame({
                     쉬기
                   </button>
                 )}
-                <button
-                  type="button"
-                  aria-pressed={counting}
-                  onClick={() => setCounting((c) => !c)}
-                  className={cn(
-                    "rounded-xl px-4 py-2",
-                    counting ? "bg-white text-black" : "bg-white/10",
-                  )}
+                <ToggleSwitch
+                  on={counting}
+                  onChange={setCounting}
+                  className="rounded-xl bg-white/10 px-4 py-2 hover:bg-white/15"
                 >
                   세어 보기
-                </button>
+                </ToggleSwitch>
                 {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
                 {(!online || myTurn) && (
                   <ResignButton

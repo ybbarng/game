@@ -124,12 +124,12 @@ test("컴퓨터 4명과 한 판을 끝까지 하고, 내 기록과 복기에 남
   const forward = page.getByRole("button", { name: "한 걸음 앞으로" });
   for (let k = 0; k < 12; k++) await forward.click();
   // 상황판 없이 모든 패만 펼친 화면
-  await page.getByRole("button", { name: "모든 패 보기" }).click();
-  await expect(
-    page.getByRole("button", { name: "모든 패 숨기기" }),
-  ).toBeVisible();
+  const reveal = page.getByRole("switch", { name: "모든 패 보기" });
+  await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: testInfo.outputPath("9-replay-open.png") });
-  await page.getByRole("button", { name: "모든 패 숨기기" }).click();
+  await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-checked", "false");
   await page.getByRole("button", { name: "상황판" }).click();
   await expect(
     page.getByRole("complementary", { name: "상황판" }),

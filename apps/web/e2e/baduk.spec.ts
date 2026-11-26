@@ -129,10 +129,16 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
     timeout: 15_000,
   });
   await expect(stones(page)).toHaveCount(4);
-  await page.getByRole("button", { name: "세어 보기" }).click();
+  // 「세어 보기」는 켜고 끄는 스위치다.
+  const counting = page.getByRole("switch", { name: "세어 보기" });
+  await expect(counting).toHaveAttribute("aria-checked", "false");
+  await counting.click();
+  await expect(counting).toHaveAttribute("aria-checked", "true");
   await expect(page.getByText(/지금 세면 흑/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("baduk-play.png") });
-  await page.getByRole("button", { name: "세어 보기" }).click();
+  await counting.click();
+  await expect(counting).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText(/지금 세면 흑/)).toHaveCount(0);
 
   await page.getByRole("button", { name: "무르기" }).click();
   await expect(stones(page)).toHaveCount(2);

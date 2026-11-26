@@ -18,13 +18,13 @@ import {
   useState,
 } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import type { RaceSnapshot } from "@/net/race/types";
 import type { StickerMarks } from "../bridge";
 import { CubePlay, playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
 import { useSolveMethod } from "../components/MethodSelect";
 import { useMoveKeys } from "../components/MoveChip";
-import { ToggleSwitch } from "../components/ToggleSwitch";
 import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
 import type { CubeLook } from "../item-look";

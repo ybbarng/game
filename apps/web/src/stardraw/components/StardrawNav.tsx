@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { astronautOf } from "../astronaut/identity";
 import {
@@ -83,30 +84,13 @@ function VibrateRow({ className }: { className: string }) {
   const on = useSyncExternalStore(subscribeVibrate, vibrateOn, () => true);
   if (!able) return null;
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      data-vibrate-switch={on ? "on" : "off"}
-      onClick={() => setVibrateOn(!on)}
+    <ToggleSwitch
+      on={on}
+      onChange={setVibrateOn}
       className={cn(className, "text-white/75")}
     >
       진동
-      <span
-        aria-hidden="true"
-        className={cn(
-          "relative h-5 w-9 rounded-full transition-colors",
-          on ? "bg-amber-300/80" : "bg-white/20",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 size-4 rounded-full bg-white transition-[left]",
-            on ? "left-[18px]" : "left-0.5",
-          )}
-        />
-      </span>
-    </button>
+    </ToggleSwitch>
   );
 }
 

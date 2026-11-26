@@ -30,6 +30,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { SuitText } from "@/components/SuitText";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cardLabel, goalLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";
 import { obj, subj } from "@/lib/josa";
@@ -100,6 +101,30 @@ export function Btn({
     >
       {children}
     </button>
+  );
+}
+
+/** 놀이 안의 켜고 끄는 단추(`Btn`과 같은 크기의 스위치) */
+export function Toggle({
+  on,
+  onChange,
+  children,
+  disabled = false,
+}: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <ToggleSwitch
+      on={on}
+      onChange={onChange}
+      disabled={disabled}
+      className="rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs hover:bg-white/10"
+    >
+      {children}
+    </ToggleSwitch>
   );
 }
 
@@ -301,13 +326,9 @@ export function CommitRevealDemo() {
         <Btn onClick={() => void reveal()} disabled={stage !== 1}>
           ② 비밀 값 공개 → 시드
         </Btn>
-        <Btn
-          onClick={() => setCheat((c) => !c)}
-          active={cheat}
-          disabled={stage === 2}
-        >
+        <Toggle on={cheat} onChange={setCheat} disabled={stage === 2}>
           방장이 ②에서 자기 값을 바꿔치기
-        </Btn>
+        </Toggle>
         <Btn onClick={reset}>처음부터</Btn>
       </div>
       {stage >= 1 && (
@@ -448,9 +469,9 @@ export function ReplayAuditDemo() {
         경우입니다.
       </p>
       <div className="flex flex-wrap gap-1.5">
-        <Btn onClick={() => setTamperView((t) => !t)} active={tamperView}>
+        <Toggle on={tamperView} onChange={setTamperView}>
           방장이 게임 중 화면 하나를 조작해 보냄
-        </Btn>
+        </Toggle>
         <Btn
           onClick={() => {
             setLog(original);

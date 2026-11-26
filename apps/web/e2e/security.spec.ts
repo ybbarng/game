@@ -14,7 +14,9 @@ test(
     ).toBeVisible();
 
     // 섞기: 방장이 바꿔치기하면 들킨다.
-    await page.getByRole("button", { name: /방장이 ②에서/ }).click();
+    const cheat = page.getByRole("switch", { name: /방장이 ②에서/ });
+    await cheat.click();
+    await expect(cheat).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: /① 해시만 먼저 공개/ }).click();
     await page.getByRole("button", { name: /② 비밀 값 공개/ }).click();
     await expect(page.getByText(/0번 자리의 값이 약속과 달라요/)).toBeVisible();

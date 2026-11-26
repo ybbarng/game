@@ -3,10 +3,10 @@
 import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 import { cn } from "@/lib/cn";
 import { SizePicker } from "../components/SizePicker";
-import { ToggleSwitch } from "../components/ToggleSwitch";
 import { setCurrentSize, useCurrentSize } from "../current-size";
 import {
   addSession,

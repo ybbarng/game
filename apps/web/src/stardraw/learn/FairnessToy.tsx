@@ -14,7 +14,7 @@ import {
   WINDOW_ALPHA,
   windowsTail,
 } from "./fairness";
-import { Btn, Mono, Row, Toy, Verdict } from "./ui";
+import { Btn, Mono, Row, Toggle, Toy, Verdict } from "./ui";
 
 /** drand 체험과 같은 실제 값(quicknet 1000000회차 서명) */
 const REAL_BASE = drandRandomness({
@@ -165,9 +165,9 @@ export function FairnessToy() {
           번호와 drand 값을 묶은 해시)을 만듭니다.
         </span>
         <span className="flex flex-wrap gap-1.5">
-          <Btn active={compare} onClick={() => setCompare((v) => !v)}>
+          <Toggle on={compare} onChange={setCompare}>
             치우친 뽑기와 견주기
-          </Btn>
+          </Toggle>
           <Btn primary onClick={start} disabled={running}>
             돌리기
           </Btn>
