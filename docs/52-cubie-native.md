@@ -1086,6 +1086,15 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 기록 창·티어표 창 안의 크기 단추는 구경이라 저장하지 않는다(이미 그랬다).
 - **Cubie 새 판이 필요하다**(메뉴 「티어표」 동작이 바뀌었다).
 
+### 5-23. 켜자마자 충돌(0.11.6~0.12.3, 2026-11-26)
+
+- **증상**: 0.11.4에서 「업데이트 설치 후 재실행」을 누르자 0.11.6이 설치됐고(설치는 성공), 다시 켜진 0.11.6이 시작하자마자 `EXC_BREAKPOINT`(Swift 트랩)로 끝났다. 다시 켜도 같은 자리에서 끝났다.
+- **원인**: `NativeCubeWindow.init`의 `super.init()` 안에서 `FloatingWindow.init` → `placeWindow` → `fitToScreens`가 화면 배치별로 저장한 창 자리(`CubieFramesByLayout`)를 놓으며 크기를 바꾸면, 크기 바뀜 알림이 `NativeCubeWindow.windowDidResize` → `updateMirror`를 부른다. 이때 `super.init()` 뒤에 채우던 `idle: IdleShow!`가 아직 nil이라 `idle.showing`에서 트랩했다. 0.11.5까지는 `state.mirror && … && focused && … && idle.showing == nil`에서 `focused`가 거짓이라 `idle`까지 가지 않았는데, 0.11.6(#401)에서 `MirrorRule.shows(…, idleShowing: idle.showing != nil)`로 값을 먼저 모두 셈하게 바뀌었다. 창 크기를 한 번이라도 바꾼 사용자(저장 크기 ≠ 기본 96×96)만 켤 때마다 충돌하고, 번들 id를 바꾼 시험 사본은 저장 자리가 없어 드러나지 않았다. 충돌 보고서 주소를 0.11.6 소스를 기호와 함께 빌드한 실행 파일로 풀어 확인하고(같은 코드 배치), 사용자 설정을 옮겨 넣은 시험 사본으로 0.11.6과 고치기 전 main 모두 재현했다.
+- **고침**: `hintGate`·`idle`을 `lazy var`로 두어 `super.init()` 안에서 읽어도 nil이 없다. 시험 `WindowInitTests`(떠 있는 창과 그 하위 클래스에 `!` 저장 속성이 없는지).
+- **업데이트가 0.12.3이 아니라 0.11.6이었던 까닭**: 메뉴 막대 앱이라 정해진 확인에서 찾은 새 판은 창을 띄우지 않고 메뉴 첫 줄로만 알린다(`standardUserDriverShouldHandleShowingScheduledUpdate` → false). 그 Sparkle 세션은 사용자가 누를 때까지 열린 채 남고, 누르면 `checkForUpdates`가 새로 확인하지 않고 그때 찾은 항목을 띄운다(Sparkle `SPUUpdater.h` `checkForUpdates` 설명). 0.11.4 앱이 11-25(0.11.6이 맨 위였을 때) 찾은 항목을 들고 있다가 11-26 눌러 0.11.6을 받았다. 그 항목의 차이 파일(`0.11.4-0.11.6.delta`)은 그 사이 지워져 404였고 전체 zip으로 받았다.
+- 0.11.6~0.12.3에서 창 크기를 바꾼 사용자는 앱이 켜지지 않아 Sparkle로 새 판을 받을 수 없다. 고친 판을 손으로 설치하거나 `CubieFramesByLayout`을 지워야 켜진다.
+- **Cubie 새 판이 필요하다**.
+
 ## 6. 윈도우판을 언제 어떻게 낼지
 
 - **Tauri로 먼저**: 몇 주 안에 낼 수 있고 지금 웹 화면을 그대로 쓴다. 메모리는 Edge 웹 화면이라 맥과 비슷하게 무겁다. 네이티브로 옮길 때 껍데기는 Rust라 일부(창·단축키·트레이)를 다시 쓸 수 있다.
