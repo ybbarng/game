@@ -33,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   private let focusKeeper = FocusKeeper<RunningApp>(front: RunningApp.front())
   private var escMonitor: Any?
   /// 자동 업데이트(Sparkle). .app으로 띄웠을 때만 켜진다
-  let updater = Updater()
+  let updater = Updater(prompt: Launch.mode.promptsUpdate)
   /// 말풍선에 지금 새 판 알림이 떠 있다(힌트 줄이 오면 그것으로 바뀐다)
   private var updateNoticeShown = false
   private var updateNoticeUp: Bool { updateNoticeShown && bubble.isShown }
@@ -146,6 +146,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     cube.reload()
     cube.panel.orderFrontRegardless()
+    // 큐브 창·메뉴가 다 떴다. 첫 그리기와 화면 자리 다시 놓기가 지나도록 조금 더 기다린 뒤 「켜는 중」 표시를 지운다(docs/52 5-24)
+    DispatchQueue.main.asyncAfter(deadline: .now() + LaunchGuard.clearDelay) { Launch.finished() }
   }
 
   /// 메뉴 막대 아이콘: .app 안 Resources의 템플릿 그림(1x·2x, 맥이 막대 색에 맞춰 칠한다).
@@ -163,6 +165,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   func applicationWillTerminate(_ notification: Notification) {
     hotKey?.unregister()
     if let escMonitor { NSEvent.removeMonitor(escMonitor) }
+    // 켜자마자 끄거나 새 판 설치로 다시 켤 때는 켜다 꺼진 것이 아니다
+    Launch.finished()
   }
 
   // MARK: 앱 안 키 감시
@@ -194,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   /// 확인용(CUBIE_DEBUG): 다른 프로세스가 보낸 알림으로 메뉴와 같은 일을 한다(메뉴를 마우스로 누르지 않고 확인).
   /// 알림 이름 `kr.byb.cubie.debug`, object는 "scramble"·"reset"(맞춘 상태로)·"hint"·"place:<묶음 id>,<상황 id>"·"mirror"·"size:4"·"records"·"tiers"·"settings"·"site-settings"(「모든 설정…」)·
-  /// "visible"(숨기기·보이기)·"reload"·"practice:<단계 id>"(비우면 끝내기)·"keys"·"frame:x,y,w,h"·"dump"
+  /// "visible"(숨기기·보이기)·"reload"·"practice:<단계 id>"(비우면 끝내기)·"keys"·"update-check"(메뉴 「업데이트 확인…」)·"frame:x,y,w,h"·"dump"
   private func listenDebug() {
     DistributedNotificationCenter.default().addObserver(
       forName: Notification.Name("kr.byb.cubie.debug"), object: nil, queue: .main
@@ -222,6 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "reload": self.menuReload()
         case "practice": self.cube.send(.practice(stage: parts.count > 1 ? parts[1] : nil, see: false))
         case "keys": self.menuKeys()
+        case "update-check": self.menuCheckForUpdates()
         case "frame":
           let v = (parts.last ?? "").split(separator: ",").compactMap { Double($0) }
           if v.count == 4 {
