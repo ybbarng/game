@@ -170,7 +170,7 @@ export function sameStages(
   return out;
 }
 
-/** 같은 단계 표시에 부르는 짧은 이름(칸 폭에 한두 줄로 들게) */
+/** 같은 단계 표시에 부르는 짧은 이름(칸 폭 한 줄에 들게, 2026-11-26 HQ 검토) */
 const SHORT_TITLE: Partial<Record<MapMethod["id"], string>> = {
   // 「2단계」만 쓰면 맞추는 차례의 둘째 단계로 읽힌다(처음 보는 독자 검토)
   "two-look": "OLL·PLL",
@@ -199,7 +199,7 @@ function Strip({
               </span>
             )}
             <div
-              className="relative flex w-[68px] flex-col items-center gap-0.5"
+              className="relative flex w-[72px] flex-col items-center gap-0.5"
               data-strip-node={id}
               data-same-as={like?.id}
             >
@@ -225,15 +225,19 @@ function Strip({
                 {nodeById(id).title}
               </span>
               {like && (
+                // 한 줄: 「= 초보자」(같은 표시 기호 + 앞 카드의 짧은 이름, 앞 카드 제목 색). 읽는 이름은 「초보자와 같음」
                 <span
-                  className="w-full wrap-anywhere break-keep rounded border px-0.5 text-center text-[10px] leading-tight"
+                  className="max-w-full overflow-hidden whitespace-nowrap rounded border px-1 text-center text-[10px] leading-tight"
                   style={{
                     borderColor: METHOD_COLOR[like.id],
                     color: METHOD_COLOR[like.id],
                   }}
                   data-strip-same
                 >
-                  {wa(SHORT_TITLE[like.id] ?? like.title)} 같음
+                  <span aria-hidden>
+                    = {SHORT_TITLE[like.id] ?? like.title}
+                  </span>
+                  <span className="sr-only">{wa(like.title)} 같음</span>
                 </span>
               )}
             </div>
