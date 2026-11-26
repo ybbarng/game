@@ -245,9 +245,10 @@ class FloatingWindow: NSObject, NSWindowDelegate {
   /// 화면 바뀜 알림이 몰려 올 때 마지막 것 뒤에 한 번만 다시 놓는다
   private var refitTask: Task<Void, Never>?
 
-  /// 켤 때: 이 구성의 자리 → 지난 자리(구성을 모를 때, 0.1.7까지 저장한 자리 포함) → 기본 자리
+  /// 켤 때: 이 구성의 자리 → 지난 자리(구성을 모를 때, 0.1.7까지 저장한 자리 포함) → 기본 자리.
+  /// 지난번에 켜다 꺼졌으면(`Launch.mode`) 저장한 자리를 읽지 않고 기본 자리로(저장값은 그대로 둔다, docs/52 5-24)
   private func placeWindow() {
-    if !panel.setFrameUsingName(Self.frameName) {
+    if Launch.mode.skipsSaved || !panel.setFrameUsingName(Self.frameName) {
       if let primary = Self.primaryVisible {
         panel.setFrame(
           WindowPlacement.defaultFrame(visible: primary, size: Config.defaultSize, margin: Config.margin),
@@ -282,7 +283,7 @@ class FloatingWindow: NSObject, NSWindowDelegate {
     let screens = NSScreen.screens.map(\.visibleFrame)
     let key = Self.layoutKey
     let f = WindowPlacement.placed(
-      saved: Self.savedFrame(key), current: panel.frame, screens: screens,
+      saved: Launch.mode.skipsSaved ? nil : Self.savedFrame(key), current: panel.frame, screens: screens,
       defaultSize: Config.defaultSize, margin: Config.margin)
     if Config.debug { print("[cubie] place layout=\(key) \(panel.frame) -> \(f)"); fflush(stdout) }
     if f != panel.frame { panel.setFrame(f, display: true) }

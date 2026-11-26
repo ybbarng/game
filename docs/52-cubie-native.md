@@ -1095,6 +1095,37 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 0.11.6~0.12.3에서 창 크기를 바꾼 사용자는 앱이 켜지지 않아 Sparkle로 새 판을 받을 수 없다. 고친 판을 손으로 설치하거나 `CubieFramesByLayout`을 지워야 켜진다.
 - **Cubie 새 판이 필요하다**.
 
+### 5-24. 누를 때의 맨 위 판을 깔기, 켜다 꺼졌으면 안전하게 켜기(2026-11-26)
+
+5-23의 두 원인 가운데 「오래 들고 있던 옛 항목을 깐다」와 「켜다 꺼지면 업데이트도 못 받는다」를 고친다(사용자 승인 2026-11-26).
+
+**누를 때의 맨 위 판을 깐다**
+
+- **원인**: `Updater`가 정해진 확인(하루 한 번)에서 찾은 새 판을 창 없이 메뉴 첫 줄로만 알리려고 `standardUserDriverShouldHandleShowingScheduledUpdate`에서 false를 돌려주었다. 그러면 Sparkle 표준 드라이버는 받은 항목과 답(reply)을 쥔 채 업데이트 세션을 열어 둔다. 사용자가 나중에 「업데이트 확인…」·「새 판 … 설치…」를 누르면 `checkForUpdates`는 새로 확인하지 않고 그 세션의 항목을 띄운다. 근거(Sparkle 2.10.1 `SPUUpdater.h` `checkForUpdates` 설명): "If the user is already being presented with an update or update permission prompt, that notice may be shown to the user in active focus". 세션이 열린 동안은 정해진 확인도 다시 돌지 않는다(`checkForUpdatesInBackground` 설명 "This method does not do anything if there is a `sessionInProgress`").
+- **고른 방법**: `Updater`가 `SPUUpdaterDelegate`도 맡아 `updater(_:shouldProceedWithUpdate:updateCheck:)`에서 정해진 확인(`SPUUpdateCheckUpdatesInBackground`)이면 판 번호만 기억하고 오류를 던진다. 근거(`SPUUpdaterDelegate.h` 같은 함수): "If you return NO and populate the error, the user is not shown this updateItem nor is the update downloaded or installed." 세션이 거기서 끝나므로 사용자가 누르면 늘 새 세션이 되어 그때 appcast의 맨 위 판을 받는다. 판단은 `CubieCore/UpdateFlow`(`proceeds`·`pending`).
+- **고르지 않은 것**: 표준 드라이버가 쥔 답을 `.dismiss`로 닫는 길은 공개 API에 없다(답은 드라이버 안에 있고 `SPUStandardUserDriverDelegate`는 답을 넘겨주지 않는다). 사용자 드라이버를 통째로 새로 쓰는 길은 Sparkle 창·진행 표시를 모두 다시 만들어야 해 크다. `resetUpdateCycle`은 설정이 바뀔 때 부르라는 함수이고 열린 세션을 닫는다는 말이 없다. `checkForUpdateInformation`으로 정해진 확인을 대신하는 길은 Sparkle 일정표를 끄고 하루 한 번을 앱이 따로 재야 한다.
+- **건너뛰기는 남지 않는다**: 오류로 끝낸 세션은 「이 버전 건너뛰기」(`SUSkippedVersion`)를 쓰지 않는다(시험 사본 저장값에서 확인). 건너뛰기는 사용자가 Sparkle 창에서 고를 때만 남고, 그때 메뉴 첫 줄도 지운다(`userDidMakeChoice`). 「나중에」로 닫으면 메뉴 첫 줄은 남는다.
+- **알릴 판**: `didFindValidUpdate`는 이어 갈 때만 `shouldProceedWithUpdate` 뒤에 불려(시험 사본에서 확인), 끝낼 때는 `shouldProceedWithUpdate`에서 판 번호를 기억한다. 새 판이 없으면(`updaterDidNotFindUpdate`) 지운다. 예전처럼 세션이 끝날 때(`standardUserDriverWillFinishUpdateSession`) 지우면 기억하자마자 지워진다.
+- **「앞으로 자동으로 받아 설치」를 고른 사용자**(`automaticallyDownloadsUpdates`, docs/47 15-12)는 정해진 확인도 Sparkle 흐름대로 이어 가 창 없이 받아 둔다. 이 경우는 받아 둔 판이 끝낼 때 깔리므로 이번 고침 밖이다.
+
+**지난번에 켜다 꺼졌으면 안전하게 켜기**
+
+- 켤 때 가장 먼저(`main.swift`, 큐브 창이 저장된 자리를 읽기 전) 「켜는 중」 표시 `CubieLaunching`(판 번호·시각·연달아 안전하게 켠 횟수)를 쓰고 바로 디스크에 남긴다. 큐브 창·메뉴를 다 띄우고 `LaunchGuard.clearDelay`(8초) 뒤, 또는 앱을 끌 때(`applicationWillTerminate`, 새 판 설치로 다시 켤 때 포함) 지운다.
+- 다음에 켤 때 표시가 남아 있으면 지난번에 켜다 꺼진 것이다(`LaunchGuard.begin`): 저장된 큐브 창 자리·크기(`NSWindow Frame CubieMain`·`CubieFramesByLayout`)를 읽지 않고 기본 자리·크기로 켜고, 웹 저장소 옮기기(`WebStorageMigration`)를 다음 켜기로 미룬다. 저장값은 지우지 않는다(무사히 켜진 다음 보통 켜기가 다시 읽는다). 기록·키 배치·설정은 그대로 읽는다(5-23 충돌은 창 자리에서 났고, 이 셋을 미루면 큐브가 기본 크기·기본 키로 떠서 사용자 자료가 없어진 것처럼 보인다).
+- 안전하게 켤 때는 업데이트를 시작한 바로 뒤에 `checkForUpdatesInBackground`를 한 번 부른다(`SPUUpdater.h`: 켤 때마다 확인하려면 "only call this method immediately after starting the updater, and only when automatic update checks are enabled"). 이때만 정해진 확인도 이어 가(`UpdateFlow.proceeds(prompt: true)`) Sparkle 창을 띄우고 앱을 앞으로 가져온다. 새 판이 없으면 아무것도 띄우지 않는다.
+- **되풀이 막기**: 안전하게 켜도 두 번 연달아(`maxSafeRuns`) 꺼지면 그다음부터는 창 자리만 계속 건너뛰고 새 판 창은 띄우지 않는다(`safeQuiet`, 켤 때마다 창이 뜨다 꺼지는 되풀이를 막는다). 판 번호가 바뀌면(손으로 새 판을 깔면) 처음부터 센다.
+- 화면 글은 더하지 않았다(3절 덧붙임 문구). 안내를 넣는다면 오류·위험 알림 한 줄(예: 「지난번에 Cubie가 켜지다 꺼져서 저장된 창 위치 없이 켰어요.」)인데, 사용자에게 먼저 묻는다.
+- 한계: 표시를 지운 뒤(켜고 8초 뒤) 꺼지는 것은 켜다 꺼진 것으로 보지 않는다. 켜고 8초 안에 사용자가 강제 종료해도 다음 한 번은 안전하게 켠다(창이 기본 자리에 뜨고, 새 판이 있으면 창이 뜬다).
+
+**확인(시험 사본)**
+
+- 시험 사본: 번들 id `kr.byb.cubie.updtest`, 프로세스 이름·실행 파일 `CubieUpdTest`, 피드 `http://127.0.0.1:18765/appcast.xml`(이 맥에서 띄운 시험 appcast, 항목 하나), 정해진 확인 간격 3600초, ad-hoc 서명. 지난 확인 시각(`SULastCheckTime`)을 이틀 전으로 넣어 켜자마자 정해진 확인이 돌게 했다. 「업데이트 확인」은 디버그 알림 `update-check`(메뉴와 같은 길)로 눌렀다.
+- **고치기 전(0.12.4 흐름)**: 정해진 확인이 0.99.1을 찾아 메뉴로만 알렸다(`update show 0.99.1 byDriver=false`). appcast를 0.99.2로 바꾸고 「업데이트 확인」을 누르자 appcast를 다시 받지 않고 바로 `GET /Cubie-0.99.1.zip`을 요청했다(11-26 실제 일의 `0.11.4-0.11.6.delta` 요청과 같은 꼴).
+- **고친 뒤**: 정해진 확인은 `proceed 0.99.1 check=background go=false` → 메뉴 판 0.99.1, 세션은 오류 코드 1로 끝났고, 떠 있는 창은 큐브 창뿐, `SUSkippedVersion` 없음, `SULastCheckTime`은 그 시각으로 갱신. appcast를 0.99.2로 바꾸고 누르자 appcast를 다시 받고(서버 기록 `GET /appcast.xml`) `proceed 0.99.2 check=user go=true` → Sparkle 창 「소프트웨어 업데이트」가 0.99.2로 떴다(설치는 하지 않고 껐다).
+- **안전하게 켜기**: 화면 구성별 저장 자리 `{{-2400, 500}, {250, 250}}`을 넣고, 켜고 1초 뒤 SIGKILL로 끄기를 되풀이했다. 보통 켜기(250×250 저장 자리) → 강제 종료 → `launch mode=safe left=0.12.4/0`, 창은 기본 96×96(내장 화면 오른쪽 아래), 켜자마자 `proceed 0.99.2 check=background go=true` → Sparkle 창, 8초 뒤 표시 지움. 다시 보통 켜기 → 강제 종료 → safe(1) → 강제 종료 → safe(2) → 강제 종료 → `safeQuiet`(새 판 창 없음, 기본 자리) → 무사히 켜져 표시 지움 → 다음은 보통 켜기로 저장 자리 250×250이 그대로 돌아왔다.
+- 시험: `test.sh`(머리 파일 시험 + Swift 시험 265개), 새 시험 `UpdateFlowTests`·`LaunchGuardTests`. 정해진 확인을 이어 가게, 반복 막기 경계를 하나 늦게 바꾸면 두 묶음이 실패하는 것을 확인했다.
+- **Cubie 새 판이 필요하다**(0.12.5에 함께).
+
 ## 6. 윈도우판을 언제 어떻게 낼지
 
 - **Tauri로 먼저**: 몇 주 안에 낼 수 있고 지금 웹 화면을 그대로 쓴다. 메모리는 Edge 웹 화면이라 맥과 비슷하게 무겁다. 네이티브로 옮길 때 껍데기는 Rust라 일부(창·단축키·트레이)를 다시 쓸 수 있다.

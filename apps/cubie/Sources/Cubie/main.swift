@@ -10,6 +10,9 @@ if let dir = ProcessInfo.processInfo.environment["CUBIE_WINDOW_SHOT"] {
   exit(NativeWindowShot.run(dir: dir))
 }
 
+// 지난번에 켜다 꺼졌는지 가장 먼저 본다(큐브 창이 저장된 자리를 읽기 전, docs/52 5-24)
+Launch.begin()
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
