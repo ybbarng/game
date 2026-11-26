@@ -6,6 +6,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 
 import { cn } from "@/lib/cn";
 import { SizePicker } from "../components/SizePicker";
+import { ToggleSwitch } from "../components/ToggleSwitch";
 import { setCurrentSize, useCurrentSize } from "../current-size";
 import {
   addSession,
@@ -458,23 +459,14 @@ function EventPicker({
         value={info.size}
         onPick={(n) => onPick(plainEvent(n))}
       />
-      <button
-        type="button"
-        aria-pressed={info.blind}
+      <ToggleSwitch
+        on={info.blind}
         data-cube-event-blind
-        onClick={(e) => {
-          onPick(info.blind ? "333" : "333bf");
-          e.currentTarget.blur();
-        }}
-        className={cn(
-          "rounded-lg border px-3 py-1 text-sm",
-          info.blind
-            ? "border-sky-400 bg-sky-500/20 text-sky-100"
-            : "border-white/20 text-white/70 hover:border-white/50",
-        )}
+        onChange={(v) => onPick(v ? "333bf" : "333")}
+        className="text-sm"
       >
         블라인드
-      </button>
+      </ToggleSwitch>
     </nav>
   );
 }

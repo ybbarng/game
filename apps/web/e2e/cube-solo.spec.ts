@@ -19,8 +19,8 @@ import { expect, fastForwardUntil, type Page, test } from "./test";
 const SCRAMBLE_TIMEOUT = 60_000;
 
 test.beforeEach(async ({ page }, info) => {
-  // 거울 숨기기 단추는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다. 섞기 연출도 장면에서 보인다
-  if (!info.title.includes("거울 숨기기") && !info.title.includes("섞기 연출"))
+  // 「거울」 스위치는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다. 섞기 연출도 장면에서 보인다
+  if (!info.title.includes("거울 끄기") && !info.title.includes("섞기 연출"))
     await no3d(page);
   await useNotationKeys(page);
 });
@@ -509,7 +509,7 @@ test(
 );
 
 test(
-  "혼자 맞추기: 키 그림 접기·거울 숨기기는 새로 고쳐도 남는다",
+  "혼자 맞추기: 키 그림 접기·거울 끄기는 새로 고쳐도 남는다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     // 키 그림 접기는 데스크톱만
@@ -520,16 +520,19 @@ test(
     const keys = page.locator("[data-cube-keys-wrap]");
     const back = page.locator('[data-back-toggle="mirror"]');
     await expect(keys).toBeVisible();
+    // 거울은 켜고 끄는 스위치(한 번 누르는 단추와 다른 꼴)
+    await expect(back).toHaveAttribute("role", "switch");
+    await expect(back).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: "키 그림 접기" }).click();
     await back.click();
     await expect(keys).toBeHidden();
-    await expect(back).toHaveAttribute("aria-pressed", "false");
+    await expect(back).toHaveAttribute("aria-checked", "false");
     await page.reload();
     await expect(
       page.locator("[data-cube-stage][data-input-ready]"),
     ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
     await expect(keys).toBeHidden();
-    await expect(back).toHaveAttribute("aria-pressed", "false");
+    await expect(back).toHaveAttribute("aria-checked", "false");
     await expect(
       page.getByRole("button", { name: "키 그림 펴기" }),
     ).toBeVisible();

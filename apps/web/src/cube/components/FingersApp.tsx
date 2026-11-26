@@ -20,6 +20,7 @@ import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 import { KeyCaps } from "./MoveChip";
 import { useNoKeyboard } from "./PracticeCube";
+import { ToggleSwitch } from "./ToggleSwitch";
 
 /** 핑거 트릭 옆의 「두 손」 키(실물 손가락을 옮긴 배치, `keys/two-hand.ts`). 사용자 배치와 상관없이 두 손 배치로 보인다 */
 const TWO_HAND = presetKeymap("twoHand");
@@ -365,22 +366,15 @@ function GripChecklist() {
               >
                 {i + 1}. {t}
               </span>
-              <button
-                type="button"
-                aria-pressed={on}
-                onClick={(e) => {
-                  setDone((d) => (on ? d.filter((x) => x !== i) : [...d, i]));
-                  e.currentTarget.blur();
-                }}
-                className={cn(
-                  "min-h-8 self-start rounded-md px-3 py-1",
-                  on
-                    ? "bg-emerald-500/70 text-black"
-                    : "bg-white/10 hover:bg-white/15",
-                )}
+              <ToggleSwitch
+                on={on}
+                onChange={(v) =>
+                  setDone((d) => (v ? [...d, i] : d.filter((x) => x !== i)))
+                }
+                className="min-h-8 self-start"
               >
-                {on ? "✓ 따라 했어요" : "따라 했어요"}
-              </button>
+                따라 했어요
+              </ToggleSwitch>
             </li>
           );
         })}
