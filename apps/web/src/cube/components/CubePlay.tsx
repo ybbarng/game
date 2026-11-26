@@ -4,6 +4,7 @@ import { type CubeMove, formatMove, type StickerMask } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
 import { cn } from "@/lib/cn";
@@ -51,7 +52,6 @@ import { type FlowSize, FlowStripView, useFlowStrip } from "./FlowStrip";
 import { KeyGuide } from "./KeyGuide";
 import { CubeLookContext } from "./PatternGlyph";
 import { StageBox, useBackView } from "./StageBox";
-import { ToggleSwitch } from "./ToggleSwitch";
 import { ViewHome } from "./ViewHome";
 
 /**

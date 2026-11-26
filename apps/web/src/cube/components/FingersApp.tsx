@@ -3,6 +3,7 @@
 import { isRotation, parseMoves, solvedCube } from "@game/cube-engine";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import { presetKeymap } from "../input";
@@ -20,7 +21,6 @@ import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 import { KeyCaps } from "./MoveChip";
 import { useNoKeyboard } from "./PracticeCube";
-import { ToggleSwitch } from "./ToggleSwitch";
 
 /** 핑거 트릭 옆의 「두 손」 키(실물 손가락을 옮긴 배치, `keys/two-hand.ts`). 사용자 배치와 상관없이 두 손 배치로 보인다 */
 const TWO_HAND = presetKeymap("twoHand");
