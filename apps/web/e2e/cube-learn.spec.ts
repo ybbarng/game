@@ -229,7 +229,7 @@ test(
     await inputReady(page);
     // 2U'는 기본 「두 손」 배치에서 키 표시가 「키 없음」이라 표기 단추 줄로 친다
     const buttons = page.locator("[data-cube-buttons]");
-    await buttons.getByRole("button", { name: "′ 반대" }).click();
+    await buttons.getByRole("switch", { name: "′ 반대" }).click();
     await buttons.getByRole("button", { name: "2U'", exact: true }).click();
     await expect(page.locator('[data-act="turn"]')).toHaveAttribute(
       "data-act-passed",

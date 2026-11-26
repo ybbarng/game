@@ -43,6 +43,7 @@ import { CubePlay, playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
 import { MoveChip, useMoveKeys } from "./MoveChip";
 import { StillCube } from "./StillCube";
+import { ToggleSwitch } from "./ToggleSwitch";
 import { ViewHome } from "./ViewHome";
 
 /**
@@ -716,24 +717,16 @@ export function PlayPanel({
             ))}
           </>
         )}
-        <button
-          type="button"
+        <ToggleSwitch
           data-play-all
-          aria-pressed={showAll}
-          onClick={(e) => {
-            setShowAll((v) => !v);
+          on={showAll}
+          onChange={(v) => {
+            setShowAll(v);
             setPaint((t) => t + 1);
-            e.currentTarget.blur();
           }}
-          className={cn(
-            "rounded-lg px-3 py-1",
-            showAll
-              ? "bg-white/25 font-semibold"
-              : "bg-white/10 hover:bg-white/15",
-          )}
         >
           모두 보기
-        </button>
+        </ToggleSwitch>
         <button
           type="button"
           data-play-reset

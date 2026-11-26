@@ -24,6 +24,7 @@ import { CubePlay, playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
 import { useSolveMethod } from "../components/MethodSelect";
 import { useMoveKeys } from "../components/MoveChip";
+import { ToggleSwitch } from "../components/ToggleSwitch";
 import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
 import type { CubeLook } from "../item-look";
@@ -746,14 +747,14 @@ function CubeRaceView({
                     : ""}
                 </span>
                 {others.length > 0 && (
-                  <button
-                    type="button"
+                  <ToggleSwitch
+                    on={showSmall}
                     data-cube-small-toggle
-                    onClick={() => setShowSmall((v) => !v)}
-                    className="text-white/50 text-xs hover:underline"
+                    onChange={setShowSmall}
+                    className="text-xs"
                   >
-                    {showSmall ? "작은 큐브 끄기" : "작은 큐브 켜기"}
-                  </button>
+                    작은 큐브
+                  </ToggleSwitch>
                 )}
               </div>
               {/* 단계·체력·끝남: 늘 같은 높이(칩이 늘어도 큐브가 밀리지 않게) */}
