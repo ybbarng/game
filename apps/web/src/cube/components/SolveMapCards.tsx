@@ -5,6 +5,7 @@
 // 카드를 누르면 그 해법 화면(`?method=`)에서 세부 걸음을 모두 본다.
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/cn";
 import { wa } from "@/lib/josa";
 import {
   edgeById,
@@ -17,6 +18,7 @@ import {
 } from "../learn/solve-map";
 import { type EdgeSkill, edgeLearn } from "../learn/solve-map-me";
 import {
+  CUBE_CELL,
   EdgeLines,
   FinishPanel,
   hrefOf,
@@ -207,7 +209,7 @@ function Strip({
                 </span>
               )}
               <div
-                className="rounded-md border-2 p-0.5"
+                className={cn("border-2 p-0.5", CUBE_CELL)}
                 style={{
                   borderColor: skill ? SKILL_RING[skill] : "transparent",
                 }}
@@ -329,7 +331,14 @@ export function MethodScreen({
               <span className="w-5 shrink-0 text-right text-sm text-white/50">
                 {i + 1}
               </span>
-              <NodeCube id={e.to} settings={ctx.settings} px={56} method={m} />
+              <span className={cn("shrink-0", CUBE_CELL)}>
+                <NodeCube
+                  id={e.to}
+                  settings={ctx.settings}
+                  px={56}
+                  method={m}
+                />
+              </span>
               <span className="flex min-w-0 flex-col break-keep text-[11px] leading-tight wrap-anywhere">
                 <span className="font-medium text-sm">
                   {e.title} → {nodeById(e.to).title}

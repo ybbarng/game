@@ -150,13 +150,15 @@ export function FinishPanel({ ctx }: { ctx: MapCtx }) {
           );
           const body = (
             <>
-              <NodeCube
-                id={e.to}
-                settings={ctx.settings}
-                px={40}
-                as={n}
-                method={fin}
-              />
+              <span className={cn("shrink-0", CUBE_CELL)}>
+                <NodeCube
+                  id={e.to}
+                  settings={ctx.settings}
+                  px={40}
+                  as={n}
+                  method={fin}
+                />
+              </span>
               <span className="flex min-w-0 flex-col text-[11px] leading-tight">
                 <span className="font-medium text-white">
                   {done ? "✓ " : ""}
@@ -350,11 +352,17 @@ function NodePic({ id, ctx, px }: { id: MapNodeId; ctx: MapCtx; px: number }) {
       </span>
     );
   return (
-    <span className="shrink-0" data-node-part="pic">
+    <span className={cn("shrink-0", CUBE_CELL)} data-node-part="pic">
       <NodeCube id={id} settings={ctx.settings} px={px} />
     </span>
   );
 }
+
+/**
+ * 지점 그림 칸: 검은 큐브가 묶음(지도 지점 상자·카드) 바탕에 묻히지 않게 한 단계 밝은 바탕과 얇은 테두리
+ * (2026-11-26 사용자 「큐브가 눈에 잘 안 띈다」, 과하지 않게)
+ */
+export const CUBE_CELL = "rounded-md bg-neutral-700/60 ring-1 ring-white/15";
 
 // ── 지점 그림 ─────────────────────────────────────────
 
