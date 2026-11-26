@@ -102,6 +102,13 @@ export function splitMoveText(
     const token = m[0];
     const after = text.slice(at + token.length, at + token.length + 6);
     if (NOT_A_MOVE_AFTER.test(after)) continue;
+    // 「공식 B를」·「공식 B(R2 …)」처럼 공식 이름인 홑 글자. 「공식 F R U …」의 첫 수는 뒤에 수가 이어져 수로 둔다
+    if (
+      /^[RLUDFB]$/.test(token) &&
+      /공식 ?$/.test(text.slice(Math.max(0, at - 3), at)) &&
+      !/^\s+(?:\d?[RLUDFB]|[rludfbMESxyz])/.test(after)
+    )
+      continue;
     // 숫자로 시작하는 깊이 수(2R)는 숫자 하나만, 1R·0R은 수가 아니다
     if (/^[01]/.test(token)) continue;
     found.push({ at, token });
