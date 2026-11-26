@@ -150,7 +150,13 @@ export function FinishPanel({ ctx }: { ctx: MapCtx }) {
           );
           const body = (
             <>
-              <NodeCube id={e.to} settings={ctx.settings} px={40} as={n} />
+              <NodeCube
+                id={e.to}
+                settings={ctx.settings}
+                px={40}
+                as={n}
+                method={fin}
+              />
               <span className="flex min-w-0 flex-col text-[11px] leading-tight">
                 <span className="font-medium text-white">
                   {done ? "✓ " : ""}
@@ -357,15 +363,18 @@ export function NodeCube({
   settings,
   px,
   as,
+  method,
 }: {
   id: MapNodeId;
   settings: CubeSettings;
   px: number;
   /** 3×3 지점을 이 크기 큐브로 그린다(큰 큐브 「3×3 맞추기」를 펼친 칸) */
   as?: CubeSize;
+  /** 해법 하나의 띠: 끝 지점(다 맞음)을 바로 앞 지점처럼 쥔다 */
+  method?: MapMethod;
 }) {
   const n = as && as !== 3 && nodeSize(id) === 3 ? as : nodeSize(id);
-  const state = useMemo(() => nodeState(id, as), [id, as]);
+  const state = useMemo(() => nodeState(id, as, method), [id, as, method]);
   const mask = useMemo(() => nodeMask(id, as), [id, as]);
   return (
     <div style={{ width: px }} data-node-cube={id}>

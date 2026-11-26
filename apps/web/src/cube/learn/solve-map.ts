@@ -177,7 +177,8 @@ const BASE_NODES: readonly MapNode[] = [
     view: "z2",
     size: 2,
   },
-  { id: "2-solved", title: "다 맞음", row: 3, col: 0, view: "", size: 2 },
+  // 다 맞음: 들어오는 앞 단계(윗면·코너 자리)처럼 노란 면이 위(2026-11-26 사용자)
+  { id: "2-solved", title: "다 맞음", row: 3, col: 0, view: "z2", size: 2 },
   { id: "2-first-face", title: "흰 면", row: 1, col: 2, view: "", size: 2 },
   {
     id: "2-both-faces",
@@ -242,7 +243,8 @@ const BASE_NODES: readonly MapNode[] = [
   { id: "yellow-cross", title: "노란 십자", row: 6, col: 0, view: "z2" },
   { id: "yellow-edges", title: "위 엣지", row: 7, col: 0, view: "z2" },
   { id: "ll-corners-placed", title: "코너 자리", row: 8, col: 0, view: "z2" },
-  { id: "solved", title: "다 맞음", row: 9.5, col: 0, view: "" },
+  // 다 맞음: 들어오는 앞 단계(마지막 층 걸음들)처럼 노란 면이 위(2026-11-26 사용자)
+  { id: "solved", title: "다 맞음", row: 9.5, col: 0, view: "z2" },
   // 초보자(코너 방향 먼저)
   {
     id: "ll-corners-oriented",
@@ -1602,9 +1604,26 @@ export function nodeMask(id: MapNodeId, as?: CubeSize): StickerVisibility[] {
 export const nodeSolvedPieces = (id: MapNodeId): readonly number[] =>
   lookOf(id).solved;
 
+/**
+ * 지점 그림을 쥐는 돌리기. 해법 하나의 띠(카드·펼친 칸)에서 그 해법의 끝 지점(다 맞음)은 바로 앞 지점과 같이 쥔다
+ * (여러 해법이 닿는 지도의 다 맞음 칸 하나는 지점의 `view`). 2026-11-26 사용자 「다 맞춤만 흰 면이 위라 어색」
+ */
+export function nodeView(id: MapNodeId, m?: MapMethod): string {
+  if (m) {
+    const ns = methodNodes(m);
+    if (ns.length > 1 && ns.at(-1) === id)
+      return nodeById(ns.at(-2) as MapNodeId).view;
+  }
+  return nodeById(id).view;
+}
+
 /** 지점 그림의 큐브(맞춘 큐브를 그 지점의 쥐는 돌리기로 쥔 것, 엣지 짝 지점은 그 전에 바깥 층 돌리기) */
-export function nodeState(id: MapNodeId, as?: CubeSize): PuzzleState {
+export function nodeState(
+  id: MapNodeId,
+  as?: CubeSize,
+  m?: MapMethod,
+): PuzzleState {
   const n = drawSize(id, as);
-  const node = nodeById(id);
-  return turned(n, `${node.paired?.turns ?? ""} ${node.view}`.trim());
+  const turns = nodeById(id).paired?.turns ?? "";
+  return turned(n, `${turns} ${nodeView(id, m)}`.trim());
 }

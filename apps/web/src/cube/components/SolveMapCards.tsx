@@ -146,7 +146,7 @@ function Strip({
               style={{ borderColor: skill ? SKILL_RING[skill] : "transparent" }}
               data-strip-skill={skill ?? undefined}
             >
-              <NodeCube id={id} settings={ctx.settings} px={40} />
+              <NodeCube id={id} settings={ctx.settings} px={40} method={m} />
             </div>
             <span className="h-3 text-[10px] text-emerald-300 leading-3">
               {done ? "✓" : ""}
@@ -189,7 +189,7 @@ function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
                 }}
                 data-strip-skill={skill ?? undefined}
               >
-                <NodeCube id={id} settings={ctx.settings} px={36} />
+                <NodeCube id={id} settings={ctx.settings} px={36} method={m} />
               </span>
               <span className="min-w-0 break-keep text-sm leading-tight">
                 {nodeById(id).title}
@@ -309,7 +309,7 @@ function MethodScreen({
               <span className="w-5 shrink-0 text-right text-sm text-white/50">
                 {i + 1}
               </span>
-              <NodeCube id={e.to} settings={ctx.settings} px={56} />
+              <NodeCube id={e.to} settings={ctx.settings} px={56} method={m} />
               <span className="flex flex-col text-[11px] leading-tight">
                 <span className="font-medium text-sm">
                   {e.title} → {nodeById(e.to).title}

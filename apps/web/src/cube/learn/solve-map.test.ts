@@ -32,6 +32,7 @@ import { goalMet, stateForRule } from "./judge";
 import { yellowCrossByFormula } from "./ll-compare";
 import {
   edgeById,
+  FINISH_METHODS,
   lessonFor,
   MAP_EDGES,
   MAP_LANES,
@@ -49,6 +50,7 @@ import {
   nodeMask,
   nodeSize,
   nodeState,
+  nodeView,
   PARITY_AT,
   PARITY_FORMULAS,
   PARITY_LOOPS,
@@ -838,6 +840,81 @@ describe("큰 큐브 엣지 짝 그림(짝은 맞았지만 제자리는 아님)"
         "edge visible 남의 자리": 4,
         "edge gray": 12,
       },
+    });
+  });
+});
+
+describe("다 맞음 그림의 쥐기(2026-11-26 사용자 「다 맞춤만 흰 면이 위라 어색」)", () => {
+  const COLOR = ["흰", "빨강", "초록", "노랑", "주황", "파랑"];
+  /** 그림에서 위·앞 면의 센터 색(큰 큐브는 안쪽 센터 칸) */
+  const held = (n: number, s: PuzzleState) => {
+    const c = faceColors(n, s);
+    const k = n === 2 ? 0 : n + 1;
+    return `${COLOR[c[0 * n * n + k] as number]} 위 · ${COLOR[c[2 * n * n + k] as number]} 앞`;
+  };
+
+  it("해법 하나의 띠(카드·펼친 칸)에서 다 맞음은 모든 해법에서 바로 앞 지점과 같은 면이 위·앞이다", () => {
+    const off: string[] = [];
+    const check = (m: (typeof MAP_METHODS)[number], as?: 4 | 5) => {
+      const ns = methodNodes(m);
+      const last = ns.at(-1) as MapNodeId;
+      const prev = ns.at(-2) as MapNodeId;
+      const n = as ?? nodeSize(last);
+      const a = held(n, nodeState(prev, as, m));
+      const b = held(n, nodeState(last, as, m));
+      if (a !== b || nodeView(last, m) !== nodeView(prev, m))
+        off.push(`${m.id}${as ? `@${as}` : ""}: ${a} → ${b}`);
+    };
+    for (const m of MAP_METHODS) check(m);
+    // 큰 큐브 「3×3 맞추기」를 펼친 칸은 3×3 해법을 그 크기 큐브로 그린다
+    for (const id of FINISH_METHODS)
+      for (const as of [4, 5] as const) check(method(id), as);
+    expect(off).toEqual([]);
+  });
+
+  it("지도의 다 맞음 칸은 들어오는 앞 단계 대부분처럼 노란 면이 위이고, 해법 띠의 다 맞음 쥐기는 해법마다 이렇다", () => {
+    expect({
+      3: held(3, nodeState("solved")),
+      2: held(2, nodeState("2-solved")),
+      // 큰 큐브 지도는 앞 단계(엣지 짝)가 모두 흰 면 위다
+      4: held(4, nodeState("4-solved")),
+      5: held(5, nodeState("5-solved")),
+    }).toEqual({
+      3: "노랑 위 · 초록 앞",
+      2: "노랑 위 · 초록 앞",
+      4: "흰 위 · 초록 앞",
+      5: "흰 위 · 초록 앞",
+    });
+    const byHold = new Map<string, string[]>();
+    for (const m of MAP_METHODS) {
+      const last = methodNodes(m).at(-1) as MapNodeId;
+      const h = held(nodeSize(last), nodeState(last, undefined, m));
+      byHold.set(h, [...(byHold.get(h) ?? []), m.id]);
+    }
+    expect(Object.fromEntries(byHold)).toEqual({
+      "노랑 위 · 초록 앞": [
+        "beginner",
+        "beginner-twist-first",
+        "two-look",
+        "cfop",
+        "zz",
+        "petrus",
+        "zz-coll",
+        "zz-zbll",
+        "cfop-1lll",
+        "222-beginner",
+        "222-from333",
+      ],
+      // 루는 블록을 왼쪽·오른쪽에 두려고 y2로 쥔다
+      "노랑 위 · 파랑 앞": ["roux"],
+      // 앞 단계가 흰 면 위인 해법(억지로 바꾸지 않는다): 코너 먼저, 오르테가(흰 면 → 흰·노란 면), 큰 큐브 축소법·야우
+      "흰 위 · 초록 앞": [
+        "corners-first",
+        "ortega",
+        "444-reduction",
+        "444-yau",
+        "555-reduction",
+      ],
     });
   });
 });
