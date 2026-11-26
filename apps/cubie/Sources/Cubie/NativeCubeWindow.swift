@@ -68,7 +68,8 @@ final class NativeCubeWindow: FloatingWindow {
     size = MiniSize(book: book)
     clock = FocusClock(base: realClock)
     practiceClock = FocusClock(base: realClock)
-    if !Config.measure {
+    // 지난번에 켜다 꺼졌으면 웹 저장소 옮기기를 다음 켜기로 미룬다(옮긴 표시가 없어 다음에 다시 돈다, docs/52 5-24)
+    if !Config.measure, !Launch.mode.skipsSaved {
       let r = WebStorageMigration.run(
         store: store,
         // 번들 id를 바꾼 시험 사본은 제 웹 저장소만 본다(설치된 앱의 기록을 옮겨 오지 않는다). 실행 파일만 띄우면 번들 id가
