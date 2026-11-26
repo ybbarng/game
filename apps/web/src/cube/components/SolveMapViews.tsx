@@ -1,6 +1,6 @@
 "use client";
 
-// 해법 지도 시안의 안(SolveMapApp). A 펼친 지도는 줌·패닝·미니맵 틀(MapFrame) 안에 둔다. D는 해법마다 막대 하나.
+// 해법 지도 시안의 A 펼친 지도(SolveMapApp). 줌·패닝·미니맵 틀(MapFrame) 안에 둔다. 카드 안(E)도 지점 그림·꼬리표를 함께 쓴다.
 import {
   createContext,
   type MouseEvent,
@@ -26,9 +26,7 @@ import {
   type MapMethod,
   type MapMethodId,
   type MapNodeId,
-  measuredStep,
   methodNodes,
-  newFormulas,
   nodeById,
   nodeMask,
   nodeSize,
@@ -46,9 +44,7 @@ import {
   edgeFormulaLabel,
   edgeHref,
   edgeTurns,
-  formulaText,
   METHOD_COLOR,
-  methodTotals,
   nodeHref,
   parityMeasure,
   rowRange,
@@ -1362,216 +1358,6 @@ function MapFrame({
           style={miniRect(view, size, ms, MINI_W, miniH)}
           data-map-mini-view
         />
-      </div>
-    </div>
-  );
-}
-
-// ── D: 막대 ─────────────────────────────────────────────
-
-/** 막대 칸 하나: 걸음 하나, 또는 잰 값이 둘을 합친 걸음들(루 CMLL 방향·자리는 컴퓨터 해법이 한 번에 푼다) */
-interface BarCell {
-  key: string;
-  edges: MapEdge[];
-  title: string;
-  turns: number | undefined;
-}
-
-function barCells(m: MapMethod): BarCell[] {
-  const out: BarCell[] = [];
-  for (const id of m.edges) {
-    const e = edgeById(id) as MapEdge;
-    if (m.id === "roux" && id === "roux-cp") continue;
-    if (m.id === "roux" && id === "roux-co")
-      out.push({
-        key: "cmll",
-        edges: [e, edgeById("roux-cp") as MapEdge],
-        title: "CMLL",
-        turns: measuredStep(m.id, "cmll"),
-      });
-    else
-      out.push({
-        key: id,
-        edges: [e],
-        title: e.title,
-        turns: measuredStep(m.id, id),
-      });
-  }
-  return out;
-}
-
-/** 한 수의 막대 길이(px). 모든 막대가 같은 눈금이라 길이를 바로 견준다 */
-const PX_PER_TURN = 8;
-const MIN_CELL = 44;
-const UNMEASURED_CELL = 64;
-
-/** 가장 긴 막대 너비 상한(3×3 초보자 127수 × 8px 쯤) */
-const MAX_BAR = 1016;
-/** 패리티 칸 너비 */
-const LOOP_CELL = 132;
-
-export function BarsView({ ctx }: { ctx: MapCtx }) {
-  const [open, setOpen] = useState<string | null>(null);
-  // 한 화면의 막대는 같은 눈금. 큰 큐브처럼 수가 많으면 가장 긴 막대가 상한에 들도록 줄인다(패리티 칸 몫은 먼저 뺀다)
-  const longest = Math.max(
-    1,
-    ...ctx.selected.map((m) => methodTotals(m).turns ?? 0),
-  );
-  const loopRoom =
-    detours(ctx.size, ctx.from, ctx.selected.slice(0, 1)).length * LOOP_CELL;
-  const pxPerTurn = Math.min(PX_PER_TURN, (MAX_BAR - loopRoom) / longest);
-  return (
-    <div className="overflow-x-auto" data-map-bars>
-      <div className="flex w-max min-w-full flex-col gap-4 pb-1">
-        {ctx.selected.map((m) => {
-          const t = methodTotals(m);
-          const cells = barCells(m);
-          // 잰 값이 모든 칸에 있어야 너비를 수에 맞춘다(없으면 같은 너비)
-          const measured = cells.every((c) => c.turns !== undefined);
-          const solo = ctx.solo.get(m.id);
-          const openCell = cells.find((c) => open === `${m.id}:${c.key}`);
-          return (
-            <section key={m.id} className="flex flex-col gap-1" data-bar={m.id}>
-              <div className="flex items-baseline gap-3">
-                <h3
-                  className="font-semibold"
-                  style={{ color: METHOD_COLOR[m.id] }}
-                >
-                  {m.title}
-                </h3>
-                <span
-                  className="whitespace-nowrap text-sm text-white/80"
-                  data-bar-total
-                >
-                  {[
-                    t.formulas !== null ? `공식 ${t.formulas}` : null,
-                    t.turns !== undefined ? `${t.turns}수` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </div>
-              <div
-                className="flex gap-px overflow-hidden rounded-md self-start"
-                data-bar-measured={measured ? "" : undefined}
-              >
-                {cells.map((c, i) => {
-                  const k = `${m.id}:${c.key}`;
-                  const learn = c.edges.every(
-                    (e) => edgeLearn(e, ctx.progress) === "done",
-                  )
-                    ? "done"
-                    : "none";
-                  const s = c.edges.length === 1 ? solo?.get(c.key) : undefined;
-                  const nf = newFormulas(m);
-                  const ks = c.edges.map((e) => nf.get(e.id));
-                  const f =
-                    c.edges.length === 1
-                      ? edgeFormulaLabel(c.edges[0] as MapEdge, [m])
-                      : ks.some((x) => x === null || x === undefined)
-                        ? null
-                        : formulaText(
-                            ks.reduce(
-                              (a, b) => (a as number) + (b as number),
-                              0,
-                            ) as number,
-                          );
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      aria-expanded={open === k}
-                      onClick={() => setOpen(open === k ? null : k)}
-                      className={cn(
-                        "flex shrink-0 flex-col items-start justify-start gap-0.5 overflow-hidden px-1 py-1.5 text-left text-[10px] leading-tight",
-                        open === k && "ring-2 ring-white ring-inset",
-                      )}
-                      style={{
-                        width: measured
-                          ? Math.max(MIN_CELL, (c.turns as number) * pxPerTurn)
-                          : UNMEASURED_CELL,
-                        background: `${METHOD_COLOR[m.id]}${learn === "done" ? "66" : i % 2 ? "26" : "3a"}`,
-                        borderBottom: s?.skill
-                          ? `3px solid ${s.skill === "weak" ? "#fdba74" : s.skill === "strong" ? "#6ee7b7" : "transparent"}`
-                          : undefined,
-                      }}
-                      data-cell={c.key}
-                    >
-                      <span className="line-clamp-2 w-full break-keep font-medium text-white">
-                        {learn === "done" ? "✓ " : ""}
-                        {c.title}
-                      </span>
-                      {f && (
-                        <span className="w-full break-keep text-white/70">
-                          {f}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                {/* 큰 큐브: 3×3 맞추기 칸 뒤에 패리티 고리 두 칸(나올 때만 치는 걸음이라 점선) */}
-                {cells.some((c) => c.key.endsWith(":333")) &&
-                  detours(ctx.size, ctx.from, [m]).map((d) => (
-                    <span
-                      key={d.loop.kind}
-                      className="flex shrink-0 flex-col items-start gap-0.5 rounded-sm border border-dashed px-1 py-1.5 text-[10px] leading-tight"
-                      style={{
-                        borderColor: LOOP_COLOR,
-                        // 이름·작은 줄이 들어가게 넓게(짧은 걸음이라 눈금보다 넓다)
-                        width: Math.max(
-                          LOOP_CELL,
-                          parityMeasure(d.loop.kind).turns * pxPerTurn,
-                        ),
-                      }}
-                      data-cell={`loop:${d.loop.kind}`}
-                    >
-                      <span
-                        className="font-medium"
-                        style={{ color: LOOP_COLOR }}
-                      >
-                        {d.loop.name}
-                      </span>
-                      <span className="break-keep text-white/60">
-                        {d.loop.sub}
-                      </span>
-                      <span className="text-white/70">
-                        {`공식 ${d.loop.formulas.length} · ${parityMeasure(d.loop.kind).turns}수 · ${parityMeasure(d.loop.kind).rate}% 판에 나옴`}
-                      </span>
-                    </span>
-                  ))}
-              </div>
-              {openCell?.edges.map((e) => (
-                <BarDetail key={e.id} e={e} m={m} ctx={ctx} />
-              ))}
-            </section>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function BarDetail({ e, m, ctx }: { e: MapEdge; m: MapMethod; ctx: MapCtx }) {
-  const href = hrefOf(e, m, ctx);
-  return (
-    <div
-      className="flex items-center gap-3 rounded-lg bg-neutral-800 px-2 py-2"
-      data-bar-detail={e.id}
-    >
-      <NodeCube id={e.to} settings={ctx.settings} px={64} />
-      <div className="flex flex-col gap-0.5 text-xs">
-        <span className="font-semibold text-sm">
-          {e.title} → {nodeById(e.to).title}
-        </span>
-        <EdgeLines e={e} ctx={{ ...ctx, selected: [m] }} full />
-        {href ? (
-          <a
-            href={href}
-            className="mt-1 self-start rounded-md bg-white px-2 py-0.5 font-medium text-neutral-900"
-          >
-            배우기
-          </a>
-        ) : null}
       </div>
     </div>
   );

@@ -129,12 +129,6 @@ export function edgeTurns(
   return undefined;
 }
 
-/** 공식 수 글(값): 0은 「공식 없음」, null(자료 없음)은 비움 */
-export function formulaText(k: number | null): string | null {
-  if (k === null) return null;
-  return k === 0 ? "공식 없음" : `공식 ${k}`;
-}
-
 export const lessonHref = (id: string) => `/cube/learn?lesson=${id}`;
 
 /** 길을 누르면 갈 단원 주소(없으면 null) */

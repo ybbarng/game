@@ -1,7 +1,7 @@
 import { expect, test } from "./test";
 
 /**
- * 큐브 해법 지도 시안(/cube/learn-map, 2026-11-25). 남은 안(A 지도·D 막대·E 카드), 여러 해법 고르기,
+ * 큐브 해법 지도 시안(/cube/learn-map, 2026-11-25). 남은 안(A 지도·E 카드), 여러 해법 고르기,
  * 「나」 표시와 견본 기록. 시안을 고르면 이 시험도 고른 안에 맞춰 줄인다.
  */
 
@@ -36,23 +36,6 @@ test("해법 지도: 해법을 여럿 고르면 주소에 담기고 고른 해�
   await expect(page.locator('[data-edge-line="roux-fb"]')).toHaveCount(0);
   // 두 해법이 함께 지나는 십자 길은 선 둘
   await expect(page.locator('[data-edge-line="cross"]')).toHaveCount(2);
-});
-
-test("해법 지도 D: 막대 길이는 잰 수에 맞고(CFOP가 초보자보다 짧다) 끝에 총 공식 수·평균 수", async ({
-  page,
-}) => {
-  await page.goto("/cube/learn-map?v=d&m=beginner,cfop");
-  const bar = (id: string) =>
-    page.locator(`[data-bar="${id}"] [data-bar-measured]`);
-  await expect(bar("cfop")).toBeVisible();
-  const w = async (id: string) => (await bar(id).boundingBox())?.width ?? 0;
-  expect(await w("cfop")).toBeLessThan(await w("beginner"));
-  await expect(
-    page.locator('[data-bar="beginner"] [data-bar-total]'),
-  ).toHaveText("공식 6 · 127수");
-  await expect(page.locator('[data-bar="cfop"] [data-bar-total]')).toHaveText(
-    "공식 119 · 55수",
-  );
 });
 
 test("해법 지도 E: 카드를 누르면 해법 화면에서 세부 걸음을 모두 보고, 단원 없는 걸음은 누를 수 없다", async ({
@@ -168,10 +151,10 @@ test("해법 지도 A: 처음에는 지도 전체가 한 화면에 들어오고 
   }
 });
 
-test("해법 지도: 폐기한 B 갈림길·C 노선도 주소(v=b·v=c)로 열면 A 지도로 연다", async ({
+test("해법 지도: 폐기한 B 갈림길·C 노선도·D 막대 주소(v=b·v=c·v=d)로 열면 A 지도로 연다", async ({
   page,
 }) => {
-  for (const v of ["b", "c"]) {
+  for (const v of ["b", "c", "d"]) {
     await page.goto(`/cube/learn-map?v=${v}&m=beginner`);
     await expect(page.locator('[data-solve-map="a"]')).toBeVisible();
     await expect(page).toHaveURL(/v=a/);
