@@ -55,7 +55,6 @@ import {
   METHOD_COLOR,
   nodeHref,
   parityMeasure,
-  rowRange,
   seconds,
   visibleEdges,
   visibleNodes,
@@ -458,59 +457,182 @@ interface Layout {
   height: number;
   pos: Map<MapNodeId, { x: number; y: number }>;
   nodeH: number;
-  /** 줄 높이 */
-  RH: number;
   /** 칸 사이 빈 길 폭 */
   G: number;
   /** 칸마다 왼쪽 끝과 폭(빈 칸은 폭 0) */
   colLeft: number[];
   colW: number[];
+  /** 지점이 있는 줄 번호(오름차순)와 그 줄 지점 상자의 위 끝 */
+  rows: number[];
+  rowTop: Map<number, number>;
 }
 
 /** 지점 상자 폭 */
 const BOX_W = 100;
+/** 지점 상자 높이 */
+const NODE_H = 92;
+/** 줄 높이(줄 번호 1 차이): 상자 아래 빈 줄은 RH − NODE_H */
+const RH = 158;
+const PAD = 24;
+// 칸 사이 빈 길(거터): 칸을 넘는 선과 꼬리표는 여기로만 지난다
+const G = 56;
 
-function useLayout(ctx: MapCtx): Layout {
-  return useMemo(() => {
-    const nodes = visibleNodes(ctx.methods);
-    const { min, max } = rowRange(nodes);
-    const RH = 158;
-    const PAD = 24;
-    // 칸 사이 빈 길(거터): 칸을 넘는 선과 꼬리표는 여기로만 지난다
-    const G = 56;
-    const nodeH = 92;
-    // 지도는 「다 섞임」에서 시작한다
-    const TOP = PAD + 16;
-    // 칸 폭: 지점이 있는 칸은 상자 폭
-    const maxCol = Math.max(...[...nodes].map((id) => nodeById(id).col));
-    const colW = Array.from({ length: maxCol + 1 }, (_, c) =>
-      [...nodes].some((id) => nodeById(id).col === c) ? BOX_W : 0,
+/**
+ * 지점 자리: 줄 번호 차이 × 줄 높이에, 줄 사이(`extra[i]`는 i번째 줄과 그다음 줄 사이)마다 더 벌린 만큼을 더한다.
+ * `left`는 왼쪽 여백에 더할 폭(꼬리표가 왼쪽 끝을 넘을 때)
+ */
+function baseLayout(
+  nodes: Set<MapNodeId>,
+  extra: number[],
+  left: number,
+): Layout {
+  const rows = [...new Set([...nodes].map((id) => nodeById(id).row))].sort(
+    (p, q) => p - q,
+  );
+  const min = rows[0] ?? 0;
+  // 지도는 「다 섞임」에서 시작한다
+  const TOP = PAD + 16;
+  const rowTop = new Map<number, number>();
+  let add = 0;
+  for (const [i, r] of rows.entries()) {
+    rowTop.set(r, TOP + (r - min) * RH + add);
+    add += extra[i] ?? 0;
+  }
+  // 칸 폭: 지점이 있는 칸은 상자 폭
+  const maxCol = Math.max(...[...nodes].map((id) => nodeById(id).col));
+  const colW = Array.from({ length: maxCol + 1 }, (_, c) =>
+    [...nodes].some((id) => nodeById(id).col === c) ? BOX_W : 0,
+  );
+  const colLeft: number[] = [];
+  let x = PAD + left + G / 2;
+  for (const w of colW) {
+    colLeft.push(x);
+    x += w ? w + G : 0;
+  }
+  const pos = new Map<MapNodeId, { x: number; y: number }>();
+  for (const id of nodes) {
+    const n = nodeById(id);
+    pos.set(id, {
+      x: (colLeft[n.col] as number) + BOX_W / 2,
+      y: rowTop.get(n.row) as number,
+    });
+  }
+  const last = rowTop.get(rows[rows.length - 1] ?? 0) ?? TOP;
+  return {
+    width: x - G / 2 + PAD,
+    height: last + NODE_H + 30 + PAD,
+    pos,
+    nodeH: NODE_H,
+    G,
+    colLeft,
+    colW,
+    rows,
+    rowTop,
+  };
+}
+
+/** 지도 한 벌의 자리: 지점 자리, 걸음마다 꺾은선과 꼬리표 자리 */
+interface Geometry {
+  layout: Layout;
+  geo: { e: MapEdge; ps: Pt[]; label: Pt }[];
+}
+
+/**
+ * 지점과 꼬리표 자리를 함께 정한다(2026-11-26, 모든 걸음 꼬리표가 단계 이름·공식 수·평균 수를 늘 보이며 커짐).
+ * 꼬리표 자리를 고른 뒤에도 지점 상자나 다른 꼬리표와 겹치는 꼬리표가 남으면, 그 꼬리표가 놓인 줄 사이를 조금
+ * 넓혀 다시 고른다(겹침이 없어질 때까지, 상한 있음). 꼬리표 크기는 고른 해법과 상관없이 어림해(`labelSize`) 해법을
+ * 고르거나 끌 때 지점이 움직이지 않는다
+ */
+function mapGeometry(
+  nodes: Set<MapNodeId>,
+  edges: MapEdge[],
+  size: (e: MapEdge) => { w: number; h: number },
+): Geometry {
+  const sizes = edges.map(size);
+  const extra: number[] = [];
+  let left = 0;
+  const STEP = 12;
+  let out: Geometry | null = null;
+  for (let round = 0; round < 60; round++) {
+    const layout = baseLayout(nodes, extra, left);
+    const { pos } = layout;
+    const geo0 = edges.flatMap((e) => {
+      const a = pos.get(e.from);
+      const b = pos.get(e.to);
+      if (!a || !b) return [];
+      const dx = parallelOffset(e, edges) * 0.4;
+      const ps = routeEdge(
+        e,
+        layout,
+        { x: a.x, y: a.y + NODE_H },
+        { x: b.x, y: b.y },
+        dx,
+      );
+      return [{ e, ps, label: halfway(ps) }];
+    });
+    const boxes = geo0.map((g) => ({
+      ...g.label,
+      ...(sizes[edges.indexOf(g.e)] as { w: number; h: number }),
+    }));
+    const nodeBoxes = [...pos.values()].map((p) => ({
+      x: p.x,
+      y: p.y + NODE_H / 2,
+      w: BOX_W,
+      h: NODE_H,
+    }));
+    const placed = placeLabels(
+      boxes,
+      nodeBoxes.map((b) => ({ ...b, w: b.w + 8, h: b.h + 8 })),
     );
-    const colLeft: number[] = [];
-    let x = PAD + G / 2;
-    for (const w of colW) {
-      colLeft.push(x);
-      x += w ? w + G : 0;
+    const geo = geo0.map((g, i) => ({ ...g, label: placed[i] as Pt }));
+    out = { layout, geo };
+    // 남은 겹침: 지점 상자와, 다른 꼬리표와(2px 여유)
+    const hit = (a: Box, b: Box, m: number) =>
+      Math.abs(a.x - b.x) < (a.w + b.w) / 2 + m &&
+      Math.abs(a.y - b.y) < (a.h + b.h) / 2 + m;
+    const at = boxes.map((b, i) => ({ ...b, ...(placed[i] as Pt) }));
+    const bad = at.filter(
+      (a, i) =>
+        nodeBoxes.some((n) => hit(a, n, 0)) ||
+        at.some((b, j) => j !== i && hit(a, b, 2)),
+    );
+    const minLeft = Math.min(...at.map((b) => b.x - b.w / 2));
+    if (!bad.length && minLeft >= 4) {
+      // 꼬리표가 오른쪽·아래 끝을 넘으면 지도를 그만큼 키운다
+      const right = Math.max(...at.map((b) => b.x + b.w / 2));
+      const bottom = Math.max(...at.map((b) => b.y + b.h / 2));
+      layout.width = Math.max(layout.width, right + PAD / 2);
+      layout.height = Math.max(layout.height, bottom + PAD / 2);
+      return out;
     }
-    const pos = new Map<MapNodeId, { x: number; y: number }>();
-    for (const id of nodes) {
-      const n = nodeById(id);
-      pos.set(id, {
-        x: (colLeft[n.col] as number) + BOX_W / 2,
-        y: TOP + (n.row - min) * RH,
-      });
+    if (minLeft < 4) left += Math.ceil(4 - minLeft);
+    // 겹친 꼬리표가 놓인 줄 사이를 넓힌다(지점 줄 가운데보다 아래면 그 줄 아래, 위면 그 줄 위)
+    const widen = new Set<number>();
+    for (const b of bad) {
+      let i = 0;
+      for (const [k, r] of layout.rows.entries())
+        if ((layout.rowTop.get(r) as number) + NODE_H / 2 <= b.y) i = k;
+        else break;
+      const top = layout.rowTop.get(layout.rows[0] as number) as number;
+      if (b.y < top + NODE_H / 2) i = 0;
+      if (i < layout.rows.length - 1) widen.add(i);
+      else if (i > 0) widen.add(i - 1);
     }
-    return {
-      width: x - G / 2 + PAD,
-      height: TOP + (max - min) * RH + nodeH + 30 + PAD,
-      pos,
-      nodeH,
-      RH,
-      G,
-      colLeft,
-      colW,
-    };
-  }, [ctx.methods]);
+    for (const i of widen) extra[i] = (extra[i] ?? 0) + STEP;
+  }
+  return out as Geometry;
+}
+
+/** 지도 자리: 보이는 해법(`more`)과 꼬리표에 들 기록(공식 연습·혼자 맞추기)이 바뀔 때만 다시 센다 */
+function useGeometry(ctx: MapCtx): Geometry {
+  const { methods, train, solo } = ctx;
+  return useMemo(
+    () =>
+      mapGeometry(visibleNodes(methods), visibleEdges(methods), (e) =>
+        labelSize(e, { methods, train, solo }),
+      ),
+    [methods, train, solo],
+  );
 }
 
 /**
@@ -520,16 +642,26 @@ function useLayout(ctx: MapCtx): Layout {
 function routeEdge(e: MapEdge, layout: Layout, a: Pt, b: Pt, dx: number): Pt[] {
   const na = nodeById(e.from);
   const nb = nodeById(e.to);
-  const { G, RH, nodeH, colLeft, colW, pos } = layout;
-  const gap = RH - nodeH;
+  const { G, nodeH, colLeft, colW, pos, rows, rowTop } = layout;
+  // 나가는 지점 아래 빈 줄과 들어오는 지점 위 빈 줄(줄 사이를 넓혔으면 넓힌 만큼)
+  const next = rows[rows.indexOf(na.row) + 1];
+  const prev = rows[rows.indexOf(nb.row) - 1];
+  const gapA =
+    next === undefined
+      ? RH - nodeH
+      : (rowTop.get(next) as number) - (rowTop.get(na.row) as number) - nodeH;
+  const gapB =
+    prev === undefined
+      ? RH - nodeH
+      : (rowTop.get(nb.row) as number) - (rowTop.get(prev) as number) - nodeH;
   // 같은 칸에서 사이에 다른 지점이 있는가(있으면 곧게 가면 그 위를 지난다)
   const between = [...pos.keys()].some((id) => {
     const n = nodeById(id);
     return n.col === na.col && n.row > na.row && n.row < nb.row;
   });
   if (na.col === nb.col && !between) return [a, b];
-  const ya = a.y + Math.min(gap / 2, (b.y - a.y) / 2);
-  const yb = b.y - Math.min(gap / 2, (b.y - a.y) / 2);
+  const ya = a.y + Math.min(gapA / 2, (b.y - a.y) / 2);
+  const yb = b.y - Math.min(gapB / 2, (b.y - a.y) / 2);
   const oneRow = nb.row - na.row <= 1;
   if (oneRow && na.col !== nb.col)
     return [
@@ -590,20 +722,29 @@ type Pt = { x: number; y: number };
 const textW = (s: string) =>
   [...s].reduce((w, c) => w + (/[가-힣]/.test(c) ? 10 : 6), 0);
 
-/** 꼬리표 크기 어림(가운데 기준 상자의 폭·높이) */
-function labelSize(e: MapEdge, ctx: MapCtx, on: boolean) {
-  const f = edgeFormulaLabel(e, ctx.selected) ?? "";
-  const turns = on ? edgeTurns(e, ctx.selected) : undefined;
+/**
+ * 꼬리표 크기 어림(가운데 기준 상자의 폭·높이). 고른 해법과 상관없이 가장 큰 모습으로 어림한다: 공식 글은
+ * 「공식 00개」(「배운 공식」보다 넓다), 수는 두 자리, 혼자 맞추기 줄은 이 길을 지나는 어느 해법에 기록이 있으면 둔다.
+ * 그래서 해법을 고르거나 꺼도 지도 자리가 그대로다
+ */
+function labelSize(
+  e: MapEdge,
+  ctx: Pick<MapCtx, "methods" | "train" | "solo">,
+) {
+  const f = e.formulas?.length ? "공식 00개" : "";
   const lines = [
     // 앞의 「✓ 」는 여유 폭(어림이 작으면 밀어도 겹친다)
-    `✓ ${f} · ${turns ?? ""}수${e.lessons.length ? "" : " · 강 없음"}`,
+    `✓ ${f} · 00수${e.lessons.length ? "" : " · 강 없음"}`,
+    // 단계 이름은 고르지 않은 길에도 늘 있다
+    e.title,
   ];
-  // 단계 이름은 고르지 않은 길에도 늘 있다
-  lines.push(e.title);
-  if (on) {
-    if (edgeTrain(e, ctx.train)) lines.push("익숙 0/0 · 0.0초");
-    if (edgeSolo(e, ctx)) lines.push("내 00.0초");
-  }
+  if (edgeTrain(e, ctx.train)) lines.push("익숙 00/00 · 0.0초");
+  if (
+    ctx.methods.some(
+      (m) => m.edges.includes(e.id) && ctx.solo.get(m.id)?.has(e.id),
+    )
+  )
+    lines.push("내 00.0초");
   // 어림이 실제보다 작으면 밀어도 겹친다(겹침 화면 시험이 본다). 넉넉히
   return {
     w: Math.max(...lines.map(textW)) + 24,
@@ -657,8 +798,8 @@ function parallelOffset(e: MapEdge, edges: MapEdge[]): number {
 // ── 지도 ─────────────────────────────────────────────
 
 export function MapView({ ctx }: { ctx: MapCtx }) {
-  const layout = useLayout(ctx);
-  const edges = visibleEdges(ctx.methods);
+  const { layout, geo } = useGeometry(ctx);
+  const edges = geo.map((g) => g.e);
   const selectedEdges = new Set(ctx.selected.flatMap((m) => m.edges));
   const selectedNodes = new Set(ctx.selected.flatMap(methodNodes));
   // 큰 큐브 「3×3 맞추기」를 펼친 칸: 모든 노선 오른쪽, 「3×3처럼」 높이에서 아래로
@@ -759,7 +900,7 @@ export function MapView({ ctx }: { ctx: MapCtx }) {
       <MapLayer
         ctx={ctx}
         layout={layout}
-        edges={edges}
+        geo={geo}
         selectedEdges={selectedEdges}
         selectedNodes={selectedNodes}
       />
@@ -798,46 +939,18 @@ export function MapView({ ctx }: { ctx: MapCtx }) {
 function MapLayer({
   ctx,
   layout,
-  edges,
+  geo,
   selectedEdges,
   selectedNodes,
 }: {
   ctx: MapCtx;
   layout: Layout;
-  edges: MapEdge[];
+  /** 걸음마다 꺾은선과 꼬리표 자리(`mapGeometry`가 지점 자리와 함께 정함) */
+  geo: Geometry["geo"];
   selectedEdges: Set<string>;
   selectedNodes: Set<MapNodeId>;
 }) {
-  const { pos, nodeH } = layout;
-  const geo0 = edges.flatMap((e) => {
-    const a = pos.get(e.from);
-    const b = pos.get(e.to);
-    if (!a || !b) return [];
-    const dx = parallelOffset(e, edges) * 0.4;
-    const ps = routeEdge(
-      e,
-      layout,
-      { x: a.x, y: a.y + nodeH },
-      { x: b.x, y: b.y },
-      dx,
-    );
-    return [{ e, ps, label: halfway(ps) }];
-  });
-  // 꼬리표가 지점 그림이나 다른 꼬리표를 가리지 않게 옆으로 민다
-  const placed = placeLabels(
-    geo0.map((g) => ({
-      ...g.label,
-      // 모든 꼬리표가 같은 내용이라 크기도 늘 전체 내용으로 어림한다
-      ...labelSize(g.e, ctx, true),
-    })),
-    [...pos.values()].map((p) => ({
-      x: p.x,
-      y: p.y + nodeH / 2,
-      w: BOX_W + 8,
-      h: nodeH + 8,
-    })),
-  );
-  const geo = geo0.map((g, i) => ({ ...g, label: placed[i] as Pt }));
+  const { pos } = layout;
   const path = (g: (typeof geo)[number], off: number) => polyPath(g.ps, off);
   return (
     <div

@@ -14,7 +14,6 @@ import {
   methodFormulaCount,
   methodNodes,
   newFormulas,
-  nodeById,
   PARITY_AT,
   PARITY_LOOPS,
   type ParityLoop,
@@ -160,12 +159,6 @@ export function nodeHref(
       }
     }
   return null;
-}
-
-/** 지도 줄 범위(보일 지점만) */
-export function rowRange(nodes: Set<MapNodeId>): { min: number; max: number } {
-  const rows = [...nodes].map((id) => nodeById(id).row);
-  return { min: Math.min(...rows), max: Math.max(...rows) };
 }
 
 export interface Detour {
