@@ -211,7 +211,7 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     {
       term: "엣지 돌리기",
       use: /엣지 돌리기|오른손 먼저|왼손 먼저/,
-      define: /공식은 「엣지 돌리기」예요/,
+      define: /쓰는 공식은 「엣지 돌리기」예요/,
     },
     {
       term: "왼손 노란 면",

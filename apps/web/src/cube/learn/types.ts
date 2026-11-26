@@ -307,7 +307,8 @@ export const SHEETS = {
   // 3×3 초보자(코너 방향 먼저) 마지막 층(beginner-cases.ts, docs/47 16-33)
   "beginner-tf-face": "노란 면: 노란 십자가 맞은 윗면 모양 여덟",
   "beginner-tf-corners": "코너 자리: 바른 짝으로 가르는 네 경우",
-  "beginner-tf-edges": "엣지 자리: 제자리 엣지 블럭으로 가르는 여섯 경우",
+  "beginner-tf-edges":
+    "엣지 자리: 제자리 엣지 블럭 수로 가르는 다섯 모양과 위 층이 비켜난 모양",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

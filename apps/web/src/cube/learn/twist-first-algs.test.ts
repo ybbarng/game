@@ -177,6 +177,16 @@ describe("엣지 돌리기 = 노란 면 + U + 거울 + U'", () => {
       )
       .join(" ");
 
+  it("돌리지 않는 코너 블럭: 노란 면 공식은 앞-왼쪽 위, 왼손 노란 면 공식은 앞-오른쪽 위에 둔 것(그 공식 한 번으로 맞는 하나인 모양)", () => {
+    const upAt = (s: PuzzleState) => {
+      const c = faceColors(3, s);
+      // 윗면 구석: 0 뒤-왼쪽, 2 뒤-오른쪽, 6 앞-왼쪽, 8 앞-오른쪽
+      return [0, 2, 6, 8].filter((k) => c[k] === 3);
+    };
+    expect(upAt(at(invertAlg(YELLOW_FACE), down()))).toEqual([6]);
+    expect(upAt(at(invertAlg(YELLOW_FACE_MIRROR), down()))).toEqual([8]);
+  });
+
   it("거울은 R을 L'로, R'을 L로, U를 U'로 바꾸고 U2는 그대로다", () => {
     expect(YELLOW_FACE_MIRROR).toBe(mirror(YELLOW_FACE));
   });

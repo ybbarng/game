@@ -410,7 +410,7 @@ export const BEGINNER_CASE_SHEETS: Record<
   "beginner-tf-edges": {
     stage: { path: "twist-first", id: "edges" },
     set: "2look-pll",
-    title: "제자리 엣지 블럭으로 가르는 여섯 경우",
+    title: "제자리 엣지 블럭 수로 가르는 다섯 모양과 위 층이 비켜난 모양",
     cases: [
       { id: "done", alg: "z2", caption: "넷 다 제자리", action: "끝이에요." },
       {
