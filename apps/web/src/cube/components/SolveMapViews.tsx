@@ -1,6 +1,6 @@
 "use client";
 
-// 해법 지도 시안의 A 펼친 지도(SolveMapApp). 줌·패닝·미니맵 틀(MapFrame) 안에 둔다. 카드 안(E)도 지점 그림·꼬리표를 함께 쓴다.
+// 해법 배우기의 펼친 지도(SolveMapApp MapScreen). 줌·패닝·미니맵 틀(MapFrame) 안에 둔다. 해법 카드도 지점 그림·꼬리표를 함께 쓴다.
 import {
   createContext,
   type MouseEvent,

@@ -1,4 +1,4 @@
-// 해법 지도 시안 화면(SolveMapApp)이 네 안에서 함께 쓰는 계산. 화면을 모르는 순수 함수다.
+// 해법 배우기의 해법 카드·지도(SolveMapApp)가 함께 쓰는 계산. 화면을 모르는 순수 함수다.
 import {
   type CubeSize,
   edgeById,

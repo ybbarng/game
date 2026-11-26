@@ -5,14 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
-import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import {
   BASICS,
   COURSES,
   courseById,
-  courseSizes,
   findLesson as findCourseLesson,
-  METHOD_COURSES,
   nextLesson,
 } from "../learn/courses";
 import {
@@ -35,7 +32,7 @@ import {
   resumeStep,
 } from "../learn/progress";
 import type { BesideCube, Course, Lesson, LessonStep } from "../learn/types";
-import { BASICS_ICON, BASICS_TITLE, METHODS_TITLE } from "../nav/learn-names";
+import { BASICS_TITLE, METHODS_TITLE } from "../nav/learn-names";
 import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
@@ -58,7 +55,6 @@ import {
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
 import { useNoKeyboard } from "./PracticeCube";
-import { SizePicker } from "./SizePicker";
 import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
@@ -66,12 +62,14 @@ import { TryPanel } from "./TryPanel";
 import "@/cube/components/cube-fx.css";
 
 /**
- * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 배우기(`MethodsApp`, `/cube/methods`)로,
+ * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 배우기(`MethodsApp.tsx`, `/cube/methods`)로,
  * 기초 단원 목록은 큐브의 기초(`BasicsApp`, `/cube/basics`)로 옮겼다.
  * 단원은 `?lesson=<id>`로 연다. 진도는 이 기기에 남고, 다음 단원을 잠그지는 않지만 차례를 보여 준다.
  */
 
-function findLesson(id: string): { course: Course; lesson: Lesson } | null {
+export function findLesson(
+  id: string,
+): { course: Course; lesson: Lesson } | null {
   // 새로 짠 단원의 옛 주소(`?lesson=<옛 id>`)도 새 단원으로 연다
   return findCourseLesson(LESSON_RENAMES[id] ?? id);
 }
@@ -118,145 +116,8 @@ export function LearnApp() {
   );
 }
 
-/**
- * 해법 배우기(`/cube/methods`, docs/47 16-2·16-26·16-27, 예전 이름 「해법 익히기」·「큐브 배우기」): 해법(과정)을 고르면 그 해법의 배우기(단원)와 연습(공식 훈련 묶음·십자 훈련·
- * 내 공식)이 한 카드에 보인다. `?m=<과정 id>`로 열면 그 해법 카드를 보인다. 예전 배우기 과정 목록(`/cube/learn`)을 옮겼다.
- */
-export function MethodsApp() {
-  const [progress, setProgress] = useState<LearnProgress | null>(null);
-  const [picked, setPicked] = useState<string | null>(null);
-  useEffect(() => {
-    setProgress(loadLearn());
-    setPicked(new URLSearchParams(window.location.search).get("m"));
-  }, []);
-  return (
-    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
-      <main
-        className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4"
-        data-cube-learn="list"
-        data-cube-methods={progress ? "" : undefined}
-      >
-        {progress && <CourseList progress={progress} picked={picked} />}
-      </main>
-    </div>
-  );
-}
-
-function CourseList({
-  progress,
-  picked,
-}: {
-  progress: LearnProgress;
-  picked: string | null;
-}) {
-  // 이어서 하기는 해법 과정 단원만(기초 단원은 큐브의 기초 페이지에 있다)
-  const found = progress.last ? findLesson(progress.last) : null;
-  const last = found && found.course.id !== BASICS.id ? found : null;
-  const pickedCourse = picked ? courseById(picked) : undefined;
-  // 보이는 크기: 지금 크기(이 화면에 없으면 3×3, docs/47 16-28). `?m=`로 연 해법은 그 해법 크기를 보이되 지금 크기는
-  // 그대로 둔다(보기). 크기 탭을 누르면 지금 크기도 바뀐다
-  const current = useCurrentSize();
-  // 두 크기에 보이는 과정(6×6·7×7로 넓히기)은 지금 크기가 그 가운데 하나면 지금 크기 그대로
-  const [viewing, setViewing] = useState<number | null>(() =>
-    pickedCourse && !courseSizes(pickedCourse).includes(current)
-      ? pickedCourse.size
-      : null,
-  );
-  const size = viewing ?? sizeFor(COURSE_SIZES, current);
-  useEffect(() => {
-    if (pickedCourse)
-      document
-        .getElementById(`course-${pickedCourse.id}`)
-        ?.scrollIntoView({ block: "start" });
-  }, [pickedCourse]);
-  return (
-    <>
-      <header className="flex flex-wrap items-center gap-3">
-        <a href="/cube" className="text-sm text-white/70 hover:text-white">
-          ← 큐브
-        </a>
-        <h1 className="font-bold text-lg">{METHODS_TITLE}</h1>
-        <a
-          href="/cube/train"
-          className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
-        >
-          공식 연습
-        </a>
-        <a
-          href="/cube/algs"
-          className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
-        >
-          내 공식
-        </a>
-      </header>
-      {last && (
-        <a
-          href={lessonHref(last.lesson.id)}
-          className="self-start rounded-xl bg-sky-500 px-4 py-2 font-semibold text-black text-sm"
-        >
-          이어서 하기: {last.course.title} · {last.lesson.title}
-        </a>
-      )}
-      {/* 배우기 전에 볼 것(처음 온 사람의 길이 여기서도 이어지게, 2026-11-05 점검) */}
-      <p
-        className="flex flex-wrap gap-2 text-white/70 text-xs"
-        data-learn-before
-      >
-        <a
-          href="/cube/intro"
-          className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
-        >
-          👋 사이트 쓰는 법
-        </a>
-        <a
-          href="/cube/basics"
-          data-learn-basics
-          className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
-        >
-          {BASICS_ICON} {BASICS_TITLE}
-        </a>
-      </p>
-      {/* 크기 탭: 고급 해법까지 모두 펼치면 2×2까지 한참 내려가야 했다(2026-11-04 점검) */}
-      <SizePicker
-        attr="data-course-sizes"
-        optionAttr="data-size-tab"
-        sizes={COURSE_SIZES}
-        value={size}
-        onPick={(s) => {
-          setViewing(null);
-          setCurrentSize(s);
-        }}
-        badge={(s) => COURSES_BY_SIZE.find(([k]) => k === s)?.[1].length ?? 0}
-        className="self-start"
-      />
-      {COURSES_BY_SIZE.filter(([s]) => s === size).map(([s, courses]) => (
-        <section
-          key={s}
-          data-course-size={s}
-          className="cube-rise flex flex-col gap-2"
-        >
-          <CourseGrid
-            courses={courses}
-            progress={progress}
-            picked={pickedCourse?.id ?? null}
-          />
-        </section>
-      ))}
-    </>
-  );
-}
-
-/** 크기별로 과정을 묶는다(3×3 → 2×2 → 4×4 → 5×5 → 6×6 → 7×7, 크기 안에서는 COURSES 차례) */
-const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5, 6, 7]
-  .map((size): [number, Course[]] => [
-    size,
-    METHOD_COURSES.filter((c) => courseSizes(c).includes(size)),
-  ])
-  .filter(([, list]) => list.length > 0);
-/** 해법 배우기에서 고를 수 있는 크기(과정이 있는 크기) */
-const COURSE_SIZES = COURSES_BY_SIZE.map(([s]) => s);
-
-function CourseGrid({
+/** 과정 카드 묶음(해법 배우기 `MethodsApp`의 강의 목록과 해법 화면 아래) */
+export function CourseGrid({
   courses,
   progress,
   picked,

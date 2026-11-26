@@ -1,9 +1,11 @@
 "use client";
 
-// 해법 지도 시안 E안(해법 카드): 해법마다 카드 하나에 「다 섞임 → … → 다 맞음」 지점 그림 띠, 총 공식 수·잰 평균 수,
-// 내 진행(✓·「나」·잘하는·약한 걸음 색). 세로로 늘어놓는 꼴(`?v=cards-v`)과 가로로 늘어놓는 꼴(`?v=cards-h`).
-// 카드를 누르면 그 해법 화면(`&method=`)에서 세부 걸음을 모두 본다.
-import { cn } from "@/lib/cn";
+// 해법 카드(해법 배우기 첫 모습, docs/47 16-30): 해법마다 카드 하나에 「다 섞임 → 큰 단계 … → 다 맞음」 그림 띠, 총 공식 수·잰
+// 평균 수, 내 진행(✓·「나」·잘하는·약한 걸음 색). 앞 카드와 같은 단계(같은 모양에 닿는 단계)는 앞 카드 색 표시로 묶는다.
+// 카드를 누르면 그 해법 화면(`?method=`)에서 세부 걸음을 모두 본다.
+import type { ReactNode } from "react";
+
+import { wa } from "@/lib/josa";
 import {
   edgeById,
   type MapEdge,
@@ -143,54 +145,99 @@ function stripCells(m: MapMethod, ctx: MapCtx): StripCell[] {
 }
 
 /**
- * 지점 그림 띠(큰 단계만). `column`: 위(다 섞임)에서 아래(다 맞음)로, 지점 이름을 곁에 둔다(카드를 가로로
- * 늘어놓을 때, 카드 방향과 맞추는 순서 방향을 엇갈리게). 그 밖은 왼쪽에서 오른쪽으로, 넘치면 옆으로 민다
+ * 앞 카드와 같은 단계: 이 해법의 큰 단계 끝 지점이 앞 카드(더 쉬운 해법)의 큰 단계 끝 지점이기도 하면 가장 앞 카드.
+ * 다 섞임·다 맞음은 모든 해법이 같으니 보지 않는다
  */
+export function sameStages(
+  methods: readonly MapMethod[],
+): Map<string, Map<MapNodeId, MapMethod>> {
+  const out = new Map<string, Map<MapNodeId, MapMethod>>();
+  methods.forEach((m, i) => {
+    const ends = methodStages(m)
+      .slice(0, -1)
+      .map((s) => s.to);
+    const mine = new Map<MapNodeId, MapMethod>();
+    for (const id of ends) {
+      const first = methods
+        .slice(0, i)
+        .find((x) => methodStages(x).some((s) => s.to === id));
+      if (first) mine.set(id, first);
+    }
+    out.set(m.id, mine);
+  });
+  return out;
+}
+
+/** 같은 단계 표시에 부르는 짧은 이름(칸 폭에 한두 줄로 들게) */
+const SHORT_TITLE: Partial<Record<MapMethod["id"], string>> = {
+  // 「2단계」만 쓰면 맞추는 차례의 둘째 단계로 읽힌다(처음 보는 독자 검토)
+  "two-look": "OLL·PLL",
+};
+
+/** 지점 그림 띠(큰 단계만). 넘치면 다음 줄로(휴대폰 폭에서 옆으로 밀지 않는다) */
 function Strip({
   m,
   ctx,
-  column = false,
+  same,
 }: {
   m: MapMethod;
   ctx: MapCtx;
-  column?: boolean;
+  same?: Map<MapNodeId, MapMethod> | undefined;
 }) {
-  if (column) return <ColumnStrip m={m} ctx={ctx} />;
   return (
-    <ol
-      className="flex items-end gap-1 overflow-x-auto pb-1"
-      data-card-strip="row"
-    >
+    <ol className="flex flex-wrap items-start gap-x-1 gap-y-2" data-card-strip>
       {stripCells(m, ctx).map(({ id, done, skill, me, loops }, i) => {
+        const like = same?.get(id);
         return [
-          i > 0 && (
-            <li key={`${id}-arrow`} aria-hidden className="self-center pb-3">
-              <StepArrow dir="right" color={METHOD_COLOR[m.id]} done={done} />
-            </li>
-          ),
-          <li
-            key={id}
-            className="relative flex shrink-0 flex-col items-center"
-            data-strip-node={id}
-          >
-            {me && (
-              <span className="-top-2 -right-1 absolute z-10">
-                <MeBadge methods={[]} />
+          // 화살표는 다음 칸과 한 덩이(줄이 바뀌어도 줄 끝에 화살표만 남지 않게)
+          <li key={id} className="flex shrink-0 items-start gap-1">
+            {i > 0 && (
+              <span aria-hidden className="pt-5">
+                <StepArrow dir="right" color={METHOD_COLOR[m.id]} done={done} />
               </span>
             )}
             <div
-              className="rounded-md border-2 p-0.5"
-              style={{ borderColor: skill ? SKILL_RING[skill] : "transparent" }}
-              data-strip-skill={skill ?? undefined}
+              className="relative flex w-[68px] flex-col items-center gap-0.5"
+              data-strip-node={id}
+              data-same-as={like?.id}
             >
-              <NodeCube id={id} settings={ctx.settings} px={40} method={m} />
+              {me && (
+                <span className="-top-2 -right-0 absolute z-10">
+                  <MeBadge methods={[]} />
+                </span>
+              )}
+              <div
+                className="rounded-md border-2 p-0.5"
+                style={{
+                  borderColor: skill ? SKILL_RING[skill] : "transparent",
+                }}
+                data-strip-skill={skill ?? undefined}
+              >
+                <NodeCube id={id} settings={ctx.settings} px={44} method={m} />
+              </div>
+              <span
+                className="w-full wrap-anywhere break-keep text-center text-[11px] leading-tight"
+                data-strip-name
+              >
+                {done && <span className="text-emerald-300">✓ </span>}
+                {nodeById(id).title}
+              </span>
+              {like && (
+                <span
+                  className="w-full wrap-anywhere break-keep rounded border px-0.5 text-center text-[10px] leading-tight"
+                  style={{
+                    borderColor: METHOD_COLOR[like.id],
+                    color: METHOD_COLOR[like.id],
+                  }}
+                  data-strip-same
+                >
+                  {wa(SHORT_TITLE[like.id] ?? like.title)} 같음
+                </span>
+              )}
             </div>
-            <span className="h-3 text-[10px] text-emerald-300 leading-3">
-              {done ? "✓" : ""}
-            </span>
           </li>,
           ...loops.map((d) => (
-            <li key={`${id}-loop-${d.loop.kind}`} className="self-center pb-3">
+            <li key={`${id}-loop-${d.loop.kind}`} className="pt-4">
               <LoopChip d={d} ctx={ctx} compact />
             </li>
           )),
@@ -200,129 +247,71 @@ function Strip({
   );
 }
 
-/** 세로 띠: 큰 단계마다 한 줄(그림 · 이름 · ✓), 칸 사이는 가는 세로 선 */
-function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
-  return (
-    <ol className="flex flex-col" data-card-strip="column">
-      {stripCells(m, ctx).map(({ id, done, skill, me, loops }, i) => {
-        return (
-          <li key={id} className="flex flex-col" data-strip-node={id}>
-            {i > 0 && (
-              <span aria-hidden className="ml-4 flex py-0.5">
-                <StepArrow dir="down" color={METHOD_COLOR[m.id]} done={done} />
-              </span>
-            )}
-            <span className="flex items-center gap-2">
-              <span
-                className="shrink-0 rounded-md border-2 p-0.5"
-                style={{
-                  borderColor: skill ? SKILL_RING[skill] : "transparent",
-                }}
-                data-strip-skill={skill ?? undefined}
-              >
-                <NodeCube id={id} settings={ctx.settings} px={36} method={m} />
-              </span>
-              <span className="min-w-0 break-keep text-sm leading-tight">
-                {nodeById(id).title}
-              </span>
-              {done && <span className="text-emerald-300 text-xs">✓</span>}
-              {me && <MeBadge methods={[]} />}
-            </span>
-            {loops.length > 0 && (
-              <span className="ml-10 flex flex-wrap gap-1 pt-1">
-                {loops.map((d) => (
-                  <LoopChip key={d.loop.kind} d={d} ctx={ctx} compact />
-                ))}
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
+/** 해법 카드 세로(위에서 아래로 쉬운 해법 → 어려운 해법) */
 export function CardsView({
   ctx,
-  dir,
-  open,
   onOpen,
 }: {
   ctx: MapCtx;
-  dir: "v" | "h";
-  open: MapMethod | null;
-  onOpen: (m: MapMethod | null) => void;
+  onOpen: (m: MapMethod) => void;
 }) {
-  if (open)
-    return <MethodScreen m={open} ctx={ctx} onBack={() => onOpen(null)} />;
+  const same = sameStages(ctx.methods);
   return (
-    <div
-      className={cn(
-        dir === "v"
-          ? "flex flex-col gap-3"
-          : "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2",
-      )}
-      data-map-cards={dir}
-    >
-      {ctx.methods.map((m) => {
-        const on = ctx.selected.includes(m);
-        return (
-          // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
-          <a
-            key={m.id}
-            href={`?v=cards-${dir}&method=${m.id}`}
-            onClick={(ev) => {
-              ev.preventDefault();
-              onOpen(m);
-            }}
-            className={cn(
-              "flex flex-col gap-2 rounded-xl border bg-neutral-800/70 p-3 text-left",
-              dir === "h" && "w-[300px] shrink-0 snap-start",
-              on ? "" : "border-white/10",
-            )}
-            style={on ? { borderColor: METHOD_COLOR[m.id] } : undefined}
-            data-card={m.id}
-          >
-            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span
-                className="font-semibold text-lg"
-                style={{ color: METHOD_COLOR[m.id] }}
-              >
-                {m.title}
-              </span>
-              <Totals m={m} />
+    <div className="flex flex-col gap-3" data-map-cards>
+      {ctx.methods.map((m) => (
+        // 띠(목록)를 품으려고 단추 대신 링크로 둔다(주소는 해법 화면, 누르면 이 페이지 안에서 바꾼다)
+        <a
+          key={m.id}
+          href={`?method=${m.id}`}
+          onClick={(ev) => {
+            ev.preventDefault();
+            onOpen(m);
+          }}
+          className="flex min-w-0 flex-col gap-2 rounded-xl border border-white/10 bg-neutral-800/70 p-3 text-left hover:border-white/30"
+          data-card={m.id}
+        >
+          <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <span
+              className="break-keep font-semibold text-lg"
+              style={{ color: METHOD_COLOR[m.id] }}
+            >
+              {m.title}
             </span>
-            <Strip m={m} ctx={ctx} column={dir === "h"} />
-          </a>
-        );
-      })}
+            <Totals m={m} />
+          </span>
+          <Strip m={m} ctx={ctx} same={same.get(m.id)} />
+        </a>
+      ))}
     </div>
   );
 }
 
-/** 해법 화면: 세부 걸음마다 지점 그림·공식 수·단원·내 기록 */
-function MethodScreen({
+/** 해법 화면: 세부 걸음마다 지점 그림·공식 수·단원·내 기록. 아래 `children`(그 과정의 단원·연습) */
+export function MethodScreen({
   m,
   ctx,
   onBack,
+  children,
 }: {
   m: MapMethod;
   ctx: MapCtx;
   onBack: () => void;
+  children?: ReactNode;
 }) {
   const one = { ...ctx, selected: [m] };
   return (
-    <section className="flex flex-col gap-3" data-method-screen={m.id}>
+    <section className="flex min-w-0 flex-col gap-3" data-method-screen={m.id}>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={onBack}
           className="rounded-md border border-white/20 px-2.5 py-1 text-sm"
+          data-method-back
         >
-          ← 해법 카드
+          ← 해법 목록
         </button>
         <h2
-          className="font-semibold text-xl"
+          className="break-keep font-semibold text-xl"
           style={{ color: METHOD_COLOR[m.id] }}
         >
           {m.title}
@@ -341,7 +330,7 @@ function MethodScreen({
                 {i + 1}
               </span>
               <NodeCube id={e.to} settings={ctx.settings} px={56} method={m} />
-              <span className="flex flex-col text-[11px] leading-tight">
+              <span className="flex min-w-0 flex-col break-keep text-[11px] leading-tight wrap-anywhere">
                 <span className="font-medium text-sm">
                   {e.title} → {nodeById(e.to).title}
                 </span>
@@ -397,6 +386,7 @@ function MethodScreen({
           );
         })}
       </ol>
+      {children}
     </section>
   );
 }
