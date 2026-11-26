@@ -194,7 +194,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     quizzes: [
       {
         question:
-          "마지막 단계(코너 방향)에서 다시 쓰는 공식은 몇 단계에서 처음 배우나요?",
+          "마지막 코너 방향 단계에서는 앞에서 배운 공식을 다시 써요. 몇째 단계에서 처음 배울까요?",
         choices: ["2단계(첫 층 코너)", "4단계(노란 십자)", "6단계(코너 자리)"],
         answer: 0,
         why: "첫 층 코너에서 쓴 R' D' R D를 마지막에 다시 써요.",
@@ -227,7 +227,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "2×2 첫 층에서 쓰는 공식은?",
         choices: ["R' D' R D와 그 거꾸로", "F R U R' U' F'"],
         answer: 0,
-        why: "첫 층은 코너 돌리기 R' D' R D와 그 거꾸로만 써요. F R U R' U' F'은 3×3에서 엣지를 맞출 때 쓰는 공식이라 엣지가 없는 2×2에는 안 써요.",
+        why: "첫 층은 코너 돌리기 R' D' R D와 그 거꾸로만 써요. F R U R' U' F'은 3×3에서 엣지를 맞출 때 쓰는 공식이라 2×2 첫 층에서는 안 써요.",
       },
     ],
   },
@@ -256,7 +256,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     },
     quizzes: [
       {
-        question: "이 세 단계는 3×3 초보자 과정의 어느 단계와 같을까요?",
+        question: "이 세 단계는 3×3 처음 맞추기의 어느 단계와 같을까요?",
         choices: [
           "첫 층 코너·코너 자리·코너 방향",
           "흰 십자·둘째 층 엣지·노란 십자",
@@ -273,7 +273,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       { title: "OLL(방향)", lessons: ["cfop-2look-oll"], goal: "oll" },
       { title: "PLL(자리)", lessons: ["cfop-2look-pll"], goal: "solved" },
     ],
-    lead: "앞 단원에서 초보자 해법의 마지막 층이 어떻게 바뀌는지 봤어요. 이번에는 섞인 큐브 하나를 이 과정의 차례대로 끝까지 맞추는 것을 봐요. 아래 두 층은 초보자 해법 그대로예요.",
+    lead: "초보자 해법의 마지막 층이 어떻게 바뀌는지 봤어요. 이번에는 섞인 큐브 하나를 처음부터 끝까지 맞추는 것을 봐요. 아래 두 층은 초보자 해법 그대로예요.",
     demo: {
       scramble: BEGINNER_333_SCRAMBLE,
       moves: twoLookDemoMoves(BEGINNER_333_SCRAMBLE),
@@ -283,10 +283,10 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     quizzes: [
       {
         question:
-          "초보자 해법은 위 층 코너의 방향을 맨 끝에 맞췄어요. 2단계 OLL·PLL에서는 언제 맞출까요?",
-        choices: ["2단계 OLL에서, 자리보다 먼저", "2단계 PLL 뒤 맨 끝에"],
+          "초보자 해법은 위 층 코너의 방향을 맨 끝에 맞췄어요. 두 번에 나눈 OLL·PLL에서는 언제 맞출까요?",
+        choices: ["OLL에서, 자리보다 먼저", "PLL 뒤 맨 끝에"],
         answer: 0,
-        why: "2단계 OLL로 위 층 조각의 방향을 먼저 다 맞추고(노란 십자 → 노란 면), 2단계 PLL로 자리를 맞춰요(코너 → 엣지).",
+        why: "OLL로 위 층 조각의 방향을 먼저 다 맞추고(노란 십자 → 노란 면), PLL로 자리를 맞춰요(코너 → 엣지).",
       },
     ],
   },
@@ -310,10 +310,11 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     },
     quizzes: [
       {
-        question: "앞 과정의 2단계 OLL은 두 번에 나눴어요. 먼저 맞추는 것은?",
+        question:
+          "「마지막 층을 공식으로」에서는 OLL을 두 번에 나눠 맞췄어요. 먼저 맞추는 것은?",
         choices: ["엣지 방향(노란 십자)", "코너 방향"],
         answer: 0,
-        why: "2단계 OLL은 노란 십자를 먼저, 그다음 위 층 코너의 노랑을 위로 해요. PLL도 코너 자리 → 엣지 자리 두 번으로 나눠요.",
+        why: "OLL을 두 번에 나눌 때는 노란 십자를 먼저 만들고, 그다음 위 층 코너의 노란색을 위로 돌려요. PLL도 코너 자리 → 엣지 자리 두 번으로 나눠요.",
       },
     ],
   },
@@ -410,7 +411,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "5×5에서 움직이지 않는 칸은?",
         choices: ["면마다 한가운데 칸", "한가운데 칸 둘레의 센터 블럭"],
         answer: 0,
-        why: "한가운데 칸은 3×3의 센터 블럭처럼 고정이라 면 색을 정해 줘요. 둘레 칸은 움직여요.",
+        why: "한가운데 칸의 센터 블럭은 3×3의 센터 블럭처럼 움직이지 않아서 면 색을 정해 줘요. 둘레 칸의 센터 블럭은 움직여요.",
       },
     ],
   },
@@ -477,7 +478,7 @@ export function mapLesson(course: Course, spec: StageSpec): Lesson {
     steps.push({
       kind: "demo",
       stageMap: true,
-      body: `${lead}섞인 큐브가 ${spec.stages.length}단계를 거쳐 맞춰져요(${order}). 단계마다 멈춰요. 띠의 칸을 누르거나 「다음 단계」로 이어 보세요.`,
+      body: `${lead}섞인 큐브를 ${spec.stages.length}단계로 맞추는 모습을 볼게요. ${order} 차례예요. 한 단계가 끝날 때마다 멈춰요. 위쪽 단계 이름을 누르거나 「다음 단계」를 눌러 이어 보세요.`,
       setup: { alg: spec.demo.scramble },
       alg: spec.demo.moves.join(" "),
     });
@@ -487,8 +488,8 @@ export function mapLesson(course: Course, spec: StageSpec): Lesson {
       kind: "quiz",
       body:
         i === 0
-          ? `이 과정은 ${spec.stages.length}단계로 맞춰요. 단원마다 위쪽 띠에 지금 몇 단계인지 보여요.`
-          : "띠를 보며 답해 보세요.",
+          ? `큐브를 이렇게 ${spec.stages.length}단계로 맞춰요. 앞으로 화면 위쪽에 지금이 몇째 단계인지 보여요.`
+          : "위쪽 단계 이름을 보며 답해 보세요.",
       ...(spec.demo ? { setup: { alg: spec.demo.scramble } } : {}),
       mask: "all",
       quiz,
