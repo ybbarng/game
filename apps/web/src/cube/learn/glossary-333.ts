@@ -26,7 +26,7 @@ export const GLOSSARY_333: GlossaryTerm[] = [
     use: /위 층|가운데 층|아래 층/,
     define: /「위 층」, 「가운데 층」, 「아래 층」/,
   },
-  { term: "둘째 층", use: /둘째 층/, define: /세어 둘째 층/ },
+  { term: "둘째 층", use: /둘째 층/, define: /세(어|면) 둘째 층/ },
   { term: "옆면", use: /옆면/, define: /「옆면」/ },
   {
     term: "색으로 부르는 조각 이름(흰-초록 엣지 블럭)",
@@ -58,6 +58,11 @@ export const GLOSSARY_333: GlossaryTerm[] = [
     define: /x, y, z는 면 하나가 아니라/,
   },
   { term: "거꾸로 치기", use: /거꾸로/, define: /「거꾸로 친다」/ },
+  {
+    term: "큐브를 돌려 쥐다",
+    use: /돌려 쥐/,
+    define: /큐브 전체를 돌려 쥐는/,
+  },
   { term: "맞춘 면", use: /맞춘 면/, define: /「맞춘 면」/ },
   { term: "반대 면", use: /반대 면/, define: /「반대 면」/ },
   { term: "안전한 회전", use: /안전한 회전/, define: /「안전한 회전」/ },
@@ -66,6 +71,8 @@ export const GLOSSARY_333: GlossaryTerm[] = [
     use: /짝 색/,
     define: /「짝 색」/,
   },
+  // 눈으로 푸는 단계(흰 십자·둘째 층 엣지)에서 한 수·공식 하나로 바로 맞는 모양. 나머지 경우는 이것을 만들어 푼다(docs/47 16-32)
+  { term: "기본 모양", use: /기본 모양/, define: /「기본 모양」/ },
   {
     term: "두 면 사이 자리 이름(아래-앞)",
     use: /(아래|위|앞|뒤)-(앞|오른쪽|왼쪽|뒤)(?! (위|아래))/,

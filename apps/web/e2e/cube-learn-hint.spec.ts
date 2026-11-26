@@ -148,8 +148,9 @@ test("진도: 해 보기 밖의 마친 단계(고르기)도 다시 열면 초록
   page,
 }) => {
   await page.goto("/cube/learn?lesson=333-ll-cross");
-  await goStep(page, 2);
-  const third = page.locator(`${PAGES} li`).nth(2).locator("button");
+  // 5번(0부터 4): ㄱ자를 어떻게 쥘지 고르기(답 0)
+  await goStep(page, 4);
+  const third = page.locator(`${PAGES} li`).nth(4).locator("button");
   await expect(page.locator("[data-step-kind]")).toHaveAttribute(
     "data-step-kind",
     "quiz",

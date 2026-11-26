@@ -90,8 +90,10 @@ describe("노란 십자 가리기(ll-cross)", () => {
 
   // 단계마다: 시작 모양(가린 큐브에서 보이는 것), 본문에 적힌 모양 낱말, 쥐는 수 뒤의 모양
   const EXPECT: { start: string; word: string; held?: [string, string] }[] = [
+    { start: "일자 가로", word: "노란 십자" },
     { start: "일자 가로", word: "일자" },
     { start: "일자 가로", word: "일자" },
+    { start: "ㄱ자 뒤·왼쪽", word: "ㄱ자" },
     { start: "ㄱ자 왼쪽·앞", word: "ㄱ자", held: ["U", "ㄱ자 뒤·왼쪽"] },
     { start: "ㄱ자 왼쪽·앞", word: "ㄱ자", held: ["U", "ㄱ자 뒤·왼쪽"] },
     { start: "ㄱ자 뒤·오른쪽", word: "ㄱ자", held: ["U'", "ㄱ자 뒤·왼쪽"] },
@@ -124,8 +126,10 @@ describe("노란 십자 가리기(ll-cross)", () => {
     });
   });
 
-  it("점에서 공식 한 번이면 앞·오른쪽 ㄱ자(본문 「노란 두 칸이 앞과 오른쪽인 ㄱ자」)", () => {
-    const step = lesson.steps[5];
+  it("점에서 공식 한 번이면 앞·오른쪽 ㄱ자(본문 「노란 스티커 둘이 앞과 오른쪽인 ㄱ자」)", () => {
+    const step = lesson.steps.find(
+      (s) => s.kind === "turn" && s.body.startsWith("점이에요"),
+    );
     if (!step?.alg) throw new Error("점 단계");
     expect(step.body).toContain("앞과 오른쪽인 ㄱ자");
     const after = play(stepStart(lesson, step, 1), step.alg);

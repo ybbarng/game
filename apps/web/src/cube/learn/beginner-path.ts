@@ -82,14 +82,14 @@ export const PATH_STAGES: PathStage[] = [
       {
         id: "down",
         shape: "아래 층, 흰색이 아래",
-        hold: "제자리 쪽 센터, 곧 짝 색과 같은 색 센터를 앞으로 쥐고(y), 아랫면을 돌려 엣지 블럭을 앞 아래로",
+        hold: "짝 색 센터를 앞으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-앞으로",
         alg: "F2",
         times: 1,
       },
       {
         id: "down-side",
         shape: "아래 층, 흰색이 옆",
-        hold: "제자리 쪽 센터를 오른쪽으로 쥐고(y), 아랫면을 돌려 엣지 블럭을 오른쪽 아래로",
+        hold: "짝 색 센터를 오른쪽으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-오른쪽으로",
         alg: CROSS_SIDE_UP,
         times: 1,
       },
@@ -134,45 +134,45 @@ export const PATH_STAGES: PathStage[] = [
     cases: [
       {
         id: "bottom-right",
-        shape: "칸 밑, 흰색이 오른쪽",
-        hold: "넣을 칸을 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너 블럭을 칸 밑으로",
+        shape: "자리 밑, 흰색이 오른쪽",
+        hold: "넣을 자리를 앞-오른쪽 위로 돌려 쥐고(y), 아랫면을 돌려 코너 블럭을 자리 밑으로",
         alg: TWIST,
         times: 1,
       },
       {
         id: "bottom-front",
-        shape: "칸 밑, 흰색이 앞",
-        hold: "넣을 칸을 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너 블럭을 칸 밑으로",
+        shape: "자리 밑, 흰색이 앞",
+        hold: "넣을 자리를 앞-오른쪽 위로 돌려 쥐고(y), 아랫면을 돌려 코너 블럭을 자리 밑으로",
         alg: TWIST_BACK,
         times: 1,
         back: true,
       },
       {
         id: "bottom-down",
-        shape: "칸 밑, 흰색이 아래",
-        hold: "넣을 칸을 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너 블럭을 칸 밑으로",
+        shape: "자리 밑, 흰색이 아래",
+        hold: "넣을 자리를 앞-오른쪽 위로 돌려 쥐고(y), 아랫면을 돌려 코너 블럭을 자리 밑으로",
         alg: TWIST,
         times: 3,
       },
       {
         id: "slot-right",
-        shape: "제 칸에서 흰색이 오른쪽",
-        hold: "그 칸을 앞-오른쪽 위로 쥐고(y)",
+        shape: "제자리에서 흰색이 오른쪽",
+        hold: "그 자리를 앞-오른쪽 위로 돌려 쥐고(y)",
         alg: TWIST,
         times: 2,
       },
       {
         id: "slot-front",
-        shape: "제 칸에서 흰색이 앞",
-        hold: "그 칸을 앞-오른쪽 위로 쥐고(y)",
+        shape: "제자리에서 흰색이 앞",
+        hold: "그 자리를 앞-오른쪽 위로 돌려 쥐고(y)",
         alg: TWIST_BACK,
         times: 2,
         back: true,
       },
       {
         id: "stuck",
-        shape: "다른 칸에 들어가 있음",
-        hold: "코너 블럭이 든 칸을 앞-오른쪽 위로 쥐고(y)",
+        shape: "다른 자리에 들어가 있음",
+        hold: "코너 블럭이 든 자리를 앞-오른쪽 위로 돌려 쥐고(y)",
         alg: TWIST,
         times: 1,
         next: "bottom-right",
@@ -201,8 +201,8 @@ export const PATH_STAGES: PathStage[] = [
       },
       {
         id: "stuck",
-        shape: "위에 넣을 엣지가 없음(칸에 잘못 들어감)",
-        hold: "잘못 든 칸을 앞-오른쪽으로 쥐고(y)",
+        shape: "위에 넣을 엣지가 없음(다른 자리에 잘못 들어감)",
+        hold: "잘못 든 자리를 앞-오른쪽으로 돌려 쥐고(y)",
         alg: RIGHT,
         times: 1,
         next: "front",
@@ -225,7 +225,7 @@ export const PATH_STAGES: PathStage[] = [
       {
         id: "ell",
         shape: "ㄱ자",
-        hold: "윗면을 돌려 노란 두 칸을 뒤와 왼쪽으로",
+        hold: "윗면을 돌려 노란 스티커 둘을 뒤와 왼쪽으로",
         alg: YELLOW_CROSS_BACK,
         times: 1,
         back: true,
@@ -418,6 +418,17 @@ function find(
     return m;
   }
   return undefined;
+}
+
+/**
+ * 조각(맞춘 큐브의 면 글자로 부른 색 묶음, 예: ["U","F","R"] = 흰-초록-빨강)의 스티커가 지금 보는 면. 색 차례대로.
+ * 쪽 글이 「무엇이 어디로 가고 무엇은 그대로인지」 말한 것을 시험이 엔진으로 확인할 때 쓴다
+ */
+export function piecePlace(s: PuzzleState, colors: readonly Face[]): Face[] {
+  const nums = colors.map((f) => FACES.indexOf(f));
+  const m = find(view(s), nums);
+  if (!m) throw new Error(`조각 없음: ${colors.join("")}`);
+  return nums.map((c) => m.get(c) as Face);
 }
 
 const facesOf = (m: Map<number, Face>) => new Set(m.values());

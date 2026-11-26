@@ -297,8 +297,8 @@ test(
   async ({ page }, info) => {
     await useNotationKeys(page);
     await page.goto("/cube/learn?lesson=333-white-cross");
-    // 8번: 흰색이 앞을 보는 가운데 층 엣지를 빨강 면을 앞으로 가져와(y) 앞면으로 올린다(F)
-    await goStep(page, 8);
+    // 12번: 흰색이 앞을 보는 가운데 층 엣지를 빨강 면을 앞으로 돌려 쥐고(y) 앞면으로 올린다(F)
+    await goStep(page, 12);
     const section = page.locator("[data-step-kind]");
     await expect(section).toHaveAttribute("data-step-kind", "try");
     await expect(section).toContainText("빨강 면을 앞으로");
@@ -330,20 +330,23 @@ test("배우기: 안전한 회전(반대 면은 십자 그대로, 맞춘 면은 
   const desktop = info.project.name === "desktop";
   // 0번: 반대 면(아랫면) 돌리기
   await expect(section).toHaveAttribute("data-step-kind", "turn");
-  await expect(section).toContainText("안전한 회전");
+  await expect(section).toContainText("「반대 면」");
   await inputReady(page);
   await shot(page, "learn-safe-turn", info.project.name);
+  // 이름(안전한 회전·위험한 회전)은 직접 돌려 본 뒤에 알린다
   if (desktop) {
     for (const k of keysFor("D")) await page.keyboard.press(k);
     await expect(turn).toHaveAttribute("data-act-passed", "");
+    await expect(turn).toContainText("「안전한 회전」");
   }
   // 1번: 맞춘 면 돌리기
   await goStep(page, 1);
-  await expect(section).toContainText("위험한 회전");
+  await expect(section).toContainText("맞춘 면을 돌려");
   await inputReady(page);
   if (desktop) {
     for (const k of keysFor("U")) await page.keyboard.press(k);
     await expect(turn).toHaveAttribute("data-act-passed", "");
+    await expect(turn).toContainText("「위험한 회전」");
   }
   await shot(page, "learn-danger-turn", info.project.name);
   // 2번: 되돌리기(목표 판정)
@@ -358,8 +361,17 @@ test("배우기: 안전한 회전(반대 면은 십자 그대로, 맞춘 면은 
     );
   }
   await shot(page, "learn-safe-undo", info.project.name);
-  // 3번: 고르기
+  // 3번: 옆면(앞면)을 돌렸다 되돌리기
   await goStep(page, 3);
+  await expect(section).toHaveAttribute("data-step-kind", "turn");
+  await inputReady(page);
+  if (desktop) {
+    for (const k of keysFor("F F'")) await page.keyboard.press(k);
+    await expect(turn).toHaveAttribute("data-act-passed", "");
+    await expect(turn).toContainText("흐트러뜨렸다가 되돌리는");
+  }
+  // 4번: 고르기
+  await goStep(page, 4);
   const quiz = page.locator('[data-act="quiz"]');
   await page.locator("[data-learn-quiz] [data-choice='0']").click();
   await expect(quiz).not.toHaveAttribute("data-act-passed", "");

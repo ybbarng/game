@@ -116,13 +116,14 @@ describe("첫 층 코너(흰 면 위)", () => {
   });
 
   it("고르기 답이 엔진과 같다(아래 3번, 제자리 오른쪽 2번)", () => {
-    const quizzes = lesson.steps.filter((s) => s.kind === "quiz");
-    expect(quizzes[0]?.quiz?.choices[quizzes[0].quiz.answer]).toBe(
-      "R' D' R D 세 번",
-    );
-    expect(quizzes[1]?.quiz?.choices[quizzes[1].quiz.answer]).toBe(
-      "R' D' R D 두 번",
-    );
+    const answerOf = (question: RegExp) => {
+      const q = lesson.steps.find((s) =>
+        question.test(s.quiz?.question ?? ""),
+      )?.quiz;
+      return q?.choices[q.answer];
+    };
+    expect(answerOf(/아래 코너 블럭은 흰색이 아래/)).toBe("R' D' R D 세 번");
+    expect(answerOf(/제자리에 있지만 흰색이 오른쪽/)).toBe("R' D' R D 두 번");
   });
 
   it("거꾸로 D' R' D R 한 번 = R' D' R D 다섯 번, 두 번 = 네 번(큐브 전체가 같다)", () => {

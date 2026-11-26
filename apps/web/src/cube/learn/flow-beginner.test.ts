@@ -90,8 +90,13 @@ describe("안전한 회전·위험한 회전", () => {
     expect(cross(play(3, "U U'", start))).toBe(true);
   });
 
-  it("단계: 아랫면 → 윗면 → 되돌리기 → 고르기", () => {
-    const [safe, danger, undo, quiz] = lesson.steps;
+  it("쪽: 아랫면 → 윗면 → 되돌리기 → 옆면 돌렸다 되돌리기 → 고르기", () => {
+    const [safe, danger, undo, side, quiz] = lesson.steps;
+    // 옆면(앞면)을 돌리면 십자가 어긋나고, 같은 면을 되돌리면 다시 맞는다(흐트러뜨렸다 되돌리는 꼴)
+    expect(side?.kind).toBe("turn");
+    expect(side?.alg).toBe("F F'");
+    expect(cross(play(3, "F", start))).toBe(false);
+    expect(cross(play(3, "F F'", start))).toBe(true);
     expect(safe?.kind).toBe("turn");
     expect(safe?.alg).toMatch(/^D/);
     expect(danger?.kind).toBe("turn");

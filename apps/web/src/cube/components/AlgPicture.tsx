@@ -55,7 +55,7 @@ export function AlgPicture({
     return (
       <CubePoster
         n={n}
-        stickers={stickersFromState(n, state)}
+        stickers={stickersFromState(n, state, mask ? maskFor(n, mask) : null)}
         colors={colors}
         width={200}
         height={200}

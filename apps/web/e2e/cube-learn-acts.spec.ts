@@ -477,7 +477,7 @@ test("강 화면: 이동 경로에 해법 카드와 같은 해법 이름과 강�
       "333-white-cross",
       "초보자 해법",
       "/cube/methods?method=beginner",
-      "3×3 처음 맞추기(층별) 강의",
+      "3×3 처음 맞추기 강의",
     ],
     [
       "222-from333-corners",

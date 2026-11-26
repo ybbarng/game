@@ -14,6 +14,7 @@ export const stepText = (s: LessonStep) =>
     ...(s.quiz?.choices ?? []),
     s.quiz?.why ?? "",
     s.passedText ?? "",
+    ...(s.chunks ?? []).map((c) => c.says),
   ].join("\n");
 
 /** 과정의 단계들. `group`은 단원 번호(앞 과정으로 이어 읽을 때는 `group`을 받아 쓴다) */

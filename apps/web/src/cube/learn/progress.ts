@@ -53,6 +53,8 @@ export interface LessonProgress {
    * 나갔다 들어와도 남는다. 옛 기록에는 없고(빈 목록), 모양이 틀린 값은 읽을 때 버린다
    */
   acted?: number[];
+  /** 쪽 차례를 새로 짠 단원의 판(`STEP_REMAPS`). 옛 기록에는 없고, 판이 다르면 읽을 때 쪽 번호를 새 차례로 옮긴다 */
+  v?: number;
 }
 
 /** 저장된 단계 번호가 쓸 만한가(0 이상의 정수) */
@@ -93,6 +95,105 @@ export const LESSON_RENAMES: Readonly<Record<string, string>> = {
   "333-pieces": "333-piece-moves",
 };
 
+/**
+ * 쪽을 더하거나 차례를 바꿨지만 id는 그대로 둔 단원(2026-11-26 3×3 처음 맞추기 다시 쓰기, docs/47 16-32). id를 바꾸면
+ * 해법 지도·단계 지도·주소가 모두 따라 바뀌어야 해서, 옛 쪽 번호 → 새 쪽 번호 표로 진도를 옮긴다. 같은 활동(종류·상황·
+ * 공식이 같은 쪽)만 옮기고, 없어진 쪽의 번호는 버린다. 「끝냄」은 그대로다. 다시 바꾸면 `v`를 올리고 표를 그 판 기준으로 쓴다
+ */
+export const STEP_REMAPS: Readonly<
+  Record<string, { v: number; from: Readonly<Record<number, number>> }>
+> = {
+  "333-safe-turns": { v: 2, from: { 0: 0, 1: 1, 2: 2, 3: 4 } },
+  "333-white-cross": {
+    v: 2,
+    from: {
+      0: 0,
+      1: 1,
+      2: 3,
+      3: 4,
+      4: 6,
+      5: 7,
+      6: 9,
+      7: 11,
+      8: 12,
+      9: 13,
+      10: 15,
+      12: 16,
+      13: 17,
+      15: 21,
+      18: 24,
+      19: 25,
+      20: 26,
+      21: 27,
+    },
+  },
+  "333-first-corners-up": {
+    v: 2,
+    from: {
+      0: 0,
+      1: 1,
+      2: 2,
+      3: 4,
+      4: 7,
+      5: 5,
+      6: 8,
+      7: 11,
+      8: 9,
+      9: 15,
+      10: 16,
+      11: 12,
+      12: 13,
+      13: 17,
+      15: 19,
+      16: 20,
+      17: 21,
+      18: 22,
+    },
+  },
+  "333-second-layer": {
+    v: 2,
+    from: { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 10, 9: 12, 10: 13 },
+  },
+  "333-ll-cross": {
+    v: 2,
+    from: { 0: 1, 1: 2, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10 },
+  },
+  "333-ll-edges": {
+    v: 2,
+    from: { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8 },
+  },
+  "333-ll-corner-place": {
+    v: 2,
+    from: { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9 },
+  },
+  "333-ll-corner-twist": {
+    v: 2,
+    from: { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7 },
+  },
+};
+
+/** 판이 다른 옛 기록의 쪽 번호를 새 차례로(없어진 쪽은 버린다) */
+function remapSteps(id: string, p: LessonProgress): LessonProgress {
+  const remap = STEP_REMAPS[id];
+  if (!remap || p.v === remap.v) return p;
+  const to = (i: number) => remap.from[i];
+  const moved = (xs: number[] | undefined) =>
+    (xs ?? [])
+      .map(to)
+      .filter((i): i is number => i !== undefined)
+      .sort((a, b) => a - b);
+  const passed = moved(p.passed);
+  const acted = moved(p.acted);
+  const step = p.step === undefined ? undefined : to(p.step);
+  return {
+    passed,
+    done: p.done,
+    ...(step !== undefined ? { step } : {}),
+    ...(acted.length > 0 ? { acted } : {}),
+    v: remap.v,
+  };
+}
+
 function migrate(
   lessons: Record<string, LessonProgress>,
 ): Record<string, LessonProgress> {
@@ -101,12 +202,13 @@ function migrate(
     if (typeof p !== "object" || p === null) continue;
     const passed = Array.isArray(p.passed) ? p.passed.filter(validStep) : [];
     const acted = Array.isArray(p.acted) ? p.acted.filter(validStep) : [];
-    out[id] = {
+    out[id] = remapSteps(id, {
       passed,
       done: p.done === true,
       ...(validStep(p.step) ? { step: p.step } : {}),
       ...(acted.length > 0 ? { acted } : {}),
-    };
+      ...(typeof p.v === "number" ? { v: p.v } : {}),
+    });
   }
   for (const [from, to] of Object.entries(LESSON_RENAMES)) {
     const old = lessons[from];
@@ -136,8 +238,13 @@ function updateLesson(
 ): LearnProgress {
   const all = loadLearn(storage);
   const before = all.lessons[lessonId] ?? { passed: [], done: false };
+  const remap = STEP_REMAPS[lessonId];
   const next: LearnProgress = {
-    lessons: { ...all.lessons, [lessonId]: change(before) },
+    lessons: {
+      ...all.lessons,
+      // 새로 쓰는 기록은 지금 판의 쪽 번호다
+      [lessonId]: { ...change(before), ...(remap ? { v: remap.v } : {}) },
+    },
     last: lessonId,
   };
   writeJson(storage, LEARN_KEY, next);

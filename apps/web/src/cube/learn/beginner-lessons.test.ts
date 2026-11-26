@@ -76,10 +76,10 @@ describe("단원 모범 답 = 경우별 정해진 길", () => {
         ).not.toMatch(words);
   });
 
-  it("코너 시연: 아래 층에 흰 코너가 없고 흰-초록-빨강이 앞-왼쪽 위에 들어가 있다", () => {
+  it("코너 빼기 따라 하기: 아래 층에 흰 코너가 없고 흰-초록-빨강이 앞-왼쪽 위에 들어가 있다", () => {
     const lesson = course?.lessons.find((l) => l.id === "333-first-corners-up");
     const demo = lesson?.steps.find(
-      (s) => s.kind === "demo" && s.body.includes("엉뚱한"),
+      (s) => s.kind === "turn" && s.body.includes("다른 자리에 들어가"),
     );
     const setup = demo?.setup as { alg: string };
     const s = applyMoves(3, solvedCube(3), parseMoves(3, setup.alg));
