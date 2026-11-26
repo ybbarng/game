@@ -7,7 +7,7 @@ import { AlgPicture } from "./AlgPicture";
 import { MoveText } from "./MoveChip";
 
 /**
- * 3×3 처음 맞추기 단계 첫머리의 「모든 경우」 그림(docs/47 16-31). 경우마다 그림·모양·할 일을 한 칸에 둔다.
+ * 3×3 처음 맞추기 단계 첫머리의 「모든 경우」 그림(docs/47 16-32). 경우마다 그림·모양·할 일을 한 칸에 둔다.
  * 흰 십자·첫 층·둘째 층은 비스듬한 큐브, 마지막 층은 윗면 평면도다(전개도는 쓰지 않는다, docs/standing-rules.md 2-1절).
  */
 export function BeginnerCasesSheet({

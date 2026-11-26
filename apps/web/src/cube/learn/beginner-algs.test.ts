@@ -1,4 +1,4 @@
-// 3×3 처음 맞추기의 공식 짜임(docs/47 16-31): 쪽 글이 덩어리마다 「무엇이 어디로 가고 무엇은 그대로인지」 말한 것을
+// 3×3 처음 맞추기의 공식 짜임(docs/47 16-32): 쪽 글이 덩어리마다 「무엇이 어디로 가고 무엇은 그대로인지」 말한 것을
 // 엔진으로 확인한다. 덩어리를 이으면 쪽의 공식과 같은지, 덩어리 하나하나를 친 뒤 조각이 글이 말한 자리에 있는지 본다.
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";

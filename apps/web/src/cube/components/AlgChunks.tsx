@@ -4,7 +4,7 @@ import type { AlgChunk } from "../learn/types";
 import { MoveText } from "./MoveChip";
 
 /**
- * 공식의 짜임(docs/47 16-31): 덩어리마다 수와 그 덩어리가 조각을 어떻게 옮기는지를 나란히 보인다. 공식을 가르치는
+ * 공식의 짜임(docs/47 16-32): 덩어리마다 수와 그 덩어리가 조각을 어떻게 옮기는지를 나란히 보인다. 공식을 가르치는
  * 쪽(시연·따라 하기)에서 공식 아래에 둔다. 해 보기 쪽은 공식을 숨기므로 두지 않는다.
  */
 export function AlgChunks({

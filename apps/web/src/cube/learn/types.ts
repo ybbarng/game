@@ -265,7 +265,7 @@ export interface LessonStep {
   /** demo: 과정의 단계 지도 시연(단계마다 멈추고 띠의 칸으로 고른다). alg는 모든 단계 수를 이은 것 */
   stageMap?: boolean;
   /**
-   * demo·turn: 공식을 덩어리로 나눈 짜임(docs/47 16-31). 덩어리 수를 이으면 `alg`의 끝부분(쥐는 수 뒤 공식)과 같고,
+   * demo·turn: 공식을 덩어리로 나눈 짜임(docs/47 16-32). 덩어리 수를 이으면 `alg`의 끝부분(쥐는 수 뒤 공식)과 같고,
    * 화면은 공식 아래에 덩어리마다 수와 그 덩어리가 조각을 어떻게 옮기는지를 나란히 보인다
    */
   chunks?: AlgChunk[];
@@ -293,7 +293,7 @@ export const SHEETS = {
     "2단계 OLL·PLL 네 걸음의 모양 16가지 평면도(two-look-sheets.ts TWO_LOOK_GROUPS)",
   "ll-compare":
     "초보자 해법 마지막 층과 2단계 OLL·PLL 견주기(two-look-sheets.ts LL_COMPARE_TABLE)",
-  // 3×3 처음 맞추기 단계마다 나올 수 있는 모든 경우(beginner-cases.ts, docs/47 16-31)
+  // 3×3 처음 맞추기 단계마다 나올 수 있는 모든 경우(beginner-cases.ts, docs/47 16-32)
   "beginner-cross": "흰 십자: 흰 엣지 블럭이 있을 수 있는 여섯 경우",
   "beginner-corners-look":
     "첫 층 코너: 흰 코너 블럭의 여섯 경우(첫머리, 공식을 배우기 전이라 횟수 없이)",
