@@ -71,9 +71,10 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
     "oll:two-look",
     "solved:",
   ]);
-  await expect(
-    cfop.locator('[data-strip-node="oll"] [data-strip-same]'),
-  ).toHaveText("OLL·PLL과 같음");
+  // 보이는 표시는 한 줄 「= OLL·PLL」, 읽는 이름은 「2단계 OLL·PLL과 같음」
+  const same = cfop.locator('[data-strip-node="oll"] [data-strip-same]');
+  await expect(same.locator("[aria-hidden]")).toHaveText("= OLL·PLL");
+  await expect(same.locator(".sr-only")).toHaveText("2단계 OLL·PLL과 같음");
   // 시안 고르기 단추·견본 기록은 없다
   await expect(page.getByRole("button", { name: "견본 기록" })).toHaveCount(0);
   // 강의 목록(단원·연습)은 카드 아래에 그대로
@@ -200,33 +201,67 @@ test("전체 보기: 지점 그림·이름·꼬리표가 서로 겹치지 않는
   }
 });
 
-test("전체 보기: 처음에는 지도 전체가 한 화면에 들어오고 페이지는 스크롤되지 않는다", async ({
+/** 지점 이름이 화면에 그려진 글자 크기(px): 글씨 크기 × 지도 배율 */
+async function nameFontPx(page: Page, node: string) {
+  return page.evaluate((id) => {
+    const el = document.querySelector(
+      `[data-node="${id}"] [data-node-part="name"]`,
+    );
+    const zoom = document
+      .querySelector("[data-map-content]")
+      ?.getAttribute("data-map-zoom");
+    if (!el || !zoom) return 0;
+    return Number.parseFloat(getComputedStyle(el).fontSize) * Number(zoom);
+  }, node);
+}
+
+test("전체 보기: 처음 모습은 칸 이름이 11px 이상으로 읽히고 「다 섞임」에서 고른 해법 길이 보이며, 페이지는 스크롤되지 않는다", async ({
   page,
 }) => {
   await page.goto("/cube/methods?view=map&sel=beginner");
   const frame = page.locator("[data-map-frame]");
   await expect(frame).toBeVisible();
+  await expect(
+    page.locator('[data-node="scrambled"] [data-node-part="name"]'),
+  ).toBeVisible();
+  await expect
+    .poll(() => nameFontPx(page, "scrambled"))
+    .toBeGreaterThanOrEqual(11);
+  // 다 섞임과 그다음 지점(흰 십자)이 틀 안에
   const f = await frame.boundingBox();
-  const content = page.locator("[data-map-content]");
-  const c = await content.boundingBox();
-  expect(f && c).toBeTruthy();
-  if (!f || !c) return;
-  expect([
-    c.x >= f.x - 1,
-    c.y >= f.y - 1,
-    c.x + c.width <= f.x + f.width + 1,
-    c.y + c.height <= f.y + f.height + 1,
-  ]).toEqual([true, true, true, true]);
+  const inFrame = async (id: string) => {
+    const b = await page.locator(`[data-node="${id}"]`).boundingBox();
+    return (
+      !!f &&
+      !!b &&
+      b.x >= f.x - 1 &&
+      b.y >= f.y - 1 &&
+      b.x + b.width <= f.x + f.width + 1 &&
+      b.y + b.height <= f.y + f.height + 1
+    );
+  };
+  expect([await inFrame("scrambled"), await inFrame("cross")]).toEqual([
+    true,
+    true,
+  ]);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollHeight - window.innerHeight,
     ),
   ).toBeLessThanOrEqual(0);
-  // 「처음 자리로」도 이 전체 보기로
+  // 「처음 자리로」도 같은 처음 모습으로
+  const content = page.locator("[data-map-content]");
+  const zoom = await content.getAttribute("data-map-zoom");
   await page.getByRole("button", { name: "크게" }).click();
+  await expect(content).not.toHaveAttribute("data-map-zoom", zoom ?? "");
   await page.getByRole("button", { name: "처음 자리로" }).click();
-  const c2 = await content.boundingBox();
-  expect(c2 && Math.round(c2.width)).toBe(Math.round(c.width));
+  await expect(content).toHaveAttribute("data-map-zoom", zoom ?? "");
+  // 해법을 더 골라도 글자가 읽히는 배율 아래로 줄이지 않는다
+  await page.locator('[data-method="cfop"]').click();
+  await expect(page).toHaveURL(/sel=beginner%2Ccfop/);
+  await expect
+    .poll(() => nameFontPx(page, "scrambled"))
+    .toBeGreaterThanOrEqual(11);
 });
 
 test("기록이 있으면 지나온 길에 「나」, 카드에는 끝낸 단계에 ✓", async ({
@@ -277,31 +312,97 @@ test("전체 보기 4×4: 「3×3 맞추기」는 그 자리에서 펼치고, 3�
   await expect(panel).toHaveAttribute("data-finish-panel", "cfop");
 });
 
-test("휴대폰 폭(320·375·390·430)과 PC에서 카드·지도는 가로로 넘치지 않고, 카드 칸 이름·같음 표시는 낱말 중간에서 줄이 바뀌지 않고 두 줄을 넘지 않는다", {
+/**
+ * 화면 밖으로 잘린 요소: 화면 왼쪽·오른쪽을 넘는 요소. 페이지 가로 넘침(문서 scrollWidth)만 보면, 스스로 가로 스크롤인
+ * 상자(예전 지도 위 줄의 overflow-x-auto) 안에서 잘린 것은 문서 폭을 늘리지 않아 잡지 못했다(2026-11-26 HQ 검토).
+ * 밀어서 볼 수 있는 줄(`scroller`)은 넘침이 있으면 밀 수 있다는 표시(`data-scroll-more`)가 보여야 한다
+ */
+async function clippedOut(page: Page, root: string, scroller?: string) {
+  return page.evaluate(
+    ({ root, scroller }) => {
+      const out: string[] = [];
+      const r = document.querySelector(root);
+      if (!r) return ["없음"];
+      const vw = window.innerWidth;
+      // 뿌리 자신도 본다. 밀 수 있는 줄은 그 상자는 보고(화면 안이어야 한다) 안쪽만 건너뛴다
+      for (const el of [
+        r as HTMLElement,
+        ...r.querySelectorAll<HTMLElement>("*"),
+      ]) {
+        if (scroller && el.parentElement?.closest(scroller)) continue;
+        if (el.closest(".sr-only") || el.classList.contains("sr-only"))
+          continue;
+        const b = el.getBoundingClientRect();
+        if (b.width === 0 || b.height === 0) continue;
+        if (b.left < -0.5 || b.right > vw + 0.5)
+          out.push(
+            `${el.tagName.toLowerCase()} 「${(el.textContent ?? "").slice(0, 12)}」 ${Math.round(b.left)}~${Math.round(b.right)}`,
+          );
+        // 스스로 잘라 숨기는 상자(넘친 글을 감춤)
+        const s = getComputedStyle(el);
+        if (
+          s.overflowX !== "visible" &&
+          el.scrollWidth > el.clientWidth + 1 &&
+          !(scroller && el.matches(scroller))
+        )
+          out.push(
+            `${el.tagName.toLowerCase()} 안에서 잘림 「${(el.textContent ?? "").slice(0, 12)}」`,
+          );
+      }
+      if (scroller) {
+        const sc = document.querySelector<HTMLElement>(scroller);
+        if (
+          sc &&
+          sc.scrollWidth > sc.clientWidth + 1 &&
+          !sc.parentElement?.querySelector('[data-scroll-more="right"]')
+        )
+          out.push("밀 수 있다는 표시 없음");
+      }
+      return out;
+    },
+    { root, scroller },
+  );
+}
+
+test("휴대폰 폭(320·375·390·430)과 PC에서 카드·지도는 넘치거나 잘리지 않고, 칸 이름은 낱말 중간에서 줄이 바뀌지 않고 두 줄을 넘지 않으며, 같음 표시는 한 줄이다(2×2~5×5)", {
   tag: ONLY_DESKTOP,
 }, async ({ page }) => {
   for (const w of [320, 375, 390, 430, 1280]) {
     await page.setViewportSize({ width: w, height: 800 });
-    await page.goto("/cube/methods?more=1");
-    await expect(page.locator('[data-card="zz-zbll"]')).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth - window.innerWidth,
-      ),
-      `${w} 카드 가로 넘침`,
-    ).toBeLessThanOrEqual(0);
-    const texts = page.locator(
-      "[data-card] [data-strip-name], [data-card] [data-strip-same]",
-    );
-    const bad: string[] = [];
-    for (const el of await texts.all()) {
-      const lines = await renderedLines(el);
-      const words = (await el.innerText()).split(/\s+/).filter(Boolean);
-      const lineWords = lines.flatMap((l) => l.split(/\s+/).filter(Boolean));
-      if (lines.length > 2 || lineWords.join("|") !== words.join("|"))
-        bad.push(lines.join(" / "));
+    for (const n of [2, 3, 4, 5]) {
+      await page.addInitScript((size) => {
+        localStorage.setItem("cube.size.v1", JSON.stringify({ v: 1, n: size }));
+      }, n);
+      await page.goto("/cube/methods?more=1");
+      await expect(page.locator(`[data-method-cards="${n}"]`)).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        ),
+        `${w} ${n}×${n} 카드 가로 넘침`,
+      ).toBeLessThanOrEqual(0);
+      expect(
+        await clippedOut(page, "[data-method-cards]"),
+        `${w} ${n}×${n} 카드 잘림`,
+      ).toEqual([]);
+      const bad: string[] = [];
+      for (const el of await page
+        .locator("[data-card] [data-strip-name]")
+        .all()) {
+        const lines = await renderedLines(el);
+        const words = (await el.innerText()).split(/\s+/).filter(Boolean);
+        const lineWords = lines.flatMap((l) => l.split(/\s+/).filter(Boolean));
+        if (lines.length > 2 || lineWords.join("|") !== words.join("|"))
+          bad.push(lines.join(" / "));
+      }
+      for (const el of await page
+        .locator("[data-card] [data-strip-same] [aria-hidden]")
+        .all()) {
+        const lines = await renderedLines(el);
+        if (lines.length !== 1) bad.push(`같음 ${lines.join(" / ")}`);
+      }
+      expect(bad, `${w} ${n}×${n} 칸 글 줄바꿈`).toEqual([]);
     }
-    expect(bad, `${w} 칸 글 줄바꿈`).toEqual([]);
     await page.goto("/cube/methods?view=map&sel=beginner");
     await expect(page.locator('[data-solve-map="map"]')).toBeVisible();
     expect(
@@ -310,5 +411,9 @@ test("휴대폰 폭(320·375·390·430)과 PC에서 카드·지도는 가로로 
       ),
       `${w} 지도 가로 넘침`,
     ).toBeLessThanOrEqual(0);
+    expect(
+      await clippedOut(page, "[data-map-bar]", "[data-map-methods]"),
+      `${w} 지도 위 줄 잘림`,
+    ).toEqual([]);
   }
 });

@@ -647,6 +647,15 @@ function placeLabels(items: Box[], fixed: Box[]): Pt[] {
         if (i !== j) push(a, b, 0.5, i < j ? -1 : 1);
     }
   }
+  // 마무리: 위아래 지점 상자 사이 좁은 틈에 몰려 아직 겹친 꼬리표끼리는 뒤의 것을 옆으로 뗀다(위아래로는 상자에
+  // 막혀 갈라지지 않는다, 2026-11-26 확대한 지도에서 1px 겹침이 드러남)
+  for (let round = 0; round < 8; round++)
+    for (const [i, a] of ps.entries())
+      for (const b of ps.slice(i + 1)) {
+        const ox = (a.w + b.w) / 2 + 8 - Math.abs(a.x - b.x);
+        const oy = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
+        if (ox > 0 && oy > 0) b.x += dir(b.x, a.x, 1) * ox;
+      }
   return ps.map(({ x, y }) => ({ x, y }));
 }
 
@@ -1064,6 +1073,8 @@ interface View {
   k: number;
 }
 const MIN_K = 0.12;
+/** 처음 배율의 하한: 칸 이름(11px 글씨)이 화면에서 11px 이상(2026-11-26 HQ 검토) */
+export const READABLE_K = 1;
 const MAX_K = 2.5;
 const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
 
@@ -1156,14 +1167,27 @@ function MapFrame({
     [size],
   );
 
-  // 처음과 「처음 자리로」: 지도 전체(다 섞임~다 맞음)가 한 화면에 들어오는 배율(2026-11-26 사용자).
-  // 틀 크기가 바뀌면(휴대폰 돌리기) 다시 잰다
+  /** 영역을 배율 k로: 화면에 들어가면 가운데, 넘치면 그 방향은 머리(왼쪽·위쪽)를 맞춘다 */
+  const headOf = useCallback(
+    (r: { x: number; y: number; w: number; h: number }, k: number): View => {
+      const cx = r.w * k > size.w ? r.x + size.w / (2 * k) : r.x + r.w / 2;
+      const cy = r.h * k > size.h ? r.y + size.h / (2 * k) : r.y + r.h / 2;
+      return centerOn({ x: cx, y: cy }, k);
+    },
+    [size, centerOn],
+  );
+
+  // 처음과 「처음 자리로」: 지도 전체가 글자가 읽히는 배율(READABLE_K) 이상으로 한 화면에 들어오면 전체를, 아니면
+  // 그 배율로 고른 해법 길의 머리(다 섞임, 왼쪽 위)에 맞춘다. 전체는 미니맵과 줌으로 본다(2026-11-26 HQ 검토: 휴대폰에서
+  // 전체를 맞춰 넣으면 칸 이름이 점 크기). 틀 크기가 바뀌면(휴대폰 돌리기) 다시 잰다
   // biome-ignore lint/correctness/useExhaustiveDependencies: 틀·지도 크기가 바뀔 때만 다시 잰다
   useEffect(() => {
     if (!size.w) return;
-    const k = clampK(Math.min(size.w / width, size.h / height, 1));
+    const whole = Math.min(size.w / width, size.h / height, 1);
     const v = clampView(
-      centerOn({ x: width / 2, y: height / 2 }, k),
+      whole >= READABLE_K
+        ? centerOn({ x: width / 2, y: height / 2 }, clampK(whole))
+        : headOf(fit ?? { x: 0, y: 0, w: width, h: height }, READABLE_K),
       bounds.current,
     );
     const first = !home.current;
@@ -1181,11 +1205,11 @@ function MapFrame({
       return;
     }
     if (!size.w || !fit) return;
-    const k = clampK(Math.min(size.w / fit.w, size.h / fit.h, 1.2));
-    // 영역이 화면보다 길면 머리(위쪽)를 맞춘다
-    const cy =
-      fit.h * k > size.h ? fit.y + size.h / (2 * k) : fit.y + fit.h / 2;
-    setView(centerOn({ x: fit.x + fit.w / 2, y: cy }, k));
+    // 글자가 읽히는 배율 아래로는 줄이지 않는다
+    const k = clampK(
+      Math.max(READABLE_K, Math.min(size.w / fit.w, size.h / fit.h, 1.2)),
+    );
+    setView(headOf(fit, k));
   }, [fitKey]);
 
   // 휠·트랙패드: 가리킨 자리를 두고 줌(페이지 스크롤과 싸우지 않게 막는다)

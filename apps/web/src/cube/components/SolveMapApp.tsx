@@ -5,7 +5,14 @@
 // - 전체 보기(`?view=map`): 펼친 지도(MapScreen). 고른 해법은 `?sel=a,b`, 접은 해법 펼치기 `?more=1`, 큰 큐브에서
 //   들른 3×3 지도 `?from=4`, 큰 큐브 「3×3 맞추기」 펼치기 `?x=<해법>`
 // 크기는 해법 배우기의 크기 단추(사이트 「지금 크기」, docs/47 16-28)를 따른다. 3×3 지도에 들르기는 지금 크기를 바꾸지 않는다.
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/cn";
 import { COURSES } from "../learn/courses";
@@ -386,8 +393,9 @@ export function MapScreen({
         data-solve-map={ready ? "map" : undefined}
         data-map-full=""
       >
+        {/* 위 줄: 돌아가기·크기, 해법 칩은 다음 줄(넓은 화면은 같은 줄 남은 폭)의 가로 스크롤 줄. 줄 자체는 넘치지 않는다 */}
         <div
-          className="flex shrink-0 flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap border-white/10 border-b px-3 py-1.5"
+          className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 whitespace-nowrap border-white/10 border-b px-3 py-1.5"
           data-map-bar
         >
           <button
@@ -420,9 +428,9 @@ export function MapScreen({
               ← {from}×{from}
             </button>
           )}
-          <div
-            className="flex shrink-0 flex-nowrap items-center gap-1.5"
-            data-map-methods
+          <ScrollRow
+            className="min-w-0 basis-full md:basis-0 md:flex-1"
+            attr="data-map-methods"
           >
             {chips.map((m) => {
               const on = chosenIds.includes(m.id);
@@ -473,10 +481,75 @@ export function MapScreen({
                 다른 해법
               </button>
             )}
-          </div>
+          </ScrollRow>
         </div>
         {ready && <MapView ctx={ctx} />}
       </main>
+    </div>
+  );
+}
+
+/**
+ * 가로로 미는 한 줄. 넘쳐 가려진 것이 오른쪽(또는 왼쪽)에 있으면 그쪽 끝을 흐리게 하고 화살 표시를 두어 밀 수
+ * 있다는 것이 보인다(`data-scroll-more`). 화면 시험은 이 표시로 잘린 칩이 밀어서 볼 수 있는 것인지 본다
+ */
+function ScrollRow({
+  attr,
+  className,
+  children,
+}: {
+  attr: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState({ left: false, right: false });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const read = () => {
+      const left = el.scrollLeft > 1;
+      const right = el.scrollWidth - el.clientWidth - el.scrollLeft > 1;
+      setMore((m) =>
+        m.left === left && m.right === right ? m : { left, right },
+      );
+    };
+    read();
+    el.addEventListener("scroll", read, { passive: true });
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    for (const c of el.children) ro.observe(c);
+    return () => {
+      el.removeEventListener("scroll", read);
+      ro.disconnect();
+    };
+  });
+  const fade = (side: "left" | "right") => (
+    <span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute inset-y-0 flex w-8 items-center text-white/70",
+        side === "right"
+          ? "right-0 justify-end bg-gradient-to-l"
+          : "left-0 justify-start bg-gradient-to-r",
+        "from-neutral-900 via-neutral-900/80 to-transparent",
+      )}
+      data-scroll-more={side}
+    >
+      {side === "right" ? "›" : "‹"}
+    </span>
+  );
+  return (
+    <div className={cn("relative", className)}>
+      <div
+        ref={ref}
+        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&>*]:shrink-0"
+        {...{ [attr]: "" }}
+      >
+        {children}
+      </div>
+      {more.left && fade("left")}
+      {more.right && fade("right")}
     </div>
   );
 }
