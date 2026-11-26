@@ -100,10 +100,8 @@ const RUNS: Partial<Record<MapMethodId, (text: string) => Run>> = {
   cfop: (text) =>
     bySolver(solveCfop(play(solvedCube(3), text)), [
       ["cross", ["cross"]],
-      ["f2l-pair-1", ["f2l-1"]],
-      ["f2l-pair-2", ["f2l-2"]],
-      ["f2l-pair-3", ["f2l-3"]],
-      ["f2l-pair-4", ["f2l-4"]],
+      // 짝 넷을 한 걸음으로(컴퓨터 해법의 짝 단계 넷을 이어 센다)
+      ["f2l", ["f2l-1", "f2l-2", "f2l-3", "f2l-4"]],
       ["oll", ["oll"]],
       ["pll", ["pll"]],
     ]),
@@ -126,8 +124,7 @@ const RUNS: Partial<Record<MapMethodId, (text: string) => Run>> = {
     );
     return {
       eoline: z.eoline,
-      "zz-left": z.left,
-      "zz-right": z.right,
+      "zz-blocks": join([z.left, z.right]),
       ...twoLookFrom(s),
     };
   },

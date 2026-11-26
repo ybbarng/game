@@ -1,4 +1,4 @@
-// 해법 지도의 「나」 시험 자료(solve-map-me.test.ts). 예전 시안 화면의 견본 기록(`?demo=1`)이었고, 화면에서는 지웠다(2026-11-26).
+// 해법 지도의 내 기록 시험 자료(solve-map-me.test.ts). 예전 시안 화면의 견본 기록(`?demo=1`)이었고, 화면에서는 지웠다(2026-11-26).
 import type { SolveRecord } from "../records";
 import type { LearnProgress, TrainBook } from "./progress";
 

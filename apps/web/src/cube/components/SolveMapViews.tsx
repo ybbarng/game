@@ -34,7 +34,15 @@ import {
   PARITY_AT,
   PARITY_LOOPS,
 } from "../learn/solve-map";
-import { type EdgeSolo, edgeLearn, edgeTrain } from "../learn/solve-map-me";
+import {
+  arrowLit,
+  cellLit,
+  type EdgeSolo,
+  edgeProgress,
+  edgeTrain,
+  PROGRESS_SR,
+  type StepProgress,
+} from "../learn/solve-map-me";
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import {
@@ -52,6 +60,15 @@ import {
   visibleEdges,
   visibleNodes,
 } from "./solve-map-model";
+
+/** 진도를 화면 낭독기에만 읽어 준다(보이는 글자는 두지 않는다, 진도 밝기 docs/47 16-30) */
+export function ProgressSr({ p }: { p: StepProgress }) {
+  const t = PROGRESS_SR[p];
+  return t ? <span className="sr-only">{` ${t}`}</span> : null;
+}
+
+/** 진도가 아직인 칸: 그림·이름을 조금 어둡게(기록이 없어도 처음부터) */
+export const DIM = "opacity-45";
 
 /** 펼치기·접기 주소(큰 큐브 「3×3 맞추기」) */
 const toggleHref = (ctx: MapCtx) =>
@@ -143,14 +160,20 @@ export function FinishPanel({ ctx }: { ctx: MapCtx }) {
         {fin.edges.map((id) => {
           const e = edgeById(id) as MapEdge;
           const href = edgeHref(e, fin, ctx.courseOf);
-          const done = edgeLearn(e, ctx.progress) === "done";
+          const progress = edgeProgress(e, fin, ctx.progress, ctx.courseOf);
           const f = edgeFormulaLabel(e, [fin]);
           const here = loops.filter(
             (l) => at && (l.kind === "oll" ? at.oll : at.pll) === e.to,
           );
           const body = (
             <>
-              <span className={cn("shrink-0", CUBE_CELL)}>
+              <span
+                className={cn(
+                  "shrink-0",
+                  CUBE_CELL,
+                  !cellLit(false, progress) && DIM,
+                )}
+              >
                 <NodeCube
                   id={e.to}
                   settings={ctx.settings}
@@ -161,8 +184,8 @@ export function FinishPanel({ ctx }: { ctx: MapCtx }) {
               </span>
               <span className="flex min-w-0 flex-col text-[11px] leading-tight">
                 <span className="font-medium text-white">
-                  {done ? "✓ " : ""}
                   {e.title}
+                  <ProgressSr p={progress} />
                 </span>
                 {f && <span className="text-white/60">{f}</span>}
               </span>
@@ -275,8 +298,6 @@ export interface MapCtx {
   train: TrainBook;
   /** 해법 id → 길마다 내 혼자 맞추기 구간 */
   solo: Map<string, Map<string, EdgeSolo>>;
-  /** 「나」가 있는 지점 → 그 해법들. 기록이 없으면 그 크기의 「다 섞임」 */
-  me: Map<MapNodeId, MapMethod[]>;
   courseOf: (lessonId: string) => string | undefined;
   /** 단원 id → 단원 제목 */
   lessonTitle: (lessonId: string) => string;
@@ -295,44 +316,11 @@ export interface MapCtx {
   hop: () => void;
 }
 
-/** 「나」 표시(해법마다 색 점) */
-export function MeBadge({ methods }: { methods: MapMethod[] }) {
-  return (
-    <span
-      className="inline-flex items-center gap-0.5 rounded-full bg-white px-1.5 py-px font-bold text-[11px] text-neutral-900"
-      data-me
-    >
-      나
-      {methods.map((m) => (
-        <span
-          key={m.id}
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ background: METHOD_COLOR[m.id] }}
-        />
-      ))}
-    </span>
-  );
-}
-
 /** 지도 틀의 지금 배율(A·C 지도 안에서만 1이 아니다) */
 const ZoomK = createContext(1);
 
 /** 이 배율보다 작으면 지점 그림 대신 점(그림이 너무 작아 알아볼 수 없다). 확대하면 그림이 나온다 */
 const PIC_MIN_K = 0.45;
-
-/** 지도 위 「나」: 전체 보기처럼 작게 줄여도 화면에서 이 크기보다 작아지지 않게 */
-export function MeOnMap({ methods }: { methods: MapMethod[] }) {
-  const k = useContext(ZoomK);
-  const s = Math.max(1, 0.9 / k);
-  return (
-    <span
-      className="inline-block"
-      style={{ transform: `scale(${s})`, transformOrigin: "center" }}
-    >
-      <MeBadge methods={methods} />
-    </span>
-  );
-}
 
 /** 지도 위 지점 그림: 작은 배율에서는 같은 자리의 점 하나 */
 function NodePic({ id, ctx, px }: { id: MapNodeId; ctx: MapCtx; px: number }) {
@@ -428,13 +416,11 @@ export function EdgeLines({
 }) {
   const f = edgeFormulaLabel(e, ctx.selected);
   const turns = full ? edgeTurns(e, ctx.selected) : undefined;
-  const learn = edgeLearn(e, ctx.progress);
   const train = full ? edgeTrain(e, ctx.train) : null;
   const solo = full ? edgeSolo(e, ctx) : undefined;
   return (
     <>
       <span className="whitespace-nowrap">
-        {learn === "done" && <span className="text-emerald-300">✓ </span>}
         {[f, turns !== undefined ? `${turns}수` : null]
           .filter(Boolean)
           .join(" · ")}
@@ -609,6 +595,7 @@ function labelSize(e: MapEdge, ctx: MapCtx, on: boolean) {
   const f = edgeFormulaLabel(e, ctx.selected) ?? "";
   const turns = on ? edgeTurns(e, ctx.selected) : undefined;
   const lines = [
+    // 앞의 「✓ 」는 여유 폭(어림이 작으면 밀어도 겹친다)
     `✓ ${f} · ${turns ?? ""}수${e.lessons.length ? "" : " · 단원 없음"}`,
   ];
   if (on) {
@@ -880,35 +867,47 @@ function MapLayer({
                 strokeDasharray={dash}
               />
             );
-          return ms.map((m, j) => (
-            <path
-              key={`${g.e.id}-${m.id}`}
-              d={path(g, (j - (ms.length - 1) / 2) * 5)}
-              fill="none"
-              stroke={METHOD_COLOR[m.id]}
-              strokeWidth={3.5}
-              strokeDasharray={dash}
-              strokeLinecap="round"
-              data-edge-line={g.e.id}
-            />
-          ));
+          // 걸음 선은 카드의 화살표 역할: 배우는 중부터 밝게, 아직이면 흐리게(진도 밝기)
+          return ms.map((m, j) => {
+            const lit = arrowLit(
+              edgeProgress(g.e, m, ctx.progress, ctx.courseOf),
+            );
+            return (
+              <path
+                key={`${g.e.id}-${m.id}`}
+                d={path(g, (j - (ms.length - 1) / 2) * 5)}
+                fill="none"
+                stroke={METHOD_COLOR[m.id]}
+                strokeOpacity={lit ? 1 : 0.35}
+                strokeWidth={lit ? 4.5 : 3.5}
+                strokeDasharray={dash}
+                strokeLinecap="round"
+                data-edge-line={g.e.id}
+                data-edge-lit={lit ? "lit" : "dim"}
+              />
+            );
+          });
         })}
       </svg>
       {geo.map((g) => {
         const on = selectedEdges.has(g.e.id);
         // 흐린 길에 적을 값이 없으면(셀 자료 없음·단원 있음) 꼬리표를 두지 않는다
-        if (
-          !on &&
-          !edgeFormulaLabel(g.e, ctx.selected) &&
-          g.e.lessons.length &&
-          edgeLearn(g.e, ctx.progress) !== "done"
-        )
+        if (!on && !edgeFormulaLabel(g.e, ctx.selected) && g.e.lessons.length)
           return null;
         const m = ctx.selected.find((x) => x.edges.includes(g.e.id));
         const href = hrefOf(g.e, m, ctx);
         const body = (
           <>
-            {on && <span className="font-medium text-white">{g.e.title}</span>}
+            {on && (
+              <span className="font-medium text-white">
+                {g.e.title}
+                {m && (
+                  <ProgressSr
+                    p={edgeProgress(g.e, m, ctx.progress, ctx.courseOf)}
+                  />
+                )}
+              </span>
+            )}
             <EdgeLines e={g.e} ctx={ctx} full={on} />
           </>
         );
@@ -947,11 +946,16 @@ function MapLayer({
         const on = selectedNodes.has(id);
         const shared = ctx.selected.filter((m) => methodNodes(m).includes(id));
         const href = nodeHrefOf(id, ctx);
-        const me = ctx.me.get(id);
+        // 고른 길의 지점: 다 섞임은 늘 밝고, 그 밖은 들어오는 걸음을 마쳤을 때만 밝다(진도 밝기)
+        const lit = on && nodeLit(id, ctx);
         const body = (
           <>
             <span
-              className={cn("flex flex-col items-center", !on && "opacity-35")}
+              className={cn(
+                "flex flex-col items-center",
+                !on ? "opacity-35" : !lit && DIM,
+              )}
+              data-node-lit={on ? (lit ? "lit" : "dim") : undefined}
             >
               <NodePic id={id} ctx={ctx} px={60} />
               <span
@@ -961,11 +965,6 @@ function MapLayer({
                 {nodeById(id).title}
               </span>
             </span>
-            {me && (
-              <span className="-top-2 -right-2 absolute">
-                <MeOnMap methods={me} />
-              </span>
-            )}
           </>
         );
         // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게
@@ -995,6 +994,18 @@ function MapLayer({
       <Loops ctx={ctx} pos={pos} dx={62} dy={layout.nodeH / 2} />
     </div>
   );
+}
+
+/** 고른 해법 가운데 이 지점에서 시작하거나, 이 지점으로 들어오는 걸음을 마친 해법이 있나 */
+function nodeLit(id: MapNodeId, ctx: MapCtx): boolean {
+  return ctx.selected.some((m) => {
+    const nodes = methodNodes(m);
+    const i = nodes.indexOf(id);
+    if (i < 0) return false;
+    if (i === 0) return cellLit(true, "none");
+    const e = edgeById(m.edges[i - 1] as string) as MapEdge;
+    return cellLit(false, edgeProgress(e, m, ctx.progress, ctx.courseOf));
+  });
 }
 
 /**
