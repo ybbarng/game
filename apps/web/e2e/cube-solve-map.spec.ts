@@ -5,7 +5,7 @@ import { renderedLines } from "./word-wrap";
 
 /**
  * 해법 배우기(/cube/methods)의 해법 카드와 지도(docs/47 16-30). 첫 모습은 해법 카드 세로, 「전체 보기」는 지도,
- * 카드를 누르면 해법 화면. 여러 해법 고르기, 끝낸 단계 ✓, 같은 단계·「나」 표시 없음, 큰 큐브 「3×3 맞추기」 펼치기,
+ * 카드를 누르면 해법 화면. 여러 해법 고르기, 진도 밝기, 같은 단계·「나」 표시 없음, 큰 큐브 「3×3 맞추기」 펼치기,
  * 휴대폰 폭 줄바꿈.
  */
 
@@ -269,14 +269,99 @@ test("전체 보기: 처음 모습은 칸 이름이 11px 이상으로 읽히고 
     .toBeGreaterThanOrEqual(11);
 });
 
-test("기록이 있으면 카드에는 끝낸 단계에 ✓", async ({ page }) => {
-  await withProgress(page);
-  await page.goto("/cube/methods");
-  const beginner = page.locator('[data-card="beginner"]');
-  await expect(
-    beginner.locator('[data-strip-node="f2l"] [data-strip-name]'),
-  ).toHaveText("✓ 아래 두 층");
-});
+/** 견본 기록: 초보자 흰 십자 강 둘(안전한 회전·흰 십자)의 진도 */
+const CROSS_SCENES = {
+  없음: null,
+  "흰 십자 완료": {
+    "333-safe-turns": { passed: [], done: true },
+    "333-white-cross": { passed: [], done: true },
+  },
+  "흰 십자 배우는 중": {
+    "333-safe-turns": { passed: [], done: true },
+    "333-white-cross": { passed: [1], done: false },
+  },
+} as const;
+
+/** 초보자 카드 띠: 칸마다 밝기와 그 칸으로 들어오는 화살표 밝기(첫 칸은 화살표 없음) */
+const beginnerStrip = (page: Page) =>
+  page
+    .locator('[data-card="beginner"] [data-card-strip] > li')
+    .evaluateAll((lis) =>
+      lis.flatMap((li) => {
+        const cell = li.querySelector("[data-strip-node]");
+        if (!cell) return [];
+        const arrow = li.querySelector("[data-step-arrow]");
+        return [
+          `${arrow ? `${arrow.getAttribute("data-step-arrow")}→` : ""}${cell.getAttribute("data-strip-node")}:${cell.getAttribute("data-strip-lit")}`,
+        ];
+      }),
+    );
+
+for (const [scene, lessons] of Object.entries(CROSS_SCENES)) {
+  test(`진도 밝기(${scene}): 다 섞임은 늘 밝고, 배우는 중이면 화살표만, 완료면 화살표와 칸이 밝다. 글자 표시는 없다`, async ({
+    page,
+  }) => {
+    if (lessons)
+      await page.addInitScript((value) => {
+        localStorage.setItem("cube.learn.v1", value);
+      }, JSON.stringify({ lessons }));
+    await page.goto("/cube/methods");
+    await expect(page.locator('[data-card="beginner"]')).toBeVisible();
+    const cross =
+      scene === "흰 십자 완료"
+        ? "lit→cross:lit"
+        : scene === "흰 십자 배우는 중"
+          ? "lit→cross:dim"
+          : "dim→cross:dim";
+    expect(await beginnerStrip(page)).toEqual([
+      "scrambled:lit",
+      cross,
+      "dim→first-layer:dim",
+      "dim→f2l:dim",
+      "dim→yellow-cross:dim",
+      "dim→yellow-edges:dim",
+      "dim→ll-corners-placed:dim",
+      "dim→solved:dim",
+    ]);
+    // 진도는 화면 낭독기용 숨은 글로만
+    const name = page.locator(
+      '[data-card="beginner"] [data-strip-node="cross"] [data-strip-name]',
+    );
+    await expect(name).toHaveText(
+      scene === "흰 십자 완료"
+        ? "흰 십자 완료"
+        : scene === "흰 십자 배우는 중"
+          ? "흰 십자 배우는 중"
+          : "흰 십자",
+    );
+    await expect(name.locator(".sr-only")).toHaveCount(lessons ? 1 : 0);
+    expect(await page.locator("[data-map-cards]").innerText()).not.toContain(
+      "✓",
+    );
+    // 지도: 걸음 선은 화살표, 끝 지점은 칸과 같은 규칙
+    await page.goto("/cube/methods?view=map&sel=beginner");
+    await expect(page.locator('[data-node="cross"]')).toBeVisible();
+    expect([
+      await page
+        .locator('[data-node="scrambled"] [data-node-lit]')
+        .getAttribute("data-node-lit"),
+      await page
+        .locator('[data-edge-line="cross"]')
+        .getAttribute("data-edge-lit"),
+      await page
+        .locator('[data-node="cross"] [data-node-lit]')
+        .getAttribute("data-node-lit"),
+      await page
+        .locator('[data-edge-line="first-corners"]')
+        .getAttribute("data-edge-lit"),
+    ]).toEqual([
+      "lit",
+      cross.startsWith("lit") ? "lit" : "dim",
+      cross.endsWith(":lit") ? "lit" : "dim",
+      "dim",
+    ]);
+  });
+}
 
 /**
  * 카드·해법 화면·지도 안의 글 조각(화면 읽기용 글 포함) 가운데 같은 단계 표시(「= 초보자」·「초보자와 같음」)나

@@ -13,16 +13,83 @@ import { ALL_ALG_CASES } from "./alg-sets";
 import { averageMs, type LearnProgress, type TrainBook } from "./progress";
 import { MAP_MEASURE, type MapEdge, type MapMethod } from "./solve-map";
 
-export type EdgeLearn = "done" | "started" | "none";
+// ── 진도 밝기(2026-11-26 사용자) ─────────────────────────────
 
-/** 길의 배우기 상태: 단원 하나라도 끝냈으면 done, 해 보기를 하나라도 통과했거나 열어 봤으면 started */
-export function edgeLearn(edge: MapEdge, p: LearnProgress): EdgeLearn {
-  const ls = edge.lessons.map((id) => p.lessons[id]);
-  if (ls.some((l) => l?.done)) return "done";
-  if (ls.some((l) => l && (l.passed.length > 0 || (l.acted?.length ?? 0) > 0)))
-    return "started";
-  return "none";
+/** 걸음·단계의 진도: 가르치는 강을 모두 마침, 하나라도 시작함, 아직(또는 가르치는 강이 없음) */
+export type StepProgress = "done" | "learning" | "none";
+
+/**
+ * 이 해법에서 걸음을 가르치는 강: 해법 과정에 든 강. 과정에 없으면(앞 과정에서 배우는 걸음, 예: 2단계의 아래 두
+ * 층은 초보자 과정) 걸음의 첫 강이 든 과정의 강. 걸음에 강이 없으면 빈 목록
+ */
+export function teachingLessons(
+  edge: MapEdge,
+  m: MapMethod | undefined,
+  courseOf: (lessonId: string) => string | undefined,
+): string[] {
+  const mine = edge.lessons.filter(
+    (l) => m?.course && courseOf(l) === m.course,
+  );
+  if (mine.length) return mine;
+  const first = edge.lessons[0];
+  if (!first) return [];
+  const c = courseOf(first);
+  return edge.lessons.filter((l) => courseOf(l) === c);
 }
+
+const started = (l: LearnProgress["lessons"][string] | undefined) =>
+  !!l && (l.done || l.passed.length > 0 || (l.acted?.length ?? 0) > 0);
+
+/**
+ * 걸음 하나의 진도. 가르치는 강이 없는 걸음(단원 없음: 코너 방향 먼저·페트루스 F2L 마무리·COLL 등)은 마칠 길이
+ * 없어 늘 「아직」이다
+ */
+export function edgeProgress(
+  edge: MapEdge,
+  m: MapMethod | undefined,
+  p: LearnProgress,
+  courseOf: (lessonId: string) => string | undefined,
+): StepProgress {
+  const ls = teachingLessons(edge, m, courseOf).map((id) => p.lessons[id]);
+  if (!ls.length) return "none";
+  if (ls.every((l) => l?.done)) return "done";
+  return ls.some(started) ? "learning" : "none";
+}
+
+/**
+ * 큰 단계(카드 띠 칸)의 진도: 강이 있는 걸음을 모두 마쳤으면 완료, 하나라도 시작했으면 배우는 중. 강이 있는
+ * 걸음이 하나도 없으면 「아직」
+ */
+export function stageProgress(
+  edges: readonly MapEdge[],
+  m: MapMethod | undefined,
+  p: LearnProgress,
+  courseOf: (lessonId: string) => string | undefined,
+): StepProgress {
+  const taught = edges.filter(
+    (e) => teachingLessons(e, m, courseOf).length > 0,
+  );
+  if (!taught.length) return "none";
+  const xs = taught.map((e) => edgeProgress(e, m, p, courseOf));
+  if (xs.every((x) => x === "done")) return "done";
+  return xs.some((x) => x !== "none") ? "learning" : "none";
+}
+
+/**
+ * 칸의 밝기: 다 섞임 칸(first)은 늘 밝고, 그 밖의 칸(단계 끝 모습)은 완료일 때만 밝다. 기록이 없어도 처음부터
+ * 조금 어둡다
+ */
+export const cellLit = (first: boolean, p: StepProgress) =>
+  first || p === "done";
+/** 칸으로 들어오는 화살표(지도는 걸음 선)의 밝기: 배우는 중부터 밝다 */
+export const arrowLit = (p: StepProgress) => p !== "none";
+
+/** 화면 낭독기에 읽어 줄 진도(보이는 글자는 두지 않는다) */
+export const PROGRESS_SR: Readonly<Record<StepProgress, string | null>> = {
+  done: "완료",
+  learning: "배우는 중",
+  none: null,
+};
 
 // ── 공식 연습 ──────────────────────────────────────────
 

@@ -2,21 +2,98 @@
 import { describe, expect, it } from "vitest";
 
 import type { SolveRecord } from "../records";
-import { edgeById, MAP_METHODS, type MapEdge } from "./solve-map";
+import { COURSES } from "./courses";
+import type { LearnProgress } from "./progress";
+import { edgeById, MAP_METHODS, type MapEdge, methodStages } from "./solve-map";
 import { DEMO_PROGRESS, DEMO_RECORDS, DEMO_TRAIN } from "./solve-map-demo";
-import { edgeLearn, edgeTrain, methodSolo } from "./solve-map-me";
+import {
+  arrowLit,
+  cellLit,
+  edgeProgress,
+  edgeTrain,
+  methodSolo,
+  stageProgress,
+  teachingLessons,
+} from "./solve-map-me";
 
 const method = (id: string) =>
   MAP_METHODS.find((m) => m.id === id) as (typeof MAP_METHODS)[number];
 const edge = (id: string) => edgeById(id) as MapEdge;
+const courseOf = (id: string) =>
+  COURSES.find((c) => c.lessons.some((l) => l.id === id))?.id;
+const done = { passed: [], done: true };
 
-describe("진행", () => {
-  it("길은 단원 하나라도 끝냈으면 끝냄, 해 보기만 통과했으면 하는 중이다", () => {
-    expect(
-      ["cross", "beginner-yellow-cross", "beginner-edges"].map((id) =>
-        edgeLearn(edge(id), DEMO_PROGRESS),
+describe("진도 밝기", () => {
+  it("걸음을 가르치는 강은 해법 과정의 강, 과정에 없으면 걸음의 첫 강이 든 과정의 강이다", () => {
+    expect([
+      teachingLessons(edge("cross"), method("cfop"), courseOf),
+      teachingLessons(edge("cross"), method("beginner"), courseOf),
+      // 2단계 과정엔 십자 강이 없어 앞 과정(초보자) 강
+      teachingLessons(edge("cross"), method("two-look"), courseOf),
+      teachingLessons(edge("twist-first"), method("beginner"), courseOf),
+    ]).toEqual([
+      ["cfop-cross"],
+      ["333-safe-turns", "333-white-cross"],
+      ["333-safe-turns", "333-white-cross"],
+      [],
+    ]);
+  });
+
+  it("강을 모두 마치면 완료, 하나라도 시작했으면 배우는 중, 강이 없는 걸음은 늘 아직이다", () => {
+    const half: LearnProgress = { lessons: { "333-white-cross": done } };
+    const all: LearnProgress = {
+      lessons: Object.fromEntries(
+        COURSES.flatMap((c) => c.lessons).map((l) => [l.id, done]),
       ),
-    ).toEqual(["done", "started", "none"]);
+    };
+    const p = (e: string, m: string, pr: LearnProgress) =>
+      edgeProgress(edge(e), method(m), pr, courseOf);
+    expect([
+      p("cross", "beginner", DEMO_PROGRESS),
+      p("beginner-yellow-cross", "beginner", DEMO_PROGRESS),
+      p("beginner-edges", "beginner", DEMO_PROGRESS),
+      p("cross", "beginner", half),
+      p("cross", "cfop", half),
+      p("twist-first", "beginner-twist-first", all),
+    ]).toEqual(["done", "learning", "none", "learning", "none", "none"]);
+  });
+
+  it("카드 칸(큰 단계)은 강이 있는 걸음을 모두 마쳐야 완료다(2단계: 아래 두 층 완료, 노란 십자 완료, 노란 면 배우는 중)", () => {
+    const m = method("two-look");
+    const pr: LearnProgress = {
+      lessons: {
+        "333-safe-turns": done,
+        "333-white-cross": done,
+        "333-first-corners-up": done,
+        "333-second-layer": done,
+        "cfop-2look-oll": { passed: [1], done: false },
+      },
+    };
+    expect(
+      methodStages(m).map(
+        (s) => `${s.to}:${stageProgress(s.edges, m, pr, courseOf)}`,
+      ),
+    ).toEqual([
+      "f2l:done",
+      "yellow-cross:learning",
+      "oll:learning",
+      "pll-corners:none",
+      "solved:none",
+    ]);
+  });
+
+  it("다 섞임 칸은 늘 밝고, 그 밖의 칸은 완료일 때만, 들어오는 화살표는 배우는 중부터 밝다", () => {
+    expect(
+      (["none", "learning", "done"] as const).map((p) => [
+        cellLit(true, p),
+        cellLit(false, p),
+        arrowLit(p),
+      ]),
+    ).toEqual([
+      [true, false, false],
+      [true, false, true],
+      [true, true, true],
+    ]);
   });
 });
 
