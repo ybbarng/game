@@ -61,7 +61,7 @@ describe("배우기 진도", () => {
       passed: [4],
       done: false,
       step: 7,
-      v: 2,
+      v: 3,
     });
     expect(resumeStep(p, "333-white-cross", 20)).toBe(7);
     // 단원이 짧아져 그 단계가 없으면 처음부터
@@ -154,11 +154,12 @@ describe("배우기 진도", () => {
       LEARN_KEY,
       JSON.stringify({
         lessons: {
-          // 옛 흰 십자: 5번(0부터) 해 보기 「흰-빨강 아래 층」, 17번 해 보기는 없어졌다, 본 쪽 9번 시연 「F D F'」
+          // 1판 흰 십자(판 없음): 21번(0부터) 혼자 해 보기는 2판 27번·3판 23번, 17번 해 보기는 2판에서 없어졌다.
+          // 본 쪽 3번은 2판 4번 시연 「D' F2」·3판 10번, 따라 한 11번은 2판에서 없어졌다
           "333-white-cross": {
-            passed: [5, 17],
+            passed: [21, 17],
             done: true,
-            step: 9,
+            step: 3,
             acted: [0, 11],
           },
           // 옛 둘째 층 8번(뒤집힌 엣지 해 보기)은 시연으로 바뀌어 버린다
@@ -168,17 +169,50 @@ describe("배우기 진도", () => {
     );
     const p = loadLearn(s);
     expect(p.lessons["333-white-cross"]).toEqual({
-      passed: [7],
+      passed: [23],
       done: true,
-      step: 13,
+      step: 10,
       acted: [0],
-      v: 2,
+      v: 3,
     });
     expect(p.lessons["333-second-layer"]).toEqual({
       passed: [6],
       done: false,
       v: 2,
     });
+  });
+
+  it("흰 십자 2판 기록(2026-11-26 처음 다시 쓰기)은 3판 표로만 옮기고, 3판 기록은 그대로 둔다", () => {
+    const s = memory();
+    s.setItem(
+      LEARN_KEY,
+      JSON.stringify({
+        lessons: {
+          // 2판: 8번 해 보기(흰-주황 L2) → 5번, 23번 해 보기(R2 D2 L2) → 18번, 15번 해 보기는 없어졌다.
+          // 본 쪽 24번(정리 그림) → 21번, 따라 한 6번(y F2 시연) → 4번
+          "333-white-cross": {
+            passed: [8, 23, 15],
+            done: false,
+            step: 24,
+            acted: [6],
+            v: 2,
+          },
+        },
+      }),
+    );
+    expect(loadLearn(s).lessons["333-white-cross"]).toEqual({
+      passed: [5, 18],
+      done: false,
+      step: 21,
+      acted: [4],
+      v: 3,
+    });
+    const now = { passed: [5], done: false, step: 9, v: 3 };
+    s.setItem(
+      LEARN_KEY,
+      JSON.stringify({ lessons: { "333-white-cross": now } }),
+    );
+    expect(loadLearn(s).lessons["333-white-cross"]).toEqual(now);
   });
 
   it("옮긴 쪽 번호는 같은 종류·상황·공식의 쪽을 가리킨다(해 보기는 해 보기로)", () => {
@@ -190,13 +224,19 @@ describe("배우기 진도", () => {
       for (const i of to)
         expect(i, `${id} ${i}`).toBeLessThan(lesson?.steps.length ?? 0);
     }
-    // 대표: 옛 흰 십자 5번 해 보기(흰-빨강 아래 층 R2 D2) → 새 7번
+    // 대표: 흰 십자 2판 8번 해 보기(흰-주황 L2) → 3판 5번, 2판 22번 시연(F2 D R2) → 3판 16번
     const cross = COURSES.flatMap((c) => c.lessons).find(
       (l) => l.id === "333-white-cross",
     );
-    expect(cross?.steps[7]).toMatchObject({
+    expect(cross?.steps[5]).toMatchObject({
       kind: "try",
-      setup: { alg: "R2 D2" },
+      setup: { alg: "L2" },
+      alg: "y' F2",
+    });
+    expect(cross?.steps[16]).toMatchObject({
+      kind: "demo",
+      setup: { alg: "F2 D R2" },
+      alg: "y F2 y' D' F2",
     });
   });
 

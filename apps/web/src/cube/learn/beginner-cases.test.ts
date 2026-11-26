@@ -38,7 +38,7 @@ describe("단계마다 모든 경우 그림", () => {
 
   it("단계 강마다 첫머리 네 쪽 안에 그 단계 그림이 있다", () => {
     const want: Record<string, string> = {
-      "333-white-cross": "beginner-cross",
+      "333-white-cross": "beginner-cross-look",
       "333-first-corners-up": "beginner-corners-look",
       "333-second-layer": "beginner-second",
       "333-ll-cross": "beginner-yellow-cross",

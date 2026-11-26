@@ -16,14 +16,14 @@ import {
 } from "../learn/beginner-path";
 import {
   CORNERS_NONE,
-  CROSS_DOWN_SIDE,
-  CROSS_DOWN_SIDE_TRY,
+  CROSS_DOWN_FAR,
+  CROSS_FLIP,
   CROSS_FLIPPED,
   CROSS_FLIPPED_TRY,
-  CROSS_GUARD,
-  CROSS_GUARD_TRY,
   CROSS_MIDDLE,
-  CROSS_MIDDLE_R,
+  CROSS_MIDDLE_L,
+  CROSS_MIDDLE_SIDE,
+  CROSS_SIDE_TRY,
   CROSS_WRONG_TOP,
   CROSS_WRONG_TOP_TRY,
   DOT_TO_CROSS,
@@ -43,14 +43,25 @@ const cross = (
   setup: c.setup,
 });
 
-/** 흰 십자: 엣지 하나를 F·D·y로 올린다(흰 면 위, 기본 방향). 단원의 다섯 경우 */
+/**
+ * 흰 십자: 엣지 하나를 올린다(흰 면 위, 기본 방향). 단원의 차례대로 아래 층에서 올리기 둘(F2, R F' R'),
+ * 가운데 층·위 층에서 내린 뒤 올리기(2026-11-26, docs/47 16-34)
+ */
 export const BEGINNER_CROSS: DrillCase[] = [
-  cross("middle", "가운데 층, 바로 올리기", CROSS_MIDDLE),
-  cross("middle-front", "가운데 층, 돌려 쥐고 바로 올리기", CROSS_MIDDLE_R),
-  cross("down-side", "아래 층, 흰색이 옆", CROSS_DOWN_SIDE),
-  cross("down-front", "아래 층, 흰색이 앞", CROSS_DOWN_SIDE_TRY),
-  cross("guard", "가운데 층, 내렸다 올리기", CROSS_GUARD),
-  cross("guard-right", "가운데 층, 돌려 쥐고 내렸다 올리기", CROSS_GUARD_TRY),
+  cross("down", "아래 층, 흰색이 아래", CROSS_DOWN_FAR),
+  cross("down-front", "아래-앞, 흰색이 앞", CROSS_FLIP),
+  cross("down-side", "아래 층, 흰색이 옆", CROSS_SIDE_TRY),
+  cross("middle-down", "가운데 층, 내렸다 올리기", CROSS_MIDDLE),
+  cross(
+    "middle-down-left",
+    "가운데 층, 돌려 쥐고 내렸다 올리기",
+    CROSS_MIDDLE_L,
+  ),
+  cross(
+    "middle-down-side",
+    "가운데 층, 내린 뒤 옆으로 옮겨 올리기",
+    CROSS_MIDDLE_SIDE,
+  ),
   cross("flipped", "위 층, 흰색이 옆", CROSS_FLIPPED),
   cross("flipped-right", "위 층, 흰색이 옆(위-오른쪽에서)", CROSS_FLIPPED_TRY),
   cross("wrong-top", "위 층, 자리가 바뀐 엣지 블럭 둘", CROSS_WRONG_TOP),

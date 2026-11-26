@@ -28,8 +28,20 @@ export const EDGE_SWAP = "R U R' U R U2 R' U";
 export const CORNER_CYCLE = "U R U' L' U R' U' L";
 /** 코너 자리를 거꾸로(남은 셋을 반대로 돌린다) */
 export const CORNER_CYCLE_BACK = "L' U R U' L U R' U'";
-/** 흰 십자: 아래층에서 흰색이 옆을 보는 엣지 올리기 */
-export const CROSS_SIDE_UP = "F D' F' y F";
+/**
+ * 흰 십자(2026-11-26 사용자 「앞면 아래에 두고 돌려서 올린다 → 방향이 다르면 옆으로 옮겨서 돌려서 올린다 → 앞면 아래로
+ * 데려오기 → 어디가 안전한가」, docs/47 16-34). 넣을 엣지 블럭은 짝 색 센터를 앞으로 쥐고 아래 층에서 올린다.
+ * 흰색이 아래를 보면 아래-앞에서 F2, 옆을 보면 아래-오른쪽에서 R로 앞-오른쪽에 세우고 F'로 올린 뒤 R'로 오른쪽 면을
+ * 되돌린다. 가운데 층·위 층 블럭은 아래 층으로 내린다(가운데 층은 앞-오른쪽으로 쥐고 R' D' R, 위 층은 위-앞으로 쥐고 F2).
+ * 옆면을 돌리면 그 면 위의 흰 엣지가 빠지니 같은 공식 안에서 되돌린다
+ */
+export const CROSS_UP = "F2";
+/** 흰 십자: 아래-오른쪽에서 흰색이 오른쪽을 보는 엣지 블럭 올리기(세우고, 올리고, 되돌린다) */
+export const CROSS_SIDE_UP = "R F' R'";
+/** 흰 십자: 앞-오른쪽(가운데 층) 엣지 블럭을 아래 층으로 내리기(내리고, 비키고, 되돌린다). 블럭은 아래-앞으로 간다 */
+export const CROSS_MIDDLE_DOWN = "R' D' R";
+/** 흰 십자: 위-앞 엣지 블럭을 아래 층으로 내리기 */
+export const CROSS_TOP_DOWN = "F2";
 
 /** 같은 공식 k번 */
 export const reps = (alg: string, k: number) =>
@@ -82,47 +94,32 @@ export const PATH_STAGES: PathStage[] = [
       {
         id: "down",
         shape: "아래 층, 흰색이 아래",
-        hold: "짝 색 센터를 앞으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-앞으로",
-        alg: "F2",
+        hold: "짝 색 센터를 앞으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-앞으로(D)",
+        alg: CROSS_UP,
         times: 1,
       },
       {
         id: "down-side",
         shape: "아래 층, 흰색이 옆",
-        hold: "짝 색 센터를 오른쪽으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-오른쪽으로",
+        hold: "짝 색 센터를 앞으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-오른쪽으로(D)",
         alg: CROSS_SIDE_UP,
         times: 1,
       },
       {
         id: "middle",
-        shape: "가운데 층, 짝 색 쪽이 제자리 면",
-        hold: "짝 색이 붙은 면을 앞으로 쥐고(y)",
-        alg: "엣지 블럭이 오른쪽이면 F', 왼쪽이면 F",
-        times: 1,
-      },
-      {
-        id: "middle-other",
-        shape: "가운데 층, 짝 색 쪽이 제자리 면이 아님",
-        hold: "짝 색이 붙은 면을 앞으로 쥐고(y)",
-        alg: "엣지 블럭이 오른쪽이면 F D F', 왼쪽이면 F' D' F",
+        shape: "가운데 층",
+        hold: "그 엣지 블럭이 앞-오른쪽에 오게 돌려 쥐고(y)",
+        alg: CROSS_MIDDLE_DOWN,
         times: 1,
         next: "down",
       },
       {
-        id: "top-wrong",
-        shape: "위 층, 흰색이 위인데 제자리가 아님",
-        hold: "그 엣지 블럭을 앞으로 쥐고(y)",
-        alg: "F2",
+        id: "top",
+        shape: "위 층, 제자리가 아니거나 뒤집힘",
+        hold: "그 엣지 블럭이 위-앞에 오게 돌려 쥐고(y)",
+        alg: CROSS_TOP_DOWN,
         times: 1,
         next: "down",
-      },
-      {
-        id: "top-side",
-        shape: "위 층, 흰색이 옆",
-        hold: "그 엣지 블럭을 앞으로 쥐고(y)",
-        alg: "F",
-        times: 1,
-        next: "middle",
       },
     ],
   },
@@ -520,39 +517,28 @@ function crossNext(s: PuzzleState, pick: Pick): PathStep | null {
   const cf = e.get(c) as Face;
   const at = (t: PuzzleState, faces: Face[]) =>
     sameSet(facesOf(find(view(t), [WHITE, c]) as Map<number, Face>), faces);
+  const piece = [WHITE, c];
+  // ①·② 아래 층: 짝 색 센터를 앞으로 쥐고, 흰색이 아래면 아래-앞(F2), 옆이면 아래-오른쪽(R F' R')
   if (wf === "D" || cf === "D") {
     const side = cf === "D";
-    const y = firstTurn(
-      s,
-      Y4,
-      (t) => view(t).centerOf(c) === (side ? "R" : "F"),
-    );
+    const y = firstTurn(s, Y4, (t) => view(t).centerOf(c) === "F");
     const d = firstTurn(play(s, y), D4, (t) => at(t, ["D", side ? "R" : "F"]));
-    return step("cross", side ? "down-side" : "down", join(y, d), undefined, [
-      WHITE,
-      c,
-    ]);
-  }
-  if (wf !== "U" && cf !== "U") {
-    const y = firstTurn(
-      s,
-      Y4,
-      (t) => (find(view(t), [WHITE, c]) as Map<number, Face>).get(c) === "F",
+    return step(
+      "cross",
+      side ? "down-side" : "down",
+      join(y, d),
+      undefined,
+      piece,
     );
-    const t = play(s, y);
-    const right = at(t, ["F", "R"]);
-    if (v.centerOf(c) === cf)
-      return step("cross", "middle", y, right ? "F'" : "F", [WHITE, c]);
-    return step("cross", "middle-other", y, right ? "F D F'" : "F' D' F", [
-      WHITE,
-      c,
-    ]);
   }
+  // ③ 가운데 층: 앞-오른쪽으로 쥐고 R' D' R로 아래 층에 내린다
+  if (wf !== "U" && cf !== "U") {
+    const y = firstTurn(s, Y4, (t) => at(t, ["F", "R"]));
+    return step("cross", "middle", y, undefined, piece);
+  }
+  // ③ 위 층(다른 자리·뒤집힘): 위-앞으로 쥐고 F2로 아래 층에 내린다
   const y = firstTurn(s, Y4, (t) => at(t, ["U", "F"]));
-  return step("cross", wf === "U" ? "top-wrong" : "top-side", y, undefined, [
-    WHITE,
-    c,
-  ]);
+  return step("cross", "top", y, undefined, piece);
 }
 
 function cornersNext(s: PuzzleState, pick: Pick): PathStep | null {
