@@ -9,7 +9,8 @@ export type GlossaryTerm = OrderedTerm;
 
 export const GLOSSARY_333: GlossaryTerm[] = [
   { term: "스티커", use: /스티커/, define: /「스티커」/ },
-  { term: "조각", use: /조각/, define: /「조각」/ },
+  // 「조각으로 보기」는 큐브와 만나기 둘째 단계의 단추 이름이다. 눌러서 조각을 보인 뒤 다음 단계가 뜻을 알린다(2026-11-26 사용자 흐름)
+  { term: "조각", use: /조각(?!으로 보기)/, define: /「조각」/ },
   { term: "센터 블럭", use: /센터/, define: /「센터 블럭」/ },
   { term: "윗면", use: /윗면/, define: /「윗면」/ },
   { term: "앞면", use: /앞면/, define: /「앞면」/ },
