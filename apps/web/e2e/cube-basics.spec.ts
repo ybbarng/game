@@ -129,8 +129,10 @@ test("기초 단원: 돌아가기는 큐브의 기초, 마지막 단원 다음�
   await no3d(page);
   await page.goto("/cube/learn?lesson=333-notation");
   const back = page.locator("[data-lesson-back]");
-  await expect(back).toHaveText("← 큐브의 기초");
+  await expect(back).toHaveText("큐브의 기초");
   await expect(back).toHaveAttribute("href", "/cube/basics");
+  // 기초는 해법이 아니라 이동 경로에 해법 칸이 없다
+  await expect(page.locator("[data-lesson-method]")).toHaveCount(0);
   // 단원 머리에 초보자 과정 단계 띠가 없다(기초는 단계가 없는 과정)
   await expect(page.locator("[data-stage-header]")).toHaveCount(0);
   await page.locator("[data-step-to]").last().click();
@@ -139,9 +141,9 @@ test("기초 단원: 돌아가기는 큐브의 기초, 마지막 단원 다음�
     "/cube/learn?lesson=333-beginner-map",
   );
 
-  // 해법 단원의 돌아가기는 해법 배우기
+  // 해법 강의 돌아가기는 해법 배우기의 그 강의
   await page.goto("/cube/learn?lesson=333-safe-turns");
-  await expect(back).toHaveText("← 해법 배우기");
+  await expect(back).toHaveText("3×3 처음 맞추기(층별) 강의");
   await expect(back).toHaveAttribute("href", "/cube/methods?m=333-beginner");
 });
 

@@ -1,10 +1,11 @@
 "use client";
 
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
+import { courseMethod } from "../learn/course-method";
 import {
   BASICS,
   COURSES,
@@ -31,8 +32,13 @@ import {
   markTryPassed,
   resumeStep,
 } from "../learn/progress";
-import type { BesideCube, Course, Lesson, LessonStep } from "../learn/types";
-import { BASICS_TITLE, METHODS_TITLE } from "../nav/learn-names";
+import type { BesideCube, Course, Lesson } from "../learn/types";
+import {
+  BASICS_HREF,
+  BASICS_TITLE,
+  METHODS_HREF,
+  METHODS_TITLE,
+} from "../nav/learn-names";
 import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
@@ -52,12 +58,12 @@ import {
   TurnPanel,
   WelcomePanel,
 } from "./LessonActs";
+import { LessonPages } from "./LessonPages";
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
 import { useNoKeyboard } from "./PracticeCube";
 import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { StillCube } from "./StillCube";
-import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 import { TryPanel } from "./TryPanel";
 import "@/cube/components/cube-fx.css";
 
@@ -381,100 +387,61 @@ function LessonView({
 
   return (
     <>
-      <header className="flex flex-wrap items-center gap-3">
-        <a
-          href={basics ? "/cube/basics" : `/cube/methods?m=${course.id}`}
-          data-lesson-back
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← {basics ? BASICS_TITLE : METHODS_TITLE}
-        </a>
-        <h1 className="font-bold text-lg">
-          {lessonIndex + 1}. {lesson.title}
-        </h1>
-        {hasMask && (
-          <fieldset
-            aria-label="가리기"
-            className="ml-auto flex rounded-lg bg-white/10 p-0.5 text-sm"
-          >
-            {(
-              [
-                [true, "가리기"],
-                [false, "보통"],
-              ] as const
-            ).map(([v, label]) => (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={masked === v}
-                onClick={(e) => {
-                  setMasked(v);
-                  e.currentTarget.blur();
-                }}
-                className={cn(
-                  "rounded-md px-3 py-1",
-                  masked === v && "bg-white/20 font-semibold",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </fieldset>
-        )}
+      <header className="flex flex-col gap-1">
+        <LessonCrumbs course={course} basics={basics} />
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="break-keep font-bold text-lg" data-lesson-title>
+            {lessonIndex + 1}강 {lesson.title}
+          </h1>
+          {hasMask && (
+            <fieldset
+              aria-label="가리기"
+              className="ml-auto flex rounded-lg bg-white/10 p-0.5 text-sm"
+            >
+              {(
+                [
+                  [true, "가리기"],
+                  [false, "보통"],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={masked === v}
+                  onClick={(e) => {
+                    setMasked(v);
+                    e.currentTarget.blur();
+                  }}
+                  className={cn(
+                    "rounded-md px-3 py-1",
+                    masked === v && "bg-white/20 font-semibold",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </fieldset>
+          )}
+        </div>
       </header>
 
       <StageHeader course={course} lessonId={lesson.id} progress={progress} />
 
-      {/* 단계 표시 */}
-      <ol className="flex flex-wrap gap-1" aria-label="단계">
-        {lesson.steps.map((s, i) => {
-          const stepDone =
-            (s.kind === "try" && passed.includes(i)) || acted.includes(i);
-          return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: 단계 차례가 곧 열쇠다
-            <li key={`${i}-${s.kind}`}>
-              <button
-                type="button"
-                onClick={() => setAt(i)}
-                data-step-to={s.kind}
-                data-step-done={stepDone ? "" : undefined}
-                aria-current={i === at ? "step" : undefined}
-                title={KIND_LABEL[s.kind]}
-                className={cn(
-                  "h-7 min-w-7 rounded-md px-1.5 text-xs",
-                  i === at
-                    ? "bg-sky-500 font-bold text-black"
-                    : stepDone
-                      ? "bg-emerald-500/70 text-black"
-                      : "bg-white/10 text-white/70",
-                )}
-              >
-                {s.kind === "text" ? i + 1 : KIND_MARK[s.kind]}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      {/* 아이콘 뜻(마우스를 올려야 나오던 것을 보이게, 2026-11-05 점검) */}
-      <p
-        className="-mt-2 flex flex-wrap gap-x-3 text-[11px] text-white/45"
-        data-step-legend
-      >
-        {stepLegend(lesson.steps.map((s) => s.kind)).map(([mark, label]) => (
-          <span key={mark}>
-            {mark} {label}
-          </span>
-        ))}
-      </p>
+      <LessonPages
+        steps={lesson.steps}
+        at={at}
+        isDone={(i) =>
+          (lesson.steps[i]?.kind === "try" && passed.includes(i)) ||
+          acted.includes(i)
+        }
+        onPick={setAt}
+      />
 
       <section
         className="flex flex-col gap-3"
         data-step={at}
         data-step-kind={step.kind}
       >
-        <p className="text-sky-300 text-xs">
-          {KIND_LABEL[step.kind]} · {at + 1}/{lesson.steps.length}
-        </p>
         <p className="break-keep text-base leading-relaxed" data-step-body>
           {step.kind === "demo" ? (
             // 시연: 「보기」에서는 치라는 말을 흐리게, 키캡은 「해 보기」에서만
@@ -678,9 +645,7 @@ function LessonView({
               onClick={() => setProgress(markLessonDone(lesson.id))}
               className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-black text-sm"
             >
-              {progress.lessons[lesson.id]?.done
-                ? "끝낸 단원 ✓"
-                : "단원 끝내기"}
+              {progress.lessons[lesson.id]?.done ? "끝낸 강 ✓" : "강 끝내기"}
             </button>
             {lesson.drill && (
               <a
@@ -700,7 +665,6 @@ function LessonView({
                   setAt(lastTry);
                   e.currentTarget.blur();
                 }}
-                title="단원 마지막 해 보기로 가기"
                 className="cube-rise ml-auto rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-amber-200 text-xs transition hover:bg-amber-400/20 active:scale-[0.97]"
               >
                 혼자 해 보기 남음
@@ -718,7 +682,7 @@ function LessonView({
                     : "bg-sky-500 font-semibold text-black",
                 )}
               >
-                다음 단원: {next.title} →
+                다음 강: {next.title} →
               </a>
             )}
           </>
@@ -743,17 +707,68 @@ function LessonView({
   );
 }
 
-/** 단계 띠 아이콘 뜻: 이 단원에 나오는 아이콘만, 같은 아이콘은 이름을 묶는다(✋ 해보기·따라 하기) */
-function stepLegend(kinds: LessonStep["kind"][]): [string, string][] {
-  const byMark = new Map<string, string[]>();
-  for (const k of kinds) {
-    if (k === "text") continue;
-    const mark = KIND_MARK[k];
-    const labels = byMark.get(mark) ?? [];
-    if (!labels.includes(KIND_LABEL[k])) labels.push(KIND_LABEL[k]);
-    byMark.set(mark, labels);
-  }
-  return [...byMark].map(([mark, labels]) => [mark, labels.join("·")]);
+/** 이동 경로의 한 칸: 앞 칸과 가르는 ›는 이 칸에 붙어 줄 끝에 홀로 남지 않는다 */
+function Crumb({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className="text-white/30">
+        ›
+      </span>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * 강 머리의 이동 경로(docs/47 16-31): 해법 배우기 › 해법 › 강의. 해법 이름은 해법 카드와 같다(`courseMethod`).
+ * 기초 강은 큐브의 기초 하나(기초는 해법이 아니다)
+ */
+function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
+  const method = basics ? undefined : courseMethod(course);
+  const link = "underline-offset-2 hover:text-white hover:underline";
+  return (
+    <nav
+      aria-label="이동 경로"
+      data-lesson-crumbs
+      className="flex flex-wrap items-center gap-x-1.5 break-keep text-sm text-white/65"
+    >
+      {basics ? (
+        <a href={BASICS_HREF} data-lesson-back className={link}>
+          {BASICS_TITLE}
+        </a>
+      ) : (
+        <>
+          <a href={METHODS_HREF} className={link}>
+            {METHODS_TITLE}
+          </a>
+          {method && (
+            <Crumb>
+              <a
+                href={
+                  method.id
+                    ? `${METHODS_HREF}?method=${method.id}`
+                    : `${METHODS_HREF}?m=${course.id}`
+                }
+                data-lesson-method={method.id ?? ""}
+                className={cn(link, "font-semibold text-white/85")}
+              >
+                {method.label}
+              </a>
+            </Crumb>
+          )}
+          <Crumb>
+            <a
+              href={`${METHODS_HREF}?m=${course.id}`}
+              data-lesson-back
+              className={link}
+            >
+              {course.title} 강의
+            </a>
+          </Crumb>
+        </>
+      )}
+    </nav>
+  );
 }
 
 /** 곁 그림: 다른 크기 큐브를 정지 그림으로(예: 2×2 단원의 코너만 보이는 3×3) */
@@ -850,7 +865,7 @@ function DemoPhases({
           </button>
         ) : (
           <span className="flex-1 px-3 py-1.5 text-center text-white/50 text-xs">
-            해 보기는 다음 단계에서
+            해 보기는 다음 쪽에서
           </span>
         )}
       </div>

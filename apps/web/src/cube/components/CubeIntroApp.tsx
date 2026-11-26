@@ -40,7 +40,7 @@ import { LookPanel, TurnPanel } from "./LessonActs";
 import { KeyCaps, MoveChip, useMoveKeys } from "./MoveChip";
 import { useNoKeyboard } from "./PracticeCube";
 import { StillCube } from "./StillCube";
-import { KIND_LABEL, KIND_MARK } from "./step-kinds";
+import { KIND_LABEL } from "./step-kinds";
 
 /**
  * 사이트 쓰는 법(`/cube/intro`, `CubeGuideApp`)의 단계들(2026-11-04 사용자가 정함, 2026-11-10 키 익히기와 합침, docs/47 16-8):
@@ -484,9 +484,6 @@ function WideStep({ onDone }: { onDone: () => void }) {
 
 function ScreenStep({ onDone }: { onDone: () => void }) {
   const { keysOf } = useMoveKeys(3);
-  const marks = (["demo", "turn", "find", "quiz", "play", "look"] as const).map(
-    (k) => [KIND_MARK[k], KIND_LABEL[k]] as const,
-  );
   return (
     <>
       <ul className="flex flex-col gap-2 break-keep text-sm text-white/85">
@@ -508,20 +505,18 @@ function ScreenStep({ onDone }: { onDone: () => void }) {
           해 보기가 막히면 「힌트」를 눌러요. 다음 수와 내 키를 알려 줘요.
         </li>
         <li>
-          단원 위 단계 띠의 아이콘:{" "}
-          {marks.map(([m, label]) => (
-            <span key={label} className="mr-2 inline-flex items-center gap-1">
-              <span className="rounded bg-white/10 px-1.5">{m}</span>
-              <span className="text-white/70 text-xs">{label}</span>
-            </span>
-          ))}
+          배우는 강 하나는 여러 쪽으로 나뉘어요. 위에 지금 쪽이 「5쪽 / 16쪽{" "}
+          {KIND_LABEL.quiz}」처럼 번호와 하는 일(
+          {KIND_LABEL.demo}·{KIND_LABEL.turn}·{KIND_LABEL.try}·{KIND_LABEL.quiz}{" "}
+          등)로 보여요. 그 아래 칸은 쪽마다 하나씩이고, 마친 쪽은 ✓예요. 아무
+          쪽이나 눌러 옮겨 가요.
         </li>
       </ul>
       <Quiz
-        question="단계 띠에서 ✋는 무엇일까요?"
-        choices={["시연(보기만)", "직접 쳐 보는 단계", "고르기 문제"]}
+        question="쪽 칸에서 ✓는 무엇일까요?"
+        choices={["지금 보는 쪽", "마친 쪽", "아직 못 여는 쪽"]}
         answer={1}
-        why="✋는 해 보기·따라 하기예요. 내 키로 직접 쳐요."
+        why="✓는 마친 쪽이에요. 지금 보는 쪽은 파란 칸이고, 모든 쪽은 언제든 열 수 있어요."
         onRight={onDone}
       />
     </>

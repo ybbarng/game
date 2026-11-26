@@ -66,7 +66,8 @@ export function StageHeader({
     <nav
       aria-label="단계 지도"
       data-stage-header={place.kind}
-      className="flex items-center gap-2 overflow-x-auto text-[11px]"
+      // 좁은 휴대폰에서 칸이 옆으로 밀려 가려지지 않게 줄을 바꾼다(가로 스크롤 상자는 뒤 칸이 안 보였다)
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]"
     >
       <span
         data-stage-label
@@ -74,19 +75,20 @@ export function StageHeader({
       >
         {label}
       </span>
-      <ol className="flex shrink-0 items-center gap-1">
+      <ol className="flex flex-wrap items-center gap-1">
         {stages.map((st, i) => {
           const done = stageDone(course, i, progress);
           const first = st.lessons[0];
           const cell = (
             <span
               className={cn(
-                "flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5",
+                // 단계 칸은 둥근 테두리 알약(아래 쪽 칸은 네모 막대라 둘이 섞여 보이지 않게, docs/47 16-31)
+                "flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5",
                 i === current
-                  ? "bg-sky-500 font-bold text-black"
+                  ? "border-sky-300 bg-sky-500/25 font-bold text-sky-100"
                   : done
-                    ? "bg-emerald-500/30 text-emerald-100"
-                    : "bg-white/10 text-white/60",
+                    ? "border-emerald-400/50 text-emerald-200"
+                    : "border-white/20 text-white/60",
               )}
             >
               <span>{done && i !== current ? "✓" : i + 1}</span>

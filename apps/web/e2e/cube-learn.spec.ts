@@ -82,9 +82,7 @@ test(
       ),
     ).toBe(1);
     // 기초 단원의 돌아가기는 큐브의 기초로
-    await expect(page.locator("[data-lesson-back]")).toHaveText(
-      "← 큐브의 기초",
-    );
+    await expect(page.locator("[data-lesson-back]")).toHaveText("큐브의 기초");
     await expect(page.locator("[data-lesson-back]")).toHaveAttribute(
       "href",
       "/cube/basics",
