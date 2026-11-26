@@ -41,6 +41,7 @@ import { crossRoundInWorker } from "../worker";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { DemoCube } from "./DemoCube";
 import { MoveChip, useMoveKeys } from "./MoveChip";
+import { ToggleSwitch } from "./ToggleSwitch";
 
 /**
  * 십자 훈련(`/cube/train/cross`, docs/47 8절). 조건을 골라 섞고, 살펴본 뒤 몇 수 안에 십자를 만드는지 잰다.
@@ -819,21 +820,13 @@ function Check({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={on}
+    <ToggleSwitch
+      on={on}
+      onChange={onChange}
       data-cross-option={`${label}:${on ? "on" : "off"}`}
-      onClick={(e) => {
-        onChange(!on);
-        e.currentTarget.blur();
-      }}
-      className={cn(
-        "rounded-lg px-2.5 py-1",
-        on ? "bg-sky-500 font-semibold text-black" : "bg-white/10",
-      )}
     >
       {label}
-    </button>
+    </ToggleSwitch>
   );
 }
 

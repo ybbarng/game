@@ -122,7 +122,7 @@ export interface CubeSettings {
   touchKeyboard: boolean;
   /** 큐브 아래 키 그림을 펴 둔다(2026-11-05, 기본 켬). 「키 그림 접기」로 바꾸고 다음에 열어도 남는다 */
   keyGuideOpen: boolean;
-  /** 거울 판을 보인다(2026-11-05, 기본 켬). 「거울 숨기기」로 바꾸고 다음에 열어도 남는다 */
+  /** 거울 판을 보인다(2026-11-05, 기본 켬). 「거울」 스위치로 끄고 다음에 열어도 남는다 */
   backViewShown: boolean;
   /** 수 흐름 띠(2026-11-05, 기본 켬) */
   flowStrip: FlowStripMode;
