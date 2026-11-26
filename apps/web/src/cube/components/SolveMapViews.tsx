@@ -1,7 +1,6 @@
 "use client";
 
-// 해법 지도 시안의 네 안(SolveMapApp). A 펼친 지도와 C 노선도는 같은 자리 자료를 다르게 그리고, 줌·패닝·미니맵 틀
-// (MapFrame) 안에 둔다. B는 갈림길만 두고 구간을 누르면 걸음이 펼쳐진다. D는 해법마다 막대 하나.
+// 해법 지도 시안의 안(SolveMapApp). A 펼친 지도는 줌·패닝·미니맵 틀(MapFrame) 안에 둔다. D는 해법마다 막대 하나.
 import {
   createContext,
   type MouseEvent,
@@ -37,12 +36,7 @@ import {
   PARITY_AT,
   PARITY_LOOPS,
 } from "../learn/solve-map";
-import {
-  type EdgeSolo,
-  edgeLearn,
-  edgeTrain,
-  myRoute,
-} from "../learn/solve-map-me";
+import { type EdgeSolo, edgeLearn, edgeTrain } from "../learn/solve-map-me";
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import {
@@ -54,7 +48,6 @@ import {
   edgeTurns,
   formulaText,
   METHOD_COLOR,
-  methodsOfEdge,
   methodTotals,
   nodeHref,
   parityMeasure,
@@ -475,51 +468,25 @@ interface Layout {
   colW: number[];
 }
 
-/** 역·지점 이름 글 폭 어림(11px 글씨, 한글은 넉넉히) */
-const nameW = (s: string) =>
-  [...s].reduce((w, c) => w + (/[가-힣]/.test(c) ? 12 : 7.5), 0);
-
-/** A 지점 상자 폭 */
+/** 지점 상자 폭 */
 const BOX_W = 100;
-/** 노선도 역: 점 왼쪽 끝에서 역 점 가운데까지 */
-const DOT_LEFT = 14;
 
-/** 노선도 역 하나의 폭(점·갈아탈 노선 점·그림·이름 판·「나」 자리) */
-function stationW(id: MapNodeId, methods: readonly MapMethod[]): number {
-  const lines = methods.filter((m) => methodNodes(m).includes(id)).length;
-  const big = lines > 1;
-  return (
-    (big ? 24 : 12) +
-    4 +
-    (big ? Math.min(44, lines * 10) + 4 : 0) +
-    38 +
-    4 +
-    nameW(nodeById(id).title) +
-    10 +
-    28
-  );
-}
-
-function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
+function useLayout(ctx: MapCtx): Layout {
   return useMemo(() => {
     const nodes = visibleNodes(ctx.methods);
     const { min, max } = rowRange(nodes);
-    const RH = style === "map" ? 158 : 118;
+    const RH = 158;
     const PAD = 24;
     // 칸 사이 빈 길(거터): 칸을 넘는 선과 꼬리표는 여기로만 지난다
-    const G = style === "map" ? 56 : 48;
-    const nodeH = style === "map" ? 92 : 0;
-    // 지도는 「다 섞임」에서 시작한다(노선도는 역 이름표·노선 이름이 위로 조금 나온다)
-    const TOP = PAD + (style === "map" ? 16 : 40);
-    // 칸 폭: 그 칸에서 가장 넓은 지점(A는 상자, 노선도는 점·그림·가장 긴 이름)
+    const G = 56;
+    const nodeH = 92;
+    // 지도는 「다 섞임」에서 시작한다
+    const TOP = PAD + 16;
+    // 칸 폭: 지점이 있는 칸은 상자 폭
     const maxCol = Math.max(...[...nodes].map((id) => nodeById(id).col));
-    const colW = Array.from({ length: maxCol + 1 }, (_, c) => {
-      const ids = [...nodes].filter((id) => nodeById(id).col === c);
-      if (!ids.length) return 0;
-      return style === "map"
-        ? BOX_W
-        : Math.max(...ids.map((id) => stationW(id, ctx.methods)));
-    });
+    const colW = Array.from({ length: maxCol + 1 }, (_, c) =>
+      [...nodes].some((id) => nodeById(id).col === c) ? BOX_W : 0,
+    );
     const colLeft: number[] = [];
     let x = PAD + G / 2;
     for (const w of colW) {
@@ -530,13 +497,12 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
     for (const id of nodes) {
       const n = nodeById(id);
       pos.set(id, {
-        x:
-          (colLeft[n.col] as number) + (style === "map" ? BOX_W / 2 : DOT_LEFT),
+        x: (colLeft[n.col] as number) + BOX_W / 2,
         y: TOP + (n.row - min) * RH,
       });
     }
     return {
-      width: x - G / 2 + PAD + (style === "metro" ? 40 : 0),
+      width: x - G / 2 + PAD,
       height: TOP + (max - min) * RH + nodeH + 30 + PAD,
       pos,
       nodeH,
@@ -545,12 +511,12 @@ function useLayout(ctx: MapCtx, style: "map" | "metro"): Layout {
       colLeft,
       colW,
     };
-  }, [ctx.methods, style]);
+  }, [ctx.methods]);
 }
 
 /**
  * 길의 경로(꺾은선): 같은 칸 바로 아래면 곧게, 아니면 줄 사이 빈 길과 칸 사이 빈 길로만 지나 지점 그림·이름 위를
- * 가로지르지 않는다. `a`·`b`는 나가는 점·들어오는 점(A는 상자 아래·위 가운데, 노선도는 역 점)
+ * 가로지르지 않는다. `a`·`b`는 나가는 점·들어오는 점(상자 아래·위 가운데)
  */
 function routeEdge(e: MapEdge, layout: Layout, a: Pt, b: Pt, dx: number): Pt[] {
   const na = nodeById(e.from);
@@ -590,7 +556,7 @@ function routeEdge(e: MapEdge, layout: Layout, a: Pt, b: Pt, dx: number): Pt[] {
   ];
 }
 
-/** 꺾은선을 SVG 경로로(노선마다 조금씩 비켜 겹치지 않게) */
+/** 꺾은선을 SVG 경로로(해법마다 조금씩 비켜 겹치지 않게) */
 const polyPath = (ps: Pt[], off: number) =>
   ps
     .map(
@@ -678,16 +644,10 @@ function parallelOffset(e: MapEdge, edges: MapEdge[]): number {
   return (i - (same.length - 1) / 2) * 34;
 }
 
-// ── A·C ─────────────────────────────────────────────
+// ── 지도 ─────────────────────────────────────────────
 
-export function MapView({
-  ctx,
-  style,
-}: {
-  ctx: MapCtx;
-  style: "map" | "metro";
-}) {
-  const layout = useLayout(ctx, style);
+export function MapView({ ctx }: { ctx: MapCtx }) {
+  const layout = useLayout(ctx);
   const edges = visibleEdges(ctx.methods);
   const selectedEdges = new Set(ctx.selected.flatMap((m) => m.edges));
   const selectedNodes = new Set(ctx.selected.flatMap(methodNodes));
@@ -786,22 +746,13 @@ export function MapView({
       fitKey={fitKey}
       mini={mini}
     >
-      {style === "map" ? (
-        <MapLayer
-          ctx={ctx}
-          layout={layout}
-          edges={edges}
-          selectedEdges={selectedEdges}
-          selectedNodes={selectedNodes}
-        />
-      ) : (
-        <MetroLayer
-          ctx={ctx}
-          layout={layout}
-          edges={edges}
-          selectedNodes={selectedNodes}
-        />
-      )}
+      <MapLayer
+        ctx={ctx}
+        layout={layout}
+        edges={edges}
+        selectedEdges={selectedEdges}
+        selectedNodes={selectedNodes}
+      />
       {panel && (
         <>
           {/* 「3×3처럼」에서 펼친 칸으로 이어지는 점선 */}
@@ -1089,273 +1040,6 @@ function Loops({
         </span>
       ))}
     </>
-  );
-}
-
-function MetroLayer({
-  ctx,
-  layout,
-  edges,
-  selectedNodes,
-}: {
-  ctx: MapCtx;
-  layout: Layout;
-  edges: MapEdge[];
-  selectedNodes: Set<MapNodeId>;
-}) {
-  const { pos } = layout;
-  const lineOff = (m: MapMethod) => {
-    const i = ctx.methods.indexOf(m);
-    return (i - (ctx.methods.length - 1) / 2) * 4.5;
-  };
-  const pts = (e: MapEdge): Pt[] | null => {
-    const a = pos.get(e.from);
-    const b = pos.get(e.to);
-    if (!a || !b) return null;
-    return routeEdge(e, layout, a, b, parallelOffset(e, edges) * 0.3);
-  };
-  const seg = (e: MapEdge, off: number) => {
-    const ps = pts(e);
-    return ps ? polyPath(ps, off) : "";
-  };
-  const isSel = (m: MapMethod) => ctx.selected.includes(m);
-  // 고른 노선의 역 사이 꼬리표(여러 노선이 함께 지나는 길은 첫 노선만). 역 이름과 서로를 가리지 않게 민다
-  const raw = ctx.selected.flatMap((m) =>
-    m.edges.flatMap((id) => {
-      const e = edgeById(id) as MapEdge;
-      const ps = pts(e);
-      if (!ps || methodsOfEdge(id, ctx.selected)[0] !== m) return [];
-      return [{ m, e, at: halfway(ps) }];
-    }),
-  );
-  // 고른 노선의 이름: 처음 길과 마지막 길 곁(지하철 노선도처럼 처음과 끝)
-  const names = ctx.selected.flatMap((m) => {
-    const ends = [m.edges[0], m.edges.at(-1)].map(
-      (id) => edgeById(id as string) as MapEdge,
-    );
-    return ends.flatMap((e, k) => {
-      const a = pos.get(e.from);
-      const b = pos.get(e.to);
-      if (!a || !b) return [];
-      const t = k === 0 ? 0.3 : 0.7;
-      return [
-        {
-          m,
-          key: `${m.id}-${k ? "end" : "start"}`,
-          at: { x: a.x + (b.x - a.x) * t - 40, y: a.y + (b.y - a.y) * t },
-        },
-      ];
-    });
-  });
-  const spots = placeLabels(
-    [
-      ...raw.map((r) => ({ ...r.at, ...labelSize(r.e, ctx, true) })),
-      ...names.map((n) => ({ ...n.at, w: textW(n.m.title) + 16, h: 18 })),
-    ],
-    [...pos].map(([id, p]) => {
-      const w = stationW(id, ctx.methods);
-      return { x: p.x - DOT_LEFT + w / 2, y: p.y, w: w + 6, h: 46 };
-    }),
-  );
-  const labels = raw.map((r, i) => ({ ...r, at: spots[i] as Pt }));
-  const nameSpots = names.map((n, i) => ({
-    ...n,
-    at: spots[raw.length + i] as Pt,
-  }));
-  // 내 경로: 끝낸 길을 따라 노선을 이어 탄 한 줄. 노선이 바뀌는 역이 환승역
-  const route = myRoute(ctx.methods, ctx.progress);
-  const transfers = new Set(
-    route
-      .filter((l, i) => i > 0 && route[i - 1]?.method !== l.method)
-      .map((l) => l.edge.from),
-  );
-  // 선은 고른 해법을 위에 그린다
-  const order = [...ctx.methods].sort(
-    (a, b) => Number(isSel(a)) - Number(isSel(b)),
-  );
-  return (
-    <div
-      className="relative"
-      style={{ width: layout.width, height: layout.height }}
-    >
-      <svg
-        className="absolute inset-0"
-        width={layout.width}
-        height={layout.height}
-        aria-hidden
-      >
-        {/* 내 경로(노선 아래 흰 띠) */}
-        {route.map(({ edge: e, method: m }) => {
-          if (!pts(e)) return null;
-          return (
-            <path
-              key={`route-${e.id}`}
-              d={seg(e, lineOff(m))}
-              fill="none"
-              stroke="#fff"
-              strokeOpacity={0.35}
-              strokeWidth={13}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              data-route-leg={`${m.id}:${e.id}`}
-            />
-          );
-        })}
-        {order.map((m) =>
-          m.edges.map((id) => {
-            const e = edgeById(id) as MapEdge;
-            if (!pts(e)) return null;
-            return (
-              <path
-                key={`${m.id}-${id}`}
-                d={seg(e, lineOff(m))}
-                fill="none"
-                stroke={METHOD_COLOR[m.id]}
-                strokeOpacity={isSel(m) ? 1 : 0.18}
-                strokeWidth={isSel(m) ? 4 : 3}
-                strokeLinejoin="round"
-                strokeDasharray={e.lessons.length ? undefined : "5 4"}
-              />
-            );
-          }),
-        )}
-      </svg>
-      {nameSpots.map(({ m, key, at }) => (
-        <span
-          key={key}
-          className="-translate-x-1/2 -translate-y-1/2 absolute whitespace-nowrap rounded-full px-2 font-semibold text-[11px] text-neutral-950 leading-[18px]"
-          style={{
-            left: at.x,
-            top: at.y,
-            background: METHOD_COLOR[m.id],
-            zIndex: 3,
-          }}
-          data-line-name={key}
-        >
-          {m.title}
-        </span>
-      ))}
-      {/* 고른 노선의 역 사이 공식 수 */}
-      {labels.map(({ m, e, at }) => {
-        const id = e.id;
-        const href = hrefOf(e, m, ctx);
-        const cls =
-          "-translate-x-1/2 -translate-y-1/2 absolute flex flex-col rounded bg-neutral-900/90 px-1 text-[10px] leading-tight text-white/80";
-        const style = {
-          left: at.x,
-          top: at.y,
-          borderLeft: `3px solid ${METHOD_COLOR[m.id]}`,
-          zIndex: 3,
-        };
-        const body = <EdgeLines key="lines" e={e} ctx={ctx} full />;
-        return href ? (
-          <a
-            key={`${m.id}-${id}`}
-            href={href}
-            onClick={toggleClick(e.jump, ctx)}
-            aria-expanded={e.jump ? !!ctx.fin : undefined}
-            className={cls}
-            style={style}
-            data-edge={id}
-          >
-            {body}
-          </a>
-        ) : (
-          <span
-            key={`${m.id}-${id}`}
-            className={cls}
-            style={style}
-            data-edge={id}
-            aria-disabled
-          >
-            {body}
-          </span>
-        );
-      })}
-      {[...pos].map(([id, p]) => {
-        const lines = ctx.methods.filter((m) => methodNodes(m).includes(id));
-        const big = lines.length > 1;
-        const on = selectedNodes.has(id);
-        const me = ctx.me.get(id);
-        const href = nodeHrefOf(id, ctx);
-        const transfer = transfers.has(id);
-        const body = (
-          <>
-            {/* 환승역(여러 노선이 지나는 같은 모양): 크고 테두리 있는 둥근 역, 곁에 갈아탈 노선 색 점 */}
-            <span className="relative shrink-0">
-              <span
-                className={cn(
-                  "block rounded-full",
-                  big
-                    ? "h-6 w-6 border-[4px] border-white bg-neutral-900"
-                    : "h-3 w-3 border-2 border-neutral-900",
-                )}
-                style={
-                  big
-                    ? undefined
-                    : { background: METHOD_COLOR[lines[0]?.id ?? "beginner"] }
-                }
-                data-station={big ? "transfer" : "stop"}
-              />
-              {transfer && (
-                <span
-                  className="-inset-1.5 absolute rounded-full border-2 border-white border-dashed"
-                  data-route-transfer
-                />
-              )}
-            </span>
-            {big && (
-              <span
-                className="flex max-w-[44px] flex-wrap gap-0.5"
-                data-station-lines
-              >
-                {lines.map((m) => (
-                  <span
-                    key={m.id}
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      background: METHOD_COLOR[m.id],
-                      opacity: isSel(m) ? 1 : 0.35,
-                    }}
-                  />
-                ))}
-              </span>
-            )}
-            <NodePic id={id} ctx={ctx} px={38} />
-            {/* 이름 판: 선 위에서도 읽히게 어두운 바탕 */}
-            <span
-              className="rounded bg-neutral-950/90 px-1 text-[11px] leading-tight"
-              data-node-part="name"
-            >
-              {nodeById(id).title}
-            </span>
-            {me && <MeOnMap methods={me} />}
-          </>
-        );
-        const cls = cn(
-          "-translate-y-1/2 absolute flex items-center gap-1 whitespace-nowrap",
-          !on && "opacity-40",
-        );
-        const style = { left: p.x - (big ? 12 : 6), top: p.y, zIndex: 2 };
-        return href ? (
-          <a
-            key={id}
-            href={href}
-            onClick={toggleClick(nodeById(id).jump, ctx)}
-            className={cls}
-            style={style}
-            data-node={id}
-          >
-            {body}
-          </a>
-        ) : (
-          <div key={id} className={cls} style={style} data-node={id}>
-            {body}
-          </div>
-        );
-      })}
-      <Loops ctx={ctx} pos={pos} dx={150} dy={0} />
-    </div>
   );
 }
 

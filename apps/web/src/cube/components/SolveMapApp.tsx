@@ -1,7 +1,7 @@
 "use client";
 
 // 큐브 해법 지도 시안(`/cube/learn-map`, 2026-11-25). 같은 자료(learn/solve-map.ts)를 여러 가지로 그려 견준다:
-// A 펼친 지도(`?v=a`), B 갈림길만(`?v=b`), C 노선도(`?v=c`), D 길 견주기 막대(`?v=d`), E 해법 카드 세로·가로
+// A 펼친 지도(`?v=a`), D 길 견주기 막대(`?v=d`), E 해법 카드 세로·가로
 // (`?v=cards-v`·`?v=cards-h`, 카드를 누르면 `&method=`로 해법 화면). 고른 해법은 `?m=a,b`,
 // 견본 기록은 `?demo=1`(화면 안에서만). 시안 바꾸기·견본 기록 단추는 시안 때만 두고 고르면 지운다.
 import { useEffect, useMemo, useState } from "react";
@@ -55,11 +55,11 @@ import {
   visibleMethods,
 } from "./solve-map-model";
 
-// B 갈림길 안은 폐기했다(2026-11-26: 하나씩 눌러야 상태를 알고, 갈림·합류는 C가 더 잘 보인다). `v=b`는 A로 연다
-export type MapVariant = "a" | "c" | "d" | "cards-v" | "cards-h";
+// B 갈림길 안은 폐기했다(2026-11-26: 하나씩 눌러야 상태를 알고, 보강하면 A와 같아진다). C 노선도도 폐기했다
+// (2026-11-26: 같은 연결이 여러 색 선으로 있어 지도보다 어지럽다). `v=b`·`v=c`는 A로 연다
+export type MapVariant = "a" | "d" | "cards-v" | "cards-h";
 const VARIANTS: { id: MapVariant; title: string }[] = [
   { id: "a", title: "A 지도" },
-  { id: "c", title: "C 노선도" },
   { id: "d", title: "D 막대" },
   { id: "cards-v", title: "E 카드 세로" },
   { id: "cards-h", title: "E 카드 가로" },
@@ -279,8 +279,8 @@ export function SolveMapApp() {
     (m) => ofSize(m) && (!folded(m) || extra || selected.includes(m.id)),
   );
   const chosenIds = chosen.map((m) => m.id);
-  // A·C는 화면 전체가 지도: 위 얇은 줄 하나(넘치면 가로로 밀기) + 그 아래 끝까지 지도. D·E는 그대로
-  const full = variant === "a" || variant === "c";
+  // A는 화면 전체가 지도: 위 얇은 줄 하나(넘치면 가로로 밀기) + 그 아래 끝까지 지도. D·E는 그대로
+  const full = variant === "a";
   const group = full
     ? "flex shrink-0 flex-nowrap items-center gap-1.5"
     : "flex flex-wrap items-center gap-1.5";
@@ -435,8 +435,7 @@ export function SolveMapApp() {
         </div>
         {ready && (
           <>
-            {variant === "a" && <MapView ctx={ctx} style="map" />}
-            {variant === "c" && <MapView ctx={ctx} style="metro" />}
+            {variant === "a" && <MapView ctx={ctx} />}
             {variant === "d" && <BarsView ctx={ctx} />}
             {variant.startsWith("cards") && (
               <CardsView

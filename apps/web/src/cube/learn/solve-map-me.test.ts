@@ -5,13 +5,7 @@ import type { SolveRecord } from "../records";
 import type { LearnProgress } from "./progress";
 import { edgeById, MAP_METHODS, type MapEdge } from "./solve-map";
 import { DEMO_PROGRESS, DEMO_RECORDS, DEMO_TRAIN } from "./solve-map-demo";
-import {
-  edgeLearn,
-  edgeTrain,
-  methodSolo,
-  myNode,
-  myRoute,
-} from "./solve-map-me";
+import { edgeLearn, edgeTrain, methodSolo, myNode } from "./solve-map-me";
 
 const method = (id: string) =>
   MAP_METHODS.find((m) => m.id === id) as (typeof MAP_METHODS)[number];
@@ -31,18 +25,6 @@ describe("진행", () => {
         myNode(method(id), DEMO_PROGRESS),
       ),
     ).toEqual(["f2l", "oll", "cross", "roux-fb", null]);
-  });
-
-  it("내 경로: 초보자선으로 아래 두 층까지, 거기서 2단계선으로 갈아타 노란 면까지", () => {
-    const route = myRoute(MAP_METHODS, DEMO_PROGRESS);
-    expect(route.map((l) => `${l.method.id}:${l.edge.id}`)).toEqual([
-      "beginner:cross",
-      "beginner:first-corners",
-      "beginner:second-layer",
-      "two-look:two-look-cross",
-      "two-look:two-look-face",
-    ]);
-    expect(myRoute(MAP_METHODS, EMPTY)).toEqual([]);
   });
 
   it("길은 단원 하나라도 끝냈으면 끝냄, 해 보기만 통과했으면 하는 중이다", () => {

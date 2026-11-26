@@ -1,7 +1,7 @@
 import { expect, test } from "./test";
 
 /**
- * 큐브 해법 지도 시안(/cube/learn-map, 2026-11-25). 네 안(A 지도·B 갈림길·C 노선도·D 막대), 여러 해법 고르기,
+ * 큐브 해법 지도 시안(/cube/learn-map, 2026-11-25). 남은 안(A 지도·D 막대·E 카드), 여러 해법 고르기,
  * 「나」 표시와 견본 기록. 시안을 고르면 이 시험도 고른 안에 맞춰 줄인다.
  */
 
@@ -76,8 +76,8 @@ test("해법 지도 E: 카드를 누르면 해법 화면에서 세부 걸음을 
 });
 
 /**
- * 지도 안 상자(지점 그림·이름, 걸음 꼬리표, 노선 이름, 역 점) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의
- * 그림·이름·점끼리는 한 덩이라 보지 않는다. 「나」 표시는 지점 모서리에 일부러 걸쳐 두어 뺀다
+ * 지도 안 상자(지점 그림·이름, 걸음 꼬리표) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의 그림·이름끼리는
+ * 한 덩이라 보지 않는다. 「나」 표시는 지점 모서리에 일부러 걸쳐 두어 뺀다
  */
 async function overlaps(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
@@ -95,12 +95,7 @@ async function overlaps(page: import("@playwright/test").Page) {
     const nodeOf = (el: Element) =>
       el.closest("[data-node]")?.getAttribute("data-node") ?? "?";
     add("[data-node] [data-node-part]", (el) => `node:${nodeOf(el)}`);
-    add("[data-node] [data-station]", (el) => `node:${nodeOf(el)}`);
     add("[data-edge]", (el) => `edge:${el.getAttribute("data-edge")}`);
-    add(
-      "[data-line-name]",
-      (el) => `line:${el.getAttribute("data-line-name")}`,
-    );
     const out: string[] = [];
     for (const [i, a] of boxes.entries())
       for (const b of boxes.slice(i + 1)) {
@@ -113,32 +108,31 @@ async function overlaps(page: import("@playwright/test").Page) {
   });
 }
 
-for (const v of ["a", "c"] as const)
-  test(`해법 지도 ${v.toUpperCase()}: 지점 그림·이름·꼬리표·역 점이 서로 겹치지 않는다(전체 보기·확대, 3×3·다른 해법·4×4)`, async ({
-    page,
-  }) => {
-    for (const q of [
-      "n=3&m=beginner&demo=1",
-      "n=3&m=beginner,cfop,zz&demo=1&more=1",
-      "n=4&demo=1",
-    ]) {
-      await page.goto(`/cube/learn-map?v=${v}&${q}`);
-      await expect(page.locator(`[data-solve-map="${v}"]`)).toBeVisible();
-      await expect(page.locator("[data-node]").first()).toBeVisible();
-      expect(await overlaps(page), `${q} 전체 보기`).toEqual([]);
-      const zoom = page.locator("[data-map-content]");
-      const before = await zoom.getAttribute("data-map-zoom");
-      for (let i = 0; i < 3; i++)
-        await page.getByRole("button", { name: "크게" }).click();
-      await expect(zoom).not.toHaveAttribute("data-map-zoom", before ?? "");
-      expect(await overlaps(page), `${q} 확대`).toEqual([]);
-    }
-  });
-
-test("해법 지도 A·C: 처음에는 지도 전체가 한 화면에 들어오고 페이지는 스크롤되지 않는다", async ({
+test("해법 지도 A: 지점 그림·이름·꼬리표가 서로 겹치지 않는다(전체 보기·확대, 3×3·다른 해법·4×4)", async ({
   page,
 }) => {
-  for (const v of ["a", "c"]) {
+  for (const q of [
+    "n=3&m=beginner&demo=1",
+    "n=3&m=beginner,cfop,zz&demo=1&more=1",
+    "n=4&demo=1",
+  ]) {
+    await page.goto(`/cube/learn-map?v=a&${q}`);
+    await expect(page.locator('[data-solve-map="a"]')).toBeVisible();
+    await expect(page.locator("[data-node]").first()).toBeVisible();
+    expect(await overlaps(page), `${q} 전체 보기`).toEqual([]);
+    const zoom = page.locator("[data-map-content]");
+    const before = await zoom.getAttribute("data-map-zoom");
+    for (let i = 0; i < 3; i++)
+      await page.getByRole("button", { name: "크게" }).click();
+    await expect(zoom).not.toHaveAttribute("data-map-zoom", before ?? "");
+    expect(await overlaps(page), `${q} 확대`).toEqual([]);
+  }
+});
+
+test("해법 지도 A: 처음에는 지도 전체가 한 화면에 들어오고 페이지는 스크롤되지 않는다", async ({
+  page,
+}) => {
+  for (const v of ["a"]) {
     await page.goto(`/cube/learn-map?v=${v}&m=beginner`);
     const frame = page.locator("[data-map-frame]");
     await expect(frame).toBeVisible();
@@ -174,12 +168,14 @@ test("해법 지도 A·C: 처음에는 지도 전체가 한 화면에 들어오�
   }
 });
 
-test("해법 지도: 폐기한 B 갈림길 주소(v=b)로 열면 A 지도로 연다", async ({
+test("해법 지도: 폐기한 B 갈림길·C 노선도 주소(v=b·v=c)로 열면 A 지도로 연다", async ({
   page,
 }) => {
-  await page.goto("/cube/learn-map?v=b&m=beginner");
-  await expect(page.locator('[data-solve-map="a"]')).toBeVisible();
-  await expect(page).toHaveURL(/v=a/);
+  for (const v of ["b", "c"]) {
+    await page.goto(`/cube/learn-map?v=${v}&m=beginner`);
+    await expect(page.locator('[data-solve-map="a"]')).toBeVisible();
+    await expect(page).toHaveURL(/v=a/);
+  }
 });
 
 test("해법 지도 견본 기록: 지나온 길에 「나」, 약한 걸음·익숙한 상황 수가 보인다", async ({

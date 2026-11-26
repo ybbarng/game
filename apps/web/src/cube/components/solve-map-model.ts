@@ -76,14 +76,6 @@ export function visibleEdges(methods: readonly MapMethod[]): MapEdge[] {
   return MAP_EDGES.filter((e) => ids.has(e.id));
 }
 
-/** 길을 지나는 해법들(차례는 MAP_METHODS) */
-export function methodsOfEdge(
-  edgeId: string,
-  methods: readonly MapMethod[],
-): MapMethod[] {
-  return methods.filter((m) => m.edges.includes(edgeId));
-}
-
 export interface MethodTotals {
   formulas: number | null;
   turns: number | undefined;
