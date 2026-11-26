@@ -10,9 +10,10 @@ import {
   type MapMethod,
   type MapNodeId,
   methodNodes,
+  methodStages,
   nodeById,
 } from "../learn/solve-map";
-import { edgeLearn } from "../learn/solve-map-me";
+import { type EdgeSkill, edgeLearn } from "../learn/solve-map-me";
 import {
   EdgeLines,
   FinishPanel,
@@ -99,9 +100,51 @@ function arrivedDone(m: MapMethod, i: number, ctx: MapCtx): boolean {
   return edgeLearn(e, ctx.progress) === "done";
 }
 
+interface StripCell {
+  /** 칸 그림 지점(다 섞임, 그다음은 큰 단계 끝) */
+  id: MapNodeId;
+  /** 이 단계의 세부 걸음을 모두 끝냈나(첫 칸은 false) */
+  done: boolean;
+  /** 잘하는·약한 걸음(단계가 걸음 하나일 때만, 혼자 맞추기 구간은 걸음마다라) */
+  skill: EdgeSkill | null | undefined;
+  /** 「나」: 단계 안 지점에 있으면 지나온 단계 끝 칸에 */
+  me: boolean;
+  /** 이 단계 안 지점(끝 포함)에 붙는 패리티 고리 */
+  loops: ReturnType<typeof loopsAt>;
+}
+
+/** 띠 칸: 다 섞임 + 큰 단계마다 끝 지점(세부 걸음은 해법 화면에서, 2026-11-26 사용자) */
+function stripCells(m: MapMethod, ctx: MapCtx): StripCell[] {
+  const nodes = methodNodes(m);
+  const solo = ctx.solo.get(m.id);
+  const stages = methodStages(m);
+  const meIdx = nodes.findIndex((id) => meAt(ctx, id, m));
+  const at = [0, ...stages.map((s) => nodes.indexOf(s.to))];
+  const meCell = meIdx < 0 ? -1 : at.filter((i) => i <= meIdx).length - 1;
+  return [
+    {
+      id: nodes[0] as MapNodeId,
+      done: false,
+      skill: undefined,
+      me: meCell === 0,
+      loops: loopsAt(m, nodes[0] as MapNodeId, ctx),
+    },
+    ...stages.map((s, k) => ({
+      id: s.to,
+      done: s.edges.every((e) => edgeLearn(e, ctx.progress) === "done"),
+      skill:
+        s.edges.length === 1
+          ? solo?.get((s.edges[0] as MapEdge).id)?.skill
+          : undefined,
+      me: meCell === k + 1,
+      loops: s.edges.flatMap((e) => loopsAt(m, e.to, ctx)),
+    })),
+  ];
+}
+
 /**
- * 지점 그림 띠. `column`: 위(다 섞임)에서 아래(다 맞음)로, 지점 이름을 곁에 둔다(카드를 가로로 늘어놓을 때,
- * 카드 방향과 맞추는 순서 방향을 엇갈리게). 그 밖은 왼쪽에서 오른쪽으로, 넘치면 옆으로 민다
+ * 지점 그림 띠(큰 단계만). `column`: 위(다 섞임)에서 아래(다 맞음)로, 지점 이름을 곁에 둔다(카드를 가로로
+ * 늘어놓을 때, 카드 방향과 맞추는 순서 방향을 엇갈리게). 그 밖은 왼쪽에서 오른쪽으로, 넘치면 옆으로 민다
  */
 function Strip({
   m,
@@ -112,19 +155,13 @@ function Strip({
   ctx: MapCtx;
   column?: boolean;
 }) {
-  const nodes = methodNodes(m);
-  const solo = ctx.solo.get(m.id);
   if (column) return <ColumnStrip m={m} ctx={ctx} />;
   return (
     <ol
       className="flex items-end gap-1 overflow-x-auto pb-1"
       data-card-strip="row"
     >
-      {nodes.map((id, i) => {
-        const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
-        const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
-        const skill = e ? solo?.get(e.id)?.skill : undefined;
-        const me = meAt(ctx, id, m);
+      {stripCells(m, ctx).map(({ id, done, skill, me, loops }, i) => {
         return [
           i > 0 && (
             <li key={`${id}-arrow`} aria-hidden className="self-center pb-3">
@@ -152,7 +189,7 @@ function Strip({
               {done ? "✓" : ""}
             </span>
           </li>,
-          ...loopsAt(m, id, ctx).map((d) => (
+          ...loops.map((d) => (
             <li key={`${id}-loop-${d.loop.kind}`} className="self-center pb-3">
               <LoopChip d={d} ctx={ctx} compact />
             </li>
@@ -163,17 +200,11 @@ function Strip({
   );
 }
 
-/** 세로 띠: 지점마다 한 줄(그림 · 이름 · ✓), 지점 사이는 가는 세로 선 */
+/** 세로 띠: 큰 단계마다 한 줄(그림 · 이름 · ✓), 칸 사이는 가는 세로 선 */
 function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
-  const nodes = methodNodes(m);
-  const solo = ctx.solo.get(m.id);
   return (
     <ol className="flex flex-col" data-card-strip="column">
-      {nodes.map((id, i) => {
-        const e = i ? (edgeById(m.edges[i - 1] as string) as MapEdge) : null;
-        const done = e ? edgeLearn(e, ctx.progress) === "done" : false;
-        const skill = e ? solo?.get(e.id)?.skill : undefined;
-        const me = meAt(ctx, id, m);
+      {stripCells(m, ctx).map(({ id, done, skill, me, loops }, i) => {
         return (
           <li key={id} className="flex flex-col" data-strip-node={id}>
             {i > 0 && (
@@ -197,9 +228,9 @@ function ColumnStrip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
               {done && <span className="text-emerald-300 text-xs">✓</span>}
               {me && <MeBadge methods={[]} />}
             </span>
-            {loopsAt(m, id, ctx).length > 0 && (
+            {loops.length > 0 && (
               <span className="ml-10 flex flex-wrap gap-1 pt-1">
-                {loopsAt(m, id, ctx).map((d) => (
+                {loops.map((d) => (
                   <LoopChip key={d.loop.kind} d={d} ctx={ctx} compact />
                 ))}
               </span>

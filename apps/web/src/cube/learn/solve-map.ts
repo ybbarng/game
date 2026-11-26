@@ -776,6 +776,11 @@ export interface MapMethod {
   edges: readonly string[];
   /** 큐브 크기(없으면 3) */
   size?: CubeSize;
+  /**
+   * 큰 단계마다 끝 지점(다 맞음까지). 카드 띠는 이 지점만 그리고 세부 걸음은 해법 화면에서 본다. 과정의 단계
+   * 지도(stage-map.ts STAGE_SPECS)와 같은 나눔이다. 없으면 걸음마다(이미 큰 단계만큼 걸음이 있는 해법)
+   */
+  stages?: readonly MapNodeId[];
 }
 
 const BEGINNER_LOWER = ["cross", "first-corners", "second-layer"];
@@ -816,6 +821,8 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     title: "2단계 OLL·PLL",
     course: "333-2look",
     edges: [...BEGINNER_LOWER, "two-look-cross", ...TWO_LOOK_LL],
+    // 아래 두 층 → OLL(방향) → PLL(자리)
+    stages: ["f2l", "oll", "solved"],
   },
   {
     id: "cfop",
@@ -830,6 +837,8 @@ const MAP_METHODS_3: readonly MapMethod[] = [
       "oll",
       "pll",
     ],
+    // 십자 → F2L(짝 넷) → OLL → PLL
+    stages: ["cross", "f2l", "oll", "solved"],
   },
   {
     id: "roux",
@@ -844,12 +853,16 @@ const MAP_METHODS_3: readonly MapMethod[] = [
       "lse-ulur",
       "lse-ep",
     ],
+    // 첫 블록 → 둘째 블록 → CMLL → LSE
+    stages: ["roux-fb", "roux-sb", "cmll", "solved"],
   },
   {
     id: "zz",
     title: "ZZ",
     course: "zz",
     edges: ["eoline", "zz-left", "zz-right", ...TWO_LOOK_LL],
+    // EO라인 → 블록(F2L, 끝나면 엣지 방향이 맞아 노란 십자) → 마지막 층
+    stages: ["eoline", "yellow-cross", "solved"],
   },
   {
     id: "petrus",
@@ -862,6 +875,8 @@ const MAP_METHODS_3: readonly MapMethod[] = [
       "petrus-f2l",
       ...TWO_LOOK_LL,
     ],
+    // 단계 지도가 없는 과정: 2×2×2 → 2×2×3 → 엣지 방향 → F2L 마무리 → 마지막 층(ZZ와 같이 한 칸)
+    stages: ["petrus-222", "petrus-223", "zz-left", "yellow-cross", "solved"],
   },
   {
     id: "zz-coll",
@@ -869,6 +884,7 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     extra: true,
     course: "zz",
     edges: ["eoline", "zz-left", "zz-right", "coll", "two-look-edges"],
+    stages: ["eoline", "yellow-cross", "solved"],
   },
   {
     id: "zz-zbll",
@@ -876,6 +892,7 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     extra: true,
     course: "zz",
     edges: ["eoline", "zz-left", "zz-right", "zbll"],
+    stages: ["eoline", "yellow-cross", "solved"],
   },
   {
     id: "cfop-1lll",
@@ -890,6 +907,8 @@ const MAP_METHODS_3: readonly MapMethod[] = [
       "f2l-pair-4",
       "1lll",
     ],
+    // 십자 → F2L → 마지막 층 한 번
+    stages: ["cross", "f2l", "solved"],
   },
   {
     id: "corners-first",
@@ -963,6 +982,8 @@ interface BigHead {
   head: string[];
   /** 「3×3 맞추기」 칸이 가르치는 단원(진행 기록으로 끝냄을 본다) */
   tailLessons: string[];
+  /** 큰 단계 끝 지점(MapMethod.stages) */
+  stages?: MapNodeId[];
 }
 
 const BIG_HEADS: BigHead[] = [
@@ -987,6 +1008,14 @@ const BIG_HEADS: BigHead[] = [
       "yau-edges",
     ],
     tailLessons: ["yau-finish"],
+    // 흰·노랑 센터 → 흰 십자 셋 → 옆 센터 → 엣지 묶기(마지막 십자 엣지 포함) → 3×3처럼
+    stages: [
+      "4-ud-centers",
+      "4-cross3",
+      "4-yau-centers",
+      "4-yau-paired",
+      "4-solved",
+    ],
   },
   {
     id: "555-reduction",
@@ -1084,6 +1113,7 @@ const BIG_METHODS: MapMethod[] = TAILS.map(({ h, edges }) => ({
   size: h.size,
   course: h.course,
   edges: [...h.head, ...edges.map((e) => e.id)],
+  ...(h.stages ? { stages: h.stages } : {}),
 }));
 
 export const MAP_METHODS: readonly MapMethod[] = [
@@ -1252,6 +1282,26 @@ export function methodNodes(m: MapMethod): MapNodeId[] {
 /**
  * 해법 하나에서 길마다 새로 배우는 공식 수(앞 길에서 배운 공식은 다시 세지 않는다). 셀 자료가 없는 길은 null
  */
+export interface MethodStage {
+  /** 단계 끝 지점 */
+  to: MapNodeId;
+  /** 이 단계의 세부 걸음(앞 단계 끝에서 이 지점까지) */
+  edges: MapEdge[];
+}
+
+/** 해법의 큰 단계(카드 띠 칸). 단계마다 끝 지점과 세부 걸음 */
+export function methodStages(m: MapMethod): MethodStage[] {
+  const nodes = methodNodes(m);
+  const ends = m.stages ?? nodes.slice(1);
+  let from = 0;
+  return ends.map((to) => {
+    const i = nodes.indexOf(to);
+    const edges = m.edges.slice(from, i).map((id) => edgeById(id) as MapEdge);
+    from = i;
+    return { to, edges };
+  });
+}
+
 export function newFormulas(m: MapMethod): Map<string, number | null> {
   const seen = new Set<string>();
   const out = new Map<string, number | null>();

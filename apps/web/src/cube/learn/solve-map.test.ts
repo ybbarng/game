@@ -45,6 +45,7 @@ import {
   methodFormulaCount,
   methodNodes,
   methodSize,
+  methodStages,
   newFormulas,
   nodeById,
   nodeMask,
@@ -57,6 +58,7 @@ import {
   pieceFacesNow,
 } from "./solve-map";
 import { methodRun } from "./solve-map-measure";
+import { STAGE_SPECS } from "./stage-map";
 import { runZzLl, solveZzByRules, stepMovesLl } from "./zz-path";
 
 const lessons = new Map(
@@ -916,5 +918,65 @@ describe("다 맞음 그림의 쥐기(2026-11-26 사용자 「다 맞춤만 흰 
         "555-reduction",
       ],
     });
+  });
+});
+
+describe("해법 카드 띠는 큰 단계만(2026-11-26 사용자 「CFOP가 단계가 적다는 것이 드러나지 않는다」)", () => {
+  it("큰 단계는 해법이 지나는 지점을 차례대로 끊고, 세부 걸음을 빠짐없이 한 번씩 나눠 가지며, 마지막은 다 맞음이다", () => {
+    const off = MAP_METHODS.flatMap((m) => {
+      const st = methodStages(m);
+      const edges = st.flatMap((s) => s.edges.map((e) => e.id));
+      const ok =
+        st.at(-1)?.to === methodNodes(m).at(-1) &&
+        st.every((s) => s.edges.length > 0 && s.edges.at(-1)?.to === s.to) &&
+        edges.join() === m.edges.join();
+      return ok ? [] : [m.id];
+    });
+    expect(off).toEqual([]);
+  });
+
+  it("단계 지도가 있는 과정의 기본 해법은 카드 띠 칸 수가 그 과정의 단계 수와 같다", () => {
+    const got = Object.fromEntries(
+      MAP_METHODS.filter(
+        (m) => !m.extra && m.course && STAGE_SPECS[m.course],
+      ).map((m) => [
+        m.id,
+        [
+          methodStages(m).length,
+          STAGE_SPECS[m.course as string]?.stages.length,
+        ],
+      ]),
+    );
+    expect(Object.entries(got).filter(([, [a, b]]) => a !== b)).toEqual([]);
+    // 단계 지도가 있는 해법을 빠뜨리지 않았는지
+    expect(Object.keys(got).sort()).toEqual(
+      [
+        "beginner",
+        "beginner-twist-first",
+        "two-look",
+        "cfop",
+        "roux",
+        "zz",
+        "222-beginner",
+        "222-from333",
+        "ortega",
+        "444-reduction",
+        "444-yau",
+        "555-reduction",
+      ].sort(),
+    );
+  });
+
+  it("CFOP 띠는 십자·F2L·OLL·PLL 네 칸이고 F2L 짝 넷은 한 칸에 든다", () => {
+    expect(
+      methodStages(method("cfop")).map(
+        (s) => `${s.to}:${s.edges.map((e) => e.id).join("+")}`,
+      ),
+    ).toEqual([
+      "cross:cross",
+      "f2l:f2l-pair-1+f2l-pair-2+f2l-pair-3+f2l-pair-4",
+      "oll:oll",
+      "solved:pll",
+    ]);
   });
 });

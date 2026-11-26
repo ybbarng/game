@@ -38,12 +38,14 @@ test("해법 지도: 해법을 여럿 고르면 주소에 담기고 고른 해�
   await expect(page.locator('[data-edge-line="cross"]')).toHaveCount(2);
 });
 
-test("해법 지도 E: 카드를 누르면 해법 화면에서 세부 걸음을 모두 보고, 단원 없는 걸음은 누를 수 없다", async ({
+test("해법 지도 E: 카드 띠는 큰 단계만(CFOP는 다 섞임 + 십자·F2L·OLL·PLL), 카드를 누르면 해법 화면에서 세부 걸음을 모두 보고, 단원 없는 걸음은 누를 수 없다", async ({
   page,
 }) => {
   await page.goto("/cube/learn-map?v=cards-v&m=beginner");
   const card = page.locator('[data-card="cfop"]');
-  await expect(card.locator("[data-strip-node]")).toHaveCount(8);
+  await expect(card.locator("[data-strip-node]")).toHaveCount(5);
+  await expect(card.locator('[data-strip-node="f2l"]')).toHaveCount(1);
+  await expect(card.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
   await expect(card.locator("[data-card-total]")).toHaveText("공식 119 · 55수");
   await card.click();
   await expect(page).toHaveURL(/method=cfop/);
