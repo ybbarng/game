@@ -159,6 +159,8 @@ test("전체 보기: 고르지 않은 해법의 걸음 꼬리표도 단계 이�
   const f2l = page.locator('[data-edge="f2l"]');
   await expect(f2l).toContainText("F2L");
   await expect(f2l).toContainText("공식 9개 · 23수");
+  // 해법 칩의 공식 수도 개수로 읽힌다(「공식 87」은 87번 공식처럼 읽힌다)
+  await expect(page.locator('[data-method="cfop"]')).toContainText("공식 87개");
   // 고른 길(초보자 흰 십자)과 같은 모습(포커스로 바꾸지 않는다)
   expect(await f2l.getAttribute("class")).toBe(
     await page.locator('[data-edge="cross"]').getAttribute("class"),
@@ -178,7 +180,7 @@ test("전체 보기: 고르지 않은 해법의 걸음 꼬리표도 단계 이�
 });
 
 /**
- * 지도 안 상자(지점 그림·이름, 걸음 꼬리표) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의 그림·이름끼리는
+ * 지도 안 상자(지점 그림·이름, 걸음 꼬리표, 패리티 고리 칸) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의 그림·이름끼리는
  * 한 덩이라 보지 않는다
  */
 async function overlaps(page: Page) {
@@ -198,6 +200,11 @@ async function overlaps(page: Page) {
       el.closest("[data-node]")?.getAttribute("data-node") ?? "?";
     add("[data-node] [data-node-part]", (el) => `node:${nodeOf(el)}`);
     add("[data-edge]", (el) => `edge:${el.getAttribute("data-edge")}`);
+    // 패리티 고리 칸(큰 큐브 지도, 4×4에서 들른 3×3 지도)
+    add(
+      "[data-parity-loop]",
+      (el) => `loop:${el.getAttribute("data-parity-loop")}`,
+    );
     const out: string[] = [];
     for (const [i, a] of boxes.entries())
       for (const b of boxes.slice(i + 1)) {

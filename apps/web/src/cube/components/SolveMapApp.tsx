@@ -438,7 +438,7 @@ export function MapScreen({
                   <span className="font-medium">{m.title}</span>
                   {t.formulas !== null && (
                     <span className="whitespace-nowrap text-white/60 text-xs">
-                      공식 {t.formulas}
+                      공식 {t.formulas}개
                     </span>
                   )}
                   {t.turns !== undefined && (
