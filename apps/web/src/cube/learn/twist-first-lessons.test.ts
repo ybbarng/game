@@ -12,15 +12,21 @@ import {
   CORNER_A,
   CORNER_B,
   cornerYellows,
+  edgesMatched,
+  edgesUp,
   nextTwistFirstStep,
   placedCorners,
   runTwistFirstStage,
+  TWIST_FIRST_STAGES,
   type TwistFirstStageId,
   twistFirstMoves,
 } from "./twist-first-path";
 import type { LessonStep } from "./types";
 
 const STAGE: Record<string, TwistFirstStageId> = {
+  "333-tf-second": "second",
+  "333-tf-eo": "eo",
+  "333-tf-ep": "ep",
   "333-tf-twist": "twist",
   "333-tf-place": "place",
 };
@@ -34,73 +40,128 @@ const stateOf = (step: LessonStep): PuzzleState =>
 const lesson = (id: string) => TWIST_FIRST_333.lessons.find((l) => l.id === id);
 const stepWith = (id: string, text: string) =>
   lesson(id)?.steps.find((s) => s.body.includes(text)) as LessonStep;
+const casesOf = (stage: TwistFirstStageId) =>
+  (TWIST_FIRST_STAGES.find((s) => s.id === stage)?.cases ?? []).map(
+    (c) => c.id,
+  );
 
 describe("강 모범 답 = 경우별 정해진 길", () => {
+  it("강은 설명서 3~7단계 다섯이고, 차례가 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치다", () => {
+    expect(TWIST_FIRST_333.lessons.map((l) => l.title)).toEqual([
+      "둘째 층 엣지",
+      "엣지 방향",
+      "엣지 위치",
+      "코너 방향",
+      "코너 위치",
+    ]);
+  });
+
   for (const l of TWIST_FIRST_333.lessons) {
     const stage = STAGE[l.id] as TwistFirstStageId;
     l.steps.forEach((step, i) => {
       if (!step.alg || !step.setup || !("alg" in step.setup)) return;
       it(`${l.title} ${i + 1}번(${step.kind})`, () => {
         const r = runTwistFirstStage(stage, stateOf(step));
-        expect(norm(r.steps.map(twistFirstMoves).join(" "))).toBe(
-          norm(step.alg as string),
-        );
+        const want = norm(r.steps.map(twistFirstMoves).join(" "));
+        // 직접 치기(turn)는 풀이의 앞부분만 칠 수 있다
+        if (step.kind === "turn")
+          expect(want.startsWith(norm(step.alg as string))).toBe(true);
+        else expect(want).toBe(norm(step.alg as string));
         if (step.goal) expect(goalMet(3, r.state, step.goal)).toBe(true);
       });
     });
   }
 
-  it("해 보기가 넉넉하다: 코너 방향 여덟 이상(모양마다 하나 이상), 코너 위치 다섯 이상", () => {
-    const tries = (id: string) =>
-      lesson(id)?.steps.filter((s) => s.kind === "try").length ?? 0;
-    expect(tries("333-tf-twist")).toBeGreaterThanOrEqual(8);
-    expect(tries("333-tf-place")).toBeGreaterThanOrEqual(5);
-  });
-
-  it("코너 방향 해 보기는 일곱 경우를 모두 한 번 이상 지난다", () => {
-    const seen = new Set<string>();
-    for (const s of lesson("333-tf-twist")?.steps ?? []) {
-      if (s.kind !== "try" || !s.setup || !("alg" in s.setup)) continue;
-      for (const st of runTwistFirstStage("twist", stateOf(s)).steps)
-        seen.add(st.caseId);
+  it("해 보기가 넉넉하고, 단계마다 해 보기가 그 단계의 모든 경우를 한 번 이상 지난다(윗면만 돌리는 경우는 빼고)", () => {
+    for (const l of TWIST_FIRST_333.lessons) {
+      const stage = STAGE[l.id] as TwistFirstStageId;
+      const seen = new Set<string>();
+      for (const s of l.steps) {
+        if (s.kind !== "try" || !s.setup || !("alg" in s.setup)) continue;
+        for (const st of runTwistFirstStage(stage, stateOf(s)).steps)
+          seen.add(st.caseId);
+      }
+      const want = casesOf(stage).filter((c) => c !== "align");
+      expect([...seen].sort(), l.id).toEqual(want.sort());
     }
-    expect([...seen].sort()).toEqual(
-      [
-        "base",
-        "fish",
-        "side",
-        "front",
-        "diagonal",
-        "none-back",
-        "none-sides",
-      ].sort(),
-    );
   });
 
-  it("마지막 해 보기는 그 걸음 연습 섞기로 아무 경우나 낸다", () => {
+  it("마지막 해 보기는 그 단계 연습 섞기로 아무 경우나 낸다", () => {
     const last = (id: string) => lesson(id)?.steps.at(-1)?.setup;
-    expect([last("333-tf-twist"), last("333-tf-place")]).toEqual([
+    expect(TWIST_FIRST_333.lessons.map((l) => last(l.id))).toEqual([
+      { rule: "first-layer-solved" },
+      { rule: "second-layer-solved" },
+      { rule: "ll-cross-solved" },
       { rule: "ll-edges-solved" },
       { rule: "ll-corners-unplaced" },
     ]);
   });
+
+  it("코너 방향 강은 공식 시연 바로 다음 쪽에 관계도를 둔다", () => {
+    const steps = lesson("333-tf-twist")?.steps ?? [];
+    const demo = steps.findIndex((s) => s.kind === "demo");
+    expect(steps[demo + 1]?.sheet).toBe("tf-flow");
+  });
 });
 
 describe("고르기 문제의 답 = 그림 상황", () => {
-  it("코너 방향 첫 쪽: 위를 보는 노란색은 앞-왼쪽 위 하나(기본형)", () => {
-    const s = stateOf(lesson("333-tf-twist")?.steps[0] as LessonStep);
-    // 앞-오른쪽, 앞-왼쪽, 뒤-왼쪽, 뒤-오른쪽 위
-    expect(cornerYellows(s)).toEqual(["F", "U", "B", "R"]);
-    expect(nextTwistFirstStep("twist", s)?.caseId).toBe("base");
+  it("둘째 층 첫 두 쪽: 위-앞 엣지 블럭의 옆 색이 앞 센터 색이고, 공식 A로 넣는다", () => {
+    const s = stateOf(lesson("333-tf-second")?.steps[1] as LessonStep);
+    expect(nextTwistFirstStep("second", s)).toMatchObject({
+      caseId: "right",
+      hold: "",
+    });
   });
 
-  it("하나짜리 쪽: 위를 보는 블럭이 앞-왼쪽 위이고 앞-오른쪽 위 노란색은 오른쪽", () => {
-    const s = stateOf(stepWith("333-tf-twist", "기본형이 아니에요"));
-    expect(cornerYellows(s).slice(0, 2)).toEqual(["R", "U"]);
+  it("엣지 방향 둘째 쪽: 기본형(ㄱ자, 뒤와 왼쪽)", () => {
+    const s = stateOf(lesson("333-tf-eo")?.steps[1] as LessonStep);
+    expect(edgesUp(s).sort()).toEqual(["B", "L"]);
   });
 
-  it("관계도 쪽: 둘인 모양은 공식 세 번", () => {
+  it("엣지 방향 일자 쪽은 두 번, 점 쪽은 세 번이다", () => {
+    const line = stateOf(stepWith("333-tf-eo", "일자는 앞뒤로 세워"));
+    expect(runTwistFirstStage("eo", line).steps.length).toBe(2);
+    const dot = stateOf(stepWith("333-tf-eo", "늘 가로 일자"));
+    // 이 쪽 그림은 점에서 한 번 친 뒤의 가로 일자다
+    expect(edgesUp(dot).sort()).toEqual(["L", "R"]);
+  });
+
+  it("엣지 위치 첫 쪽: 제자리 엣지 블럭은 뒤 하나", () => {
+    const s = stateOf(lesson("333-tf-ep")?.steps[0] as LessonStep);
+    expect(edgesMatched(s)).toEqual(["B"]);
+  });
+
+  it("엣지 위치 셋째 쪽: 앞과 왼쪽이 제자리이고 이웃이라 U'를 한 칸 더 돌리면 뒤 하나만 맞는다", () => {
+    const s = stateOf(lesson("333-tf-ep")?.steps[2] as LessonStep);
+    expect(edgesMatched(s).sort()).toEqual(["F", "L"]);
+    expect(nextTwistFirstStep("ep", s)).toMatchObject({
+      caseId: "adjacent",
+      hold: "U'",
+    });
+    expect(edgesMatched(applyMoves(3, s, parseMoves(3, "U'")))).toEqual(["B"]);
+  });
+
+  it("엣지 위치 마주 봄 쪽: 공식 두 번", () => {
+    const s = stateOf(stepWith("333-tf-ep", "마주 볼 때도"));
+    const r = runTwistFirstStage("ep", s);
+    expect(r.steps.map((x) => x.caseId)).toEqual(["opposite", "adjacent"]);
+  });
+
+  it("코너 방향 첫 두 쪽: 위를 보는 노란색은 앞-오른쪽·뒤-왼쪽 위 대각선(기본형, 쥔 그대로)", () => {
+    for (const k of [0, 1]) {
+      const s = stateOf(lesson("333-tf-twist")?.steps[k] as LessonStep);
+      // 앞-오른쪽, 앞-왼쪽, 뒤-왼쪽, 뒤-오른쪽 위
+      expect(cornerYellows(s)).toEqual(["U", "L", "U", "B"]);
+      expect(nextTwistFirstStep("twist", s)).toMatchObject({
+        caseId: "base",
+        hold: "",
+      });
+    }
+  });
+
+  it("관계도 쪽: 하나도 없는 모양은 공식 세 번", () => {
     const s = stateOf(stepWith("333-tf-twist", "관계도예요"));
+    expect(cornerYellows(s).includes("U")).toBe(false);
     expect(runTwistFirstStage("twist", s).steps.length).toBe(3);
   });
 
@@ -109,7 +170,7 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     expect(placedCorners(s)).toEqual([0]);
   });
 
-  it("B 고르기 쪽: 제자리는 앞-오른쪽 위 하나이고, y로 다시 쥐고 B 한 번이면 다 맞는다", () => {
+  it("B 고르기 쪽: 제자리는 앞-오른쪽 위 하나이고, y로 다시 쥐고 공식 B 한 번이면 다 맞는다", () => {
     const s = stateOf(stepWith("333-tf-place", "반시계 방향으로 옮겨야 해요"));
     expect(placedCorners(s)).toEqual([0]);
     expect(nextTwistFirstStep("place", s)).toMatchObject({
@@ -121,7 +182,7 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     ).toBe(true);
   });
 
-  it("A 시연 쪽: 제자리는 앞-오른쪽 위, 앞-왼쪽 위 블럭의 제자리는 뒤-왼쪽 위라 A", () => {
+  it("A 시연 쪽: 제자리는 앞-오른쪽 위, 앞-왼쪽 위 블럭의 제자리는 뒤-왼쪽 위라 공식 A", () => {
     const s = stateOf(stepWith("333-tf-place", "제자리가 뒤-왼쪽 위예요"));
     expect(placedCorners(s)).toEqual([0]);
     expect(nextTwistFirstStep("place", s)).toMatchObject({
@@ -133,7 +194,7 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     ).toBe(true);
   });
 
-  it("제자리 없음 쪽: 제자리 코너 블럭이 없고, 어느 쪽으로 쥐어도 A 한 번이면 꼭 하나가 생긴다", () => {
+  it("제자리 없음 쪽: 제자리 코너 블럭이 없고, 어느 쪽으로 쥐어도 공식 A 한 번이면 꼭 하나가 생긴다", () => {
     const s = stateOf(stepWith("333-tf-place", "하나도 없을 때가 있어요"));
     expect(placedCorners(s)).toEqual([]);
     for (const y of ["", "y", "y2", "y'"]) {
@@ -189,6 +250,6 @@ describe("글", () => {
 
   it("강의 첫머리에 신광사 큐브 설명서의 해법이라는 것을 밝힌다", () => {
     expect(courseById("333-twist-first")?.summary).toContain("신광사");
-    expect(lesson("333-tf-twist")?.steps[0]?.body).toContain("신광사");
+    expect(lesson("333-tf-second")?.steps[0]?.body).toContain("신광사");
   });
 });

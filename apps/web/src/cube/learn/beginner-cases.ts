@@ -27,19 +27,27 @@ import {
   YELLOW_CROSS_BACK,
 } from "./lessons-333";
 import {
+  EO_DOT,
+  EO_LINE,
+  EP_ADJACENT,
+  EP_OPPOSITE,
   PLACE_NONE,
-  TWIST_DIAGONAL,
-  TWIST_FISH,
-  TWIST_FRONT,
-  TWIST_NONE_BACK,
-  TWIST_NONE_SIDES,
-  TWIST_SIDE,
+  SECOND_STUCK,
+  TW_A,
+  TW_B,
+  TW_BAR,
+  TW_C,
+  TW_CROSS,
+  TW_D,
 } from "./lessons-twist-first";
 import { setupFor } from "./notation";
 import {
   CORNER_A,
   CORNER_B,
   CORNER_TURN,
+  EDGE_FLIP,
+  SECOND_A,
+  SECOND_B,
   type TwistFirstStageId,
 } from "./twist-first-path";
 import type { AlgSet, MaskName, SheetName } from "./types";
@@ -317,56 +325,135 @@ export const BEGINNER_CASE_SHEETS: Record<
       },
     ],
   },
-  // 코너 방향 먼저(lessons-twist-first.ts, docs/47 16-33)
+  // 코너 방향 먼저(신광사 설명서 3~7단계, lessons-twist-first.ts, docs/47 16-33)
+  "beginner-tf-second": {
+    stage: { path: "twist-first", id: "second" },
+    set: "f2l",
+    mask: "f2l",
+    title: "넣을 엣지 블럭의 세 경우(위 층은 옆 색 센터를 앞에 두고 봐요)",
+    cases: [
+      {
+        id: "right",
+        alg: flip(SECOND_A),
+        caption: "위 색이 오른쪽 센터 색",
+        action: "제자리가 앞-오른쪽이에요. 오른쪽 넣기를 쳐요.",
+      },
+      {
+        id: "left",
+        alg: flip(SECOND_B),
+        caption: "위 색이 왼쪽 센터 색",
+        action: "제자리가 앞-왼쪽이에요. 왼쪽 넣기를 쳐요.",
+      },
+      {
+        id: "stuck",
+        alg: flip(SECOND_STUCK),
+        caption: "가운데 층에 잘못 들어가 있음",
+        action:
+          "그 자리를 앞-오른쪽으로 돌려 쥐고 오른쪽 넣기를 쳐서 위 층으로 빼요.",
+      },
+    ],
+  },
+  "beginner-tf-eo": {
+    stage: { path: "twist-first", id: "eo" },
+    set: "2look-oll",
+    mask: "ll-cross",
+    title: "윗면 모양 넷",
+    cases: [
+      {
+        id: "base",
+        alg: flip(EDGE_FLIP),
+        caption: "기본형: ㄱ자",
+        action: "노란 스티커 둘을 뒤와 왼쪽에 두고 한 번 치면 십자예요.",
+      },
+      {
+        id: "line",
+        alg: flip(EO_LINE),
+        caption: "일자",
+        action: "일자를 앞뒤로 세워 두고 한 번 치면 기본형이에요.",
+      },
+      {
+        id: "dot",
+        alg: flip(EO_DOT),
+        caption: "점",
+        action: "그대로 한 번 치면 일자예요.",
+      },
+      { id: "done", alg: "z2", caption: "십자", action: "끝이에요." },
+    ],
+  },
+  "beginner-tf-ep": {
+    stage: { path: "twist-first", id: "ep" },
+    set: "2look-pll",
+    mask: "ll-edges",
+    title: "윗면을 반시계 방향으로 돌려 찾은 세 경우",
+    cases: [
+      {
+        id: "align",
+        alg: flip("U"),
+        caption: "넷 다 제자리",
+        action: "윗면만 돌리면 끝이에요.",
+      },
+      {
+        id: "adjacent",
+        alg: flip(EP_ADJACENT),
+        caption: "제자리인 둘이 이웃",
+        action:
+          "윗면을 반시계 방향으로 한 칸 더 돌려 하나만 맞게 하고, 그 하나를 뒤에 두고 한 번 쳐요.",
+      },
+      {
+        id: "opposite",
+        alg: flip(EP_OPPOSITE),
+        caption: "제자리인 둘이 마주 봄",
+        action: "그대로 한 번 치면 이웃한 둘을 찾을 수 있어요.",
+      },
+    ],
+  },
   "beginner-tf-twist": {
     stage: { path: "twist-first", id: "twist" },
     set: "2look-oll",
     mask: "oll",
-    title: "위 엣지가 맞은 윗면 모양 여덟(정한 쥐기대로 그림)",
+    title: "위 엣지가 맞은 윗면 모양 여덟(쥘 모습대로 그림)",
     cases: [
       {
         id: "base",
         alg: flip(CORNER_TURN),
-        caption: "기본형: 하나, 앞-오른쪽 위 노란색이 앞",
-        action: "한 번 치면 다 맞아요.",
+        caption: "기본형: 둘이 대각선",
+        action: "그림처럼 쥐고 한 번 치면 다 맞아요.",
       },
       {
-        id: "fish",
-        alg: flip(TWIST_FISH),
-        caption: "하나, 노란색 오른쪽",
-        action:
-          "위를 보는 블럭을 앞-왼쪽 위에 두면 앞-오른쪽 위 노란색이 오른쪽이에요. 한 번 치면 기본형, 쥔 그대로 한 번 더 쳐요.",
+        id: "a",
+        alg: flip(TW_A),
+        caption: "둘, 옆을 보는 둘이 마주 봄",
+        action: "위를 보는 둘을 왼쪽에 두고 한 번 치면 기본형이에요.",
       },
       {
-        id: "side",
-        alg: flip(TWIST_SIDE),
-        caption: "둘, 이웃하고 옆을 보는 둘이 다른 면",
-        action: "위를 보는 둘을 오른쪽에 두고 한 번 쳐요.",
+        id: "b",
+        alg: flip(TW_B),
+        caption: "둘, 옆을 보는 둘이 한 면",
+        action: "위를 보는 둘을 오른쪽에 두고 한 번 치면 기본형이에요.",
       },
       {
-        id: "front",
-        alg: flip(TWIST_FRONT),
-        caption: "둘, 이웃하고 옆을 보는 둘이 한 면",
-        action: "옆을 보는 둘을 앞에 두고 한 번 쳐요.",
+        id: "c",
+        alg: flip(TW_C),
+        caption: "하나, 앞-왼쪽 노란색이 앞",
+        action: "위를 보는 블럭을 뒤-왼쪽 위에 두고 한 번 치면 기본형이에요.",
       },
       {
-        id: "diagonal",
-        alg: flip(TWIST_DIAGONAL),
-        caption: "둘, 대각선",
-        action:
-          "위를 보는 둘을 앞-오른쪽·뒤-왼쪽 위에, 앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 쳐요.",
+        id: "d",
+        alg: flip(TW_D),
+        caption: "하나, 앞-왼쪽 노란색이 왼쪽",
+        action: "위를 보는 블럭을 앞-오른쪽 위에 두고 한 번 치면 기본형이에요.",
       },
       {
-        id: "none-back",
-        alg: flip(TWIST_NONE_BACK),
-        caption: "없음, 노란색 둘인 옆면 하나",
-        action: "그 옆면을 뒤에 두고 한 번 치면 기본형이에요.",
-      },
-      {
-        id: "none-sides",
-        alg: flip(TWIST_NONE_SIDES),
+        id: "cross",
+        alg: flip(TW_CROSS),
         caption: "없음, 마주 보는 두 옆면에 둘씩",
-        action: "둘씩을 왼쪽과 오른쪽에 두고 한 번 치면 기본형이에요.",
+        action: "둘씩을 앞과 뒤에 두고 한 번 쳐요.",
+      },
+      {
+        id: "bar",
+        alg: flip(TW_BAR),
+        caption: "없음, 노란색 둘인 옆면 하나",
+        action: "그 옆면을 왼쪽에 두고 한 번 쳐요.",
       },
       { id: "done", alg: "z2", caption: "넷 다 위", action: "끝이에요." },
     ],
@@ -380,23 +467,20 @@ export const BEGINNER_CASE_SHEETS: Record<
       {
         id: "a",
         alg: flip(CORNER_A),
-        caption:
-          "하나, 앞-오른쪽 위에 두면 앞-왼쪽 위 블럭의 제자리가 뒤-왼쪽 위",
-        action: "남은 셋을 시계 방향으로, 그대로 A를 한 번 쳐요.",
+        caption: "하나, 남은 셋을 시계 방향으로",
+        action: "제자리 블럭을 앞-오른쪽 위에 두고 공식 A를 한 번 쳐요.",
       },
       {
         id: "b",
         alg: flip(`y ${CORNER_B}`),
-        caption:
-          "하나, 앞-오른쪽 위에 두면 앞-왼쪽 위 블럭의 제자리가 뒤-오른쪽 위",
-        action:
-          "남은 셋을 반시계 방향으로, 제자리 블럭을 y로 앞-왼쪽 위에 두고 공식 B를 한 번 쳐요.",
+        caption: "하나, 남은 셋을 반시계 방향으로",
+        action: "제자리 블럭을 앞-왼쪽 위에 두고 공식 B를 한 번 쳐요.",
       },
       {
         id: "none",
         alg: flip(PLACE_NONE),
         caption: "없음, 코너 블럭 둘씩이 서로 바뀜",
-        action: "그대로 A를 한 번 치면 제자리가 하나 생겨요.",
+        action: "그대로 공식 A를 한 번 치면 제자리가 하나 생겨요.",
       },
     ],
   },
@@ -411,51 +495,67 @@ export interface TwistFlowNode {
   title: string;
   /** 정한 쥐기로 공식을 한 번 치면 가는 모양(다 맞음은 없음) */
   to?: string;
+  /** 관계도에서의 줄(0 위)과 칸(0~3, 넷으로 나눈 폭). 줄 하나에 칸 하나만 쓰면 가운데 */
+  row: number;
+  col?: number;
 }
 
 /**
- * 코너 방향 관계도(2026-11-26 사용자 「각 모양에서 저렇게 잡고 공식을 쓰면 어떤 모양이 되는지 서로간의 관계도」).
- * 모양마다 정한 쥐기로 공식을 한 번 치면 가는 모양. 그림은 그 경우의 쥐기대로 놓은 모습이다. 시험이 엔진으로 본다
+ * 코너 방향 관계도(2026-11-26 사용자 「각 모양에서 설명서처럼 잡고 공식을 쓰면 어떤 모양이 되는지 서로간의 관계도」).
+ * 모양마다 그림처럼 쥐고 공식을 한 번 치면 가는 모양으로 화살표를 잇는다. 위에서 아래로 「하나도 없음 → 둘·하나 →
+ * 기본형 → 다 맞음」. 그림은 그 경우의 쥐기대로 놓은 모습이다(아래가 앞). 시험이 엔진으로 본다
  */
 export const TWIST_FLOW: TwistFlowNode[] = [
   {
-    id: "side",
-    alg: flip(TWIST_SIDE),
-    title: "둘, 옆을 보는 둘이 다른 면",
-    to: "fish",
+    id: "bar",
+    alg: flip(TW_BAR),
+    title: "없음, 둘인 면 하나",
+    to: "b",
+    row: 0,
+    col: 1,
   },
   {
-    id: "front",
-    alg: flip(TWIST_FRONT),
-    title: "둘, 옆을 보는 둘이 한 면",
-    to: "fish",
+    id: "cross",
+    alg: flip(TW_CROSS),
+    title: "없음, 둘씩 마주 봄",
+    to: "d",
+    row: 0,
+    col: 3,
   },
   {
-    id: "diagonal",
-    alg: flip(TWIST_DIAGONAL),
-    title: "둘, 대각선",
-    to: "fish",
-  },
-  {
-    id: "none-back",
-    alg: flip(TWIST_NONE_BACK),
-    title: "없음, 둘인 옆면 하나",
+    id: "a",
+    alg: flip(TW_A),
+    title: "둘, 옆이 마주 봄",
     to: "base",
+    row: 1,
+    col: 0,
   },
   {
-    id: "none-sides",
-    alg: flip(TWIST_NONE_SIDES),
-    title: "없음, 마주 보는 둘씩",
+    id: "b",
+    alg: flip(TW_B),
+    title: "둘, 옆이 한 면",
     to: "base",
+    row: 1,
+    col: 1,
   },
   {
-    id: "fish",
-    alg: flip(TWIST_FISH),
-    title: "하나, 노란색 오른쪽",
+    id: "c",
+    alg: flip(TW_C),
+    title: "하나, 앞-왼쪽이 앞",
     to: "base",
+    row: 1,
+    col: 2,
   },
-  { id: "base", alg: flip(CORNER_TURN), title: "기본형", to: "done" },
-  { id: "done", alg: "z2", title: "다 맞음" },
+  {
+    id: "d",
+    alg: flip(TW_D),
+    title: "하나, 앞-왼쪽이 왼쪽",
+    to: "base",
+    row: 1,
+    col: 3,
+  },
+  { id: "base", alg: flip(CORNER_TURN), title: "기본형", to: "done", row: 2 },
+  { id: "done", alg: "z2", title: "다 맞음", row: 3 },
 ];
 
 /** 관계도의 글(용어 순서 시험이 단계 글과 함께 읽는다) */

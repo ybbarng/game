@@ -49,7 +49,15 @@ import {
   SPLIT_RIGHT,
   WHITE_UP,
 } from "./lessons-cfop";
-import { CORNER_A, CORNER_B, CORNER_TURN } from "./twist-first-path";
+import {
+  CORNER_A,
+  CORNER_B,
+  CORNER_TURN,
+  EDGE_CYCLE,
+  EDGE_FLIP,
+  SECOND_A,
+  SECOND_B,
+} from "./twist-first-path";
 import { ZZ_PAIR_CASES } from "./zz-path";
 
 export type MapNodeId =
@@ -404,7 +412,32 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["333-ll-corner-twist"],
     formulas: [TWIST],
   },
-  // 초보자, 코너 방향 먼저(신광사 큐브 설명서의 해법, docs/47 16-33): 옆면 맞추기 뒤 코너 방향 → 코너 위치
+  // 초보자, 코너 방향 먼저(신광사 큐브 설명서의 해법, docs/47 16-33): 첫 층 뒤 설명서 공식으로 둘째 층 엣지 → 엣지 방향 →
+  // 엣지 위치 → 코너 방향 → 코너 위치
+  {
+    id: "twist-first-second",
+    from: "first-layer",
+    to: "f2l",
+    title: "둘째 층 엣지",
+    lessons: ["333-tf-second"],
+    formulas: [SECOND_A, SECOND_B],
+  },
+  {
+    id: "twist-first-eo",
+    from: "f2l",
+    to: "yellow-cross",
+    title: "엣지 방향",
+    lessons: ["333-tf-eo"],
+    formulas: [EDGE_FLIP],
+  },
+  {
+    id: "twist-first-ep",
+    from: "yellow-cross",
+    to: "yellow-edges",
+    title: "엣지 위치",
+    lessons: ["333-tf-ep"],
+    formulas: [EDGE_CYCLE],
+  },
   {
     id: "twist-first",
     from: "yellow-edges",
@@ -823,9 +856,11 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     title: "초보자(코너 방향 먼저)",
     course: "333-twist-first",
     edges: [
-      ...BEGINNER_LOWER,
-      "beginner-yellow-cross",
-      "beginner-edges",
+      "cross",
+      "first-corners",
+      "twist-first-second",
+      "twist-first-eo",
+      "twist-first-ep",
       "twist-first",
       "twist-first-place",
     ],
@@ -1158,7 +1193,7 @@ export const MAP_MEASURE: {
   seeds: 30,
   turns: {
     beginner: 127,
-    "beginner-twist-first": 124,
+    "beginner-twist-first": 129,
     "two-look": 114,
     cfop: 55,
     roux: 54,
@@ -1182,11 +1217,11 @@ export const MAP_MEASURE: {
     "beginner-twist-first": {
       cross: 15,
       "first-corners": 30,
-      "second-layer": 35,
-      "beginner-yellow-cross": 6,
-      "beginner-edges": 9,
-      "twist-first": 19,
-      "twist-first-place": 11,
+      "twist-first-second": 35,
+      "twist-first-eo": 9,
+      "twist-first-ep": 9,
+      "twist-first": 17,
+      "twist-first-place": 16,
     },
     "two-look": {
       cross: 15,

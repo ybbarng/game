@@ -98,24 +98,30 @@ const RUNS: Partial<Record<MapMethodId, (text: string) => Run>> = {
     return run;
   },
   "beginner-twist-first": (text) => {
-    const { s: start, run } = beginnerLower(play(solvedCube(3), text));
-    let s = start;
+    // 첫 층까지는 초보자 규칙, 흰 면을 아래로 뒤집은 뒤 다섯 단계는 신광사 설명서 공식(twist-first-path.ts)
+    let s = play(solvedCube(3), text);
+    const run: Run = {};
     for (const [edge, id] of [
-      ["beginner-yellow-cross", "yellow-cross"],
-      ["beginner-edges", "edges"],
+      ["cross", "cross"],
+      ["first-corners", "corners"],
     ] as const) {
       const r = runStage(id, s);
       s = r.state;
       run[edge] = join(r.steps.map(stepMoves));
     }
     const legs: [string, TwistFirstStageId][] = [
+      ["twist-first-second", "second"],
+      ["twist-first-eo", "eo"],
+      ["twist-first-ep", "ep"],
       ["twist-first", "twist"],
       ["twist-first-place", "place"],
     ];
     for (const [edge, id] of legs) {
+      const flip = id === "second" ? "z2" : "";
+      s = play(s, flip);
       const r = runTwistFirstStage(id, s);
       s = r.state;
-      run[edge] = join(r.steps.map(twistFirstMoves));
+      run[edge] = join([flip, ...r.steps.map(twistFirstMoves)]);
     }
     return run;
   },

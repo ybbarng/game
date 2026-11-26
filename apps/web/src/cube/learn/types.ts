@@ -306,11 +306,14 @@ export const SHEETS = {
   "beginner-edges": "옆면 맞추기: 윗면을 돌려 찾은 세 경우",
   "beginner-corner-place": "코너 자리: 제자리 코너 블럭으로 가르는 네 경우",
   "beginner-corner-twist": "코너 방향: 앞-오른쪽 위 코너 블럭의 세 경우",
-  // 3×3 초보자(코너 방향 먼저) 마지막 층(beginner-cases.ts, docs/47 16-33)
+  // 3×3 초보자(코너 방향 먼저, 신광사 설명서 3~7단계)(beginner-cases.ts, docs/47 16-33)
+  "beginner-tf-second": "둘째 층 엣지: 넣을 엣지 블럭의 세 경우",
+  "beginner-tf-eo": "엣지 방향: 윗면 모양 넷",
+  "beginner-tf-ep": "엣지 위치: 윗면을 반시계 방향으로 돌려 찾은 세 경우",
   "beginner-tf-twist": "코너 방향: 위 엣지가 맞은 윗면 모양 여덟",
   "beginner-tf-place": "코너 위치: 제자리 코너 블럭으로 가르는 경우",
   "tf-flow":
-    "코너 방향 관계도: 모양마다 정한 쥐기로 공식을 한 번 치면 가는 모양(beginner-cases.ts TWIST_FLOW)",
+    "코너 방향 관계도: 모양마다 그림처럼 쥐고 공식을 한 번 치면 가는 모양(beginner-cases.ts TWIST_FLOW)",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

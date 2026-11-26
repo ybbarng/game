@@ -105,23 +105,24 @@ function twoLookDemoMoves(scramble: string): string[] {
   return [text(lower), text(ll.oll), text(ll.pll)];
 }
 
-// 코너 방향 먼저: 초보자와 같은 섞기를 노란 십자까지는 초보자 단원 규칙으로, 그 뒤는 twist-first-path.ts로(docs/47 16-33)
+// 코너 방향 먼저: 첫 층까지는 초보자 단원 규칙으로, 그 뒤(흰 면을 아래로 뒤집고)는 twist-first-path.ts로(docs/47 16-33).
+// 초보자 섞기는 엣지 방향 뒤 위 엣지가 윗면 돌리기만으로 맞아 「엣지 위치」 단계가 비므로, 일곱 단계마다 할 일이 있는 섞기를 쓴다
+const TWIST_FIRST_SCRAMBLE =
+  "D B2 D2 B L B U R2 B2 F D' L2 R2 F2 B2 F U D' L2 B'";
 function twistFirstDemoMoves(scramble: string): string[] {
   let s = play(solvedCube(3), scramble);
   const text = (xs: string[]) => xs.filter(Boolean).join(" ");
-  const lower = (
-    ["cross", "corners", "second", "yellow-cross", "edges"] as const
-  ).map((id) => {
-    const flip = id === "second" ? "z2" : "";
-    s = play(s, flip);
+  const lower = (["cross", "corners"] as const).map((id) => {
     const r = runStage(id, s);
     s = r.state;
-    return text([flip, ...r.steps.map(stepMoves)]);
+    return text(r.steps.map(stepMoves));
   });
   const rest = TWIST_FIRST_ORDER.map((id) => {
+    const flip = id === "second" ? "z2" : "";
+    s = play(s, flip);
     const r = runTwistFirstStage(id, s);
     s = r.state;
-    return text(r.steps.map(twistFirstMoves));
+    return text([flip, ...r.steps.map(twistFirstMoves)]);
   });
   return [...lower, ...rest];
 }
@@ -293,32 +294,37 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     ],
   },
   "333-twist-first": {
-    // 옆면 맞추기까지 다섯은 3×3 처음 맞추기 강의에서 배운다(이 강의에는 단원이 없다). 해법 카드 띠와 같은 일곱 단계
+    // 흰 십자·첫 층 코너는 3×3 처음 맞추기 강의에서 배운다(이 강의에는 단원이 없다). 그 뒤 다섯은 신광사 설명서 3~7단계.
+    // 해법 카드 띠와 같은 일곱 단계
     stages: [
       { title: "흰 십자", lessons: [], goal: "white-cross" },
       { title: "첫 층 코너", lessons: [], goal: "first-layer" },
-      { title: "둘째 층 엣지", lessons: [], goal: "second-layer" },
-      { title: "노란 십자", lessons: [], goal: "yellow-cross" },
-      { title: "옆면 맞추기", lessons: [], goal: "yellow-edges" },
+      {
+        title: "둘째 층 엣지",
+        lessons: ["333-tf-second"],
+        goal: "second-layer",
+      },
+      { title: "엣지 방향", lessons: ["333-tf-eo"], goal: "yellow-cross" },
+      { title: "엣지 위치", lessons: ["333-tf-ep"], goal: "yellow-edges" },
       { title: "코너 방향", lessons: ["333-tf-twist"], goal: "oll" },
       { title: "코너 위치", lessons: ["333-tf-place"], goal: "solved" },
     ],
-    lead: "예전 문방구 신광사 큐브 설명서의 해법이에요. 옆면 맞추기까지는 3×3 처음 맞추기와 같아요. 그 뒤 위 층 코너 블럭의 방향, 그러니까 노란색이 어느 쪽을 보는지를 먼저 맞추고 자리를 나중에 맞춰요.",
+    lead: "예전 문방구 신광사 큐브 설명서의 해법이에요. 첫 층까지는 3×3 처음 맞추기와 같아요. 그 뒤 위 층은 엣지 블럭의 방향과 자리를 맞추고, 코너 블럭은 방향, 그러니까 노란색이 어느 쪽을 보는지를 먼저 맞추고 자리를 나중에 맞춰요.",
     demo: {
-      scramble: BEGINNER_333_SCRAMBLE,
-      moves: twistFirstDemoMoves(BEGINNER_333_SCRAMBLE),
+      scramble: TWIST_FIRST_SCRAMBLE,
+      moves: twistFirstDemoMoves(TWIST_FIRST_SCRAMBLE),
       source:
-        "단원 규칙(옆면 맞추기까지 beginner-path.ts runStage · 그 뒤 twist-first-path.ts runTwistFirstStage)",
+        "단원 규칙(첫 층까지 beginner-path.ts runStage · 그 뒤 twist-first-path.ts runTwistFirstStage)",
     },
     quizzes: [
       {
-        question: "이 해법은 옆면 맞추기 다음에 무엇부터 맞출까요?",
+        question: "이 해법은 위 층 엣지 블럭을 맞춘 다음 무엇부터 맞출까요?",
         choices: [
           "위 층 코너 블럭의 방향(노란색을 모두 위로)",
           "위 층 코너 블럭의 자리",
         ],
         answer: 0,
-        why: "옆면 맞추기 뒤에 코너 블럭의 방향을 먼저 맞추고, 마지막에 코너 블럭의 자리를 맞춰요.",
+        why: "위 층 엣지 블럭 뒤에 코너 블럭의 방향을 먼저 맞추고, 마지막에 코너 블럭의 자리를 맞춰요.",
       },
     ],
   },

@@ -81,6 +81,9 @@ describe("단계마다 모든 경우 그림", () => {
       "333-ll-edges": "beginner-edges",
       "333-ll-corner-place": "beginner-corner-place",
       "333-ll-corner-twist": "beginner-corner-twist",
+      "333-tf-second": "beginner-tf-second",
+      "333-tf-eo": "beginner-tf-eo",
+      "333-tf-ep": "beginner-tf-ep",
       "333-tf-twist": "beginner-tf-twist",
       "333-tf-place": "beginner-tf-place",
     };

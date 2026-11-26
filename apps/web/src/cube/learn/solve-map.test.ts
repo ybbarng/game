@@ -290,8 +290,11 @@ describe("공식 수", () => {
       "beginner-edges": 1,
       "beginner-corner-place": 1,
       "beginner-corner-twist": 1,
+      // 신광사 설명서 3~7단계: 둘째 층 A·B, 엣지 방향, 엣지 위치, 코너 방향, 코너 위치 A·B
+      "twist-first-second": 2,
+      "twist-first-eo": 1,
+      "twist-first-ep": 1,
       "twist-first": 1,
-      // 설명서 7단계 A·B(서로 왼쪽과 오른쪽을 바꾼 꼴)
       "twist-first-place": 2,
       "two-look-cross": 3,
       "two-look-face": 7,
@@ -367,16 +370,18 @@ describe("공식 수", () => {
   });
 
   it("앞 길에서 배운 공식은 뒤 길에서 새로 세지 않는다(첫 층 코너에서 배운 코너 돌리기)", () => {
-    // 코너 방향 먼저: 옆면 맞추기까지는 초보자와 같고, 뒤 두 걸음은 신광사 설명서의 새 공식(1, 2)
+    // 코너 방향 먼저: 첫 층까지는 초보자와 같고, 뒤 다섯 걸음은 신광사 설명서의 새 공식
     const twistFirst = newFormulas(method("beginner-twist-first"));
     expect(
       [
         "first-corners",
-        "beginner-edges",
+        "twist-first-second",
+        "twist-first-eo",
+        "twist-first-ep",
         "twist-first",
         "twist-first-place",
       ].map((id) => twistFirst.get(id)),
-    ).toEqual([1, 1, 1, 2]);
+    ).toEqual([1, 2, 1, 1, 1, 2]);
     expect(newFormulas(method("beginner")).get("beginner-corner-twist")).toBe(
       0,
     );

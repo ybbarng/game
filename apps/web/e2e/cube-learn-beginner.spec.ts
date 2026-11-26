@@ -43,12 +43,37 @@ test("배우기: 첫 층 코너·코너 자리·코너 방향은 모양마다 �
   await shot(page, "learn-beginner-corner-twist", info.project.name);
 });
 
-test("배우기: 코너 방향 먼저(신광사 해법) 두 강은 모든 경우 그림·관계도·덩어리 짜임을 보인다(docs/47 16-33)", async ({
+test("배우기: 코너 방향 먼저(신광사 해법) 다섯 강은 모든 경우 그림·관계도·덩어리 짜임을 보인다(docs/47 16-33)", async ({
   page,
 }, info) => {
   const cases = (name: string) =>
     page.locator(`[data-sheet="${name}"] [data-sheet-case]`);
   const chunks = page.locator("[data-alg-chunks] [data-alg-chunk]");
+  const body = page.locator("[data-step-body]");
+
+  await page.goto("/cube/learn?lesson=333-tf-second");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-second")).toHaveCount(3);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(2);
+  await shot(page, "learn-tf-second-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-eo");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-eo")).toHaveCount(4);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(3);
+  await expect(body).toContainText("R' U' F' U F R");
+  await shot(page, "learn-tf-eo-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-ep");
+  await goStep(page, 1);
+  await expect(chunks).toHaveCount(3);
+  await expect(body).toContainText("R' U' R U' R' U2 R");
+  await shot(page, "learn-tf-ep-chunks", info.project.name);
+  await goStep(page, 2);
+  await expect(cases("beginner-tf-ep")).toHaveCount(3);
+  await shot(page, "learn-tf-ep-cases", info.project.name);
 
   await page.goto("/cube/learn?lesson=333-tf-twist");
   await goStep(page, 1);
@@ -56,29 +81,41 @@ test("배우기: 코너 방향 먼저(신광사 해법) 두 강은 모든 경우
   await shot(page, "learn-tf-twist-cases", info.project.name);
   await goStep(page, 2);
   await expect(chunks).toHaveCount(4);
-  await expect(page.locator("[data-step-body]")).toContainText(
-    "첫 층 코너 돌리기 R' D' R D와 오른쪽 층의 방향만 반대인 같은 꼴",
-  );
+  await expect(body).toContainText("R' F' L' F R F' L F");
   await shot(page, "learn-tf-twist-chunks", info.project.name);
-  // 관계도: 일곱 모양 + 다 맞음, 둘인 모양은 하나짜리 모양으로, 기본형은 다 맞음으로
-  await goStep(page, 6);
+  // 관계도(공식 시연 바로 다음 쪽): 일곱 모양 + 다 맞음, 하나도 없음 → 둘·하나 → 기본형 → 다 맞음을 화살표로 잇는다
+  await goStep(page, 3);
   const flow = page.locator('[data-sheet="tf-flow"]');
   await expect(flow.locator("[data-flow-node]")).toHaveCount(8);
-  await expect(flow.locator('[data-flow-node="side"]')).toHaveAttribute(
-    "data-flow-to",
-    "fish",
-  );
-  await expect(flow.locator('[data-flow-node="base"]')).toHaveAttribute(
-    "data-flow-to",
-    "done",
-  );
+  await expect(flow.locator("[data-flow-front]")).toHaveCount(8);
+  const edges = flow.locator("[data-flow-edge]");
+  await expect(edges).toHaveCount(7);
+  for (const e of [
+    "bar-b",
+    "cross-d",
+    "a-base",
+    "b-base",
+    "c-base",
+    "d-base",
+    "base-done",
+  ])
+    await expect(flow.locator(`[data-flow-edge="${e}"]`)).toHaveCount(1);
+  // 화살표는 위 마디의 아래에서 아래 마디의 위로 내려간다(휴대폰 폭에서도 길이가 있다)
+  for (const e of await edges.all()) {
+    const [y1, y2] = await Promise.all([
+      e.getAttribute("y1"),
+      e.getAttribute("y2"),
+    ]);
+    expect(Number(y2) - Number(y1)).toBeGreaterThan(10);
+  }
   await shot(page, "learn-tf-twist-flow", info.project.name);
 
   await page.goto("/cube/learn?lesson=333-tf-place");
   await goStep(page, 1);
   await expect(cases("beginner-tf-place")).toHaveCount(4);
   await goStep(page, 2);
-  await expect(chunks).toHaveCount(5);
+  await expect(chunks).toHaveCount(6);
+  await expect(body).toContainText("R U B L B' R' B L' B' R U' R'");
   await shot(page, "learn-tf-place-chunks", info.project.name);
 });
 
