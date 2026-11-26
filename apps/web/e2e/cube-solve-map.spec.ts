@@ -54,7 +54,9 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
   const cfop = page.locator('[data-card="cfop"]');
   await expect(cfop.locator("[data-strip-node]")).toHaveCount(5);
   await expect(cfop.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
-  await expect(cfop.locator("[data-card-total]")).toHaveText("공식 87 · 55수");
+  await expect(cfop.locator("[data-card-total]")).toHaveText(
+    "공식 87개 · 55수",
+  );
   expect(
     await cfop
       .locator("[data-strip-node]")
@@ -148,8 +150,37 @@ test("전체 보기: 해법을 여럿 고르면 주소에 담기고 고른 해�
   await expect(page.locator('[data-edge-line="cross"]')).toHaveCount(2);
 });
 
+test("전체 보기: 고르지 않은 해법의 걸음 꼬리표도 단계 이름·공식 수·평균 수를 고른 길과 같은 모습으로 보인다", async ({
+  page,
+}) => {
+  await page.goto("/cube/methods?view=map&sel=beginner");
+  await expect(page.locator('[data-solve-map="map"]')).toBeVisible();
+  // CFOP는 고르지 않았지만 F2L 걸음에 이름과 공식 수가 있다
+  const f2l = page.locator('[data-edge="f2l"]');
+  await expect(f2l).toContainText("F2L");
+  await expect(f2l).toContainText("공식 9개 · 23수");
+  // 해법 칩의 공식 수도 개수로 읽힌다(「공식 87」은 87번 공식처럼 읽힌다)
+  await expect(page.locator('[data-method="cfop"]')).toContainText("공식 87개");
+  // 고른 길(초보자 흰 십자)과 같은 모습(포커스로 바꾸지 않는다)
+  expect(await f2l.getAttribute("class")).toBe(
+    await page.locator('[data-edge="cross"]').getAttribute("class"),
+  );
+  // 해법을 골라도 지점 자리는 그대로(꼬리표 크기를 고른 해법과 상관없이 어림한다)
+  const at = () =>
+    page
+      .locator('[data-node="f2l"]')
+      .evaluate(
+        (el) =>
+          `${(el as HTMLElement).style.left},${(el as HTMLElement).style.top}`,
+      );
+  const before = await at();
+  await page.locator('[data-method="cfop"]').click();
+  await expect(page).toHaveURL(/sel=beginner%2Ccfop/);
+  expect(await at()).toBe(before);
+});
+
 /**
- * 지도 안 상자(지점 그림·이름, 걸음 꼬리표) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의 그림·이름끼리는
+ * 지도 안 상자(지점 그림·이름, 걸음 꼬리표, 패리티 고리 칸) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의 그림·이름끼리는
  * 한 덩이라 보지 않는다
  */
 async function overlaps(page: Page) {
@@ -169,6 +200,11 @@ async function overlaps(page: Page) {
       el.closest("[data-node]")?.getAttribute("data-node") ?? "?";
     add("[data-node] [data-node-part]", (el) => `node:${nodeOf(el)}`);
     add("[data-edge]", (el) => `edge:${el.getAttribute("data-edge")}`);
+    // 패리티 고리 칸(큰 큐브 지도, 4×4에서 들른 3×3 지도)
+    add(
+      "[data-parity-loop]",
+      (el) => `loop:${el.getAttribute("data-parity-loop")}`,
+    );
     const out: string[] = [];
     for (const [i, a] of boxes.entries())
       for (const b of boxes.slice(i + 1)) {
@@ -181,28 +217,42 @@ async function overlaps(page: Page) {
   });
 }
 
-test("전체 보기: 지점 그림·이름·꼬리표가 서로 겹치지 않는다(전체 보기·확대, 3×3·다른 해법·4×4, 기록 있음)", async ({
+/** 겹침을 볼 지도: 크기마다 기본·여러 해법, 3×3은 다른 해법 펼침·모든 해법, 큰 큐브 「3×3 맞추기」 펼침과 들르기 */
+const OVERLAP_MAPS = [
+  [2, ""],
+  [2, "sel=222-beginner,222-from333,ortega"],
+  [3, "sel=beginner"],
+  [3, "sel=beginner,cfop,zz&more=1"],
+  [
+    3,
+    "sel=beginner,beginner-twist-first,two-look,cfop,roux,zz,petrus,zz-coll,zz-zbll,cfop-1lll,corners-first&more=1",
+  ],
+  [3, "sel=cfop&from=4&x=cfop"],
+  [4, ""],
+  [4, "sel=444-reduction,444-yau"],
+  [4, "sel=444-reduction&x=beginner"],
+  [5, ""],
+] as const;
+
+test("전체 보기: 지점 그림·이름·꼬리표가 서로 겹치지 않는다(전체 보기·확대, 2×2~5×5·여러 해법·다른 해법·펼침, 기록 있음)", async ({
   page,
 }) => {
   await withProgress(page);
-  for (const [n, q] of [
-    [3, "sel=beginner"],
-    [3, "sel=beginner,cfop,zz&more=1"],
-    [4, ""],
-  ] as const) {
+  for (const [n, q] of OVERLAP_MAPS) {
     await page.addInitScript((size) => {
       localStorage.setItem("cube.size.v1", JSON.stringify({ v: 1, n: size }));
     }, n);
     await page.goto(`/cube/methods?view=map&${q}`);
     await expect(page.locator('[data-solve-map="map"]')).toBeVisible();
     await expect(page.locator("[data-node]").first()).toBeVisible();
-    expect(await overlaps(page), `${n} ${q} 전체 보기`).toEqual([]);
+    // 한 지도에서 멈추지 않고 모든 지도의 겹침을 한 번에 보인다(soft)
+    expect.soft(await overlaps(page), `${n} ${q} 전체 보기`).toEqual([]);
     const zoom = page.locator("[data-map-content]");
     const before = await zoom.getAttribute("data-map-zoom");
     for (let i = 0; i < 3; i++)
       await page.getByRole("button", { name: "크게" }).click();
     await expect(zoom).not.toHaveAttribute("data-map-zoom", before ?? "");
-    expect(await overlaps(page), `${n} ${q} 확대`).toEqual([]);
+    expect.soft(await overlaps(page), `${n} ${q} 확대`).toEqual([]);
   }
 });
 
