@@ -518,6 +518,7 @@ const RULE_SIZE: Record<ScrambleRule, CubeSize> = {
   "ll-cross-solved": 3,
   "ll-edges-solved": 3,
   "ll-corners-placed": 3,
+  "ll-corners-unplaced": 3,
   "f2l-one-slot": 3,
   "2x2-random": 2,
   "2x2-first-layer-solved": 2,
@@ -558,6 +559,8 @@ const PLL_ALGS = [
 ];
 const FOUR_C = ["M' U2 M U2", "M U2 M' U2", "M2 U2 M2 U2"];
 const SUNES = ["R U R' U R U2 R'", "R U2 R' U' R U' R'"];
+/** A퍼뮤(PLL_ALGS[4])를 거꾸로 */
+const A_PERM_BACK = "R2 B2 R F R' B2 R F' R";
 const EDGE_CYCLES = [PLL_ALGS[1] as string, PLL_ALGS[2] as string];
 const PLL_222 = [PLL_ALGS[4] as string, PLL_ALGS[3] as string];
 
@@ -685,6 +688,7 @@ const RULE_NEXT: Record<ScrambleRule, GoalName> = {
   "ll-cross-solved": "yellow-edges",
   "ll-edges-solved": "ll-corners-placed",
   "ll-corners-placed": "solved",
+  "ll-corners-unplaced": "solved",
   "f2l-one-slot": "f2l-pair:FR",
   "2x2-random": "2x2-first-layer",
   "2x2-first-layer-solved": "2x2-top-face",
@@ -741,6 +745,17 @@ function ruleOnce(rule: ScrambleRule, rng: RngState): PuzzleState {
     case "ll-corners-placed":
     case "2x2-corners-placed":
       return fromAlg(n, randomTwists(rng), z2Solved());
+    case "ll-corners-unplaced":
+      // 위 코너 셋을 돌리는 A퍼뮤와 그 거꾸로를 돌려 쥔 채 몇 번: 위 엣지와 윗면은 그대로, 코너 자리만 섞인다
+      return fromAlg(
+        n,
+        Array.from(
+          { length: 3 },
+          () =>
+            `${pick(rng, ["", "y", "y'", "y2"])} ${pick(rng, [PLL_ALGS[4] as string, A_PERM_BACK])}`,
+        ).join(" "),
+        z2Solved(),
+      );
     case "first-layer-solved":
     case "2x2-first-layer-solved":
       return z2(keepRandom(n, rng, [...g.cross, ...g.firstLayerCorners]));

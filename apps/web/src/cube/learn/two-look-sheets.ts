@@ -2,7 +2,11 @@
 // 초보자 해법 마지막 층과 나란히 놓은 견주기. 화면은 TwoLookSheets.tsx가 그린다. 글은 term-places.ts가 단계 글과 함께
 // 읽어 용어 순서 시험(course-terms.test.ts)이 본다.
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
-import { beginnerSheetText, isBeginnerSheet } from "./beginner-cases";
+import {
+  beginnerSheetText,
+  isBeginnerSheet,
+  twistFlowText,
+} from "./beginner-cases";
 import { Z_PERM_AUF } from "./lessons-2look";
 import { LL_COMPARE } from "./ll-compare";
 import type { AlgCase, AlgSet, MaskName, SheetName } from "./types";
@@ -98,6 +102,7 @@ export const LL_COMPARE_TABLE = {
 /** 표의 글(용어 순서 시험이 단계 글과 함께 읽는다). 블라인드 글자 표처럼 글이 거의 없는 표는 "" */
 export function sheetText(name: SheetName): string {
   if (isBeginnerSheet(name)) return beginnerSheetText(name);
+  if (name === "tf-flow") return twistFlowText();
   if (name === "2look-cases")
     return TWO_LOOK_GROUPS.flatMap((g) => [
       g.title,

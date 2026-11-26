@@ -5,7 +5,7 @@ import { isBeginnerSheet } from "../learn/beginner-cases";
 import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "../learn/bld";
 import { nextCourses } from "../learn/courses";
 import type { AlgSet, Course, SheetName } from "../learn/types";
-import { BeginnerCasesSheet } from "./BeginnerCasesSheet";
+import { BeginnerCasesSheet, TwistFlowSheet } from "./BeginnerCasesSheet";
 import { MoveText } from "./MoveChip";
 import { LlCompareSheet, TwoLookCasesSheet } from "./TwoLookSheets";
 
@@ -146,6 +146,7 @@ export function LessonSheet({
 }) {
   if (isBeginnerSheet(name))
     return <BeginnerCasesSheet name={name} colors={colors} />;
+  if (name === "tf-flow") return <TwistFlowSheet colors={colors} />;
   if (name === "2look-cases") return <TwoLookCasesSheet colors={colors} />;
   if (name === "ll-compare") return <LlCompareSheet />;
   const sheet = SHEET_DATA[name];

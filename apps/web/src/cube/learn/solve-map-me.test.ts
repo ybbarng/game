@@ -30,14 +30,14 @@ describe("진도 밝기", () => {
       teachingLessons(edge("cross"), method("beginner"), courseOf),
       // 2단계 과정엔 십자 강이 없어 앞 과정(초보자) 강
       teachingLessons(edge("cross"), method("two-look"), courseOf),
-      // 코너 방향 먼저: 노란 십자는 초보자 강, 노란 면부터는 코너 방향 먼저 강
+      // 코너 방향 먼저: 옆면 맞추기는 초보자 강, 코너 방향은 코너 방향 먼저 강
       teachingLessons(
-        edge("beginner-yellow-cross"),
+        edge("beginner-edges"),
         method("beginner-twist-first"),
         courseOf,
       ),
       teachingLessons(
-        edge("twist-first-face"),
+        edge("twist-first"),
         method("beginner-twist-first"),
         courseOf,
       ),
@@ -46,8 +46,8 @@ describe("진도 밝기", () => {
       ["cfop-cross"],
       ["333-safe-turns", "333-white-cross"],
       ["333-safe-turns", "333-white-cross"],
-      ["333-ll-cross"],
-      ["333-tf-face"],
+      ["333-ll-edges"],
+      ["333-tf-twist"],
       [],
     ]);
   });
@@ -68,7 +68,7 @@ describe("진도 밝기", () => {
       p("cross", "beginner", half),
       p("cross", "cfop", half),
       p("petrus-f2l", "petrus", all),
-      p("twist-first-edges", "beginner-twist-first", all),
+      p("twist-first-place", "beginner-twist-first", all),
     ]).toEqual([
       "done",
       "learning",
@@ -77,33 +77,6 @@ describe("진도 밝기", () => {
       "none",
       "none",
       "done",
-    ]);
-  });
-
-  it("코너 방향 먼저 카드 칸: 노란 십자까지 초보자 강을 마치고 노란 면 강을 시작하면 노란 십자 완료·노란 면 배우는 중", () => {
-    const m = method("beginner-twist-first");
-    const pr: LearnProgress = {
-      lessons: {
-        "333-safe-turns": done,
-        "333-white-cross": done,
-        "333-first-corners-up": done,
-        "333-second-layer": done,
-        "333-ll-cross": done,
-        "333-tf-face": { passed: [3], done: false },
-      },
-    };
-    expect(
-      methodStages(m).map(
-        (s) => `${s.to}:${stageProgress(s.edges, m, pr, courseOf)}`,
-      ),
-    ).toEqual([
-      "cross:done",
-      "first-layer:done",
-      "f2l:done",
-      "yellow-cross:done",
-      "oll:learning",
-      "pll-corners:none",
-      "solved:none",
     ]);
   });
 

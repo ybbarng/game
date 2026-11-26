@@ -22,7 +22,7 @@ import type { Course, Lesson } from "./types";
  * 「마지막 층을 공식으로」(2단계 OLL·PLL)는 초보자 해법과 CFOP 사이의 다리다(docs/47 16-25).
  */
 const REQUIRES: Record<string, string[]> = {
-  // 코너 방향 먼저는 노란 십자까지 3×3 처음 맞추기 강을 그대로 쓴다(docs/47 16-33)
+  // 코너 방향 먼저(신광사 해법)는 옆면 맞추기까지 3×3 처음 맞추기 강을 그대로 쓴다(docs/47 16-33)
   "333-twist-first": ["333-beginner"],
   "222-from333": ["333-beginner"],
   "333-2look": ["333-beginner"],
@@ -73,11 +73,11 @@ export const METHOD_COURSES: Course[] = [
       "첫 층 코너",
       "둘째 층 엣지",
       "노란 십자",
-      "노란 면",
-      "코너 자리",
-      "엣지 자리",
+      "옆면 맞추기",
+      "코너 방향",
+      "코너 위치",
     ],
-    elsewhere: "흰 십자부터 노란 십자까지는 3×3 처음 맞추기 강의에 있어요.",
+    elsewhere: "흰 십자부터 옆면 맞추기까지는 3×3 처음 맞추기 강의에 있어요.",
   }),
   withFinale(staged(BEGINNER_222), {
     rule: "2x2-random",

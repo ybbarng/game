@@ -18,7 +18,7 @@ import { ZZ_PAIRS } from "../practice/zz";
 import { ALL_ALG_CASES } from "./alg-sets";
 import { TWO_LOOK_OLL } from "./algs-2look";
 import { PLL_CASES } from "./algs-pll";
-import { type PathStageId, play, runStage } from "./beginner-path";
+import { type PathStageId, play, reps, runStage, TWIST } from "./beginner-path";
 import {
   BEGINNER_222_STAGES,
   FROM333_222_STAGES,
@@ -59,7 +59,6 @@ import {
 } from "./solve-map";
 import { methodRun } from "./solve-map-measure";
 import { STAGE_SPECS } from "./stage-map";
-import { runTwistFirstStage, type TwistFirstStageId } from "./twist-first-path";
 import { runZzLl, solveZzByRules, stepMovesLl } from "./zz-path";
 
 const lessons = new Map(
@@ -91,6 +90,8 @@ const REACHED = {
   "yellow-cross": (s) => goalMet(3, s, "yellow-cross"),
   "yellow-edges": (s) => goalMet(3, s, "yellow-edges"),
   "ll-corners-placed": (s) => goalMet(3, s, "ll-corners-placed"),
+  "ll-corners-oriented": (s) =>
+    goalMet(3, s, "yellow-edges") && goalMet(3, s, "oll"),
   oll: (s) => goalMet(3, s, "oll"),
   "pll-corners": (s) => goalMet(3, s, "yellow-corners"),
   solved: (s) => goalMet(3, s, "ll"),
@@ -227,8 +228,7 @@ describe("그래프", () => {
       open("two-look-face", "zz"),
       open("two-look-face", "two-look"),
       open("eoline", "zz"),
-      open("twist-first-face", "beginner-twist-first"),
-      open("beginner-yellow-cross", "beginner-twist-first"),
+      open("twist-first", "beginner-twist-first"),
     ]).toEqual([
       "cfop-cross",
       "333-safe-turns",
@@ -236,12 +236,11 @@ describe("그래프", () => {
       "zz-ll",
       "cfop-2look-oll",
       "zz-eo",
-      "333-tf-face",
-      "333-ll-cross",
+      "333-tf-twist",
     ]);
   });
 
-  it("단원이 없는 걸음은 페트루스 F2L 마무리, 사이트에 없는 마지막 층 갈래·코너 먼저다(코너 방향 먼저 걸음은 모두 강이 있다)", () => {
+  it("단원이 없는 걸음은 페트루스 F2L 마무리, 사이트에 없는 마지막 층 갈래·코너 먼저다(코너 방향 먼저 두 걸음은 신광사 해법 강이 있다)", () => {
     expect(MAP_EDGES.filter((e) => !e.lessons.length).map((e) => e.id)).toEqual(
       [
         "petrus-f2l",
@@ -291,9 +290,9 @@ describe("공식 수", () => {
       "beginner-edges": 1,
       "beginner-corner-place": 1,
       "beginner-corner-twist": 1,
-      "twist-first-face": 1,
-      "twist-first-corners": 1,
-      "twist-first-edges": 1,
+      "twist-first": 1,
+      // 설명서 7단계 A·B(서로 왼쪽과 오른쪽을 바꾼 꼴)
+      "twist-first-place": 2,
       "two-look-cross": 3,
       "two-look-face": 7,
       "two-look-corners": 2,
@@ -347,8 +346,7 @@ describe("공식 수", () => {
       Object.fromEntries(MAP_METHODS.map((m) => [m.id, methodFormulaCount(m)])),
     ).toEqual({
       beginner: 6,
-      // 엣지 돌리기는 노란 면 공식과 그 거울을 이은 것이지만 칠 공식으로는 하나로 센다
-      "beginner-twist-first": 7,
+      "beginner-twist-first": 8,
       "two-look": 19,
       cfop: 87,
       roux: 9,
@@ -369,16 +367,19 @@ describe("공식 수", () => {
   });
 
   it("앞 길에서 배운 공식은 뒤 길에서 새로 세지 않는다(첫 층 코너에서 배운 코너 돌리기)", () => {
-    const beginner = newFormulas(method("beginner"));
-    expect(
-      ["first-corners", "beginner-corner-twist"].map((id) => beginner.get(id)),
-    ).toEqual([1, 0]);
+    // 코너 방향 먼저: 옆면 맞추기까지는 초보자와 같고, 뒤 두 걸음은 신광사 설명서의 새 공식(1, 2)
     const twistFirst = newFormulas(method("beginner-twist-first"));
     expect(
-      ["twist-first-face", "twist-first-corners", "twist-first-edges"].map(
-        (id) => twistFirst.get(id),
-      ),
-    ).toEqual([1, 1, 1]);
+      [
+        "first-corners",
+        "beginner-edges",
+        "twist-first",
+        "twist-first-place",
+      ].map((id) => twistFirst.get(id)),
+    ).toEqual([1, 1, 1, 2]);
+    expect(newFormulas(method("beginner")).get("beginner-corner-twist")).toBe(
+      0,
+    );
   });
 
   it("공식 모음 상황 id는 실제 상황이고, 초보자 공식은 그 단원 수에 들어 있다", () => {
@@ -543,31 +544,22 @@ describe("지점 정의", () => {
     expect(new Set(goals)).toEqual(new Set(["petrus-222", "petrus-223", "eo"]));
   });
 
-  it("코너 방향 먼저: 단원 규칙으로 노란 십자 → 노란 면 → 코너 자리 → 다 맞음", () => {
-    const legs: [MapNodeId, TwistFirstStageId][] = [
-      ["oll", "face"],
-      ["pll-corners", "corners"],
-      ["solved", "edges"],
-    ];
-    for (const seed of SEEDS) {
-      let s = scrambled(seed);
-      for (const stage of [
-        "cross",
-        "corners",
-        "second",
-        "yellow-cross",
-      ] as const) {
-        if (stage === "second") s = play(s, "z2");
-        s = runStage(stage, s).state;
+  it("코너 방향 먼저: 코너마다 R' D' R D를 되풀이하면 위 코너 방향, A퍼뮤로 다 맞음", () => {
+    const aPerm = PLL_CASES.find((c) => c.id === "pll-aa")?.algs[0] as string;
+    for (const seed of SEEDS.slice(0, 3)) {
+      let s = stateForRule("ll-edges-solved", seed);
+      for (let i = 0; i < 4; i++) {
+        const tries = [0, 2, 4].map((k) => play(s, reps(TWIST, k)));
+        s = tries.reduce((a, b) =>
+          yellowCorners(b) > yellowCorners(a) ? b : a,
+        );
+        s = play(s, "U");
       }
-      expect(REACHED["yellow-cross"](s), `씨앗 ${seed}`).toBe(true);
-      const missed: string[] = [];
-      for (const [node, stage] of legs) {
-        s = runTwistFirstStage(stage, s).state;
-        if (!(REACHED as Partial<Record<MapNodeId, Reached>>)[node]?.(s))
-          missed.push(node);
-      }
-      expect(missed, `씨앗 ${seed}`).toEqual([]);
+      expect(REACHED["ll-corners-oriented"](s), `씨앗 ${seed} 방향`).toBe(true);
+      expect(
+        reach(s, [aPerm], HOLDS, 2, REACHED.solved),
+        `씨앗 ${seed} 자리`,
+      ).toBeDefined();
     }
   });
 

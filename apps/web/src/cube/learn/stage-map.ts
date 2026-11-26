@@ -109,15 +109,15 @@ function twoLookDemoMoves(scramble: string): string[] {
 function twistFirstDemoMoves(scramble: string): string[] {
   let s = play(solvedCube(3), scramble);
   const text = (xs: string[]) => xs.filter(Boolean).join(" ");
-  const lower = (["cross", "corners", "second", "yellow-cross"] as const).map(
-    (id) => {
-      const flip = id === "second" ? "z2" : "";
-      s = play(s, flip);
-      const r = runStage(id, s);
-      s = r.state;
-      return text([flip, ...r.steps.map(stepMoves)]);
-    },
-  );
+  const lower = (
+    ["cross", "corners", "second", "yellow-cross", "edges"] as const
+  ).map((id) => {
+    const flip = id === "second" ? "z2" : "";
+    s = play(s, flip);
+    const r = runStage(id, s);
+    s = r.state;
+    return text([flip, ...r.steps.map(stepMoves)]);
+  });
   const rest = TWIST_FIRST_ORDER.map((id) => {
     const r = runTwistFirstStage(id, s);
     s = r.state;
@@ -293,36 +293,32 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     ],
   },
   "333-twist-first": {
-    // 노란 십자까지 넷은 3×3 처음 맞추기 강의에서 배운다(이 강의에는 단원이 없다). 해법 카드 띠와 같은 일곱 단계
+    // 옆면 맞추기까지 다섯은 3×3 처음 맞추기 강의에서 배운다(이 강의에는 단원이 없다). 해법 카드 띠와 같은 일곱 단계
     stages: [
       { title: "흰 십자", lessons: [], goal: "white-cross" },
       { title: "첫 층 코너", lessons: [], goal: "first-layer" },
       { title: "둘째 층 엣지", lessons: [], goal: "second-layer" },
       { title: "노란 십자", lessons: [], goal: "yellow-cross" },
-      { title: "노란 면", lessons: ["333-tf-face"], goal: "oll" },
-      {
-        title: "코너 자리",
-        lessons: ["333-tf-corners"],
-        goal: "yellow-corners",
-      },
-      { title: "엣지 자리", lessons: ["333-tf-edges"], goal: "solved" },
+      { title: "옆면 맞추기", lessons: [], goal: "yellow-edges" },
+      { title: "코너 방향", lessons: ["333-tf-twist"], goal: "oll" },
+      { title: "코너 위치", lessons: ["333-tf-place"], goal: "solved" },
     ],
-    lead: "노란 십자까지는 3×3 처음 맞추기와 같아요. 그 뒤를 위 층 코너 블럭의 방향, 그러니까 노란색이 어느 쪽을 보는지부터 맞춰요.",
+    lead: "예전 문방구 신광사 큐브 설명서의 해법이에요. 옆면 맞추기까지는 3×3 처음 맞추기와 같아요. 그 뒤 위 층 코너 블럭의 방향, 그러니까 노란색이 어느 쪽을 보는지를 먼저 맞추고 자리를 나중에 맞춰요.",
     demo: {
       scramble: BEGINNER_333_SCRAMBLE,
       moves: twistFirstDemoMoves(BEGINNER_333_SCRAMBLE),
       source:
-        "단원 규칙(노란 십자까지 beginner-path.ts runStage · 그 뒤 twist-first-path.ts runTwistFirstStage)",
+        "단원 규칙(옆면 맞추기까지 beginner-path.ts runStage · 그 뒤 twist-first-path.ts runTwistFirstStage)",
     },
     quizzes: [
       {
-        question: "이 해법은 노란 십자 다음에 무엇부터 맞출까요?",
+        question: "이 해법은 옆면 맞추기 다음에 무엇부터 맞출까요?",
         choices: [
-          "위 층 코너 블럭의 노란색을 모두 위로(노란 면)",
-          "위 층 엣지 블럭의 자리",
+          "위 층 코너 블럭의 방향(노란색을 모두 위로)",
+          "위 층 코너 블럭의 자리",
         ],
         answer: 0,
-        why: "노란 십자 바로 뒤에 노란 면으로 코너 블럭의 방향을 먼저 맞추고, 그다음 코너 블럭 자리와 엣지 블럭 자리를 맞춰요.",
+        why: "옆면 맞추기 뒤에 코너 블럭의 방향을 먼저 맞추고, 마지막에 코너 블럭의 자리를 맞춰요.",
       },
     ],
   },

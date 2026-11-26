@@ -27,23 +27,21 @@ import {
   YELLOW_CROSS_BACK,
 } from "./lessons-333";
 import {
-  EDGES_NEIGHBOR,
-  EDGES_OPPOSITE,
-  FACE_NONE,
-  FACE_SIDES,
-  FACE_TWO_APART,
-  FACE_TWO_DIAGONAL,
-  FACE_TWO_SAME,
-  CORNERS_NONE as TF_CORNERS_NONE,
+  PLACE_NONE,
+  PLACE_NONE_B,
+  TWIST_DIAGONAL,
+  TWIST_FISH,
+  TWIST_FRONT,
+  TWIST_NONE_BACK,
+  TWIST_NONE_SIDES,
+  TWIST_SIDE,
 } from "./lessons-twist-first";
 import { setupFor } from "./notation";
 import {
-  CORNER_SWAP,
-  EDGE_CYCLE,
-  EDGE_CYCLE_LEFT,
+  CORNER_A,
+  CORNER_B,
+  CORNER_TURN,
   type TwistFirstStageId,
-  YELLOW_FACE,
-  YELLOW_FACE_BACK,
 } from "./twist-first-path";
 import type { AlgSet, MaskName, SheetName } from "./types";
 
@@ -321,132 +319,150 @@ export const BEGINNER_CASE_SHEETS: Record<
     ],
   },
   // 코너 방향 먼저(lessons-twist-first.ts, docs/47 16-33)
-  "beginner-tf-face": {
-    stage: { path: "twist-first", id: "face" },
+  "beginner-tf-twist": {
+    stage: { path: "twist-first", id: "twist" },
     set: "2look-oll",
     mask: "oll",
-    title: "노란 십자가 맞은 윗면 모양 여덟",
+    title: "위 엣지가 맞은 윗면 모양 여덟(정한 쥐기대로 그림)",
     cases: [
       {
-        id: "one-front",
-        alg: flip(YELLOW_FACE),
-        caption: "하나, 앞-왼쪽 위에 두면 앞-오른쪽 위 노란색이 앞",
-        action: "위를 보는 코너 블럭을 앞-왼쪽 위에 두고 한 번 쳐요.",
+        id: "base",
+        alg: flip(CORNER_TURN),
+        caption: "기본형: 하나, 앞-오른쪽 위 노란색이 앞",
+        action: "한 번 치면 다 맞아요.",
       },
       {
-        id: "one-right",
-        alg: flip(YELLOW_FACE_BACK),
-        caption: "하나, 앞-왼쪽 위에 두면 앞-오른쪽 위 노란색이 오른쪽",
-        action: "위를 보는 코너 블럭을 뒤-오른쪽 위에 두고 거꾸로 한 번 쳐요.",
+        id: "fish",
+        alg: flip(TWIST_FISH),
+        caption: "하나, 앞-오른쪽 위 노란색이 오른쪽",
+        action: "한 번 치면 기본형, 쥔 그대로 한 번 더요.",
+      },
+      {
+        id: "side",
+        alg: flip(TWIST_SIDE),
+        caption: "둘, 이웃하고 옆을 보는 둘이 다른 면",
+        action: "위를 보는 둘을 오른쪽에 두고 한 번 쳐요.",
+      },
+      {
+        id: "front",
+        alg: flip(TWIST_FRONT),
+        caption: "둘, 이웃하고 옆을 보는 둘이 한 면",
+        action: "옆을 보는 둘을 앞에 두고 한 번 쳐요.",
+      },
+      {
+        id: "diagonal",
+        alg: flip(TWIST_DIAGONAL),
+        caption: "둘, 대각선",
+        action:
+          "위를 보는 둘을 앞-오른쪽·뒤-왼쪽 위에, 앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 쳐요.",
+      },
+      {
+        id: "none-back",
+        alg: flip(TWIST_NONE_BACK),
+        caption: "없음, 노란색 둘인 옆면 하나",
+        action: "그 옆면을 뒤에 두고 한 번 치면 기본형이에요.",
       },
       {
         id: "none-sides",
-        alg: flip(FACE_SIDES),
+        alg: flip(TWIST_NONE_SIDES),
         caption: "없음, 마주 보는 두 옆면에 둘씩",
-        action: "둘씩을 왼쪽과 오른쪽 면에 두고 두 번 쳐요.",
-      },
-      {
-        id: "none",
-        alg: flip(FACE_NONE),
-        caption: "없음, 노란색 둘인 옆면이 하나",
-        action: "그 면을 왼쪽에 두고 한 번 치면 하나인 모양이 돼요.",
-      },
-      {
-        id: "two",
-        alg: flip(FACE_TWO_SAME),
-        caption: "둘, 이웃하고 옆을 보는 둘이 한 면",
-        action:
-          "앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 치면 하나인 모양이 돼요.",
-      },
-      {
-        id: "two",
-        alg: flip(FACE_TWO_APART),
-        caption: "둘, 이웃하고 옆을 보는 둘이 다른 면",
-        action:
-          "앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 치면 하나인 모양이 돼요.",
-      },
-      {
-        id: "two",
-        alg: flip(FACE_TWO_DIAGONAL),
-        caption: "둘, 대각선",
-        action:
-          "앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 치면 하나인 모양이 돼요.",
+        action: "둘씩을 왼쪽과 오른쪽에 두고 한 번 치면 기본형이에요.",
       },
       { id: "done", alg: "z2", caption: "넷 다 위", action: "끝이에요." },
     ],
   },
-  "beginner-tf-corners": {
-    stage: { path: "twist-first", id: "corners" },
+  "beginner-tf-place": {
+    stage: { path: "twist-first", id: "place" },
     set: "2look-pll",
-    title: "바른 짝으로 가르는 네 경우",
-    cases: [
-      {
-        id: "done",
-        alg: "z2",
-        caption: "네 면 모두 바른 짝, 코너 블럭 모두 제자리",
-        action: "끝이에요.",
-      },
-      {
-        id: "align",
-        alg: flip("U"),
-        caption: "네 면 모두 바른 짝, 위 층이 비켜남",
-        action:
-          "앞-오른쪽 위 코너 블럭의 제자리가 앞-왼쪽 위면 U, 뒤-오른쪽 위면 U', 뒤-왼쪽 위면 U2를 쳐요.",
-      },
-      {
-        id: "one",
-        alg: flip(CORNER_SWAP),
-        caption: "바른 짝 한 면",
-        action: "그 면을 뒤에 두고 한 번 쳐요.",
-      },
-      {
-        id: "none",
-        alg: flip(TF_CORNERS_NONE),
-        caption: "바른 짝 없음",
-        action: "그대로 한 번 치면 바른 짝이 한 면 생겨요.",
-      },
-    ],
-  },
-  "beginner-tf-edges": {
-    stage: { path: "twist-first", id: "edges" },
-    set: "2look-pll",
-    title: "제자리 엣지 블럭 수로 가르는 다섯 모양과 위 층이 비켜난 모양",
+    title: "제자리 코너 블럭으로 가르는 경우",
     cases: [
       { id: "done", alg: "z2", caption: "넷 다 제자리", action: "끝이에요." },
       {
-        id: "right-first",
-        alg: flip(EDGE_CYCLE),
-        caption: "하나, 뒤에 두면 앞 블럭의 제자리가 왼쪽",
-        action: "오른손 먼저 한 번 쳐요.",
+        id: "a",
+        alg: flip(CORNER_A),
+        caption: "하나, 남은 셋이 시계 방향",
+        action: "제자리 블럭을 앞-오른쪽 위에 두고 A를 한 번 쳐요.",
       },
       {
-        id: "left-first",
-        alg: flip(EDGE_CYCLE_LEFT),
-        caption: "하나, 뒤에 두면 앞 블럭의 제자리가 오른쪽",
-        action: "왼손 먼저 한 번 쳐요.",
-      },
-      {
-        id: "none",
-        alg: flip(EDGES_OPPOSITE),
-        caption: "없음, 마주 보는 둘씩 바뀜",
-        action: "그대로 오른손 먼저를 한 번 치면 하나가 생겨요.",
+        id: "b",
+        alg: flip(CORNER_B),
+        caption: "하나, 남은 셋이 반시계 방향",
+        action: "제자리 블럭을 앞-왼쪽 위에 두고 B를 한 번 쳐요.",
       },
       {
         id: "none",
-        alg: flip(EDGES_NEIGHBOR),
-        caption: "없음, 이웃한 둘씩 바뀜",
-        action: "그대로 오른손 먼저를 한 번 치면 하나가 생겨요.",
+        alg: flip(PLACE_NONE),
+        caption: "없음, 둘씩 바뀜",
+        action: "그대로 A를 한 번 치면 하나가 생겨요.",
       },
       {
-        id: "turn",
-        alg: `${flip(EDGE_CYCLE)} U`,
-        caption: "위 층이 통째로 비켜남",
-        action:
-          "코너 자리 강에서처럼 앞-오른쪽 위 코너 블럭의 제자리를 보고 윗면을 먼저 돌려요.",
+        id: "none",
+        alg: flip(PLACE_NONE_B),
+        caption: "없음, 둘씩 바뀜(다른 꼴)",
+        action: "그대로 A를 한 번 치면 하나가 생겨요.",
       },
     ],
   },
 };
+
+export interface TwistFlowNode {
+  /** 코너 방향 경우 이름(다 맞음은 "done") */
+  id: string;
+  /** 흰 면 아래로 쥔 맞춘 큐브에서 이 모양을 그 경우의 쥐기대로 만드는 수 */
+  alg: string;
+  /** 짧은 이름 */
+  title: string;
+  /** 정한 쥐기로 공식을 한 번 치면 가는 모양(다 맞음은 없음) */
+  to?: string;
+}
+
+/**
+ * 코너 방향 관계도(2026-11-26 사용자 「각 모양에서 저렇게 잡고 공식을 쓰면 어떤 모양이 되는지 서로간의 관계도」).
+ * 모양마다 정한 쥐기로 공식을 한 번 치면 가는 모양. 그림은 그 경우의 쥐기대로 놓은 모습이다. 시험이 엔진으로 본다
+ */
+export const TWIST_FLOW: TwistFlowNode[] = [
+  {
+    id: "side",
+    alg: flip(TWIST_SIDE),
+    title: "둘, 이웃·옆은 다른 면",
+    to: "fish",
+  },
+  {
+    id: "front",
+    alg: flip(TWIST_FRONT),
+    title: "둘, 이웃·옆은 한 면",
+    to: "fish",
+  },
+  {
+    id: "diagonal",
+    alg: flip(TWIST_DIAGONAL),
+    title: "둘, 대각선",
+    to: "fish",
+  },
+  {
+    id: "none-back",
+    alg: flip(TWIST_NONE_BACK),
+    title: "없음, 둘인 옆면 하나",
+    to: "base",
+  },
+  {
+    id: "none-sides",
+    alg: flip(TWIST_NONE_SIDES),
+    title: "없음, 마주 보는 둘씩",
+    to: "base",
+  },
+  {
+    id: "fish",
+    alg: flip(TWIST_FISH),
+    title: "하나, 노란색 오른쪽",
+    to: "base",
+  },
+  { id: "base", alg: flip(CORNER_TURN), title: "기본형", to: "done" },
+  { id: "done", alg: "z2", title: "다 맞음" },
+];
+
+/** 관계도의 글(용어 순서 시험이 단계 글과 함께 읽는다) */
+export const twistFlowText = () => TWIST_FLOW.map((n) => n.title).join("\n");
 
 export const isBeginnerSheet = (
   name: SheetName,

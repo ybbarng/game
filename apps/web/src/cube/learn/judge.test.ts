@@ -136,6 +136,8 @@ describe("스스로 섞기 규칙", () => {
       no: ["ll-corners-placed"],
     },
     "ll-corners-placed": { yes: ["ll-corners-placed"], no: ["solved"] },
+    // 코너 방향 먼저의 코너 위치 연습: 위 엣지·윗면은 맞고(윗면 돌리기 없이) 코너 자리만 섞임
+    "ll-corners-unplaced": { yes: ["yellow-edges", "oll"], no: ["solved"] },
     "2x2-corners-placed": {
       yes: ["2x2-corners-placed"],
       no: ["solved"],

@@ -111,6 +111,8 @@ export const SCRAMBLE_RULES = {
   "ll-cross-solved": "아래 두 층과 노란 십자 맞음(옆면 맞추기 연습)",
   "ll-edges-solved": "아래 두 층과 위 엣지 맞음(코너 자리 연습)",
   "ll-corners-placed": "코너 방향만 남음(코너 방향 연습)",
+  "ll-corners-unplaced":
+    "아래 두 층·위 엣지·윗면이 맞고 위 코너 자리만 섞임(코너 방향 먼저의 코너 위치 연습)",
   "f2l-one-slot": "십자와 F2L 칸 셋 맞음, 앞-오른쪽 짝만 흩어짐",
   "2x2-random": "2×2 모두 섞음",
   "2x2-first-layer-solved": "2×2 첫 층 맞음",
@@ -305,10 +307,10 @@ export const SHEETS = {
   "beginner-corner-place": "코너 자리: 제자리 코너 블럭으로 가르는 네 경우",
   "beginner-corner-twist": "코너 방향: 앞-오른쪽 위 코너 블럭의 세 경우",
   // 3×3 초보자(코너 방향 먼저) 마지막 층(beginner-cases.ts, docs/47 16-33)
-  "beginner-tf-face": "노란 면: 노란 십자가 맞은 윗면 모양 여덟",
-  "beginner-tf-corners": "코너 자리: 바른 짝으로 가르는 네 경우",
-  "beginner-tf-edges":
-    "엣지 자리: 제자리 엣지 블럭 수로 가르는 다섯 모양과 위 층이 비켜난 모양",
+  "beginner-tf-twist": "코너 방향: 위 엣지가 맞은 윗면 모양 여덟",
+  "beginner-tf-place": "코너 위치: 제자리 코너 블럭으로 가르는 경우",
+  "tf-flow":
+    "코너 방향 관계도: 모양마다 정한 쥐기로 공식을 한 번 치면 가는 모양(beginner-cases.ts TWIST_FLOW)",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

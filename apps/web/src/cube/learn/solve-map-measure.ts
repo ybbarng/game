@@ -99,13 +99,18 @@ const RUNS: Partial<Record<MapMethodId, (text: string) => Run>> = {
   },
   "beginner-twist-first": (text) => {
     const { s: start, run } = beginnerLower(play(solvedCube(3), text));
-    const cross = runStage("yellow-cross", start);
-    run["beginner-yellow-cross"] = join(cross.steps.map(stepMoves));
-    let s = cross.state;
+    let s = start;
+    for (const [edge, id] of [
+      ["beginner-yellow-cross", "yellow-cross"],
+      ["beginner-edges", "edges"],
+    ] as const) {
+      const r = runStage(id, s);
+      s = r.state;
+      run[edge] = join(r.steps.map(stepMoves));
+    }
     const legs: [string, TwistFirstStageId][] = [
-      ["twist-first-face", "face"],
-      ["twist-first-corners", "corners"],
-      ["twist-first-edges", "edges"],
+      ["twist-first", "twist"],
+      ["twist-first-place", "place"],
     ];
     for (const [edge, id] of legs) {
       const r = runTwistFirstStage(id, s);

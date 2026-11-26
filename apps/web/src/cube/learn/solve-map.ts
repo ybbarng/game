@@ -49,7 +49,7 @@ import {
   SPLIT_RIGHT,
   WHITE_UP,
 } from "./lessons-cfop";
-import { EDGE_CYCLE } from "./twist-first-path";
+import { CORNER_A, CORNER_B, CORNER_TURN } from "./twist-first-path";
 import { ZZ_PAIR_CASES } from "./zz-path";
 
 export type MapNodeId =
@@ -60,6 +60,7 @@ export type MapNodeId =
   | "yellow-cross"
   | "yellow-edges"
   | "ll-corners-placed"
+  | "ll-corners-oriented"
   | "oll"
   | "pll-corners"
   | "solved"
@@ -253,11 +254,18 @@ const BASE_NODES: readonly MapNode[] = [
   { id: "ll-corners-placed", title: "코너 자리", row: 8, col: 0, view: "z2" },
   // 다 맞음: 들어오는 앞 단계(마지막 층 걸음들)처럼 노란 면이 위(2026-11-26 사용자)
   { id: "solved", title: "다 맞음", row: 9.5, col: 0, view: "z2" },
-  // 초보자(코너 방향 먼저)와 2단계 OLL·PLL이 함께 지나는 노란 면 → 코너 자리(docs/47 16-33). 가장 왼쪽 해법인
-  // 코너 방향 먼저의 칸에 둔다
-  { id: "oll", title: "노란 면", row: 7, col: 1, view: "z2" },
-  // 강의(lessons-2look.ts 「PLL: 코너 자리 → 엣지 자리」·lessons-twist-first.ts 「코너 자리」) 낱말
-  { id: "pll-corners", title: "코너 자리", row: 8, col: 1, view: "z2" },
+  // 초보자(코너 방향 먼저)
+  {
+    id: "ll-corners-oriented",
+    title: "코너 방향",
+    row: 8,
+    col: 1,
+    view: "z2",
+  },
+  // 2단계 OLL·PLL
+  { id: "oll", title: "노란 면", row: 7, col: 2, view: "z2" },
+  // 강의(lessons-2look.ts 「PLL: 코너 자리 → 엣지 자리」) 낱말
+  { id: "pll-corners", title: "코너 자리", row: 8, col: 2, view: "z2" },
   // 루
   { id: "roux-fb", title: "첫 블록", row: 1, col: 4, view: "z2 y2" },
   { id: "roux-sb", title: "두 블록", row: 2, col: 4, view: "z2 y2" },
@@ -396,31 +404,22 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["333-ll-corner-twist"],
     formulas: [TWIST],
   },
-  // 초보자, 코너 방향 먼저(docs/47 16-33): 노란 십자 뒤 노란 면 → 코너 자리 → 엣지 자리. 공식은 2×2 처음 맞추기와
-  // 같은 노란 면(윗면)·코너 바꾸기와, 노란 면 공식과 그 거울을 이은 엣지 돌리기
+  // 초보자, 코너 방향 먼저(신광사 큐브 설명서의 해법, docs/47 16-33): 옆면 맞추기 뒤 코너 방향 → 코너 위치
   {
-    id: "twist-first-face",
-    from: "yellow-cross",
-    to: "oll",
-    title: "노란 면",
-    lessons: ["333-tf-face"],
-    formulas: [TOP_FACE],
+    id: "twist-first",
+    from: "yellow-edges",
+    to: "ll-corners-oriented",
+    title: "코너 방향",
+    lessons: ["333-tf-twist"],
+    formulas: [CORNER_TURN],
   },
   {
-    id: "twist-first-corners",
-    from: "oll",
-    to: "pll-corners",
-    title: "코너 자리",
-    lessons: ["333-tf-corners"],
-    formulas: [TOP_SWAP],
-  },
-  {
-    id: "twist-first-edges",
-    from: "pll-corners",
+    id: "twist-first-place",
+    from: "ll-corners-oriented",
     to: "solved",
-    title: "엣지 자리",
-    lessons: ["333-tf-edges"],
-    formulas: [EDGE_CYCLE],
+    title: "코너 위치",
+    lessons: ["333-tf-place"],
+    formulas: [CORNER_A, CORNER_B],
   },
   // 2단계 OLL·PLL(ZZ·페트루스 마지막 층도 같은 공식, zz-path.ts runZzLl)
   {
@@ -826,9 +825,9 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     edges: [
       ...BEGINNER_LOWER,
       "beginner-yellow-cross",
-      "twist-first-face",
-      "twist-first-corners",
-      "twist-first-edges",
+      "beginner-edges",
+      "twist-first",
+      "twist-first-place",
     ],
   },
   {
@@ -954,8 +953,7 @@ export const PARITY_AT: Readonly<
   Partial<Record<MapMethodId, { oll: MapNodeId; pll: MapNodeId }>>
 > = {
   beginner: { oll: "f2l", pll: "yellow-edges" },
-  // 코너 방향 먼저는 코너 자리를 윗면을 돌려 맞추니, PLL 패리티는 엣지 자리 앞(코너 자리)에서 보인다
-  "beginner-twist-first": { oll: "f2l", pll: "pll-corners" },
+  "beginner-twist-first": { oll: "f2l", pll: "yellow-edges" },
   "two-look": { oll: "f2l", pll: "oll" },
   cfop: { oll: "f2l", pll: "oll" },
 };
@@ -1160,7 +1158,7 @@ export const MAP_MEASURE: {
   seeds: 30,
   turns: {
     beginner: 127,
-    "beginner-twist-first": 128,
+    "beginner-twist-first": 124,
     "two-look": 114,
     cfop: 55,
     roux: 54,
@@ -1186,9 +1184,9 @@ export const MAP_MEASURE: {
       "first-corners": 30,
       "second-layer": 35,
       "beginner-yellow-cross": 6,
-      "twist-first-face": 12,
-      "twist-first-corners": 11,
-      "twist-first-edges": 20,
+      "beginner-edges": 9,
+      "twist-first": 19,
+      "twist-first-place": 11,
     },
     "two-look": {
       cross: 15,
@@ -1408,6 +1406,10 @@ const LOOKS: Partial<Record<MapNodeId, Look>> = {
   },
   "yellow-edges": { solved: [...f2l, ...llEdges] },
   "ll-corners-placed": { solved: [...f2l, ...llEdges], placed: llCorners },
+  "ll-corners-oriented": {
+    solved: [...f2l, ...llEdges],
+    oriented: { pieces: llCorners, colors: [YELLOW] },
+  },
   oll: {
     solved: f2l,
     oriented: { pieces: [...llEdges, ...llCorners], colors: [YELLOW] },

@@ -49,8 +49,8 @@ describe("단계마다 모든 경우 그림", () => {
     });
   }
 
-  it("코너 방향 먼저 노란 면 그림은 윗면 모양 여덟이 모두 다르다(위를 보는 둘인 모양 셋 포함)", () => {
-    const sheet = BEGINNER_CASE_SHEETS["beginner-tf-face"];
+  it("코너 방향 먼저의 코너 방향 그림은 윗면 모양 여덟이 모두 다르다(위를 보는 둘인 모양 셋 포함)", () => {
+    const sheet = BEGINNER_CASE_SHEETS["beginner-tf-twist"];
     // 노란 칸 자리(윗면 구석 + 옆면 윗줄 구석)를 윗면 돌리기 넷 가운데 가장 작은 것으로 본 모양 열쇠
     const keyOf = (alg: string) =>
       ["", "U", "U2", "U'"]
@@ -81,9 +81,8 @@ describe("단계마다 모든 경우 그림", () => {
       "333-ll-edges": "beginner-edges",
       "333-ll-corner-place": "beginner-corner-place",
       "333-ll-corner-twist": "beginner-corner-twist",
-      "333-tf-face": "beginner-tf-face",
-      "333-tf-corners": "beginner-tf-corners",
-      "333-tf-edges": "beginner-tf-edges",
+      "333-tf-twist": "beginner-tf-twist",
+      "333-tf-place": "beginner-tf-place",
     };
     const lessons = [...BEGINNER_333.lessons, ...TWIST_FIRST_333.lessons];
     for (const [id, sheet] of Object.entries(want)) {
