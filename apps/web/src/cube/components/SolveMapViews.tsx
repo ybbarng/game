@@ -565,12 +565,15 @@ const polyPath = (ps: Pt[], off: number) =>
     .join(" ");
 
 /** 꺾은선에서 길이 절반 지점(꼬리표 자리) */
-function halfway(ps: Pt[]): Pt {
+const halfway = (ps: Pt[]): Pt => along(ps, 0.5);
+
+/** 꺾은선에서 길이의 몫 f(0~1) 지점 */
+function along(ps: Pt[], f: number): Pt {
   const lens = ps.slice(1).map((p, i) => {
     const q = ps[i] as Pt;
     return Math.hypot(p.x - q.x, p.y - q.y);
   });
-  let left = lens.reduce((s, l) => s + l, 0) / 2;
+  let left = lens.reduce((s, l) => s + l, 0) * f;
   for (const [i, l] of lens.entries()) {
     const p = ps[i] as Pt;
     const q = ps[i + 1] as Pt;
@@ -615,6 +618,31 @@ type Box = { x: number; y: number; w: number; h: number };
 /**
  * 꼬리표 자리 고르기: 지점 상자와 다른 꼬리표에 겹치면 덜 겹친 쪽(가로·세로)으로 민다. 지점 상자는 움직이지 않는다
  */
+/**
+ * 꼬리표의 처음 자리: 제 선 위에서 지점 상자와 겹치지 않는 곳 가운데 절반 지점에 가장 가까운 곳(없으면 절반 지점).
+ * 칸 사이 빈 길로 내려가는 걸음의 꼬리표가 절반 지점에서 양옆 칸 지점 사이에 끼면 밀기로는 빠져나오지 못한다
+ * (2026-11-26 코너 방향 먼저의 노란 면 지점을 왼쪽 칸으로 옮기며). 여유는 밀기와 같다(가로 8, 세로 6)
+ */
+function labelSpot(
+  line: Pt[],
+  size: { w: number; h: number },
+  fixed: Box[],
+): Pt {
+  const clear = (p: Pt) =>
+    !fixed.some(
+      (f) =>
+        Math.abs(p.x - f.x) < (size.w + f.w) / 2 + 8 &&
+        Math.abs(p.y - f.y) < (size.h + f.h) / 2 + 6,
+    );
+  const mid = halfway(line);
+  if (clear(mid)) return mid;
+  // 절반에서 가까운 차례: 0.45·0.55·0.4·0.6 … 0.05·0.95
+  const spots = Array.from({ length: 9 }, (_, k) => (k + 1) * 0.05).flatMap(
+    (d) => [along(line, 0.5 - d), along(line, 0.5 + d)],
+  );
+  return spots.find(clear) ?? mid;
+}
+
 function placeLabels(items: Box[], fixed: Box[]): Pt[] {
   const ps = items.map((b) => ({ ...b }));
   // 같은 자리에서 시작한 둘은 같은 쪽으로 함께 밀려 영영 겹치니, 자리가 같으면 순서(tie)로 방향을 가른다
@@ -820,24 +848,25 @@ function MapLayer({
       { x: b.x, y: b.y },
       dx,
     );
-    return [{ e, ps, label: halfway(ps) }];
+    return [{ e, ps }];
   });
+  const nodeBoxes = [...pos.values()].map((p) => ({
+    x: p.x,
+    y: p.y + nodeH / 2,
+    w: BOX_W + 8,
+    h: nodeH + 8,
+  }));
   // 꼬리표가 지점 그림이나 다른 꼬리표를 가리지 않게 옆으로 민다
   const placed = placeLabels(
-    geo0.map((g) => ({
-      ...g.label,
-      ...labelSize(
+    geo0.map((g) => {
+      const size = labelSize(
         g.e,
         ctx,
         ctx.selected.some((m) => m.edges.includes(g.e.id)),
-      ),
-    })),
-    [...pos.values()].map((p) => ({
-      x: p.x,
-      y: p.y + nodeH / 2,
-      w: BOX_W + 8,
-      h: nodeH + 8,
-    })),
+      );
+      return { ...labelSpot(g.ps, size, nodeBoxes), ...size };
+    }),
+    nodeBoxes,
   );
   const geo = geo0.map((g, i) => ({ ...g, label: placed[i] as Pt }));
   const path = (g: (typeof geo)[number], off: number) => polyPath(g.ps, off);
