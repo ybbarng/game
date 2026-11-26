@@ -104,14 +104,14 @@ export function edgeFormulaCount(
 }
 
 /**
- * 길에 붙일 공식 글: 직관 걸음은 「공식 없음」, 앞 길에서 배운 공식만 다시 쓰면 「앞 공식」, 셀 자료가 없으면 null
+ * 길에 붙일 공식 글: 앞 길에서 배운 공식만 다시 쓰면 「앞 공식」, 셀 자료가 없거나 직관 걸음(공식 0)이면 null.
+ * 직관 걸음에 「공식 없음」을 붙이지 않는다(2026-11-26 사용자, 불필요한 표시)
  */
 export function edgeFormulaLabel(
   e: MapEdge,
   selected: readonly MapMethod[],
 ): string | null {
-  if (!e.formulas) return null;
-  if (!e.formulas.length) return "공식 없음";
+  if (!e.formulas?.length) return null;
   const k = edgeFormulaCount(e, selected);
   return k === 0 ? "앞 공식" : `공식 ${k}`;
 }

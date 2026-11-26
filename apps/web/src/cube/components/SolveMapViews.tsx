@@ -426,7 +426,7 @@ export function EdgeLines({
           .join(" · ")}
         {!e.lessons.length && (
           <span className="text-white/40">
-            {f || turns ? " · " : ""}단원 없음
+            {f || turns ? " · " : ""}강 없음
           </span>
         )}
       </span>
@@ -596,7 +596,7 @@ function labelSize(e: MapEdge, ctx: MapCtx, on: boolean) {
   const turns = on ? edgeTurns(e, ctx.selected) : undefined;
   const lines = [
     // 앞의 「✓ 」는 여유 폭(어림이 작으면 밀어도 겹친다)
-    `✓ ${f} · ${turns ?? ""}수${e.lessons.length ? "" : " · 단원 없음"}`,
+    `✓ ${f} · ${turns ?? ""}수${e.lessons.length ? "" : " · 강 없음"}`,
   ];
   if (on) {
     lines.push(e.title);
