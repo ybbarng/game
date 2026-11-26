@@ -75,10 +75,9 @@ test("원카드 복기: 판 위에서 한 걸음씩 앞뒤로 넘기고, 헛외�
   await page.screenshot({ path: testInfo.outputPath("2-replay-caught.png") });
 
   // 모든 패 펼치기와 상황판
-  await page.getByRole("button", { name: "모든 패 보기" }).click();
-  await expect(
-    page.getByRole("button", { name: "모든 패 숨기기" }),
-  ).toBeVisible();
+  const reveal = page.getByRole("switch", { name: "모든 패 보기" });
+  await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: testInfo.outputPath("3-replay-open.png") });
   await page.getByRole("button", { name: "상황판" }).click();
   const board = page.getByRole("complementary", { name: "상황판" });

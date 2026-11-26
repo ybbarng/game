@@ -132,11 +132,10 @@ test("하트: 카드를 넘기고 한 판을 끝까지 둔다", async ({ page },
     timeout: 15_000,
   });
   // 세로 휴대폰은 상황판을 열 때 이미 펼친다.
-  const reveal = page.getByRole("button", { name: "모든 패 보기" });
-  if (await reveal.isVisible()) await reveal.click();
-  await expect(
-    page.getByRole("button", { name: "모든 패 숨기기" }),
-  ).toBeVisible();
+  const reveal = page.getByRole("switch", { name: "모든 패 보기" });
+  if ((await reveal.getAttribute("aria-checked")) === "false")
+    await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: info.outputPath("hearts-5-replay.png") });
   expect(errors).toEqual([]);
 });

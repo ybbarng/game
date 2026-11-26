@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SuitMark, SuitText } from "@/components/SuitText";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import type { Commentary, Verdict } from "@/game/kit";
 import { cn } from "@/lib/cn";
 
@@ -174,13 +175,15 @@ export function ReplayView({
             >
               {playing ? "⏸ 멈춤" : "자동 재생"}
             </Ctl>
-            <Ctl
-              label={reveal ? "모든 패 숨기기" : "모든 패 보기"}
-              onClick={() => setReveal((r) => !r)}
-              active={reveal}
+            <ToggleSwitch
+              on={reveal}
+              onChange={setReveal}
+              aria-label="모든 패 보기"
+              title="모든 패 보기"
+              className="rounded-lg bg-white/10 px-2 py-1 font-semibold hover:bg-white/20"
             >
-              {reveal ? "패 숨기기" : "패 보기"}
-            </Ctl>
+              패 보기
+            </ToggleSwitch>
             <Ctl
               label="상황판"
               onClick={() => {
