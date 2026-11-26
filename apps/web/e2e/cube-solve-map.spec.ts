@@ -108,9 +108,11 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await screen.locator("[data-method-back]").click();
   await expect(page).toHaveURL(/\/cube\/methods$/);
   await expect(page.locator('[data-card="cfop"]')).toBeVisible();
-  // 코너 방향 먼저(신광사 해법)의 첫 층 뒤 다섯 걸음은 그 강의 단원으로 간다(docs/47 16-33)
+  // 코너 방향 먼저(신광사 해법)의 일곱 걸음은 그 강의 단원으로 간다(docs/47 16-33)
   await page.goto("/cube/methods?method=beginner-twist-first");
   for (const [edge, lesson] of [
+    ["twist-first-cross", "333-tf-cross"],
+    ["twist-first-corners", "333-tf-corners"],
     ["twist-first-second", "333-tf-second"],
     ["twist-first-eo", "333-tf-eo"],
     ["twist-first-ep", "333-tf-ep"],

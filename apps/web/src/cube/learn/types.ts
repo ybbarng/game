@@ -306,7 +306,9 @@ export const SHEETS = {
   "beginner-edges": "옆면 맞추기: 윗면을 돌려 찾은 세 경우",
   "beginner-corner-place": "코너 자리: 제자리 코너 블럭으로 가르는 네 경우",
   "beginner-corner-twist": "코너 방향: 앞-오른쪽 위 코너 블럭의 세 경우",
-  // 3×3 초보자(코너 방향 먼저, 신광사 설명서 3~7단계)(beginner-cases.ts, docs/47 16-33)
+  // 3×3 초보자(코너 방향 먼저, 신광사 설명서 1~7단계)(beginner-cases.ts, docs/47 16-33)
+  "beginner-tf-cross": "흰 십자: 흰 엣지 블럭의 네 경우",
+  "beginner-tf-corners": "첫 층 코너: 흰 코너 블럭의 네 경우",
   "beginner-tf-second": "둘째 층 엣지: 넣을 엣지 블럭의 세 경우",
   "beginner-tf-eo": "엣지 방향: 윗면 모양 넷",
   "beginner-tf-ep": "엣지 위치: 윗면을 반시계 방향으로 돌려 찾은 세 경우",

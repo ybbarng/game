@@ -290,7 +290,10 @@ describe("공식 수", () => {
       "beginner-edges": 1,
       "beginner-corner-place": 1,
       "beginner-corner-twist": 1,
-      // 신광사 설명서 3~7단계: 둘째 층 A·B, 엣지 방향, 엣지 위치, 코너 방향, 코너 위치 A·B
+      // 신광사 설명서 1~7단계: 흰 십자(옆에서 올리기·빼기), 첫 층 코너(넣기·빼기·다시 놓기), 둘째 층 A·B, 엣지 방향,
+      // 엣지 위치, 코너 방향, 코너 위치 A·B
+      "twist-first-cross": 2,
+      "twist-first-corners": 3,
       "twist-first-second": 2,
       "twist-first-eo": 1,
       "twist-first-ep": 1,
@@ -349,7 +352,7 @@ describe("공식 수", () => {
       Object.fromEntries(MAP_METHODS.map((m) => [m.id, methodFormulaCount(m)])),
     ).toEqual({
       beginner: 6,
-      "beginner-twist-first": 8,
+      "beginner-twist-first": 12,
       "two-look": 19,
       cfop: 87,
       roux: 9,
@@ -370,18 +373,19 @@ describe("공식 수", () => {
   });
 
   it("앞 길에서 배운 공식은 뒤 길에서 새로 세지 않는다(첫 층 코너에서 배운 코너 돌리기)", () => {
-    // 코너 방향 먼저: 첫 층까지는 초보자와 같고, 뒤 다섯 걸음은 신광사 설명서의 새 공식
+    // 코너 방향 먼저: 일곱 걸음 모두 신광사 설명서의 공식(첫 층 코너의 빼기 R' D' R은 흰 십자 가운데 층 채움에도 쓴다)
     const twistFirst = newFormulas(method("beginner-twist-first"));
     expect(
       [
-        "first-corners",
+        "twist-first-cross",
+        "twist-first-corners",
         "twist-first-second",
         "twist-first-eo",
         "twist-first-ep",
         "twist-first",
         "twist-first-place",
       ].map((id) => twistFirst.get(id)),
-    ).toEqual([1, 2, 1, 1, 1, 2]);
+    ).toEqual([2, 3, 2, 1, 1, 1, 2]);
     expect(newFormulas(method("beginner")).get("beginner-corner-twist")).toBe(
       0,
     );

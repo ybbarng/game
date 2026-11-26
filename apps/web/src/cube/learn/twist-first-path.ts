@@ -1,9 +1,10 @@
 // 3×3 초보자(코너 방향 먼저) 「경우별 정해진 길」(docs/47 16-33). 예전 문방구 큐브(신광사)에 들어 있던 설명서의 해법이다.
-// 설명서의 일곱 단계 가운데 흰 십자·첫 층 코너는 3×3 처음 맞추기와 같은 길(beginner-path.ts)을 쓰고, 나머지 다섯 단계를
-// 설명서 공식 그대로 맞춘다: 둘째 층 엣지(3단계) → 엣지 방향(4단계) → 엣지 위치(5단계) → 코너 방향(6단계) → 코너 위치(7단계).
+// 설명서의 일곱 단계를 설명서 공식 그대로 맞춘다: 흰 십자(1단계) → 첫 층 코너(2단계) → 둘째 층 엣지(3단계) → 엣지 방향
+// (4단계) → 엣지 위치(5단계) → 코너 방향(6단계) → 코너 위치(7단계). 1·2단계는 흰 면 위, 3단계부터 흰 면 아래로 쥔다.
 // 공식은 설명서 그림의 화살표를 수마다 읽은 것이고, 읽기와 엔진 대조는 git 밖 비공개 메모(learn-review/shinkwangsa/
-// transcription.md)에 있다. 경우 나누기와 쥐는 법은 설명서가 말한 대로 두고, 설명서가 말하지 않은 경우(둘째 층에 잘못 든 엣지
-// 블럭, 위를 보는 노란색이 없는 코너 모양의 쥐기)만 채웠다.
+// transcription.md)에 있다. 경우 나누기와 쥐는 법은 설명서가 말한 대로 두고, 설명서가 말하지 않은 경우(가운데 층의 흰 엣지
+// 블럭, 자리 밑에서 흰색이 앞인 코너 블럭, 둘째 층에 잘못 든 엣지 블럭, 위를 보는 노란색이 없는 코너 모양의 쥐기)만 설명서의
+// 수로 채웠다.
 // 단원 글(lessons-twist-first.ts)·경우 그림(beginner-cases.ts)·시험(twist-first-path.test.ts)이 이 자료를 함께 읽는다.
 import { faceColors } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
@@ -12,6 +13,23 @@ import { play, reps } from "./beginner-path";
 import type { GoalName } from "./types";
 
 // ── 공식(설명서 그대로) ─────────────────────────────────
+
+/** 흰 십자 기본도 1(1단계): 흰 엣지 블럭이 그 색 센터 바로 아래(아래-앞)이고 흰색이 아래 */
+export const CROSS_DOWN = "F2";
+/** 흰 십자 기본도 2(1단계): 아래-앞, 흰색이 앞. D로 비키고 R로 앞-오른쪽 자리에 올려 F'로 넣고 R'로 오른쪽 층을 되돌린다 */
+export const CROSS_FRONT = "D R F' R'";
+/** 흰 십자 기본도 3(1단계): 위 층에 잘못 든 흰 엣지 블럭을 오른쪽에 두고 아래 층으로 뺀다 */
+export const CROSS_PULL = "R2 D R2";
+/** 첫 층 코너(2단계): 코너 블럭이 자리 밑(아래-앞-오른쪽)이고 흰색이 오른쪽. R' D' R D와 같은 꼴 */
+export const CORNER_IN = "F' R F R'";
+/** 첫 층 코너 빼기 ①(2단계): 앞-오른쪽 위에 잘못 든 코너 블럭을 아래 층으로 뺀다 */
+export const CORNER_PULL = "R' D' R";
+/** 첫 층 코너 빼기 ②(2단계): 자리 밑에서 흰색이 아래인 코너 블럭을 흰색이 옆을 보게 다시 놓는다 */
+export const CORNER_DOWN = "R' D2 R";
+/** (설명서에 없음, 채움) 자리 밑에서 흰색이 앞인 코너 블럭: D2로 비키고 빼기 ① */
+export const CORNER_FRONT = `D2 ${CORNER_PULL}`;
+/** (설명서에 없음, 채움) 가운데 층의 흰 엣지 블럭: 앞-오른쪽에 두고 빼기 ①과 같은 수로 아래 층에 내린다 */
+export const CROSS_MIDDLE = CORNER_PULL;
 
 /** 둘째 층 A(3단계, 오른쪽으로 넣을 때): U R U' R'로 첫 층 코너 블럭을 위로 꺼내고, F R' F' R로 엣지 블럭과 함께 넣는다 */
 export const SECOND_A = "U R U' R' F R' F' R";
@@ -32,7 +50,14 @@ export { reps };
 
 // ── 단계와 경우 ───────────────────────────────────────
 
-export type TwistFirstStageId = "second" | "eo" | "ep" | "twist" | "place";
+export type TwistFirstStageId =
+  | "cross"
+  | "corners"
+  | "second"
+  | "eo"
+  | "ep"
+  | "twist"
+  | "place";
 
 export interface TwistFirstCase {
   id: string;
@@ -56,6 +81,81 @@ export interface TwistFirstStage {
 }
 
 export const TWIST_FIRST_STAGES: TwistFirstStage[] = [
+  {
+    id: "cross",
+    title: "흰 십자",
+    goal: "white-cross",
+    cases: [
+      {
+        id: "down",
+        shape: "아래 층, 흰색이 아래",
+        hold: "짝 색 센터를 앞으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-앞으로",
+        alg: CROSS_DOWN,
+        times: 1,
+      },
+      {
+        id: "front",
+        shape: "아래 층, 흰색이 옆",
+        hold: "짝 색 센터를 앞으로 돌려 쥐고(y), 아랫면을 돌려 엣지 블럭을 아래-앞으로",
+        alg: CROSS_FRONT,
+        times: 1,
+      },
+      {
+        id: "middle",
+        shape: "가운데 층(설명서에 없음, 채움)",
+        hold: "엣지 블럭이 앞-오른쪽에 오게 돌려 쥐고(y)",
+        alg: CROSS_MIDDLE,
+        times: 1,
+        next: ["down", "front"],
+      },
+      {
+        id: "top",
+        shape: "위 층에 잘못 들어감(다른 자리나 뒤집힘)",
+        hold: "엣지 블럭이 위-오른쪽에 오게 돌려 쥐고(y)",
+        alg: CROSS_PULL,
+        times: 1,
+        next: ["down", "front"],
+      },
+    ],
+  },
+  {
+    id: "corners",
+    title: "첫 층 코너",
+    goal: "first-layer",
+    cases: [
+      {
+        id: "right",
+        shape: "자리 밑, 흰색이 오른쪽",
+        hold: "넣을 자리를 앞-오른쪽 위로 돌려 쥐고(y), 아랫면을 돌려 코너 블럭을 자리 밑으로",
+        alg: CORNER_IN,
+        times: 1,
+      },
+      {
+        id: "down",
+        shape: "자리 밑, 흰색이 아래",
+        hold: "넣을 자리를 앞-오른쪽 위로 돌려 쥐고(y), 아랫면을 돌려 코너 블럭을 자리 밑으로",
+        alg: CORNER_DOWN,
+        times: 1,
+        next: ["right"],
+      },
+      {
+        id: "front",
+        shape: "자리 밑, 흰색이 앞(설명서에 없음, 채움)",
+        hold: "넣을 자리를 앞-오른쪽 위로 돌려 쥐고(y), 아랫면을 돌려 코너 블럭을 자리 밑으로",
+        alg: CORNER_FRONT,
+        times: 1,
+        next: ["right"],
+      },
+      {
+        id: "slot",
+        shape: "위 층에 잘못 들어감(다른 자리나 돌아감)",
+        hold: "그 코너 블럭이 앞-오른쪽 위에 오게 돌려 쥐고(y)",
+        alg: CORNER_PULL,
+        times: 1,
+        next: ["right", "down", "front"],
+      },
+    ],
+  },
   {
     id: "second",
     title: "둘째 층 엣지",
@@ -455,6 +555,110 @@ function secondNext(s: PuzzleState): TwistFirstStep | null {
   return step("second", "stuck", y);
 }
 
+// ── 1·2단계(흰 면 위) ─────────────────────────────────
+
+const WHITE = 0;
+const SIDE_COLORS = [2, 1, 5, 4];
+const WHITE_CORNERS = [
+  [WHITE, 2, 1],
+  [WHITE, 1, 5],
+  [WHITE, 5, 4],
+  [WHITE, 4, 2],
+];
+const CORNER_SLOTS: readonly (readonly number[])[] = [
+  [8, 9, 20],
+  [6, 18, 38],
+  [0, 36, 47],
+  [2, 45, 11],
+  [29, 26, 15],
+  [27, 44, 24],
+  [33, 53, 42],
+  [35, 17, 51],
+];
+const D4 = ["", "D", "D'", "D2"];
+
+/** 조각(색 묶음)이 든 자리: 색마다 그 스티커가 보는 면 */
+function pieceAt(s: PuzzleState, colors: readonly number[]): Map<number, Face> {
+  const col = faceColors(3, s);
+  const want = [...colors].sort().join();
+  const slots = colors.length === 2 ? EDGE_SLOTS : CORNER_SLOTS;
+  for (const slot of slots) {
+    const got = slot.map((i) => col[i] as number);
+    if ([...got].sort().join() !== want) continue;
+    return new Map(slot.map((i, k) => [got[k] as number, faceOf(i)]));
+  }
+  throw new Error(`조각 없음: ${colors.join()}`);
+}
+const facesOfPiece = (s: PuzzleState, colors: readonly number[]) =>
+  new Set(pieceAt(s, colors).values());
+const sameFaces = (got: Set<Face>, want: Face[]) =>
+  got.size === want.length && want.every((f) => got.has(f));
+/** 조각이 제자리·바른 방향(스티커마다 같은 색 센터 면을 봄) */
+const pieceHome = (s: PuzzleState, colors: readonly number[]) => {
+  const col = faceColors(3, s);
+  return [...pieceAt(s, colors)].every(([c, f]) => centerOf(col, c) === f);
+};
+
+function crossNext(s: PuzzleState): TwistFirstStep | null {
+  const todo = SIDE_COLORS.filter((c) => !pieceHome(s, [WHITE, c]));
+  if (todo.length === 0) return null;
+  // 아래 층 블럭부터: 짝 색 센터를 앞으로 쥐고 아랫면을 돌려 바로 아래(아래-앞)로 데려온다(설명서 「같은 색이 되도록」)
+  const low = todo.filter((c) => facesOfPiece(s, [WHITE, c]).has("D"));
+  if (low.length > 0) {
+    const c = low[0] as number;
+    const y = firstTurn(s, Y4, (t) => centerOf(faceColors(3, t), c) === "F");
+    const d = firstTurn(play(s, y), D4, (t) =>
+      sameFaces(facesOfPiece(t, [WHITE, c]), ["D", "F"]),
+    );
+    const white = pieceAt(play(s, join(y, d)), [WHITE, c]).get(WHITE);
+    return step("cross", white === "D" ? "down" : "front", join(y, d));
+  }
+  const mid = todo.filter((c) => !facesOfPiece(s, [WHITE, c]).has("U"));
+  if (mid.length > 0) {
+    const c = mid[0] as number;
+    const y = firstTurn(s, Y4, (t) =>
+      sameFaces(facesOfPiece(t, [WHITE, c]), ["F", "R"]),
+    );
+    return step("cross", "middle", y);
+  }
+  const c = todo[0] as number;
+  const y = firstTurn(s, Y4, (t) =>
+    sameFaces(facesOfPiece(t, [WHITE, c]), ["U", "R"]),
+  );
+  return step("cross", "top", y);
+}
+
+function cornersNext(s: PuzzleState): TwistFirstStep | null {
+  const todo = WHITE_CORNERS.filter((cc) => !pieceHome(s, cc));
+  if (todo.length === 0) return null;
+  // 아래 층 코너 블럭부터: 넣을 자리를 앞-오른쪽 위로 쥐고, 아랫면을 돌려 자리 밑으로
+  const low = todo.filter((cc) => facesOfPiece(s, cc).has("D"));
+  if (low.length > 0) {
+    const cc = low[0] as number[];
+    const y = firstTurn(s, Y4, (t) => {
+      const col = faceColors(3, t);
+      return sameFaces(
+        new Set([
+          centerOf(col, cc[1] as number),
+          centerOf(col, cc[2] as number),
+        ]),
+        ["F", "R"],
+      );
+    });
+    const d = firstTurn(play(s, y), D4, (t) =>
+      sameFaces(facesOfPiece(t, cc), ["D", "F", "R"]),
+    );
+    const white = pieceAt(play(s, join(y, d)), cc).get(WHITE);
+    const id = white === "R" ? "right" : white === "F" ? "front" : "down";
+    return step("corners", id, join(y, d));
+  }
+  const cc = todo[0] as number[];
+  const y = firstTurn(s, Y4, (t) =>
+    sameFaces(facesOfPiece(t, cc), ["U", "F", "R"]),
+  );
+  return step("corners", "slot", y);
+}
+
 const hasUp = (t: PuzzleState, a: Face, b: Face) => {
   const x = edgesUp(t);
   return x.length === 2 && x.includes(a) && x.includes(b);
@@ -547,6 +751,8 @@ const NEXT: Record<
   TwistFirstStageId,
   (s: PuzzleState) => TwistFirstStep | null
 > = {
+  cross: crossNext,
+  corners: cornersNext,
   second: secondNext,
   eo: eoNext,
   ep: epNext,
@@ -571,7 +777,7 @@ export interface TwistFirstRun {
 export function runTwistFirstStage(
   stage: TwistFirstStageId,
   s: PuzzleState,
-  limit = 8,
+  limit = 14,
 ): TwistFirstRun {
   const steps: TwistFirstStep[] = [];
   let state = s;
@@ -587,8 +793,13 @@ export function runTwistFirstStage(
 /** 한 걸음을 수 하나의 문자열로 */
 export const twistFirstMoves = (st: TwistFirstStep) => join(st.hold, st.alg);
 
-/** 첫 층(흰 면 아래로 뒤집은 뒤) 다음 다섯 단계 차례 */
+/** 이 단계 앞에서 흰 면을 아래로 뒤집는다(설명서 2단계 끝 「맞춘 면을 밑으로 넣고」) */
+export const TWIST_FIRST_FLIP_BEFORE: TwistFirstStageId = "second";
+
+/** 일곱 단계 차례. 흰 십자·첫 층 코너는 흰 면 위, 둘째 층 엣지 앞에서 흰 면을 아래로 뒤집는다(z2, `TWIST_FIRST_FLIP_BEFORE`) */
 export const TWIST_FIRST_ORDER: TwistFirstStageId[] = [
+  "cross",
+  "corners",
   "second",
   "eo",
   "ep",

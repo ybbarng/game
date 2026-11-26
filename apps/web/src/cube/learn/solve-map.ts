@@ -52,7 +52,12 @@ import {
 import {
   CORNER_A,
   CORNER_B,
+  CORNER_DOWN,
+  CORNER_IN,
+  CORNER_PULL,
   CORNER_TURN,
+  CROSS_FRONT,
+  CROSS_PULL,
   EDGE_CYCLE,
   EDGE_FLIP,
   SECOND_A,
@@ -412,8 +417,24 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["333-ll-corner-twist"],
     formulas: [TWIST],
   },
-  // 초보자, 코너 방향 먼저(신광사 큐브 설명서의 해법, docs/47 16-33): 첫 층 뒤 설명서 공식으로 둘째 층 엣지 → 엣지 방향 →
-  // 엣지 위치 → 코너 방향 → 코너 위치
+  // 초보자, 코너 방향 먼저(신광사 큐브 설명서의 해법, docs/47 16-33): 일곱 단계 모두 설명서 공식으로 흰 십자 → 첫 층 코너 →
+  // 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치
+  {
+    id: "twist-first-cross",
+    from: "scrambled",
+    to: "cross",
+    title: "흰 십자",
+    lessons: ["333-tf-cross"],
+    formulas: [CROSS_FRONT, CROSS_PULL],
+  },
+  {
+    id: "twist-first-corners",
+    from: "cross",
+    to: "first-layer",
+    title: "첫 층 코너",
+    lessons: ["333-tf-corners"],
+    formulas: [CORNER_IN, CORNER_PULL, CORNER_DOWN],
+  },
   {
     id: "twist-first-second",
     from: "first-layer",
@@ -856,8 +877,8 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     title: "초보자(코너 방향 먼저)",
     course: "333-twist-first",
     edges: [
-      "cross",
-      "first-corners",
+      "twist-first-cross",
+      "twist-first-corners",
       "twist-first-second",
       "twist-first-eo",
       "twist-first-ep",
@@ -1193,7 +1214,7 @@ export const MAP_MEASURE: {
   seeds: 30,
   turns: {
     beginner: 127,
-    "beginner-twist-first": 129,
+    "beginner-twist-first": 134,
     "two-look": 114,
     cfop: 55,
     roux: 54,
@@ -1215,12 +1236,12 @@ export const MAP_MEASURE: {
       "beginner-corner-twist": 23,
     },
     "beginner-twist-first": {
-      cross: 15,
-      "first-corners": 30,
-      "twist-first-second": 35,
-      "twist-first-eo": 9,
+      "twist-first-cross": 18,
+      "twist-first-corners": 29,
+      "twist-first-second": 36,
+      "twist-first-eo": 11,
       "twist-first-ep": 9,
-      "twist-first": 17,
+      "twist-first": 15,
       "twist-first-place": 16,
     },
     "two-look": {

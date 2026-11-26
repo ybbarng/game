@@ -11,14 +11,18 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
-import { piecePlace, TWIST } from "./beginner-path";
+import { piecePlace } from "./beginner-path";
 import { goalMet } from "./judge";
 import { TWIST_FIRST_333 } from "./lessons-twist-first";
 import { invertAlg } from "./notation";
 import {
   CORNER_A,
   CORNER_B,
+  CORNER_IN,
+  CORNER_PULL,
   CORNER_TURN,
+  CROSS_FRONT,
+  CROSS_PULL,
   cornerYellows,
   EDGE_CYCLE,
   EDGE_FLIP,
@@ -76,12 +80,67 @@ describe("덩어리를 이으면 쪽의 공식이다", () => {
     });
 });
 
+const commutator = (x: string, y: string) =>
+  `${x} ${y} ${invertAlg(x)} ${invertAlg(y)}`;
+/** 흰 면 위로 쥔 맞춘 큐브에서, 공식의 거꾸로로 만든 그 공식이 맞추는 상황 */
+const solvedUpBy = (alg: string) => at(invertAlg(alg), solvedCube(3));
+/** 흰 면 위로 쥐었을 때 그 자리에 있는 조각(맞춘 큐브의 면 글자 그대로) */
+const whereUp = (s: PuzzleState, piece: Face[]) =>
+  [...piecePlace(s, piece)].sort().join("");
+
+describe("흰 십자: F2, 옆에서 올리기 D · (R F' R'), 빼기 R2 · D · R2", () => {
+  it("옆에서 올리기: D로 아래-오른쪽, R로 앞-오른쪽 자리(위-오른쪽 흰 엣지 블럭은 뒤-오른쪽으로), F'로 위-앞에 흰색 위로, R'로 흰 십자가 다 맞는다", () => {
+    const start = solvedUpBy(CROSS_FRONT);
+    const wf: Face[] = ["U", "F"];
+    const wr: Face[] = ["U", "R"];
+    expect(piecePlace(start, wf)).toEqual(["F", "D"]);
+    expect(whereUp(at("D", start), wf)).toBe(slot("DR"));
+    const r = at("D R", start);
+    expect([whereUp(r, wf), whereUp(r, wr)]).toEqual([slot("FR"), slot("BR")]);
+    expect(piecePlace(at("D R F'", start), wf)).toEqual(["U", "F"]);
+    expect(goalMet(3, at(CROSS_FRONT, start), "white-cross")).toBe(true);
+  });
+
+  it("빼기 R2 D R2: 위-오른쪽 엣지 블럭이 아래-오른쪽 → 아래-뒤로 내려가 아래 층에 남는다", () => {
+    const pr: Face[] = ["U", "R"];
+    expect(whereUp(at("R2", solvedCube(3)), pr)).toBe(slot("DR"));
+    expect(whereUp(at("R2 D", solvedCube(3)), pr)).toBe(slot("DB"));
+    expect(whereUp(at(CROSS_PULL, solvedCube(3)), pr)).toBe(slot("DB"));
+  });
+});
+
+describe("첫 층 코너: 코너 넣기 F' R F R' = (F', R)의 「돌리고 · 돌리고 · 되돌리고 · 되돌리기」", () => {
+  it("코너 넣기는 X Y X' Y' 꼴이다", () => {
+    expect(CORNER_IN).toBe(commutator("F'", "R"));
+  });
+
+  it("F'로 코너 블럭이 앞-오른쪽 위에 흰색 위로 올라오고(위-앞 흰 엣지 블럭은 비킴), R로 뒤-오른쪽 위로 비키고(위-오른쪽 흰 엣지 블럭도), F로 위-앞 흰 엣지 블럭이 돌아오고, R'로 코너 블럭이 제자리에 들고 위-오른쪽도 돌아온다", () => {
+    const start = solvedUpBy(CORNER_IN);
+    const c: Face[] = ["U", "F", "R"];
+    const wf: Face[] = ["U", "F"];
+    const wr: Face[] = ["U", "R"];
+    expect(piecePlace(start, c)[0]).toBe("R");
+    const f = at("F'", start);
+    expect(piecePlace(f, c)[0]).toBe("U");
+    expect(whereUp(f, c)).toBe(slot("UFR"));
+    expect(whereUp(f, wf)).not.toBe(slot("UF"));
+    const r = at("F' R", start);
+    expect([whereUp(r, c), whereUp(r, wr)]).toEqual([slot("UBR"), slot("BR")]);
+    expect(piecePlace(at("F' R F", start), wf)).toEqual(["U", "F"]);
+    expect(goalMet(3, at(CORNER_IN, start), "first-layer")).toBe(true);
+  });
+
+  it("빼기 R' D' R은 앞-오른쪽 위 코너 블럭을 아래 층(아래-앞-왼쪽)으로 내리고 흰 십자는 그대로 둔다", () => {
+    const s = at(CORNER_PULL, solvedCube(3));
+    expect(whereUp(s, ["U", "F", "R"])).toBe(slot("DFL"));
+    expect(goalMet(3, s, "white-cross")).toBe(true);
+  });
+});
+
 describe("둘째 층 A = (U R U' R') · (F R' F' R), B는 좌우를 바꾼 꼴", () => {
-  it("두 덩어리 모두 첫 층 코너 돌리기 R' D' R D와 같은 꼴(X Y X' Y')이다", () => {
-    const commutator = (x: string, y: string) =>
-      `${x} ${y} ${invertAlg(x)} ${invertAlg(y)}`;
-    expect(TWIST).toBe(commutator("R'", "D'"));
+  it("두 덩어리 모두 코너 넣기 F' R F R'와 같은 꼴(X Y X' Y')이고, 뒤 덩어리는 코너 넣기의 도는 방향을 모두 바꾼 것이다", () => {
     expect(SECOND_A).toBe(`${commutator("U", "R")} ${commutator("F", "R'")}`);
+    expect(commutator("F", "R'")).toBe("F R' F' R");
     expect(SECOND_B).toBe(`${commutator("U'", "L'")} ${commutator("F'", "L")}`);
   });
 

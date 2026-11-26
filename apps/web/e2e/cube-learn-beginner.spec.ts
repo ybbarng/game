@@ -43,13 +43,31 @@ test("배우기: 첫 층 코너·코너 자리·코너 방향은 모양마다 �
   await shot(page, "learn-beginner-corner-twist", info.project.name);
 });
 
-test("배우기: 코너 방향 먼저(신광사 해법) 다섯 강은 모든 경우 그림·관계도·덩어리 짜임을 보인다(docs/47 16-33)", async ({
+test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경우 그림·관계도·덩어리 짜임을 보인다(docs/47 16-33)", async ({
   page,
 }, info) => {
   const cases = (name: string) =>
     page.locator(`[data-sheet="${name}"] [data-sheet-case]`);
   const chunks = page.locator("[data-alg-chunks] [data-alg-chunk]");
   const body = page.locator("[data-step-body]");
+
+  await page.goto("/cube/learn?lesson=333-tf-cross");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-cross")).toHaveCount(4);
+  await shot(page, "learn-tf-cross-cases", info.project.name);
+  await goStep(page, 4);
+  await expect(chunks).toHaveCount(4);
+  await expect(body).toContainText("D R F' R'");
+  await shot(page, "learn-tf-cross-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-corners");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-corners")).toHaveCount(4);
+  await shot(page, "learn-tf-corners-cases", info.project.name);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(4);
+  await expect(body).toContainText("F' R F R'");
+  await shot(page, "learn-tf-corners-chunks", info.project.name);
 
   await page.goto("/cube/learn?lesson=333-tf-second");
   await goStep(page, 1);
@@ -83,8 +101,13 @@ test("배우기: 코너 방향 먼저(신광사 해법) 다섯 강은 모든 경
   await expect(chunks).toHaveCount(4);
   await expect(body).toContainText("R' F' L' F R F' L F");
   await shot(page, "learn-tf-twist-chunks", info.project.name);
-  // 관계도(공식 시연 바로 다음 쪽): 일곱 모양 + 다 맞음, 하나도 없음 → 둘·하나 → 기본형 → 다 맞음을 화살표로 잇는다
+  // 관계도(공식 시연 바로 다음 쪽, 문제 없는 시연 쪽): 일곱 모양 + 다 맞음, 하나도 없음 → 둘·하나 → 기본형 → 다 맞음을
+  // 화살표로 잇는다. 문제는 다음 쪽
   await goStep(page, 3);
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    "demo",
+  );
   const flow = page.locator('[data-sheet="tf-flow"]');
   await expect(flow.locator("[data-flow-node]")).toHaveCount(8);
   await expect(flow.locator("[data-flow-front]")).toHaveCount(8);

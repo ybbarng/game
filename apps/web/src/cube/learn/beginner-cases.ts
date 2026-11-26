@@ -27,6 +27,11 @@ import {
   YELLOW_CROSS_BACK,
 } from "./lessons-333";
 import {
+  CORNER_DOWN_SOLVE,
+  CORNER_FRONT_SOLVE,
+  CORNER_SLOT_SOLVE,
+  CROSS_MID_SOLVE,
+  CROSS_TOP_SOLVE,
   EO_DOT,
   EO_LINE,
   EP_ADJACENT,
@@ -44,7 +49,9 @@ import { setupFor } from "./notation";
 import {
   CORNER_A,
   CORNER_B,
+  CORNER_IN,
   CORNER_TURN,
+  CROSS_FRONT,
   EDGE_FLIP,
   SECOND_A,
   SECOND_B,
@@ -325,7 +332,73 @@ export const BEGINNER_CASE_SHEETS: Record<
       },
     ],
   },
-  // 코너 방향 먼저(신광사 설명서 3~7단계, lessons-twist-first.ts, docs/47 16-33)
+  // 코너 방향 먼저(신광사 설명서 1~7단계, lessons-twist-first.ts, docs/47 16-33). 1·2단계는 흰 면 위
+  "beginner-tf-cross": {
+    stage: { path: "twist-first", id: "cross" },
+    set: "f2l",
+    mask: "cross",
+    title:
+      "흰 엣지 블럭의 네 경우(아래 층은 짝 색 센터 바로 아래로 데려와 봐요)",
+    cases: [
+      {
+        id: "down",
+        alg: setupFor("F2"),
+        caption: "아래-앞, 흰색이 아래",
+        action: "F2로 올려요.",
+      },
+      {
+        id: "front",
+        alg: setupFor(CROSS_FRONT),
+        caption: "아래-앞, 흰색이 앞",
+        action: "옆에서 올리기 D R F' R'를 쳐요.",
+      },
+      {
+        id: "middle",
+        alg: setupFor(CROSS_MID_SOLVE),
+        caption: "가운데 층",
+        action: "앞-오른쪽에 두고 빼기 R' D' R로 아래 층에 내려요.",
+      },
+      {
+        id: "top",
+        alg: setupFor(CROSS_TOP_SOLVE),
+        caption: "위 층에 잘못 들어감",
+        action: "위-오른쪽에 두고 빼기 R2 D R2로 아래 층에 내려요.",
+      },
+    ],
+  },
+  "beginner-tf-corners": {
+    stage: { path: "twist-first", id: "corners" },
+    set: "f2l",
+    mask: "first-layer",
+    title:
+      "흰 코너 블럭의 네 경우(아래 층은 넣을 자리 바로 밑으로 데려와 봐요)",
+    cases: [
+      {
+        id: "right",
+        alg: setupFor(CORNER_IN),
+        caption: "자리 밑, 흰색이 오른쪽",
+        action: "코너 블럭 넣기 F' R F R'를 쳐요.",
+      },
+      {
+        id: "down",
+        alg: setupFor(CORNER_DOWN_SOLVE),
+        caption: "자리 밑, 흰색이 아래",
+        action: "다시 놓기 R' D2 R을 치고 D로 자리 밑에 데려와요.",
+      },
+      {
+        id: "front",
+        alg: setupFor(CORNER_FRONT_SOLVE),
+        caption: "자리 밑, 흰색이 앞",
+        action: "D2로 비키고 빼기 R' D' R을 쳐요.",
+      },
+      {
+        id: "slot",
+        alg: setupFor(CORNER_SLOT_SOLVE),
+        caption: "위 층에 잘못 들어감",
+        action: "앞-오른쪽 위에 두고 빼기 R' D' R로 아래 층에 내려요.",
+      },
+    ],
+  },
   "beginner-tf-second": {
     stage: { path: "twist-first", id: "second" },
     set: "f2l",

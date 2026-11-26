@@ -9,11 +9,14 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
 import { TWIST_FLOW } from "./beginner-cases";
-import { play, runStage } from "./beginner-path";
+import { play } from "./beginner-path";
 import { goalMet, stateForRule } from "./judge";
 import {
   CORNER_A,
   CORNER_B,
+  CORNER_DOWN,
+  CORNER_IN,
+  CORNER_PULL,
   CORNER_TURN,
   cornerYellows,
   EDGE_CYCLE,
@@ -25,6 +28,7 @@ import {
   runTwistFirstStage,
   SECOND_A,
   SECOND_B,
+  TWIST_FIRST_FLIP_BEFORE,
   TWIST_FIRST_ORDER,
   TWIST_FIRST_STAGES,
   type TwistFirstStageId,
@@ -51,10 +55,9 @@ function edgesHome(s: PuzzleState): boolean {
 
 function solveByRules(start: PuzzleState) {
   let s = start;
-  for (const id of ["cross", "corners"] as const) s = runStage(id, s).state;
-  s = play(s, "z2");
   const runs = {} as Record<TwistFirstStageId, TwistFirstStep[]>;
   for (const id of TWIST_FIRST_ORDER) {
+    if (id === TWIST_FIRST_FLIP_BEFORE) s = play(s, "z2");
     const r = runTwistFirstStage(id, s);
     runs[id] = r.steps;
     s = r.state;
@@ -126,8 +129,17 @@ describe("무작위 섞기를 규칙만으로 끝까지", () => {
     expect(missing).toEqual([]);
   });
 
+  it("1·2단계는 공식 횟수가 많아야 블럭마다 셋(흰 엣지 블럭은 빼기 한 번 + 넣기, 코너 블럭은 빼기 · 다시 놓기 · 넣기)이다", () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const { runs } = solveByRules(stateForRule("random-cross", seed));
+      expect(runs.cross.length, `${seed}`).toBeLessThanOrEqual(8);
+      expect(runs.corners.length, `${seed}`).toBeLessThanOrEqual(12);
+    }
+  });
+
   it("단계마다 연습 섞기도 규칙대로 그 단계를 끝낸다", () => {
     const RULE: [TwistFirstStageId, Parameters<typeof stateForRule>[0]][] = [
+      ["corners", "white-cross-up"],
       ["second", "first-layer-solved"],
       ["eo", "second-layer-solved"],
       ["ep", "ll-cross-solved"],
@@ -146,6 +158,52 @@ describe("무작위 섞기를 규칙만으로 끝까지", () => {
 });
 
 describe("단계마다 나올 수 있는 모양 모두", () => {
+  it("흰 십자: 흰 엣지 블럭 하나가 어디에 어떻게 있든(24가지) 규칙대로 넣고, 다음 경우가 적은 대로다", () => {
+    // 흰 엣지 블럭 하나(흰-초록)를 열두 자리 · 두 방향에 두고 나머지 흰 엣지는 맞춘다: 그 블럭만 흩는 수
+    const up = solvedCube(3);
+    const shapes = collect(["F", "F2", "D", "R2 D R2", "y"], 5, up).filter(
+      (s) => {
+        const c = faceColors(3, s);
+        // 흰 엣지 블럭 셋만 제자리·바른 방향(윗면 칸이 흰색이고 옆 칸이 그 면 센터 색)
+        const ok = [
+          [7, 19],
+          [5, 10],
+          [1, 46],
+          [3, 37],
+        ].filter(
+          ([u, side]) =>
+            c[u as number] === c[4] &&
+            c[side as number] === c[Math.floor((side as number) / 9) * 9 + 4],
+        ).length;
+        return ok === 3;
+      },
+    );
+    let n = 0;
+    for (const s of shapes) {
+      const r = runTwistFirstStage("cross", s);
+      expect(goalMet(3, r.state, "white-cross")).toBe(true);
+      expect(r.steps.length).toBeLessThanOrEqual(2);
+      nextMatches("cross", s);
+      n++;
+    }
+    expect(n).toBeGreaterThan(20);
+  });
+
+  it("첫 층 코너: 코너 블럭 하나가 어디에 어떻게 있든 규칙대로 넣고, 흰 십자와 다른 코너는 그대로다", () => {
+    const shapes = collect(
+      [CORNER_IN, CORNER_PULL, CORNER_DOWN, "D", "y"],
+      4,
+      play(solvedCube(3), ""),
+    ).filter((s) => goalMet(3, s, "white-cross"));
+    const seen = new Set<string>();
+    for (const s of shapes) {
+      const r = runTwistFirstStage("corners", s);
+      expect(goalMet(3, r.state, "first-layer")).toBe(true);
+      for (const st of r.steps) seen.add(st.caseId);
+    }
+    expect([...seen].sort()).toEqual(["down", "front", "right", "slot"]);
+  });
+
   it("둘째 층: 엣지가 어디에 어떻게 있든 규칙대로 넣고, 엣지 하나만 흩어졌으면 다음 경우도 적은 대로다", () => {
     // 넣기 공식을 여러 쥐기와 윗면 돌리기로 쳐서 가운데 층 엣지를 흩는다
     const shapes = collect([SECOND_A, SECOND_B, "U", "y"], 4);

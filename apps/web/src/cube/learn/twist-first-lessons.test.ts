@@ -24,6 +24,8 @@ import {
 import type { LessonStep } from "./types";
 
 const STAGE: Record<string, TwistFirstStageId> = {
+  "333-tf-cross": "cross",
+  "333-tf-corners": "corners",
   "333-tf-second": "second",
   "333-tf-eo": "eo",
   "333-tf-ep": "ep",
@@ -46,8 +48,10 @@ const casesOf = (stage: TwistFirstStageId) =>
   );
 
 describe("강 모범 답 = 경우별 정해진 길", () => {
-  it("강은 설명서 3~7단계 다섯이고, 차례가 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치다", () => {
+  it("강은 설명서 1~7단계 일곱이고, 차례가 흰 십자 → 첫 층 코너 → 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치다", () => {
     expect(TWIST_FIRST_333.lessons.map((l) => l.title)).toEqual([
+      "흰 십자",
+      "첫 층 코너",
       "둘째 층 엣지",
       "엣지 방향",
       "엣지 위치",
@@ -89,6 +93,8 @@ describe("강 모범 답 = 경우별 정해진 길", () => {
   it("마지막 해 보기는 그 단계 연습 섞기로 아무 경우나 낸다", () => {
     const last = (id: string) => lesson(id)?.steps.at(-1)?.setup;
     expect(TWIST_FIRST_333.lessons.map((l) => last(l.id))).toEqual([
+      { rule: "random-cross" },
+      { rule: "white-cross-up" },
       { rule: "first-layer-solved" },
       { rule: "second-layer-solved" },
       { rule: "ll-cross-solved" },
@@ -97,14 +103,42 @@ describe("강 모범 답 = 경우별 정해진 길", () => {
     ]);
   });
 
-  it("코너 방향 강은 공식 시연 바로 다음 쪽에 관계도를 둔다", () => {
+  it("코너 방향 강은 공식 시연 바로 다음 쪽에 관계도를 문제 없는 시연 쪽으로 두고, 문제는 그다음 쪽에 둔다", () => {
     const steps = lesson("333-tf-twist")?.steps ?? [];
     const demo = steps.findIndex((s) => s.kind === "demo");
-    expect(steps[demo + 1]?.sheet).toBe("tf-flow");
+    const flow = steps[demo + 1];
+    expect([flow?.sheet, flow?.kind, flow?.quiz]).toEqual([
+      "tf-flow",
+      "demo",
+      undefined,
+    ]);
+    expect(steps[demo + 2]?.kind).toBe("quiz");
+    expect(steps[demo + 2]?.sheet).toBeUndefined();
   });
 });
 
 describe("고르기 문제의 답 = 그림 상황", () => {
+  it("흰 십자 첫 두 쪽: 흰-초록 엣지 블럭이 아래-앞, 흰색이 아래라 F2", () => {
+    for (const k of [0, 1]) {
+      const s = stateOf(lesson("333-tf-cross")?.steps[k] as LessonStep);
+      expect(nextTwistFirstStep("cross", s)).toMatchObject({
+        caseId: "down",
+        hold: "",
+        alg: "F2",
+      });
+    }
+  });
+
+  it("첫 층 코너 첫 두 쪽: 자리 밑, 흰색이 오른쪽이라 코너 넣기", () => {
+    for (const k of [0, 1]) {
+      const s = stateOf(lesson("333-tf-corners")?.steps[k] as LessonStep);
+      expect(nextTwistFirstStep("corners", s)).toMatchObject({
+        caseId: "right",
+        hold: "",
+      });
+    }
+  });
+
   it("둘째 층 첫 두 쪽: 위-앞 엣지 블럭의 옆 색이 앞 센터 색이고, 공식 A로 넣는다", () => {
     const s = stateOf(lesson("333-tf-second")?.steps[1] as LessonStep);
     expect(nextTwistFirstStep("second", s)).toMatchObject({
@@ -250,6 +284,6 @@ describe("글", () => {
 
   it("강의 첫머리에 신광사 큐브 설명서의 해법이라는 것을 밝힌다", () => {
     expect(courseById("333-twist-first")?.summary).toContain("신광사");
-    expect(lesson("333-tf-second")?.steps[0]?.body).toContain("신광사");
+    expect(lesson("333-tf-cross")?.steps[0]?.body).toContain("신광사");
   });
 });

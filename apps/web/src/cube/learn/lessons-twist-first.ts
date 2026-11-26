@@ -1,6 +1,6 @@
-// 3×3 초보자(코너 방향 먼저)의 첫 층 다음 다섯 단계(docs/47 16-33). 예전 문방구 큐브(신광사)에 들어 있던 설명서의 해법을
-// 설명서 공식 그대로 가르친다: 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치. 흰 십자와 첫 층 코너는 3×3
-// 처음 맞추기 강의에서 배운다. 단계마다 첫머리에서 모든 경우를 그림으로 훑고(beginner-cases.ts `beginner-tf-*`), 경우마다
+// 3×3 초보자(코너 방향 먼저)의 일곱 단계(docs/47 16-33). 예전 문방구 큐브(신광사)에 들어 있던 설명서의 해법을 설명서 공식
+// 그대로 가르친다: 흰 십자 → 첫 층 코너 → 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치. 3×3 처음 맞추기
+// 강의와는 따로다. 단계마다 첫머리에서 모든 경우를 그림으로 훑고(beginner-cases.ts `beginner-tf-*`), 경우마다
 // 「이 모양이면 → 이렇게 쥐고 → 이 공식 n번」으로 닫는다. 코너 방향은 모양마다 그림처럼 쥐고 한 번 치면 어느 모양이 되는지
 // 관계도(`tf-flow`)로도 보인다. 경우와 공식·횟수의 원본은 twist-first-path.ts이고, 쪽의 모범 답은 그 규칙이 같은
 // 상황에서 내는 수와 같다(twist-first-lessons.test.ts). 덩어리 글이 말한 일은 twist-first-algs.test.ts가 엔진으로 확인한다.
@@ -9,7 +9,14 @@ import { setupFor } from "./notation";
 import {
   CORNER_A,
   CORNER_B,
+  CORNER_DOWN,
+  CORNER_FRONT,
+  CORNER_IN,
+  CORNER_PULL,
   CORNER_TURN,
+  CROSS_FRONT,
+  CROSS_MIDDLE,
+  CROSS_PULL,
   EDGE_CYCLE,
   EDGE_FLIP,
   SECOND_A,
@@ -17,8 +24,22 @@ import {
 } from "./twist-first-path";
 import type { Course, Lesson } from "./types";
 
+/** 흰 면 위로 쥐고 이 풀이로 맞는 시작 상황(1·2단계) */
+const up = (solution: string) => ({ alg: setupFor(solution) });
 /** 흰 면 아래로 쥐고 이 풀이로 맞는 시작 상황 */
 const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
+
+// 1·2단계 경우별 상황(흰 면 위). 시험이 규칙으로 푼 수가 풀이와 같은지 본다
+/** 흰 십자: 가운데 층(앞-오른쪽) → 빼서 아래-앞, 흰색 아래 → F2 */
+export const CROSS_MID_SOLVE = `${CROSS_MIDDLE} F2`;
+/** 흰 십자: 위-오른쪽에 뒤집혀 들어감 → 빼서 아래 층(흰색이 옆) → 짝 색 센터를 앞으로 쥐고 바로 아래로 → 옆에서 올리기 */
+export const CROSS_TOP_SOLVE = `${CROSS_PULL} y D' ${CROSS_FRONT}`;
+/** 첫 층 코너: 자리 밑, 흰색 아래 → 다시 놓고 D → 넣기 */
+export const CORNER_DOWN_SOLVE = `${CORNER_DOWN} D ${CORNER_IN}`;
+/** 첫 층 코너: 자리 밑, 흰색 앞 → D2로 비키고 빼기 → 넣기 */
+export const CORNER_FRONT_SOLVE = `${CORNER_FRONT} ${CORNER_IN}`;
+/** 첫 층 코너: 앞-오른쪽 위에 돌아간 채 들어감 → 빼기 → D → 넣기 */
+export const CORNER_SLOT_SOLVE = `${CORNER_PULL} D ${CORNER_IN}`;
 const A3 = SECOND_A;
 const B3 = SECOND_B;
 const F4 = EDGE_FLIP;
@@ -55,6 +76,284 @@ export const PLACE_NONE = `${A} y ${A}`;
 /** 코너 위치: 제자리 없음 → A 한 번 → 하나(반시계) → y'로 쥐고 B */
 export const PLACE_NONE_B = `${A} y' ${B}`;
 
+const cross: Lesson = {
+  id: "333-tf-cross",
+  size: 3,
+  title: "흰 십자",
+  summary:
+    "흰 센터 둘레에 흰 엣지 넷을 올려요. 넣을 블럭을 짝 색 센터 바로 아래로 데려와 흰색이 어디를 보는지에 따라 올려요.",
+  steps: [
+    {
+      kind: "quiz",
+      body: "예전 문방구에서 팔던 신광사 큐브 설명서의 해법이에요. 이 강의는 그 설명서의 공식으로 처음부터 끝까지 맞춰요. 먼저 흰 면을 위로 들고, 흰 센터 둘레에 흰 엣지 블럭 넷을 올려 흰 십자를 만들어요. 흰 엣지 블럭에서 흰색이 아닌 쪽 색을 「짝 색」이라고 부를게요. 흰 엣지 블럭의 제자리는 흰 센터와 짝 색 센터 사이예요.",
+      setup: up("F2"),
+      mask: "cross",
+      quiz: {
+        question: "흰-초록 엣지 블럭은 지금 어디에 있을까요?",
+        choices: ["아래-앞", "위-앞"],
+        answer: 0,
+        why: "초록 센터 바로 아래, 아래-앞에 있어요. 흰색은 아래를 봐요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "흰 엣지 블럭은 어디에 있든 그림의 네 경우 가운데 하나예요. 아래 층에 있으면 짝 색 센터가 앞에 오게 큐브를 y로 돌려 쥐고, 아랫면을 돌려 블럭을 바로 아래(아래-앞)로 데려와요. 그다음 흰색이 아래를 보면 F2, 앞을 보면 「옆에서 올리기」 D R F' R'를 쳐요. 가운데 층이나 위 층에 잘못 들어가 있으면 먼저 아래 층으로 빼서, 아래 층일 때처럼 올려요. 아랫면은 흰 십자에 닿지 않아 마음껏 돌려도 돼요.",
+      setup: up("F2"),
+      mask: "cross",
+      sheet: "beginner-tf-cross",
+      quiz: {
+        question:
+          "흰-초록 엣지 블럭은 아래-앞에 있고 흰색이 아래를 봐요. 무엇을 칠까요?",
+        choices: ["F2", "D R F' R'"],
+        answer: 0,
+        why: "흰색이 아래면 앞면을 반 바퀴(F2) 돌려 곧장 올려요.",
+      },
+    },
+    {
+      kind: "demo",
+      body: "흰색이 아래를 보면 앞면을 반 바퀴 돌려요. 아래-앞 블럭이 위-앞으로 올라가면서 흰색이 위를, 짝 색이 앞을 봐요.",
+      setup: up("F2"),
+      alg: "F2",
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "흰-빨강 엣지 블럭이 아래 층에 있어요. 빨강 센터가 앞에 오게 큐브를 돌려 쥐고, 아랫면을 돌려 블럭을 바로 아래로 데려온 뒤 올려 보세요.",
+      setup: up("y D F2"),
+      alg: "y D F2",
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "demo",
+      body: "흰색이 앞을 보면 F2로는 흰색이 앞을 본 채 올라가요. 그래서 블럭을 옆으로 옮겨 올리는 「옆에서 올리기」 D R F' R'를 쳐요. 가운데 R F' R'는 R로 비키고, F' 한 수로 넣고, R'로 되돌리는 짜임이에요.",
+      setup: up(CROSS_FRONT),
+      alg: CROSS_FRONT,
+      mask: "cross",
+      chunks: [
+        {
+          moves: "D",
+          says: "아랫면을 돌려 엣지 블럭을 아래-오른쪽으로 비켜요.",
+        },
+        {
+          moves: "R",
+          says: "오른쪽 층을 돌려 엣지 블럭을 앞-오른쪽 자리로 올려요. 위-오른쪽 흰 엣지 블럭은 뒤로 비켜요.",
+        },
+        {
+          moves: "F'",
+          says: "앞면을 돌려 엣지 블럭을 위-앞에 넣어요. 이번에는 흰색이 위를 봐요.",
+        },
+        {
+          moves: "R'",
+          says: "오른쪽 층을 되돌려요. 뒤로 비켰던 흰 엣지 블럭이 제자리로 돌아와요.",
+        },
+      ],
+    },
+    {
+      kind: "try",
+      body: "흰색이 앞을 보는 블럭이에요. 짝 색 센터가 앞에 오게 돌려 쥐고 옆에서 올리기를 쳐 보세요.",
+      setup: up(`y' ${CROSS_FRONT}`),
+      alg: `y' ${CROSS_FRONT}`,
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "demo",
+      body: "흰 엣지 블럭이 위 층의 다른 자리에 들었거나 제자리에서 뒤집혀 있으면, 그 블럭이 위-오른쪽에 오게 쥐고 「빼기」 R2 D R2로 아래 층에 내려요. R2로 내리고, D로 비켜 두고, R2로 오른쪽 층을 되돌려요. 내려간 블럭은 아래 층 경우대로 올려요. 지금은 위-오른쪽 흰 엣지 블럭이 제자리에서 뒤집혀 있어요.",
+      setup: up(CROSS_TOP_SOLVE),
+      alg: CROSS_TOP_SOLVE,
+      mask: "cross",
+      chunks: [
+        {
+          moves: "R2",
+          says: "위-오른쪽 엣지 블럭을 아래-오른쪽으로 내려요.",
+        },
+        { moves: "D", says: "아랫면을 돌려 그 블럭을 아래-뒤로 비켜요." },
+        {
+          moves: "R2",
+          says: "오른쪽 층을 되돌려요. 내려간 블럭은 아래 층에 남아요.",
+        },
+        {
+          moves: "y D'",
+          says: "짝 색 센터가 앞에 오게 돌려 쥐고, 아랫면을 돌려 블럭을 바로 아래로 데려와요. 흰색이 앞을 봐요.",
+        },
+        {
+          moves: CROSS_FRONT,
+          says: "흰색이 앞이라 옆에서 올리기로 올려요. 첫 수 D가 방금 친 D'를 되돌리지만, 바로 아래에서 흰색을 확인하고 치는 차례 그대로 둬요.",
+        },
+      ],
+    },
+    {
+      kind: "try",
+      body: "흰 엣지 블럭이 위 층에서 뒤집혀 있어요. 그 블럭이 위-오른쪽에 오게 돌려 쥐고 빼기 R2 D R2로 내린 뒤, 아래 층 경우대로 올려 보세요.",
+      setup: up(`y' ${CROSS_TOP_SOLVE}`),
+      alg: `y' ${CROSS_TOP_SOLVE}`,
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "흰 엣지 블럭이 가운데 층 앞-오른쪽에 있어요. 설명서에는 없는 경우라서, 첫 층 코너에서 쓸 빼기 R' D' R로 아래 층에 내려요. 그다음 아래 층 경우대로 올려 보세요.",
+      setup: up(CROSS_MID_SOLVE),
+      alg: CROSS_MID_SOLVE,
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "이번엔 혼자 흰 십자를 만들어 봐요. 아래 경우 그림대로 하나씩 올려요. 아래 층 블럭부터 하면 편해요.",
+      setup: { rule: "random-cross" },
+      goal: "white-cross",
+      mask: "cross",
+      sheet: "beginner-tf-cross",
+    },
+  ],
+};
+
+const corners: Lesson = {
+  id: "333-tf-corners",
+  size: 3,
+  title: "첫 층 코너",
+  summary:
+    "흰 코너 블럭 넷을 넣어 흰 면과 첫 층을 맞춰요. 넣는 공식 하나와, 넣기 좋게 다시 놓는 빼기 둘을 써요.",
+  steps: [
+    {
+      kind: "quiz",
+      body: "흰 십자를 만들었어요. 이제 흰 코너 블럭 넷을 넣어 흰 면과 첫 층을 맞춰요. 흰 코너 블럭의 제자리는 흰 센터와 나머지 두 색의 센터가 만나는 구석이에요. 넣을 자리가 앞-오른쪽 위에 오게 큐브를 y로 돌려 쥐고, 아랫면을 돌려 코너 블럭을 그 자리 바로 밑(아래-앞-오른쪽)으로 데려와요.",
+      setup: up(CORNER_IN),
+      mask: "first-layer",
+      quiz: {
+        question: "자리 밑에 온 코너 블럭의 흰색은 어느 쪽을 볼까요?",
+        choices: ["오른쪽", "앞", "아래"],
+        answer: 0,
+        why: "흰색이 오른쪽을 봐요. 설명서가 넣는 공식을 보인 기본 모양이에요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "코너 블럭은 어디에 있든 그림의 네 경우 가운데 하나예요. 자리 밑에서 흰색이 오른쪽이면 「코너 블럭 넣기」 F' R F R'를 쳐요. 흰색이 아래면 「다시 놓기」 R' D2 R, 흰색이 앞이면 D2와 「빼기」 R' D' R을 쳐서 흰색이 오른쪽인 모양을 만들어요. 위 층의 다른 자리에 들었거나 제자리에서 돌아가 있으면 그 블럭을 앞-오른쪽 위에 두고 빼기로 아래 층에 내려요.",
+      setup: up(CORNER_IN),
+      mask: "first-layer",
+      sheet: "beginner-tf-corners",
+      quiz: {
+        question: "자리 밑에서 흰색이 오른쪽을 봐요. 무엇을 칠까요?",
+        choices: ["코너 블럭 넣기", "다시 놓기"],
+        answer: 0,
+        why: "흰색이 오른쪽이면 곧장 코너 블럭 넣기예요.",
+      },
+    },
+    {
+      kind: "demo",
+      body: "코너 블럭 넣기 F' R F R'는 네 수예요. 한 면을 돌리고, 다른 면을 돌리고, 처음 면을 되돌리고, 다른 면도 되돌리는 꼴이에요. 이 꼴은 뒤 단계 공식에도 자주 나와요. 앞면으로 코너 블럭을 올려 오른쪽 층으로 비켜 두고, 앞면을 되돌린 뒤 오른쪽 층을 되돌려 넣어요.",
+      setup: up(CORNER_IN),
+      alg: CORNER_IN,
+      mask: "first-layer",
+      chunks: [
+        {
+          moves: "F'",
+          says: "앞면을 돌려 코너 블럭을 앞-오른쪽 위로 올려요. 흰색이 위를 봐요. 흰 십자의 위-앞 엣지 블럭은 옆으로 비켜요.",
+        },
+        {
+          moves: "R",
+          says: "오른쪽 층을 돌려 올라온 코너 블럭을 뒤-오른쪽 위로 비켜 둬요. 위-오른쪽 흰 엣지 블럭도 함께 비켜요.",
+        },
+        {
+          moves: "F",
+          says: "앞면을 되돌려요. 옆으로 비켰던 위-앞 흰 엣지 블럭이 돌아와요.",
+        },
+        {
+          moves: "R'",
+          says: "오른쪽 층을 되돌려요. 비켜 둔 코너 블럭이 앞-오른쪽 위 제자리에 들어가고, 위-오른쪽 흰 엣지 블럭도 돌아와요.",
+        },
+      ],
+    },
+    {
+      kind: "try",
+      body: "넣을 자리가 다른 구석이고 코너 블럭도 자리 밑이 아니에요. 자리가 앞-오른쪽 위에 오게 돌려 쥐고, 아랫면을 돌려 코너 블럭을 자리 밑으로 데려와 넣어 보세요.",
+      setup: up(`D ${CORNER_IN}`),
+      alg: `D ${CORNER_IN}`,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "try",
+      body: "넣을 자리가 앞-오른쪽 위가 아니에요. 큐브를 y로 돌려 쥐고 넣어 보세요.",
+      setup: up(`y' ${CORNER_IN}`),
+      alg: `y' ${CORNER_IN}`,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "demo",
+      body: "자리 밑에서 흰색이 아래를 보면 다시 놓기 R' D2 R을 쳐요. 오른쪽 층을 내려 자리를 비우고, 아랫면을 반 바퀴 돌리고, 오른쪽 층을 되돌려요. 코너 블럭의 흰색이 옆을 보게 바뀌어요. 아랫면을 D로 돌려 자리 밑에 데려오면 흰색이 오른쪽이라 코너 블럭 넣기로 넣어요.",
+      setup: up(CORNER_DOWN_SOLVE),
+      alg: CORNER_DOWN_SOLVE,
+      mask: "first-layer",
+      chunks: [
+        {
+          moves: CORNER_DOWN,
+          says: "다시 놓아요. 흰 면은 그대로이고, 코너 블럭의 흰색이 옆을 봐요.",
+        },
+        { moves: "D", says: "코너 블럭을 다시 자리 밑으로 데려와요." },
+        {
+          moves: CORNER_IN,
+          says: "흰색이 오른쪽이라 코너 블럭 넣기로 넣어요.",
+        },
+      ],
+    },
+    {
+      kind: "try",
+      body: "흰색이 아래를 보는 코너 블럭이에요. 넣을 자리가 앞-오른쪽 위에 오게 돌려 쥐고 다시 놓기부터 해 보세요.",
+      setup: up(`y ${CORNER_DOWN_SOLVE}`),
+      alg: `y ${CORNER_DOWN_SOLVE}`,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "try",
+      body: "자리 밑에서 흰색이 앞을 봐요. 설명서에는 없는 경우라서, 아랫면을 D2로 돌려 비킨 뒤 빼기 R' D' R을 치면 흰색이 오른쪽인 모양이 돼요. 그다음 코너 블럭 넣기로 넣어 보세요.",
+      setup: up(CORNER_FRONT_SOLVE),
+      alg: CORNER_FRONT_SOLVE,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "demo",
+      body: "코너 블럭이 제자리에 들었는데 흰색이 옆을 보면 돌아가 있는 거예요. 그 블럭을 앞-오른쪽 위에 두고 빼기 R' D' R로 아래 층에 내려요. R'로 오른쪽 층을 내리고, D'로 블럭을 비켜 두고, R로 오른쪽 층을 되돌려요. 내려간 블럭은 경우대로 넣어요.",
+      setup: up(CORNER_SLOT_SOLVE),
+      alg: CORNER_SLOT_SOLVE,
+      mask: "first-layer",
+      chunks: [
+        {
+          moves: CORNER_PULL,
+          says: "빼기로 코너 블럭을 아래 층으로 내려요. 흰 십자는 그대로예요.",
+        },
+        { moves: "D", says: "코너 블럭을 자리 밑으로 데려와요." },
+        {
+          moves: CORNER_IN,
+          says: "흰색이 오른쪽이라 코너 블럭 넣기로 넣어요.",
+        },
+      ],
+    },
+    {
+      kind: "try",
+      body: "앞-오른쪽 위가 아닌 구석에 코너 블럭이 돌아간 채 들어가 있어요. 그 블럭을 앞-오른쪽 위에 두고 빼기로 내린 뒤 경우대로 넣어 보세요.",
+      setup: up(`y' ${CORNER_SLOT_SOLVE}`),
+      alg: `y' ${CORNER_SLOT_SOLVE}`,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "try",
+      body: "이번엔 혼자 첫 층을 끝내 봐요. 흰 십자만 맞고 흰 코너 블럭은 흩어져 있어요. 아래 경우 그림대로 하나씩 넣어요. 아래 층 블럭부터 하면 편해요.",
+      setup: { rule: "white-cross-up" },
+      goal: "first-layer",
+      mask: "first-layer",
+      sheet: "beginner-tf-corners",
+    },
+  ],
+};
+
 const second: Lesson = {
   id: "333-tf-second",
   size: 3,
@@ -64,7 +363,7 @@ const second: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "첫 층을 다 맞췄어요. 여기서부터는 예전 문방구에서 팔던 신광사 큐브 설명서의 공식으로 맞춰요. 흰 면을 아래로 보내고, 그 위 가운데 층의 엣지 넷을 넣어요. 넣을 엣지 블럭은 노란색이 없는 엣지 블럭이에요. 위 층 엣지 블럭에서 위를 보는 스티커 색을 「위 색」, 옆을 보는 스티커 색을 「옆 색」이라고 부를게요.",
+      body: "첫 층을 다 맞췄어요. 설명서대로 맞춘 흰 면을 아래로 보내고, 그 위 가운데 층의 엣지 넷을 넣어요. 넣을 엣지 블럭은 노란색이 없는 엣지 블럭이에요. 위 층 엣지 블럭에서 위를 보는 스티커 색을 「위 색」, 옆을 보는 스티커 색을 「옆 색」이라고 부를게요.",
       setup: flip(A3),
       mask: "f2l",
       quiz: {
@@ -90,7 +389,7 @@ const second: Lesson = {
     },
     {
       kind: "demo",
-      body: "오른쪽 넣기는 U R U' R' F R' F' R, 여덟 수예요. 네 수짜리 덩어리 둘로 보면 쉬워요. 두 덩어리 모두 첫 층 코너 돌리기 R' D' R D와 같은 꼴이에요. 한 면을 돌리고, 다른 면을 돌리고, 처음 면을 되돌리고, 다른 면도 되돌려요.",
+      body: "오른쪽 넣기는 U R U' R' F R' F' R, 여덟 수예요. 네 수짜리 덩어리 둘로 보면 쉬워요. 두 덩어리 모두 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 한 면을 돌리고, 다른 면을 돌리고, 처음 면을 되돌리고, 다른 면도 되돌려요. 뒤 덩어리 F R' F' R은 코너 블럭 넣기와 도는 방향만 모두 반대예요.",
       setup: flip(A3),
       alg: A3,
       mask: "f2l",
@@ -228,7 +527,7 @@ const edgeFlip: Lesson = {
     },
     {
       kind: "demo",
-      body: "기본형은 노란 스티커 둘이 뒤와 왼쪽에 오게 두고 「엣지 방향」 공식 R' U' F' U F R을 한 번 쳐요. 가운데 네 수 U' F' U F는 첫 층 코너 돌리기 R' D' R D와 같은 꼴이에요. 그 앞뒤를 R'와 R로 감싸요. R'로 준비하고, 덩어리를 친 뒤, R로 준비를 되돌리는 짜임이에요.",
+      body: "기본형은 노란 스티커 둘이 뒤와 왼쪽에 오게 두고 「엣지 방향」 공식 R' U' F' U F R을 한 번 쳐요. 가운데 네 수 U' F' U F는 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 그 앞뒤를 R'와 R로 감싸요. R'로 준비하고, 덩어리를 친 뒤, R로 준비를 되돌리는 짜임이에요.",
       setup: flip(F4),
       alg: F4,
       mask: "ll-cross",
@@ -457,7 +756,7 @@ const twist: Lesson = {
     },
     {
       kind: "demo",
-      body: "지금이 기본형을 쥘 모습이에요. 「코너 방향」 공식 R' F' L' F R F' L F를 한 번 치면 다 맞아요. 이 공식은 첫 층 코너 돌리기 R' D' R D와 같은 꼴이에요. 코너 돌리기는 R'로 흐트러뜨리고, D' 한 수로 옮기고, R과 D로 차례로 되돌렸어요. 이 공식은 D' 한 수 대신 덩어리 F' L' F로 옮기고, 마지막 D 대신 그 덩어리를 되돌리는 F' L F를 쳐요. 되돌리는 덩어리는 가운데 L'만 L로 바뀌어요.",
+      body: "지금이 기본형을 쥘 모습이에요. 「코너 방향」 공식 R' F' L' F R F' L F를 한 번 치면 다 맞아요. 이 공식은 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 코너 블럭 넣기는 F'로 흐트러뜨리고, R 한 수로 옮기고, F와 R'로 차례로 되돌렸어요. 이 공식은 R'로 흐트러뜨리고, 한 수 대신 덩어리 F' L' F로 옮기고, R로 되돌린 뒤, 그 덩어리를 되돌리는 F' L F를 쳐요. 되돌리는 덩어리는 가운데 L'만 L로 바뀌어요.",
       setup: flip(T),
       alg: T,
       chunks: [
@@ -480,11 +779,18 @@ const twist: Lesson = {
       ],
     },
     {
-      kind: "quiz",
-      body: "나머지 모양도 그림처럼 쥐고 공식을 한 번 치면 다음 모양으로 가요. 그림은 모양마다 그렇게 쥐고 한 번 치면 어느 모양이 되는지 화살표로 이은 관계도예요. 위를 보는 노란색이 하나도 없으면 둘이나 하나인 모양으로, 둘이나 하나인 모양은 모두 기본형으로, 기본형은 다 맞음으로 가요. 어느 모양에서 시작해도 공식을 많아야 세 번 치면 다 맞아요.",
+      kind: "demo",
+      body: "나머지 모양도 그림처럼 쥐고 공식을 한 번 치면 다음 모양으로 가요. 아래 그림은 모양마다 그렇게 쥐고 한 번 치면 어느 모양이 되는지 화살표로 이은 관계도예요. 위를 보는 노란색이 하나도 없으면 둘이나 하나인 모양으로, 둘이나 하나인 모양은 모두 기본형으로, 기본형은 다 맞음으로 가요. 어느 모양에서 시작해도 공식을 많아야 세 번 치면 다 맞아요. 시연은 노란색 둘인 옆면이 왼쪽인 모양에서 화살표를 따라 세 번 쳐요.",
       setup: flip(TW_BAR),
+      alg: TW_BAR,
       mask: "oll",
       sheet: "tf-flow",
+    },
+    {
+      kind: "quiz",
+      body: "관계도로 횟수를 세어 봐요. 지금 큐브는 위를 보는 노란색이 하나도 없어요.",
+      setup: flip(TW_BAR),
+      mask: "oll",
       quiz: {
         question:
           "위를 보는 노란색이 하나도 없는 모양에서 시작하면 공식을 모두 몇 번 칠까요?",
@@ -592,7 +898,7 @@ const place: Lesson = {
     },
     {
       kind: "demo",
-      body: "제자리 코너 블럭이 앞-오른쪽 위에 있고, 앞-왼쪽 위 코너 블럭의 제자리가 뒤-왼쪽 위예요. 남은 셋을 시계 방향으로 옮겨야 해서 공식 A(R U B L B' R' B L' B' R U' R')를 쳐요. 열두 수지만 짜임은 셋이에요. 맨 앞 R U로 준비하고, 가운데 여덟 수가 일을 하고, 맨 끝 U' R'로 준비를 되돌려요. 가운데 여덟 수는 첫 층 코너 돌리기 R' D' R D와 같은 꼴이에요. 덩어리 B L B'로 흐트러뜨리고, R'로 옮기고, 덩어리를 되돌리는 B L' B'를 치고, R로 옮긴 것을 되돌려요.",
+      body: "제자리 코너 블럭이 앞-오른쪽 위에 있고, 앞-왼쪽 위 코너 블럭의 제자리가 뒤-왼쪽 위예요. 남은 셋을 시계 방향으로 옮겨야 해서 공식 A(R U B L B' R' B L' B' R U' R')를 쳐요. 열두 수지만 짜임은 셋이에요. 맨 앞 R U로 준비하고, 가운데 여덟 수가 일을 하고, 맨 끝 U' R'로 준비를 되돌려요. 가운데 여덟 수는 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 덩어리 B L B'로 흐트러뜨리고, R'로 옮기고, 덩어리를 되돌리는 B L' B'를 치고, R로 옮긴 것을 되돌려요.",
       setup: flip(A),
       alg: A,
       chunks: [
@@ -699,12 +1005,12 @@ const place: Lesson = {
   ],
 };
 
-/** 3×3 초보자(코너 방향 먼저)의 첫 층 다음 다섯 단계. 흰 십자와 첫 층 코너는 3×3 처음 맞추기 강의에서 배운다 */
+/** 3×3 초보자(코너 방향 먼저), 신광사 설명서 일곱 단계 */
 export const TWIST_FIRST_333: Course = {
   id: "333-twist-first",
   size: 3,
   title: "코너 방향 먼저 맞추기",
   summary:
-    "예전 문방구 신광사 큐브 설명서의 해법이에요. 첫 층까지는 3×3 처음 맞추기와 같고, 그 뒤를 설명서 공식으로 둘째 층 엣지, 엣지 방향, 엣지 위치, 코너 방향, 코너 위치 차례로 맞춰요.",
-  lessons: [second, edgeFlip, edgePlace, twist, place],
+    "예전 문방구 신광사 큐브 설명서의 해법이에요. 설명서 공식으로 흰 십자, 첫 층 코너, 둘째 층 엣지, 엣지 방향, 엣지 위치, 코너 방향, 코너 위치 차례로 맞춰요.",
+  lessons: [cross, corners, second, edgeFlip, edgePlace, twist, place],
 };
