@@ -7,7 +7,6 @@ import type { MilestoneId } from "@game/cube-engine";
 
 import { familiar } from "../practice/deck";
 import { PRACTICE_STAGES } from "../practice/stages";
-import { segmentsOf } from "../progress/gold";
 import { methodSplits, type SolveMethod } from "../progress/methods";
 import { parseSplits, type SolveRecord } from "../records";
 import { ALL_ALG_CASES } from "./alg-sets";
@@ -97,15 +96,15 @@ const SOLVE_METHOD: Partial<Record<MapMethod["id"], SolveMethod>> = {
 /** 지도 해법의 혼자 맞추기 내 해법(없으면 undefined) */
 export const solveMethodOf = (m: MapMethod) => SOLVE_METHOD[m.id];
 
-/** 길 → 그 걸음 하나만 덮는 구간(앞 이정표>이 이정표). 여러 걸음을 한 구간이 덮으면 넣지 않는다 */
+/**
+ * 길 → 그 걸음 하나만 덮는 구간(앞 이정표>이 이정표). 사이에 이정표가 더 있어도 두 이정표 시각의 차로 읽는다
+ * (F2L은 짝마다 이정표가 있지만 걸음 하나). 여러 걸음을 한 구간이 덮으면 넣지 않는다
+ */
 const EDGE_SEGMENT: Readonly<Record<string, `${string}>${MilestoneId}`>> = {
   cross: "start>cross",
   "first-corners": "cross>layer1",
   "second-layer": "layer1>layer2",
-  "f2l-pair-1": "cross>f2l1",
-  "f2l-pair-2": "f2l1>f2l2",
-  "f2l-pair-3": "f2l2>f2l3",
-  "f2l-pair-4": "f2l3>layer2",
+  f2l: "cross>layer2",
   oll: "layer2>oll",
   pll: "oll>ll",
   eoline: "start>eoline",
@@ -160,20 +159,26 @@ export function methodSolo(
   const n = m.size ?? 3;
   const done = records.filter((r) => r.n === n && r.ms !== null && r.splits);
   if (!done.length) return out;
-  const laps = new Map<string, number[]>();
-  for (const r of done)
-    for (const seg of segmentsOf(methodSplits(n, sm, parseSplits(r.splits)))) {
-      const xs = laps.get(seg.key) ?? [];
-      xs.push(seg.lap);
-      laps.set(seg.key, xs);
-    }
+  // 판마다 이정표에 닿은 시각(다 섞임은 0)
+  const reached = done.map((r) => {
+    const at = new Map<string, number>([["start", 0]]);
+    for (const s of methodSplits(n, sm, parseSplits(r.splits)))
+      at.set(s.id, s.ms);
+    return at;
+  });
   const total = done.reduce((a, r) => a + (r.ms as number), 0) / done.length;
   const measured = MAP_MEASURE.steps[m.id];
   const turns = MAP_MEASURE.turns[m.id];
   for (const id of m.edges) {
     const key = segmentFor(m, id);
-    const xs = key ? laps.get(key) : undefined;
-    if (!xs?.length) continue;
+    if (!key) continue;
+    const [from, to] = key.split(">") as [string, string];
+    const xs = reached.flatMap((at) => {
+      const a = at.get(from);
+      const b = at.get(to);
+      return a !== undefined && b !== undefined ? [b - a] : [];
+    });
+    if (!xs.length) continue;
     const avgMs = xs.reduce((a, b) => a + b, 0) / xs.length;
     const want = measured?.[id];
     let skill: EdgeSkill | null = null;

@@ -62,6 +62,19 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
         els.map((el) => el.getAttribute("data-strip-node")),
       ),
   ).toEqual(["scrambled", "cross", "f2l", "oll", "solved"]);
+  // 2단계 OLL·PLL은 OLL 둘·PLL 둘이 띠에 보인다
+  expect(
+    await page
+      .locator('[data-card="two-look"] [data-strip-name]')
+      .allInnerTexts(),
+  ).toEqual([
+    "다 섞임",
+    "아래 두 층",
+    "노란 십자",
+    "노란 면",
+    "코너 자리",
+    "다 맞음",
+  ]);
   // 시안 고르기 단추·견본 기록은 없다
   await expect(page.getByRole("button", { name: "견본 기록" })).toHaveCount(0);
   // 강의 목록(단원·연습)은 카드 아래에 그대로
@@ -81,7 +94,12 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await page.locator('[data-card="cfop"]').click();
   await expect(page).toHaveURL(/\/cube\/methods\?method=cfop$/);
   const screen = page.locator('[data-method-screen="cfop"]');
-  await expect(screen.locator("li [data-edge]")).toHaveCount(7);
+  // 짝 넷을 넣는 F2L은 한 걸음(같은 일을 되풀이하는 걸음은 하나로)
+  expect(
+    await screen
+      .locator("li [data-edge]")
+      .evaluateAll((els) => els.map((el) => el.getAttribute("data-edge"))),
+  ).toEqual(["cross", "f2l", "oll", "pll"]);
   await expect(
     screen.locator('[data-method-course] [data-course="cfop"]'),
   ).toBeVisible();
@@ -123,7 +141,8 @@ test("전체 보기: 해법을 여럿 고르면 주소에 담기고 고른 해�
   await expect(page.locator('[data-solve-map="map"]')).toBeVisible();
   await page.locator('[data-method="cfop"]').click();
   await expect(page).toHaveURL(/sel=beginner%2Ccfop/);
-  await expect(page.locator('[data-edge-line="f2l-pair-1"]')).toHaveCount(1);
+  // CFOP F2L은 선 하나(짝마다 나누지 않는다)
+  await expect(page.locator('[data-edge-line="f2l"]')).toHaveCount(1);
   await expect(page.locator('[data-edge-line="roux-fb"]')).toHaveCount(0);
   // 두 해법이 함께 지나는 십자 길은 선 둘
   await expect(page.locator('[data-edge-line="cross"]')).toHaveCount(2);

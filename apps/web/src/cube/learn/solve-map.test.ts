@@ -75,10 +75,6 @@ const cornersOnly = (s: PuzzleState) => {
   );
 };
 
-/** 지점마다 판정(엔진 목표 이름으로). 짝 지점은 십자 + 맞은 F2L 칸 수 */
-const PAIRS = ["FR", "FL", "BR", "BL"] as const;
-const pairsDone = (s: PuzzleState) =>
-  PAIRS.filter((p) => goalMet(3, s, `f2l-pair:${p}`)).length;
 /** 노란 센터 면의 네 구석 칸 가운데 노란 칸 수(위 코너 블럭 가운데 노랑이 위를 보는 것) */
 const yellowCorners = (s: PuzzleState) => {
   const c = faceColors(3, s);
@@ -90,9 +86,6 @@ const REACHED = {
   scrambled: () => true,
   cross: (s) => goalMet(3, s, "white-cross"),
   "first-layer": (s) => goalMet(3, s, "first-layer"),
-  "pair-1": (s) => goalMet(3, s, "cross") && pairsDone(s) >= 1,
-  "pair-2": (s) => goalMet(3, s, "cross") && pairsDone(s) >= 2,
-  "pair-3": (s) => goalMet(3, s, "cross") && pairsDone(s) >= 3,
   f2l: (s) => goalMet(3, s, "f2l"),
   "yellow-cross": (s) => goalMet(3, s, "yellow-cross"),
   "yellow-edges": (s) => goalMet(3, s, "yellow-edges"),
@@ -293,11 +286,8 @@ describe("공식 수", () => {
       cross: 0,
       "first-corners": 1,
       "second-layer": 2,
-      // 강의가 가르치는 F2L 공식만(docs/47 16-30)
-      "f2l-pair-1": 9,
-      "f2l-pair-2": 9,
-      "f2l-pair-3": 9,
-      "f2l-pair-4": 9,
+      // 강의가 가르치는 F2L 공식만(docs/47 16-30). 짝 넷을 넣는 한 걸음
+      f2l: 9,
       "beginner-yellow-cross": 1,
       "beginner-edges": 1,
       "beginner-corner-place": 1,
@@ -318,8 +308,7 @@ describe("공식 수", () => {
       "lse-ulur": 0,
       "lse-ep": 0,
       eoline: 0,
-      "zz-left": 12,
-      "zz-right": 12,
+      "zz-blocks": 12,
       "petrus-222": 0,
       "petrus-223": 0,
       "petrus-eo": 0,
@@ -378,11 +367,11 @@ describe("공식 수", () => {
     });
   });
 
-  it("앞 길에서 배운 공식은 뒤 길에서 새로 세지 않는다(F2L 짝 둘째부터, 초보자 코너 방향)", () => {
-    const cfop = newFormulas(method("cfop"));
+  it("앞 길에서 배운 공식은 뒤 길에서 새로 세지 않는다(첫 층 코너에서 배운 코너 돌리기)", () => {
+    const twistFirst = newFormulas(method("beginner-twist-first"));
     expect(
-      ["f2l-pair-1", "f2l-pair-2", "f2l-pair-4"].map((id) => cfop.get(id)),
-    ).toEqual([9, 0, 0]);
+      ["first-corners", "twist-first"].map((id) => twistFirst.get(id)),
+    ).toEqual([1, 0]);
     expect(newFormulas(method("beginner")).get("beginner-corner-twist")).toBe(
       0,
     );
@@ -468,23 +457,23 @@ describe("지점 정의", () => {
     }
   });
 
-  it("CFOP: 컴퓨터 해법의 단계마다 십자 → 짝 하나·둘·셋 → 아래 두 층 → 노란 면 → 다 맞음", () => {
-    const order: [MapNodeId, string][] = [
-      ["cross", "cross"],
-      ["pair-1", "f2l-1"],
-      ["pair-2", "f2l-2"],
-      ["pair-3", "f2l-3"],
-      ["f2l", "f2l-4"],
-      ["oll", "oll"],
-      ["solved", "pll"],
+  it("CFOP: 컴퓨터 해법의 단계마다 십자 → 아래 두 층(짝 넷) → 노란 면 → 다 맞음", () => {
+    const order: [MapNodeId, string[]][] = [
+      ["cross", ["cross"]],
+      ["f2l", ["f2l-1", "f2l-2", "f2l-3", "f2l-4"]],
+      ["oll", ["oll"]],
+      ["solved", ["pll"]],
     ];
     for (const seed of SEEDS) {
       const start = scrambled(seed);
       const sol = solveCfop(start);
-      const legs = order.map(([node, name]): [MapNodeId, string] => {
-        const st = sol.stages.find((x) => x.name === name);
-        return [node, st ? sol.moves.slice(st.start, st.end).join(" ") : ""];
-      });
+      const legs = order.map(([node, names]): [MapNodeId, string] => [
+        node,
+        sol.stages
+          .filter((x) => names.includes(x.name))
+          .map((x) => sol.moves.slice(x.start, x.end).join(" "))
+          .join(" "),
+      ]);
       expect(walk(start, legs), `씨앗 ${seed}`).toEqual([]);
     }
   });
@@ -528,7 +517,7 @@ describe("지점 정의", () => {
     }
   });
 
-  it("ZZ: 단원 규칙으로 EO라인 → 왼쪽 블록 → 노란 십자(오른쪽 블록까지 하면 위 엣지 방향이 맞아 있다)", () => {
+  it("ZZ: 단원 규칙으로 EO라인 → 노란 십자(두 블록을 지으면 위 엣지 방향이 맞아 있다, 왼쪽 블록 뒤는 페트루스 엣지 방향과 같은 모습)", () => {
     for (const seed of SEEDS) {
       const z = solveZzByRules(scramble("333", seed).text);
       expect(
@@ -936,7 +925,10 @@ describe("해법 카드 띠는 큰 단계만(2026-11-26 사용자 「CFOP가 단
     expect(off).toEqual([]);
   });
 
-  it("단계 지도가 있는 과정의 기본 해법은 카드 띠 칸 수가 그 과정의 단계 수와 같다", () => {
+  it("단계 지도가 있는 과정의 기본 해법은 카드 띠 칸 수가 그 과정의 단계 수와 같다(2단계 OLL·PLL은 OLL·PLL 안 걸음까지)", () => {
+    // 2단계 OLL·PLL은 두 번에 나누는 것이 해법의 정체라 카드 띠에 OLL 둘·PLL 둘을 보인다(2026-11-26 사용자). 과정의
+    // 단계 지도(아래 두 층·OLL·PLL 세 칸)보다 둘 많다
+    const more: Partial<Record<string, number>> = { "two-look": 2 };
     const got = Object.fromEntries(
       MAP_METHODS.filter(
         (m) => !m.extra && m.course && STAGE_SPECS[m.course],
@@ -944,7 +936,8 @@ describe("해법 카드 띠는 큰 단계만(2026-11-26 사용자 「CFOP가 단
         m.id,
         [
           methodStages(m).length,
-          STAGE_SPECS[m.course as string]?.stages.length,
+          (STAGE_SPECS[m.course as string]?.stages.length ?? 0) +
+            (more[m.id] ?? 0),
         ],
       ]),
     );
@@ -968,16 +961,44 @@ describe("해법 카드 띠는 큰 단계만(2026-11-26 사용자 「CFOP가 단
     );
   });
 
-  it("CFOP 띠는 십자·F2L·OLL·PLL 네 칸이고 F2L 짝 넷은 한 칸에 든다", () => {
+  it("CFOP 띠는 십자·F2L·OLL·PLL 네 칸이고, 해법 화면 걸음도 F2L이 하나다(짝 넷을 넣는 같은 일은 한 걸음)", () => {
     expect(
       methodStages(method("cfop")).map(
         (s) => `${s.to}:${s.edges.map((e) => e.id).join("+")}`,
       ),
+    ).toEqual(["cross:cross", "f2l:f2l", "oll:oll", "solved:pll"]);
+  });
+
+  it("2단계 OLL·PLL 띠는 다 섞임 → 아래 두 층 → 노란 십자 → 노란 면 → 코너 자리 → 다 맞음", () => {
+    const m = method("two-look");
+    expect(
+      [methodNodes(m)[0], ...methodStages(m).map((s) => s.to)].map(
+        (id) => nodeById(id as MapNodeId).title,
+      ),
     ).toEqual([
-      "cross:cross",
-      "f2l:f2l-pair-1+f2l-pair-2+f2l-pair-3+f2l-pair-4",
-      "oll:oll",
-      "solved:pll",
+      "다 섞임",
+      "아래 두 층",
+      "노란 십자",
+      "노란 면",
+      "코너 자리",
+      "다 맞음",
     ]);
+  });
+
+  it("같은 일을 되풀이하는 걸음은 하나다: 한 해법 안에서 같은 단원·같은 공식 묶음을 쓰는 걸음이 잇따르지 않는다", () => {
+    // 공식 없는 걸음(LSE 셋·페트루스 블록처럼 한 단원 안에서 하는 일이 다른 것)은 공식으로 가를 수 없어 보지 않는다
+    const repeats = MAP_METHODS.flatMap((m) =>
+      m.edges.slice(1).flatMap((id, i) => {
+        const a = edgeById(m.edges[i] as string) as MapEdge;
+        const b = edgeById(id) as MapEdge;
+        const same =
+          a.lessons.length > 0 &&
+          (a.formulas?.length ?? 0) > 0 &&
+          a.lessons.join() === b.lessons.join() &&
+          JSON.stringify(a.formulas) === JSON.stringify(b.formulas);
+        return same ? [`${m.id}: ${a.id}+${b.id}`] : [];
+      }),
+    );
+    expect(repeats).toEqual([]);
   });
 });

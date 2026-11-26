@@ -55,9 +55,6 @@ export type MapNodeId =
   | "scrambled"
   | "cross"
   | "first-layer"
-  | "pair-1"
-  | "pair-2"
-  | "pair-3"
   | "f2l"
   | "yellow-cross"
   | "yellow-edges"
@@ -266,11 +263,8 @@ const BASE_NODES: readonly MapNode[] = [
   },
   // 2단계 OLL·PLL
   { id: "oll", title: "노란 면", row: 7, col: 2, view: "z2" },
-  { id: "pll-corners", title: "위 코너", row: 8, col: 2, view: "z2" },
-  // CFOP
-  { id: "pair-1", title: "짝 하나", row: 2, col: 3, view: "z2" },
-  { id: "pair-2", title: "짝 둘", row: 3, col: 3, view: "z2" },
-  { id: "pair-3", title: "짝 셋", row: 4, col: 3, view: "z2" },
+  // 강의(lessons-2look.ts 「PLL: 코너 자리 → 엣지 자리」) 낱말
+  { id: "pll-corners", title: "코너 자리", row: 8, col: 2, view: "z2" },
   // 루
   { id: "roux-fb", title: "첫 블록", row: 1, col: 4, view: "z2 y2" },
   { id: "roux-sb", title: "두 블록", row: 2, col: 4, view: "z2 y2" },
@@ -280,11 +274,12 @@ const BASE_NODES: readonly MapNode[] = [
   { id: "lse-ulur", title: "왼쪽·오른쪽 엣지", row: 6, col: 4, view: "z2 y2" },
   // ZZ
   { id: "eoline", title: "EO라인", row: 1, col: 5, view: "z2 y2" },
-  { id: "zz-left", title: "왼쪽 블록", row: 3, col: 5, view: "z2 y2" },
   // 페트루스
   { id: "petrus-222", title: "2×2×2", row: 1, col: 6, view: "z2 y2" },
   { id: "petrus-223", title: "2×2×3", row: 2, col: 6, view: "z2 y2" },
-  // 페트루스 엣지 방향은 ZZ 「왼쪽 블록」과 같은 상태(아래 왼쪽 2×2×3 + 엣지 방향)라 그 지점으로 합친다
+  // 페트루스 엣지 방향(아래 왼쪽 2×2×3 + 엣지 방향). ZZ도 블록 하나를 지은 뒤 이 모습을 지나지만, 두 블록을 한
+  // 걸음으로 합쳐(2026-11-26) 지도에서는 페트루스만 들른다
+  { id: "zz-left", title: "왼쪽 블록", row: 3, col: 6, view: "z2 y2" },
   // 코너 먼저
   { id: "corners-first", title: "코너 여덟", row: 4, col: 7, view: "" },
 ];
@@ -366,15 +361,15 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["333-second-layer"],
     formulas: [RIGHT, FROM_RIGHT],
   },
-  // CFOP F2L 짝 넷
-  ...(["pair-1", "pair-2", "pair-3", "f2l"] as const).map((to, i) => ({
-    id: `f2l-pair-${i + 1}`,
-    from: (i === 0 ? "cross" : `pair-${i}`) as MapNodeId,
-    to,
-    title: `F2L 짝 ${i + 1}`,
+  // CFOP F2L: 짝 넷을 넣는 같은 일을 되풀이하니 한 걸음(2026-11-26 사용자 「한 단계로」)
+  {
+    id: "f2l",
+    from: "cross",
+    to: "f2l",
+    title: "F2L",
     lessons: ["cfop-f2l-pair"],
     formulas: F2L_TAUGHT,
-  })),
+  },
   // 초보자 마지막 층
   {
     id: "beginner-yellow-cross",
@@ -541,19 +536,12 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["zz-eo", "zz-eoline"],
     formulas: [],
   },
+  // 왼쪽·오른쪽 블록은 같은 짝 넣기를 되풀이하니 한 걸음(2026-11-26 사용자)
   {
-    id: "zz-left",
+    id: "zz-blocks",
     from: "eoline",
-    to: "zz-left",
-    title: "왼쪽 블록",
-    lessons: ["zz-f2l"],
-    formulas: ZZ_PAIR,
-  },
-  {
-    id: "zz-right",
-    from: "zz-left",
     to: "yellow-cross",
-    title: "오른쪽 블록",
+    title: "블록",
     lessons: ["zz-f2l"],
     formulas: ZZ_PAIR,
   },
@@ -846,24 +834,16 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     title: "2단계 OLL·PLL",
     course: "333-2look",
     edges: [...BEGINNER_LOWER, "two-look-cross", ...TWO_LOOK_LL],
-    // 아래 두 층 → OLL(방향) → PLL(자리)
-    stages: ["f2l", "oll", "solved"],
+    // 아래 두 층 → 2단계 OLL(노란 십자 → 노란 면) → 2단계 PLL(코너 자리 → 엣지 자리). 두 번에 나누는 것이 이
+    // 해법의 정체라 OLL·PLL 안의 걸음도 띠에 보인다(2026-11-26 사용자)
+    stages: ["f2l", "yellow-cross", "oll", "pll-corners", "solved"],
   },
   {
     id: "cfop",
     title: "CFOP",
     course: "cfop",
-    edges: [
-      "cross",
-      "f2l-pair-1",
-      "f2l-pair-2",
-      "f2l-pair-3",
-      "f2l-pair-4",
-      "oll",
-      "pll",
-    ],
-    // 십자 → F2L(짝 넷) → OLL → PLL
-    stages: ["cross", "f2l", "oll", "solved"],
+    // 십자 → F2L → OLL → PLL(걸음마다 큰 단계)
+    edges: ["cross", "f2l", "oll", "pll"],
   },
   {
     id: "roux",
@@ -885,7 +865,7 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     id: "zz",
     title: "ZZ",
     course: "zz",
-    edges: ["eoline", "zz-left", "zz-right", ...TWO_LOOK_LL],
+    edges: ["eoline", "zz-blocks", ...TWO_LOOK_LL],
     // EO라인 → 블록(F2L, 끝나면 엣지 방향이 맞아 노란 십자) → 마지막 층
     stages: ["eoline", "yellow-cross", "solved"],
   },
@@ -908,32 +888,23 @@ const MAP_METHODS_3: readonly MapMethod[] = [
     title: "ZZ(COLL·EPLL)",
     extra: true,
     course: "zz",
-    edges: ["eoline", "zz-left", "zz-right", "coll", "two-look-edges"],
-    stages: ["eoline", "yellow-cross", "solved"],
+    edges: ["eoline", "zz-blocks", "coll", "two-look-edges"],
+    // 걸음마다(이름이 가리키는 COLL·EPLL 나눔이 띠에 보인다)
   },
   {
     id: "zz-zbll",
     title: "ZZ(ZBLL)",
     extra: true,
     course: "zz",
-    edges: ["eoline", "zz-left", "zz-right", "zbll"],
-    stages: ["eoline", "yellow-cross", "solved"],
+    edges: ["eoline", "zz-blocks", "zbll"],
   },
   {
     id: "cfop-1lll",
     title: "CFOP(1LLL)",
     extra: true,
     course: "cfop",
-    edges: [
-      "cross",
-      "f2l-pair-1",
-      "f2l-pair-2",
-      "f2l-pair-3",
-      "f2l-pair-4",
-      "1lll",
-    ],
     // 십자 → F2L → 마지막 층 한 번
-    stages: ["cross", "f2l", "solved"],
+    edges: ["cross", "f2l", "1lll"],
   },
   {
     id: "corners-first",
@@ -1217,10 +1188,7 @@ export const MAP_MEASURE: {
     },
     cfop: {
       cross: 6,
-      "f2l-pair-1": 5,
-      "f2l-pair-2": 5,
-      "f2l-pair-3": 6,
-      "f2l-pair-4": 7,
+      f2l: 23,
       oll: 10,
       pll: 15,
     },
@@ -1234,8 +1202,7 @@ export const MAP_MEASURE: {
     },
     zz: {
       eoline: 12,
-      "zz-left": 23,
-      "zz-right": 21,
+      "zz-blocks": 44,
       "two-look-face": 8,
       "two-look-corners": 13,
       "two-look-edges": 7,
@@ -1378,21 +1345,6 @@ const sideBlock = (side: number) =>
   allPieces.filter(
     (p) => kind(p) !== "center" && touches(p, side) && !touches(p, YELLOW),
   );
-/** F2L 짝(맞춘 상태 기준 흰 코너 + 그 위 가운데 층 엣지). 흰 면 아래 그림의 앞-오른쪽·앞-왼쪽·뒤-오른쪽 차례 */
-const pairPieces = (k: number) => {
-  // 흰 면 위 기준 앞-왼쪽, 앞-오른쪽, 뒤-왼쪽 → z2 뒤 앞-오른쪽, 앞-왼쪽, 뒤-오른쪽
-  const order = [
-    [F, L],
-    [F, R],
-    [L, B],
-  ];
-  return order.slice(0, k).flatMap(([a, b]) => {
-    const pair = G.f2lPairs.find(
-      (x) => touches(x.corner, a as number) && touches(x.corner, b as number),
-    );
-    return pair ? [pair.corner, ...pair.edges] : [];
-  });
-};
 
 interface Look {
   /** 다 맞은 조각 */
@@ -1436,9 +1388,6 @@ const LOOKS: Partial<Record<MapNodeId, Look>> = {
   scrambled: { solved: [] },
   cross: { solved: crossP },
   "first-layer": { solved: firstLayer },
-  "pair-1": { solved: [...crossP, ...pairPieces(1)] },
-  "pair-2": { solved: [...crossP, ...pairPieces(2)] },
-  "pair-3": { solved: [...crossP, ...pairPieces(3)] },
   f2l: { solved: f2l },
   "yellow-cross": {
     solved: f2l,
