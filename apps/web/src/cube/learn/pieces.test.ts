@@ -220,13 +220,19 @@ describe("고르기 문제의 답", () => {
     const first = lessonOf("333-start");
     const build = first.steps.findIndex((x) => x.kind === "build");
     const [find, pick] = first.steps.slice(build - 2, build);
-    // 까만 큐브에서 노란 센터 하나만 맞다
+    // 노란 센터 하나만 맞다
     expect(find?.kind).toBe("find");
-    expect(find?.mask).toBe("none");
     expect(find?.find).toEqual({ piece: "center", colors: ["D"] });
     expect(hitSlots(3, solvedCube(3), find?.find as FindTarget)).toHaveLength(
       1,
     );
+    // 글이 「흰 센터 블럭」이 위라고 밝혔으니 위 센터 블럭은 흰색으로 보이고, 찾을 노란 센터 블럭은 가린다
+    expect(find?.mask).toBe("centers:U");
+    const findMask = maskFor(3, find?.mask) ?? [];
+    expect(
+      findMask.map((v, i) => (v === "visible" ? i : -1)).filter((i) => i >= 0),
+    ).toEqual([(FACE_INDEX.U as number) * 9 + 4]);
+    expect(findMask[(FACE_INDEX.D as number) * 9 + 4]).toBe("hidden");
     expect(pick?.kind).toBe("quiz");
     // 위(흰색)·앞(초록색) 센터 블럭만 보인다. 오른쪽(답)을 비롯한 나머지는 가린다
     expect(pick?.mask).toBe("centers:UF");

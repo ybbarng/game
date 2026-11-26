@@ -186,7 +186,7 @@ const start: Lesson = {
     {
       kind: "find",
       body: "센터 블럭 여섯은 색 자리가 정해져 있어요. 흰색 맞은편은 노란색, 초록색 맞은편은 파란색, 빨간색 맞은편은 주황색이에요. 이 까만 큐브는 흰색이 위예요. 흰색 맞은편의 노란 센터 블럭을 찾아 눌러 보세요. 아래쪽은 끌어서 둘러보거나 거울에서 눌러요.",
-      mask: "none",
+      mask: "centers:U",
       find: { piece: "center", colors: ["D"] },
     },
     {
