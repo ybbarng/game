@@ -1,4 +1,4 @@
-import { no3d } from "./cube";
+import { goStep, no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -72,6 +72,55 @@ test("큐브의 기초: 제목, 분해 그림, 기초 단원 셋, 연습 둘, �
 
   await last.click();
   await expect(page).toHaveURL(/\/cube\/methods$/);
+});
+
+test("큐브와 만나기 첫머리: 환영 → 스티커 54개 → 「조각으로 보기」 → 조각 26개와 세 종류 이름, 흰 센터 블럭을 보이고 노랑 찾기", async ({
+  page,
+}, info) => {
+  await no3d(page);
+  await page.goto("/cube/learn?lesson=333-start");
+  const section = page.locator("[data-step-kind]");
+  const body = page.locator("[data-step-body]");
+  // 환영: 처음 온 사람을 반긴다
+  await expect(section).toHaveAttribute("data-step-kind", "welcome");
+  await expect(body).toContainText("큐브를 맞춰 보고 싶어서");
+  await shot(page, "basics-start-1", info.project.name);
+
+  // 조각 보기: 「색을 맞춘다」는 생각과 스티커 54개에서 출발해 「조각으로 보기」 단추로 이끈다
+  await page.locator("[data-welcome-start]").click();
+  await expect(section).toHaveAttribute("data-step-kind", "parts");
+  await expect(body).toContainText("54개의 스티커");
+  const parts = page.locator('[data-act="parts"]');
+  const toPieces = parts.locator('[data-parts-to="piece"]');
+  await expect(toPieces).toHaveText("조각으로 보기");
+  await expect(body).toContainText("「조각으로 보기」를 눌러 볼까요?");
+  await shot(page, "basics-start-2", info.project.name);
+  await toPieces.click();
+  await expect(parts).toHaveAttribute("data-parts-mode", "piece");
+  await expect(parts.getByRole("status")).toContainText("26조각");
+  await page.locator('[data-sticker-cell="7"]').click();
+  await expect(parts).toHaveAttribute("data-act-passed", "");
+
+  // 찾아보기: 26개의 조각, 조각과 블럭의 관계를 한 문장으로 알리고 센터 블럭부터
+  await goStep(page, 2);
+  await expect(body).toContainText("26개의 조각으로");
+  await expect(body).toContainText(
+    "조각은 놓인 자리에 따라 세 종류이고, 이름은 「센터 블럭」·「엣지 블럭」·「코너 블럭」이에요.",
+  );
+  await shot(page, "basics-start-3", info.project.name);
+
+  // 색 배치 찾기: 글이 위라고 밝힌 흰 센터 블럭(칸 4)은 보이고, 찾을 노란 센터 블럭(칸 31)은 가린다
+  await goStep(page, 3);
+  await expect(body).toContainText("흰 센터 블럭이 위에 있어요");
+  await expect(page.locator('[data-sticker-cell="4"]')).not.toHaveAttribute(
+    "data-sticker-hidden",
+    "",
+  );
+  await expect(page.locator('[data-sticker-cell="31"]')).toHaveAttribute(
+    "data-sticker-hidden",
+    "",
+  );
+  await shot(page, "basics-start-4", info.project.name);
 });
 
 test("기초 단원: 돌아가기는 큐브의 기초, 마지막 단원 다음은 초보자 과정 첫 단원", async ({

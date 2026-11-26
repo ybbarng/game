@@ -26,7 +26,7 @@ const COLOR_FACE: Record<string, string> = {
   주황: "L",
 };
 const COLOR = Object.keys(COLOR_FACE).join("|");
-const SAID = `(${COLOR})(?:색| 면)?(?:이|가) (?:위|앞)`;
+const SAID = `(${COLOR})(?:색| 면| 센터 블럭)?(?:이|가) (?:위|앞)`;
 /**
  * 쥔 방향을 밝히는 꼴: 위·앞 둘을 함께 대거나(「흰색이 위, 초록색이 앞」), 「~이 위예요」·「~이 위에 있」·「~ 면이 위로」.
  * 「흰색이 앞이면」(코너 블럭 스티커가 보는 쪽)처럼 조각 하나의 방향을 말하는 꼴은 잡지 않는다

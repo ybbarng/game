@@ -210,10 +210,11 @@ describe("고르기 문제의 답", () => {
       expect(hitSlots(3, solvedCube(3), x.find as FindTarget)).toHaveLength(
         x.count as number,
       );
-    const total = first.steps.find((x) =>
-      x.quiz?.question.includes("모두 몇 개"),
-    );
-    expect(total?.quiz?.choices[total.quiz.answer]).toBe("26개");
+    // 26개는 셋째 단계 글이 먼저 알리고, 끝 문제는 스티커 54장이 아니라 조각 26개를 옮긴다는 것을 되짚는다
+    expect(first.steps[2]?.body).toContain("26개의 조각");
+    const last = first.steps.at(-1);
+    expect(last?.quiz?.choices[last.quiz.answer]).toBe("조각 26개");
+    expect(last?.quiz?.choices).toContain("스티커 54장");
   });
 
   it("표준 색 배치: 분해·조립 앞에서 흰색 맞은편 노란색을 찾고, 흰 위·초록 앞의 오른쪽(빨간색)을 고른다", () => {
