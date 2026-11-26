@@ -92,7 +92,7 @@ test(
     await expect(verdict(page, "tsa")).toHaveAttribute("data-ok", "pass");
     await page
       .locator("[data-toy='tsa']")
-      .getByRole("button", { name: "토큰 안 시각 고치기" })
+      .getByRole("switch", { name: "토큰 안 시각 고치기" })
       .click();
     await expect(verdict(page, "tsa")).toHaveAttribute("data-ok", "fail");
 
@@ -298,10 +298,13 @@ test("별 이야기 「별의 색」: 온도 실험실과 봉우리 실험실(�
   await lab.screenshot({ path: info.outputPath("star-colors-lab.png") });
   const bump = page.locator("[data-bump-lab]");
   await bump.getByRole("button", { name: "빨강 + 파랑" }).click();
-  await expect(bump.getByRole("button", { name: "봉우리 둘" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  // 「봉우리 둘」은 켜고 끄는 스위치다. 보기 단추가 켜고, 직접 눌러 끌 수 있다.
+  const twin = bump.getByRole("switch", { name: "봉우리 둘" });
+  await expect(twin).toHaveAttribute("aria-checked", "true");
+  await twin.click();
+  await expect(twin).toHaveAttribute("aria-checked", "false");
+  await twin.click();
+  await expect(twin).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("[data-three-colors] [data-ball]")).toHaveCount(5);
   await page.locator("#colors").screenshot({
     path: info.outputPath("star-colors-lesson.png"),

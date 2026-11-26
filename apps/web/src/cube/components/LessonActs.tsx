@@ -12,6 +12,7 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { copula } from "@/lib/josa";
 import { stickersFromState } from "../bridge";
@@ -43,7 +44,6 @@ import { CubePlay, playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
 import { MoveChip, useMoveKeys } from "./MoveChip";
 import { StillCube } from "./StillCube";
-import { ToggleSwitch } from "./ToggleSwitch";
 import { ViewHome } from "./ViewHome";
 
 /**

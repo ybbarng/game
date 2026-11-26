@@ -124,7 +124,11 @@ test("하트: 카드를 넘기고 한 판을 끝까지 둔다", async ({ page },
   await page.getByRole("button", { name: "▶ 이 판 다시 보기" }).first().click();
   const forward = page.getByRole("button", { name: "한 걸음 앞으로" });
   for (let k = 0; k < 8; k++) await forward.click();
-  await page.getByRole("button", { name: "상황판" }).click();
+  const boardButton = page.getByRole("button", { name: "상황판" });
+  // 상황판 단추는 판을 여닫는 단추라 열렸는지를 aria-expanded로 알린다(켜고 끄는 스위치가 아님)
+  await expect(boardButton).toHaveAttribute("aria-expanded", "false");
+  await boardButton.click();
+  await expect(boardButton).toHaveAttribute("aria-expanded", "true");
   await expect(
     page.getByRole("complementary", { name: "상황판" }),
   ).toBeVisible();
@@ -132,11 +136,10 @@ test("하트: 카드를 넘기고 한 판을 끝까지 둔다", async ({ page },
     timeout: 15_000,
   });
   // 세로 휴대폰은 상황판을 열 때 이미 펼친다.
-  const reveal = page.getByRole("button", { name: "모든 패 보기" });
-  if (await reveal.isVisible()) await reveal.click();
-  await expect(
-    page.getByRole("button", { name: "모든 패 숨기기" }),
-  ).toBeVisible();
+  const reveal = page.getByRole("switch", { name: "모든 패 보기" });
+  if ((await reveal.getAttribute("aria-checked")) === "false")
+    await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: info.outputPath("hearts-5-replay.png") });
   expect(errors).toEqual([]);
 });

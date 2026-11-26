@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 
 /** 직접 해 보는 상자(별 따기 밤하늘 톤) */
@@ -57,6 +58,27 @@ export function Btn({
     >
       {children}
     </button>
+  );
+}
+
+/** 놀이 안의 켜고 끄는 단추(`Btn`과 같은 크기의 스위치) */
+export function Toggle({
+  on,
+  onChange,
+  children,
+}: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <ToggleSwitch
+      on={on}
+      onChange={onChange}
+      className="rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs hover:bg-white/10"
+    >
+      {children}
+    </ToggleSwitch>
   );
 }
 

@@ -60,7 +60,7 @@ import {
   traceDraw,
   writeRoundAnchors,
 } from "./lab";
-import { Btn, Mono, Row, Toy, Verdict } from "./ui";
+import { Btn, Mono, Row, Toggle, Toy, Verdict } from "./ui";
 
 /* ------------------------------------------------------------------ */
 /* 5. 시각 인증(TSA)                                                   */
@@ -162,12 +162,12 @@ export function TsaToy() {
         />
       </label>
       <div className="flex flex-wrap gap-1.5">
-        <Btn active={shift} onClick={() => setShift(!shift)}>
+        <Toggle on={shift} onChange={setShift}>
           토큰 안 시각 고치기
-        </Btn>
-        <Btn active={untrust} onClick={() => setUntrust(!untrust)}>
+        </Toggle>
+        <Toggle on={untrust} onChange={setUntrust}>
           이 기관 열쇠를 믿는 목록에서 빼기
-        </Btn>
+        </Toggle>
       </div>
       {check && (
         <>
@@ -310,9 +310,9 @@ export function DrandToy() {
           </Mono>
         </Row>
         <div>
-          <Btn active={flip} onClick={() => setFlip(!flip)}>
+          <Toggle on={flip} onChange={setFlip}>
             서명 한 바이트 바꾸기
-          </Btn>
+          </Toggle>
         </div>
         <Verdict ok={beaconOk} testId="drand-sig">
           {beaconOk === null
