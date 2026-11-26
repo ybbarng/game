@@ -15,14 +15,21 @@ test("배우기: 첫 층 코너·코너 자리·코너 방향은 모양마다 �
   const body = page.locator("[data-step-body]");
 
   await page.goto("/cube/learn?lesson=333-first-corners-up");
-  await goStep(page, 4);
-  await expect(body).toContainText("흰색이 오른쪽이면 한 번, 아래면 세 번");
-  // 글 속 공식에는 키 그림이 붙으므로 공식 글자 대신 「거꾸로」와 횟수를 본다
-  await expect(body).toContainText("흰색이 앞이면 거꾸로");
+  // 8번(0부터 7): 코너 돌리기 한 번마다 다음 모양으로 바뀌는 차례와 경우 그림(모양마다 횟수)
+  await goStep(page, 7);
+  await expect(body).toContainText("다 맞음까지 남은 횟수만큼");
+  const sheet = page.locator('[data-sheet="beginner-corners"]');
+  await expect(sheet.locator("[data-sheet-case]")).toHaveCount(6);
+  await expect(sheet.locator('[data-sheet-case="bottom-down"]')).toContainText(
+    "세 번 쳐요",
+  );
+  await expect(sheet.locator('[data-sheet-case="bottom-front"]')).toContainText(
+    "거꾸로 한 번",
+  );
   await shot(page, "learn-beginner-first-corners", info.project.name);
 
   await page.goto("/cube/learn?lesson=333-ll-corner-place");
-  await goStep(page, 2);
+  await goStep(page, 3);
   await expect(body).toContainText(
     "대각선 건너편인 뒤-오른쪽 위면 공식을 한 번",
   );
@@ -57,8 +64,8 @@ test("배우기·공식 연습: 노란 십자는 윗층 엣지의 노란 칸만 
   await page.goto("/cube/learn?lesson=333-ll-cross");
   for (const [step, name] of [
     [0, "line"],
-    [2, "ell"],
-    [5, "dot"],
+    [4, "ell"],
+    [7, "dot"],
   ] as const) {
     await goStep(page, step);
     await expect(corner).toHaveAttribute("data-sticker-hidden", "");

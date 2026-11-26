@@ -51,10 +51,62 @@ export interface BeginnerCaseSheet {
 
 const flip = (solution: string) => setupFor(solution, "z2");
 
+// 코너 돌리기 한 번마다 한 칸씩 옮겨 가는 차례(다 맞음까지 남은 횟수 = 칠 횟수, 거꾸로는 하나 거슬러 간다)
+const CORNERS: BeginnerCaseSheet = {
+  stage: "corners",
+  set: "f2l",
+  mask: "first-layer",
+  title: "흰 코너 블럭의 여섯 경우",
+  cases: [
+    {
+      id: "bottom-front",
+      alg: setupFor(TWIST_BACK),
+      caption: "자리 밑, 흰색이 앞",
+      action: "다섯 번이 남아서 거꾸로 한 번 쳐요.",
+    },
+    {
+      id: "slot-front",
+      alg: setupFor(reps(TWIST_BACK, 2)),
+      caption: "제자리, 흰색이 앞",
+      action: "네 번이 남아서 거꾸로 두 번 쳐요.",
+    },
+    {
+      id: "bottom-down",
+      alg: setupFor(reps(TWIST, 3)),
+      caption: "자리 밑, 흰색이 아래",
+      action: "세 번 쳐요.",
+    },
+    {
+      id: "slot-right",
+      alg: setupFor(reps(TWIST, 2)),
+      caption: "제자리, 흰색이 오른쪽",
+      action: "두 번 쳐요.",
+    },
+    {
+      id: "bottom-right",
+      alg: setupFor(TWIST),
+      caption: "자리 밑, 흰색이 오른쪽",
+      action: "한 번 쳐요.",
+    },
+    {
+      id: "stuck",
+      alg: STUCK_CORNER_SETUP,
+      caption: "다른 자리에 들어감",
+      action: "한 번 쳐서 아래 층으로 빼요.",
+    },
+  ],
+};
+
 export const BEGINNER_CASE_SHEETS: Record<
   Extract<SheetName, `beginner-${string}`>,
   BeginnerCaseSheet
 > = {
+  // 첫머리에서 훑을 때는 공식을 배우기 전이라 횟수 없이 모양만
+  "beginner-corners-look": {
+    ...CORNERS,
+    cases: CORNERS.cases.map((c) => ({ ...c, action: "" })),
+  },
+  "beginner-corners": CORNERS,
   "beginner-cross": {
     stage: "cross",
     set: "f2l",
@@ -65,82 +117,38 @@ export const BEGINNER_CASE_SHEETS: Record<
         id: "down",
         alg: "F2",
         caption: "기본 모양 하나: 아래 층, 흰색이 아래",
-        action: "제자리 밑으로 옮겨 F2로 올려요.",
+        action: "제자리 밑으로 옮겨 앞면 반 바퀴로 올려요.",
       },
       {
         id: "middle",
         alg: "F",
         caption: "기본 모양 둘: 가운데 층, 짝 색이 같은 색 센터 쪽",
-        action: "앞면 한 번으로 올려요.",
+        action:
+          "짝 색 스티커가 보는 면을 앞으로 돌려 쥐고 앞면 한 번으로 올려요.",
       },
       {
         id: "middle-other",
         alg: CROSS_GUARD.setup,
         caption: "가운데 층, 짝 색이 다른 센터 쪽",
-        action: "F D F'로 내려 기본 모양 하나로 만들어요.",
+        action: "아래 층으로 내려 기본 모양 하나로 만들어요.",
       },
       {
         id: "down-side",
         alg: CROSS_DOWN_SIDE_TRY.setup,
         caption: "아래 층, 흰색이 옆",
-        action: "F D' F'로 올려 기본 모양 둘로 만들어요.",
+        action: "가운데 층으로 올려 기본 모양 둘로 만들어요.",
       },
       {
         id: "top-side",
         alg: CROSS_FLIPPED.setup,
         caption: "위 층, 흰색이 옆",
-        action: "F로 가운데 층에 내려요.",
+        action: "가운데 층으로 내려요.",
       },
       {
         id: "top-wrong",
         alg: CROSS_TOP_WRONG.setup,
         caption: "위 층, 흰색이 위인데 다른 자리",
-        action: "F2로 내려 기본 모양 하나로 만들어요.",
-      },
-    ],
-  },
-  // 코너 돌리기 한 번마다 한 칸씩 옮겨 가는 차례(다 맞음까지 남은 칸 = 칠 횟수, 거꾸로는 한 칸 뒤로)
-  "beginner-corners": {
-    stage: "corners",
-    set: "f2l",
-    mask: "first-layer",
-    title: "흰 코너 블럭의 여섯 경우",
-    cases: [
-      {
-        id: "bottom-front",
-        alg: setupFor(TWIST_BACK),
-        caption: "자리 밑, 흰색이 앞",
-        action: "다섯 번이 남아서 거꾸로 한 번 쳐요.",
-      },
-      {
-        id: "slot-front",
-        alg: setupFor(reps(TWIST_BACK, 2)),
-        caption: "제자리, 흰색이 앞",
-        action: "네 번이 남아서 거꾸로 두 번 쳐요.",
-      },
-      {
-        id: "bottom-down",
-        alg: setupFor(reps(TWIST, 3)),
-        caption: "자리 밑, 흰색이 아래",
-        action: "세 번 쳐요.",
-      },
-      {
-        id: "slot-right",
-        alg: setupFor(reps(TWIST, 2)),
-        caption: "제자리, 흰색이 오른쪽",
-        action: "두 번 쳐요.",
-      },
-      {
-        id: "bottom-right",
-        alg: setupFor(TWIST),
-        caption: "자리 밑, 흰색이 오른쪽",
-        action: "한 번 쳐요.",
-      },
-      {
-        id: "stuck",
-        alg: STUCK_CORNER_SETUP,
-        caption: "다른 자리에 들어감",
-        action: "한 번 쳐서 아래 층으로 빼요.",
+        action: "아래 층으로 내려 기본 모양 하나로 만들어요.",
       },
     ],
   },
@@ -238,13 +246,13 @@ export const BEGINNER_CASE_SHEETS: Record<
       {
         id: "diagonal",
         alg: flip(CORNER_CYCLE),
-        caption: "하나, 앞-왼쪽 위 블럭의 제자리가 대각선 건너편",
+        caption: "하나, 앞-왼쪽 위 블럭의 제자리가 대각선 건너편(뒤-오른쪽 위)",
         action: "공식을 한 번 쳐요.",
       },
       {
         id: "behind",
         alg: flip(CORNER_CYCLE_BACK),
-        caption: "하나, 앞-왼쪽 위 블럭의 제자리가 바로 뒤",
+        caption: "하나, 앞-왼쪽 위 블럭의 제자리가 바로 뒤(뒤-왼쪽 위)",
         action: "거꾸로 한 번 쳐요.",
       },
       {
@@ -258,7 +266,7 @@ export const BEGINNER_CASE_SHEETS: Record<
   "beginner-corner-twist": {
     stage: "corner-twist",
     set: "2look-oll",
-    title: "앞-오른쪽 위 코너 블럭의 세 경우",
+    title: "앞-오른쪽 위 코너 블럭으로 보는 네 경우",
     cases: [
       {
         id: "right",
@@ -273,10 +281,17 @@ export const BEGINNER_CASE_SHEETS: Record<
         action: "거꾸로 D' R' D R을 두 번 쳐요.",
       },
       {
+        id: "right",
+        alg: `${flip(TWIST_TWO_BACK)} U2`,
+        caption: "노란색이 위인데 다른 코너가 돌아가 있음",
+        action: "윗면을 돌려 돌아간 코너 블럭을 앞-오른쪽 위로 가져와요.",
+      },
+      {
         id: "align",
         alg: "z2 U",
         caption: "노란색이 모두 위",
-        action: "윗면을 돌려 맞추면 끝이에요.",
+        action:
+          "위 층 엣지 블럭이 옆 색 센터 위에 오게 윗면을 돌리면 끝이에요. 많아야 세 번이에요.",
       },
     ],
   },

@@ -28,10 +28,18 @@ describe("단계마다 모든 경우 그림", () => {
     });
   }
 
+  it("코너 방향 「노란색이 위인데 다른 코너가 돌아가 있음」은 정말 앞-오른쪽 위가 맞고 윗면을 돌려 다음 코너를 가져온다", () => {
+    const c = BEGINNER_CASE_SHEETS["beginner-corner-twist"].cases.find((x) =>
+      x.caption.startsWith("노란색이 위인데"),
+    );
+    const first = runStage("corner-twist", stateOf(c?.alg ?? "")).steps[0];
+    expect(first?.hold).toMatch(/^U/);
+  });
+
   it("단계 강마다 첫머리 네 쪽 안에 그 단계 그림이 있다", () => {
     const want: Record<string, string> = {
       "333-white-cross": "beginner-cross",
-      "333-first-corners-up": "beginner-corners",
+      "333-first-corners-up": "beginner-corners-look",
       "333-second-layer": "beginner-second",
       "333-ll-cross": "beginner-yellow-cross",
       "333-ll-edges": "beginner-edges",

@@ -144,7 +144,6 @@ export const STEP_REMAPS: Readonly<
       11: 12,
       12: 13,
       13: 17,
-      14: 18,
       15: 19,
       16: 20,
       17: 21,

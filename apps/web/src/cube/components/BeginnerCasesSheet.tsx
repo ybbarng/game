@@ -43,9 +43,11 @@ export function BeginnerCasesSheet({
             <span className="break-keep text-center font-semibold text-xs">
               {c.caption}
             </span>
-            <span className="break-keep text-center text-white/75 text-xs wrap-anywhere">
-              <MoveText text={c.action} n={3} keys={false} />
-            </span>
+            {c.action && (
+              <span className="break-keep text-center text-white/75 text-xs wrap-anywhere">
+                <MoveText text={c.action} n={3} keys={false} />
+              </span>
+            )}
           </li>
         ))}
       </ol>
