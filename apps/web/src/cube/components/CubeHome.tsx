@@ -5,6 +5,7 @@ import { BackToGames } from "@/components/BackToGames";
 import { MadeWith } from "@/components/brand/MadeWith";
 import { SAFE_P4 } from "@/components/safe-area";
 import { cn } from "@/lib/cn";
+import { ALL_SIZES, setCurrentSize, useCurrentSize } from "../current-size";
 import { loadLearn as loadKeyLearn } from "../keys/storage";
 import { loadLearn } from "../learn/progress";
 import {
@@ -18,6 +19,7 @@ import {
 import type { NextKind, NextStep } from "../nav/next-step";
 import { loadRecords } from "../records";
 import { CubeHero } from "./CubeHero";
+import { SizePicker } from "./SizePicker";
 import "@/cube/components/cube-fx.css";
 
 /**
@@ -149,6 +151,7 @@ function useNextStep(): NextStep | null {
 
 export function CubeHome() {
   const next = useNextStep();
+  const size = useCurrentSize();
   return (
     <main
       data-game="cube"
@@ -160,6 +163,14 @@ export function CubeHome() {
         <div className="flex flex-col items-center text-center">
           <CubeHero />
           <h1 className="mt-1 font-bold text-2xl">큐브 맞추기</h1>
+          {/* 지금 크기(docs/47 16-28): 하는 화면이 이 크기로 열린다. 위 큐브 연출도 이 크기 */}
+          <SizePicker
+            attr="data-cube-home-size"
+            sizes={ALL_SIZES}
+            value={size}
+            onPick={setCurrentSize}
+            className="mt-2"
+          />
         </div>
         <section className="flex flex-col gap-1.5" data-cube-next-section>
           <h2 className="px-1 font-semibold text-white/50 text-xs">

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { obj, topic } from "@/lib/josa";
+import { sizeFor, useCurrentSize } from "../../current-size";
 import { PARITY_4X4 } from "../../learn/algs-big";
 import { invertText, stateAfter } from "../../math/pieces";
 import { sizeFacts } from "../../math/sizes";
@@ -12,6 +13,7 @@ import type { CubeSettings } from "../../settings";
 import { AlgPicture } from "../AlgPicture";
 import { CubePosterPair } from "../CubePosterPair";
 import { DemoCube } from "../DemoCube";
+import { SizePicker } from "../SizePicker";
 import { Lead, Notation, Pill, Quiz, Source } from "./ui";
 
 const SIZES = [4, 5, 6, 7] as const;
@@ -19,7 +21,10 @@ const yes = (b: boolean) => (b ? "생겨요" : "없어요");
 
 /** 크기와 패리티: 짝수 큐브에만 3×3 단계의 이상한 모양이 생기는 까닭 */
 export function SizesCard({ settings }: { settings: CubeSettings }) {
-  const [n, setN] = useState<(typeof SIZES)[number]>(4);
+  // 보는 화면: 지금 크기로 열고(4×4~7×7 밖이면 4×4), 여기서 바꿔도 지금 크기는 그대로(docs/47 16-28)
+  const current = useCurrentSize();
+  const [viewing, setN] = useState<number | null>(null);
+  const n = viewing ?? sizeFor(SIZES, current);
   const facts = useMemo(() => SIZES.map((s) => sizeFacts(s)), []);
   const f = facts.find((x) => x.n === n) ?? facts[0];
   const [slice, setSlice] = useState(0);
@@ -56,15 +61,17 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
         뒤집혀 보이는 꼴과, 엣지 한 줄 둘만 자리가 바뀐 꼴이에요. 3×3을 빨리
         맞추는 사람들이 많이 쓰는 방법은 위층을 맨 마지막에 맞추고, 그 위층을 두
         단계로 나눠 맞춰요. 위층 조각의 방향을 맞추는 단계를 OLL, 위층 조각의
-        자리를 맞추는 단계를 PLL이라고 해요. 두 꼴은 이 두 단계에서 보인다고
-        해서 「OLL 패리티」, 「PLL 패리티」라고 불러요. 패리티는 영어로
-        홀짝이라는 뜻이에요. 아래 그림은 두 꼴을 비스듬히 본 큐브와 위에서 본
-        위층이에요.
+        자리를 맞추는 단계를 PLL이라고 해요. 엣지 한 줄 하나만 뒤집혀 보이는
+        꼴은 「토끼이빨」, 엣지 한 줄 둘만 자리가 바뀐 꼴은
+        「바보토끼이빨」이라고 불러요. 두 꼴은 OLL과 PLL 단계에서 보인다고 해서
+        널리 쓰는 영어 이름은 「OLL 패리티」, 「PLL 패리티」예요. 패리티는
+        영어로 홀짝이라는 뜻이에요. 아래 그림은 두 꼴을 비스듬히 본 큐브와
+        위에서 본 위층이에요.
       </Lead>
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "OLL 패리티", s: oll },
-          { label: "PLL 패리티", s: pll },
+          { label: "토끼이빨", s: oll },
+          { label: "바보토끼이빨", s: pll },
         ].map(({ label, s }) => (
           <figure key={label} className="flex flex-col items-center gap-1">
             <CubePosterPair
@@ -86,7 +93,7 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
         ))}
       </div>
       <Lead>
-        OLL 패리티부터 봐요. 까닭은 바깥 면 말고 안쪽 층도 돌릴 수 있다는 데
+        토끼이빨부터 봐요. 까닭은 바깥 면 말고 안쪽 층도 돌릴 수 있다는 데
         있어요. 안쪽 한 층을 90° 돌리면 날개 4개가 한 칸씩 자리를 옮겨 한 바퀴
         돌아요. 이렇게 조각 몇 개가 한 칸씩 옮겨 한 바퀴 도는 묶음을
         「고리」라고 해요. 4개짜리 고리는 맞바꾸기 3번과 같아서 날개 자리의
@@ -94,40 +101,35 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
         자리를 맞바꿔도 짝지은 줄처럼 보여요. 그래서 날개 홀짝이 어긋난 것은
         엣지 짝짓기를 마칠 때까지 드러나지 않아요. 3×3처럼 맞추는 마지막
         단계에서야 그 줄 하나만 뒤집힌 것처럼 보여요. 날개는 한 방향으로만
-        끼워지니, OLL 패리티는 사실 한 줄의 날개 둘이 서로 자리를 맞바꾼
-        꼴이에요.
+        끼워지니, 토끼이빨은 사실 한 줄의 날개 둘이 서로 자리를 맞바꾼 꼴이에요.
       </Lead>
       <Lead>
-        PLL 패리티는 위층에서 엣지 한 줄 둘만 자리가 바뀐 꼴이에요. 3×3이었다면
-        앞에서 본 자리 홀짝 규칙 때문에 생기지 않아요. 4×4에서는 바깥 면이든
-        안쪽 층이든 한 층을 돌리면, 코너 블럭 자리의 홀짝과 함께 바뀌는 것이
-        센터 블럭 자리의 홀짝이에요. 그런데 같은 색 센터 블럭끼리는 자리가
-        바뀌어도 똑같아 보여서, 센터 모으기를 마친 큐브에서도 센터 블럭 자리의
-        홀짝은 눈으로 알 수 없어요. 3×3처럼 맞추는 단계는 이 숨은 홀짝을 따지지
-        않으니, 위층의 자리를 맞출 때 엣지 한 줄 둘만 바뀐 꼴이 나올 수 있어요.
+        바보토끼이빨은 위층에서 엣지 한 줄 둘만 자리가 바뀐 꼴이에요.
+        3×3이었다면 앞에서 본 자리 홀짝 규칙 때문에 생기지 않아요. 4×4에서는
+        바깥 면이든 안쪽 층이든 한 층을 돌리면, 코너 블럭 자리의 홀짝과 함께
+        바뀌는 것이 센터 블럭 자리의 홀짝이에요. 그런데 같은 색 센터 블럭끼리는
+        자리가 바뀌어도 똑같아 보여서, 센터 모으기를 마친 큐브에서도 센터 블럭
+        자리의 홀짝은 눈으로 알 수 없어요. 3×3처럼 맞추는 단계는 이 숨은 홀짝을
+        따지지 않으니, 위층의 자리를 맞출 때 엣지 한 줄 둘만 바뀐 꼴이 나올 수
+        있어요.
       </Lead>
       <Notation />
 
-      <div className="flex flex-wrap gap-1.5">
-        {SIZES.map((s) => (
-          <Pill
-            key={s}
-            active={s === n}
-            onClick={() => {
-              setN(s);
-              setSlice(0);
-            }}
-            attr={{ "data-sizes-tab": String(s) }}
-          >
-            {s}×{s}
-          </Pill>
-        ))}
-      </div>
+      <SizePicker
+        optionAttr="data-sizes-tab"
+        sizes={SIZES}
+        value={n}
+        onPick={(s) => {
+          setN(s);
+          setSlice(0);
+        }}
+        className="self-start"
+      />
       <p className="break-keep text-white/60 text-xs">
         아래 표의 날개 묶음은 서로 자리를 바꿀 수 있는 날개끼리의 무리예요.
         6×6부터는 코너 블럭 쪽 바깥 날개와 안쪽 날개가 서로 섞이지 않아 묶음이
         둘이에요. 가운데 엣지 블럭은 홀수 큐브에서 모서리 한 줄의 한가운데
-        블럭이에요. OLL·PLL 패리티 칸은 3×3처럼 맞추는 단계에서 그 꼴이
+        블럭이에요. 토끼이빨·바보토끼이빨 칸은 3×3처럼 맞추는 단계에서 그 꼴이
         보이는지, 짝짓기 끝 날개 바뀜 칸은 엣지 짝짓기의 마지막 줄에서 날개 둘이
         서로 자리가 바뀐 꼴이 보이는지예요.
       </p>
@@ -138,8 +140,8 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
               <th className="p-1">크기</th>
               <th className="p-1">날개 묶음</th>
               <th className="p-1">가운데 엣지 블럭</th>
-              <th className="p-1">OLL 패리티</th>
-              <th className="p-1">PLL 패리티</th>
+              <th className="p-1">토끼이빨</th>
+              <th className="p-1">바보토끼이빨</th>
               <th className="p-1">짝짓기 끝 날개 바뀜</th>
             </tr>
           </thead>
@@ -221,13 +223,13 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
           없어요.{" "}
           {f.wingOrbits > 1
             ? "날개 묶음이 둘이라 묶음마다 홀짝이 따로 바뀌고, 4×4처럼 3×3 단계에서 패리티가 나와요."
-            : "날개 자리의 홀짝과 센터 블럭 자리의 홀짝이 겉으로 드러나지 않아, 3×3 단계에서 OLL·PLL 패리티로 보여요."}
+            : "날개 자리의 홀짝과 센터 블럭 자리의 홀짝이 겉으로 드러나지 않아, 3×3 단계에서 토끼이빨·바보토끼이빨로 보여요."}
         </Lead>
       )}
       <Quiz
         key={n}
         id={`sizes-${n}`}
-        question={`${obj(`${n}×${n}`)} 3×3처럼 맞추는 단계에서 PLL 패리티, 곧 엣지 한 줄 둘만 자리가 바뀐 꼴이 생길 수 있을까요?`}
+        question={`${obj(`${n}×${n}`)} 3×3처럼 맞추는 단계에서 바보토끼이빨, 곧 엣지 한 줄 둘만 자리가 바뀐 꼴이 생길 수 있을까요?`}
         choices={["생길 수 있다", "생기지 않는다"]}
         answer={f.pllParity ? 0 : 1}
         why={

@@ -185,6 +185,17 @@ export function heroRotation(
   return heroMethodsFor(size);
 }
 
+/**
+ * 이 크기에서 쓰일 고른 해법: 그 크기의 해법이면 그대로, 아니면 「번갈아」. 첫 화면 연출 크기는 지금 크기를 따르므로
+ * (docs/47 16-28) 고른 해법은 다른 크기의 것일 수 있다(그 크기로 돌아가면 다시 쓰인다)
+ */
+export function effectiveHeroChoice(
+  choice: HeroChoice,
+  size: number,
+): HeroChoice {
+  return findHeroMethod(choice)?.size === size ? choice : HERO_ALTERNATE;
+}
+
 export const isHeroSize = (v: unknown): v is HeroSize =>
   typeof v === "number" && (HERO_SIZES as readonly number[]).includes(v);
 

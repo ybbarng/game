@@ -4,6 +4,7 @@ import { type CubeMove, formatMove, type StickerMask } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
 import { cn } from "@/lib/cn";
@@ -251,7 +252,7 @@ export function CubePlay({
     comboProgress,
   };
 
-  // 뒷면 보기: 거울이면 3D 장면에 판을 띄운다(「거울 숨기기」로 접는다)
+  // 뒷면 보기: 거울이면 3D 장면에 판을 띄운다(「거울」 스위치로 끈다)
   const back = useBackView(settings.backView, !failed);
   // 화면 높이에 맞추기: 큐브 칸 위 끝(문서 기준)을 잰다. 칸 크기는 위 끝을 바꾸지 않아 재기가 돌지 않는다
   const [stageTop, setStageTop] = useState<number | null>(null);
@@ -635,14 +636,13 @@ export function CubePlay({
             {prime ? "'" : ""}
           </button>
         ))}
-        <button
-          type="button"
-          aria-pressed={prime}
-          onClick={() => setPrime((p) => !p)}
-          className={`h-11 rounded-lg px-2 text-sm sm:h-9 ${prime ? "bg-amber-400 text-black" : "bg-white/10"}`}
+        <ToggleSwitch
+          on={prime}
+          onChange={setPrime}
+          className="h-11 text-sm sm:h-9"
         >
           ′ 반대
-        </button>
+        </ToggleSwitch>
         {moreButtonMoves(n).some((b) => !extraButtons?.includes(b)) && (
           <button
             type="button"
@@ -691,32 +691,23 @@ export function CubePlay({
               ? "키 그림 보기"
               : "키 그림 펴기"}
         </button>
-        <button
-          type="button"
-          onClick={() =>
-            updateSettings({ ...saved, touchKeyboard: !saved.touchKeyboard })
-          }
-          aria-pressed={keysMode}
+        <ToggleSwitch
+          on={keysMode}
+          onChange={(v) => updateSettings({ ...saved, touchKeyboard: v })}
           data-cube-input-toggle={keysMode ? "keys" : "buttons"}
-          className={`${hideKeys ? "hidden" : "inline-flex sm:hidden"} min-h-8 items-center px-1 underline-offset-2 hover:underline`}
+          className={cn(hideKeys ? "hidden" : "sm:hidden", "min-h-8")}
         >
-          {keysMode ? "단추로 치기" : "키보드로 치기"}
-        </button>
+          키보드로 치기
+        </ToggleSwitch>
         {back.mode === "mirror" && (
-          <button
-            type="button"
-            onClick={() =>
-              updateSettings({
-                ...saved,
-                backViewShown: !saved.backViewShown,
-              })
-            }
-            aria-pressed={showMirror}
+          <ToggleSwitch
+            on={showMirror}
+            onChange={(v) => updateSettings({ ...saved, backViewShown: v })}
             data-back-toggle={back.mode}
-            className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
+            className="min-h-8"
           >
-            {showMirror ? "거울 숨기기" : "거울 보기"}
-          </button>
+            거울
+          </ToggleSwitch>
         )}
         <a
           href="/cube/keys"

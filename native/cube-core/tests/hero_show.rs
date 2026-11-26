@@ -8,6 +8,7 @@ use cube_core::hero_show::{
     hero_timing, orient_for_solve, orient_steps, random_scramble, scramble_steps, solve_for_hero,
     solve_steps, HeroMethod,
 };
+use cube_core::human::StageName;
 use cube_core::rng::Rng;
 use cube_core::solved_cube;
 use cube_core::state::apply_alg;
@@ -30,6 +31,13 @@ fn hero_show_big_matches_site() {
 #[test]
 fn hero_show_yau_matches_site() {
     check(include_str!("../fixtures/hero-show-yau.json"));
+}
+
+/// 패리티 단계 꼬리표는 한국에서 부르는 이름(사용자 2026-11-26, docs/47 1-1·16-29)
+#[test]
+fn parity_stage_labels_use_rabbit_teeth_names() {
+    assert_eq!(StageName::OllParity.label(), "토끼이빨");
+    assert_eq!(StageName::PllParity.label(), "바보토끼이빨");
 }
 
 /// 해법마다 한 판 계산 시간(앱이 시연 풀이를 만드는 데 드는 시간). 평소 시험에서는 건너뛴다:

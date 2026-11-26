@@ -20,6 +20,7 @@ import {
 } from "react";
 
 import { cn } from "@/lib/cn";
+import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import type { Command } from "../input";
 import { eventForSize } from "../online/race-game";
 import { LEVEL_LABEL, type Pattern } from "../patterns/data";
@@ -49,6 +50,7 @@ import { type CubeSettings, useCubeSettings } from "../settings";
 import { scrambleInWorker, warmUpScramble } from "../worker";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
+import { SizePicker } from "./SizePicker";
 
 /**
  * 혼자 하는 모양 만들기(`/cube/patterns?tab=make`, 옛 `/cube/shape`, docs/47 9-10·16-2). 목표 모양을 고르고, 맞춘 큐브(또는 섞인 큐브)에서 그 모양을 만든다.
@@ -80,7 +82,8 @@ export function ShapeSoloApp({
   header: ReactNode;
 }) {
   const settings = useCubeSettings();
-  const [n, setN] = useState(3);
+  // 지금 크기로 연다(이 화면에 없는 크기면 3×3). 고르면 지금 크기도 바뀐다(docs/47 16-28)
+  const n = sizeFor(SIZES, useCurrentSize());
   const [startMode, setStartMode] = useState<ShapeStart>("solved");
   const [run, setRun] = useState<Run>({ phase: "pick" });
   const [records, setRecords] = useState<ShapeRecords>({});
@@ -165,7 +168,7 @@ export function ShapeSoloApp({
         {run.phase === "pick" ? (
           <ShapePicker
             n={n}
-            onSize={setN}
+            onSize={setCurrentSize}
             start={startMode}
             onStart={setStartMode}
             records={records}
@@ -221,21 +224,12 @@ function ShapePicker({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        {SIZES.map((k) => (
-          <button
-            key={k}
-            type="button"
-            data-cube-shape-size={k}
-            aria-pressed={n === k}
-            onClick={() => onSize(k)}
-            className={cn(
-              "rounded-lg px-3 py-1.5",
-              n === k ? "bg-sky-500 font-semibold text-black" : "bg-white/10",
-            )}
-          >
-            {k}×{k}
-          </button>
-        ))}
+        <SizePicker
+          optionAttr="data-cube-shape-size"
+          sizes={SIZES}
+          value={n}
+          onPick={onSize}
+        />
         <span className="mx-1 h-5 w-px bg-white/15" />
         {SHAPE_STARTS.map((s) => (
           <button

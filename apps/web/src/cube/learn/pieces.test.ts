@@ -210,23 +210,30 @@ describe("고르기 문제의 답", () => {
       expect(hitSlots(3, solvedCube(3), x.find as FindTarget)).toHaveLength(
         x.count as number,
       );
-    const total = first.steps.find((x) =>
-      x.quiz?.question.includes("모두 몇 개"),
-    );
-    expect(total?.quiz?.choices[total.quiz.answer]).toBe("26개");
+    // 26개는 셋째 단계 글이 먼저 알리고, 끝 문제는 스티커 54장이 아니라 조각 26개를 옮긴다는 것을 되짚는다
+    expect(first.steps[2]?.body).toContain("26개의 조각");
+    const last = first.steps.at(-1);
+    expect(last?.quiz?.choices[last.quiz.answer]).toBe("조각 26개");
+    expect(last?.quiz?.choices).toContain("스티커 54장");
   });
 
   it("표준 색 배치: 분해·조립 앞에서 흰색 맞은편 노란색을 찾고, 흰 위·초록 앞의 오른쪽(빨간색)을 고른다", () => {
     const first = lessonOf("333-start");
     const build = first.steps.findIndex((x) => x.kind === "build");
     const [find, pick] = first.steps.slice(build - 2, build);
-    // 까만 큐브에서 노란 센터 하나만 맞다
+    // 노란 센터 하나만 맞다
     expect(find?.kind).toBe("find");
-    expect(find?.mask).toBe("none");
     expect(find?.find).toEqual({ piece: "center", colors: ["D"] });
     expect(hitSlots(3, solvedCube(3), find?.find as FindTarget)).toHaveLength(
       1,
     );
+    // 글이 「흰 센터 블럭」이 위라고 밝혔으니 위 센터 블럭은 흰색으로 보이고, 찾을 노란 센터 블럭은 가린다
+    expect(find?.mask).toBe("centers:U");
+    const findMask = maskFor(3, find?.mask) ?? [];
+    expect(
+      findMask.map((v, i) => (v === "visible" ? i : -1)).filter((i) => i >= 0),
+    ).toEqual([(FACE_INDEX.U as number) * 9 + 4]);
+    expect(findMask[(FACE_INDEX.D as number) * 9 + 4]).toBe("hidden");
     expect(pick?.kind).toBe("quiz");
     // 위(흰색)·앞(초록색) 센터 블럭만 보인다. 오른쪽(답)을 비롯한 나머지는 가린다
     expect(pick?.mask).toBe("centers:UF");

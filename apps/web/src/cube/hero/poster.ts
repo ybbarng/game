@@ -21,17 +21,18 @@ export type PosterScheme = (typeof POSTER_SCHEMES)[number];
 export const posterFile = (n: HeroSize, scheme: PosterScheme): string =>
   `${n}-${scheme}.webp`;
 
-/** 찍은 이미지 주소. 맞는 이미지가 없으면 null(SVG로 대신) */
+/** 찍은 이미지 주소(`n`은 연출 크기, 곧 지금 크기). 맞는 이미지가 없으면 null(SVG로 대신) */
 export function heroPosterSrc(
-  s: Pick<CubeSettings, "heroSize" | "colorScheme" | "colors" | "stickerless">,
+  n: number,
+  s: Pick<CubeSettings, "colorScheme" | "colors" | "stickerless">,
 ): string | null {
   if (s.stickerless) return null;
-  if (!HERO_SIZES.includes(s.heroSize)) return null;
+  if (!(HERO_SIZES as readonly number[]).includes(n)) return null;
   const scheme = POSTER_SCHEMES.find((p) => p === s.colorScheme);
   if (!scheme) return null;
   // 이름은 색 묶음인데 색이 달라졌으면(옛 저장값 등) 이미지와 어긋나니 쓰지 않는다
   const want = COLOR_SCHEMES[scheme];
   if (s.colors.length !== 6 || s.colors.some((c, i) => c !== want[i]))
     return null;
-  return `/cube/hero/${posterFile(s.heroSize, scheme)}`;
+  return `/cube/hero/${posterFile(n as HeroSize, scheme)}`;
 }

@@ -1,4 +1,11 @@
-import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
+import {
+  installClock,
+  no3d,
+  pauseClock,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /**
@@ -12,8 +19,8 @@ import { expect, fastForwardUntil, type Page, test } from "./test";
 const SCRAMBLE_TIMEOUT = 60_000;
 
 test.beforeEach(async ({ page }, info) => {
-  // 거울 숨기기 단추는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다. 섞기 연출도 장면에서 보인다
-  if (!info.title.includes("거울 숨기기") && !info.title.includes("섞기 연출"))
+  // 「거울」 스위치는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다. 섞기 연출도 장면에서 보인다
+  if (!info.title.includes("거울 끄기") && !info.title.includes("섞기 연출"))
     await no3d(page);
   await useNotationKeys(page);
 });
@@ -399,7 +406,7 @@ test(
     // 고른 해법은 새로 고쳐도 남고, 2×2는 고를 것이 하나라 고르기가 없다
     await page.reload();
     await expect(page.locator("select[data-cube-method]")).toHaveValue("cfop");
-    await page.locator("[data-cube-size]").selectOption("2");
+    await pickSize(page, "[data-cube-size]", 2);
     await expect(page.locator("select[data-cube-method]")).toHaveCount(0);
   },
 );
@@ -444,7 +451,7 @@ test(
     // 3×3에는 야우가 없다
     await expect(yau).toHaveCount(0);
 
-    await page.locator("[data-cube-size]").selectOption("4");
+    await pickSize(page, "[data-cube-size]", 4);
     await expect(
       page.locator("[data-cube-stage][data-input-ready]"),
     ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
@@ -465,7 +472,7 @@ test(
     await shot(page, "solo-method-yau", info.project.name);
 
     // 5×5에는 야우 풀이가 없어 고르기에도 없고, 고른 야우는 자동으로 보인다
-    await page.locator("[data-cube-size]").selectOption("5");
+    await pickSize(page, "[data-cube-size]", 5);
     await expect(method).toHaveValue("auto");
     await expect(yau).toHaveCount(0);
   },
@@ -502,7 +509,7 @@ test(
 );
 
 test(
-  "혼자 맞추기: 키 그림 접기·거울 숨기기는 새로 고쳐도 남는다",
+  "혼자 맞추기: 키 그림 접기·거울 끄기는 새로 고쳐도 남는다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     // 키 그림 접기는 데스크톱만
@@ -513,16 +520,19 @@ test(
     const keys = page.locator("[data-cube-keys-wrap]");
     const back = page.locator('[data-back-toggle="mirror"]');
     await expect(keys).toBeVisible();
+    // 거울은 켜고 끄는 스위치(한 번 누르는 단추와 다른 꼴)
+    await expect(back).toHaveAttribute("role", "switch");
+    await expect(back).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: "키 그림 접기" }).click();
     await back.click();
     await expect(keys).toBeHidden();
-    await expect(back).toHaveAttribute("aria-pressed", "false");
+    await expect(back).toHaveAttribute("aria-checked", "false");
     await page.reload();
     await expect(
       page.locator("[data-cube-stage][data-input-ready]"),
     ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
     await expect(keys).toBeHidden();
-    await expect(back).toHaveAttribute("aria-pressed", "false");
+    await expect(back).toHaveAttribute("aria-checked", "false");
     await expect(
       page.getByRole("button", { name: "키 그림 펴기" }),
     ).toBeVisible();
@@ -598,7 +608,7 @@ test(
     await expect(page.locator("[data-cube-moves]")).toHaveText("1");
 
     // 6×6: 크기와 상관없이 0.5초 짧은 연출
-    await page.locator("[data-cube-size]").selectOption("6");
+    await pickSize(page, "[data-cube-size]", 6);
     await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
       "data-cube-ready",
       "",

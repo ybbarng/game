@@ -33,6 +33,19 @@ export const EVENT_INFO: Readonly<Record<TimerEvent, EventInfo>> = {
   "333bf": { size: 3, label: "3×3 블라인드", blind: true },
 };
 
+/** n×n 보통 종목(블라인드 아님) */
+export function plainEvent(n: number): TimerEvent {
+  const ev = `${n}${n}${n}`;
+  return isTimerEvent(ev) ? ev : "333";
+}
+
+/**
+ * 지금 크기로 열 종목(docs/47 16-28): 저장해 둔 종목이 그 크기면 그대로(3×3이면 3×3 블라인드도), 아니면 그 크기의 보통 종목
+ */
+export function eventForSize(saved: TimerEvent, n: number): TimerEvent {
+  return EVENT_INFO[saved].size === n ? saved : plainEvent(n);
+}
+
 export function isTimerEvent(value: unknown): value is TimerEvent {
   return (
     typeof value === "string" &&

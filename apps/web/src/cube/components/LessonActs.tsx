@@ -12,6 +12,7 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { copula } from "@/lib/josa";
 import { stickersFromState } from "../bridge";
@@ -716,24 +717,16 @@ export function PlayPanel({
             ))}
           </>
         )}
-        <button
-          type="button"
+        <ToggleSwitch
           data-play-all
-          aria-pressed={showAll}
-          onClick={(e) => {
-            setShowAll((v) => !v);
+          on={showAll}
+          onChange={(v) => {
+            setShowAll(v);
             setPaint((t) => t + 1);
-            e.currentTarget.blur();
           }}
-          className={cn(
-            "rounded-lg px-3 py-1",
-            showAll
-              ? "bg-white/25 font-semibold"
-              : "bg-white/10 hover:bg-white/15",
-          )}
         >
           모두 보기
-        </button>
+        </ToggleSwitch>
         <button
           type="button"
           data-play-reset

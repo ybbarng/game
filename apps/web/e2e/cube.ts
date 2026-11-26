@@ -53,6 +53,31 @@ export async function pauseClock(page: Page): Promise<void> {
   await page.clock.pauseAt(CLOCK_START + CLOCK_PAUSE_AFTER);
 }
 
+/**
+ * 크기 단추(`SizePicker`)에서 n×n을 고른다. `picker`는 묶음 표시(예: `[data-cube-size]`). 이미 골라져 있으면 누르지 않는다
+ * (단추는 같은 크기를 다시 눌러도 아무 일도 하지 않는다)
+ */
+export async function pickSize(
+  page: Page,
+  picker: string,
+  n: number | string,
+): Promise<void> {
+  const button = page.locator(`${picker} [data-size-option="${n}"]`);
+  if ((await button.getAttribute("aria-pressed")) !== "true")
+    await button.click();
+  await expect(page.locator(picker)).toHaveAttribute("data-value", String(n));
+}
+
+/** 지금 크기(`cube.size.v1`)를 미리 둔다(페이지를 열기 전에 부른다) */
+export async function presetCurrentSize(
+  target: Pick<Page | BrowserContext, "addInitScript">,
+  n: number,
+): Promise<void> {
+  await target.addInitScript((size) => {
+    localStorage.setItem("cube.size.v1", JSON.stringify({ v: 1, n: size }));
+  }, n);
+}
+
 /** 키 배치를 「표기」로(R = R, Shift+R = R', 두 번 = R2) */
 export async function useNotationKeys(page: Page): Promise<void> {
   await page.addInitScript(() => {

@@ -383,13 +383,21 @@ test("숫자야구 숫자 패드: 키보드로 넣고 지우고, 메모는 수�
   await entered("없음");
 
   // 메모: 숫자를 누르면 넣지 않고 표시만 바꾼다. 끄면 다시 넣는다.
-  const memo = page.getByRole("button", { name: "✎ 메모" });
+  // 메모는 켜고 끄는 스위치다(한 번 누르는 단추와 다른 꼴, docs/standing-rules.md 3절).
+  const memo = page.getByRole("switch", { name: "✎ 메모" });
+  await expect(memo).toHaveAttribute("aria-checked", "false");
   await memo.click();
-  await expect(memo).toHaveAttribute("aria-pressed", "true");
+  await expect(memo).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "7", exact: true }).click();
   await entered("없음");
+  // 키보드(Enter·Space)로도 켜고 끈다.
+  await memo.focus();
+  await page.keyboard.press("Enter");
+  await expect(memo).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("Space");
+  await expect(memo).toHaveAttribute("aria-checked", "true");
   await memo.click();
-  await expect(memo).toHaveAttribute("aria-pressed", "false");
+  await expect(memo).toHaveAttribute("aria-checked", "false");
   await page.getByRole("button", { name: "7", exact: true }).click();
   await entered("7");
   // 메모는 대국 저장에 들어가지 않는다(화면에만 있다).

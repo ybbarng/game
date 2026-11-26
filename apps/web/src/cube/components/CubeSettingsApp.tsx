@@ -4,11 +4,13 @@ import { solvedCube } from "@game/cube-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { ALL_SIZES, sizeFor, useCurrentSize } from "../current-size";
 import { HERO_HIGHLIGHT_LABEL, HERO_HIGHLIGHTS } from "../hero/highlight";
 import {
-  findHeroMethod,
+  effectiveHeroChoice,
   HERO_ALTERNATE,
   HERO_SIZES,
+  type HeroSize,
   heroMethodsFor,
 } from "../hero/methods";
 import {
@@ -53,6 +55,7 @@ import {
 } from "../settings";
 import type { Quality } from "../view/types";
 import { CubePosterPair } from "./CubePosterPair";
+import { SizePicker } from "./SizePicker";
 
 /** 큐브 설정 화면(`/cube/settings`): 키 배치·사용자 배치 편집, 색, 보기, 소리 */
 
@@ -88,6 +91,7 @@ const chip = (on: boolean) =>
 
 export function CubeSettingsApp() {
   const settings = useCubeSettings();
+  const heroSize = sizeFor(HERO_SIZES, useCurrentSize()) as HeroSize;
   const [keymap, setKeymapState] = useState<Keymap | null>(null);
   useEffect(() => setKeymapState(loadKeymap()), []);
   const setKeymap = (km: Keymap) => {
@@ -296,49 +300,33 @@ export function CubeSettingsApp() {
 
         <section className="flex flex-col gap-3 text-sm" data-settings-hero>
           <h2 className="font-semibold text-lg">첫 화면 큐브</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            크기
-            {HERO_SIZES.map((n) => (
-              <button
-                key={n}
-                type="button"
-                data-hero-size={n}
-                aria-pressed={settings.heroSize === n}
-                onClick={() =>
-                  updateSettings({
-                    ...settings,
-                    heroSize: n,
-                    heroMethod:
-                      findHeroMethod(settings.heroMethod)?.size === n
-                        ? settings.heroMethod
-                        : HERO_ALTERNATE,
-                  })
-                }
-                className={chip(settings.heroSize === n)}
-              >
-                {n}×{n}
-              </button>
-            ))}
-          </div>
+          {/* 크기는 지금 크기를 따른다(설정 「첫 화면 큐브 크기」는 2026-11-26 없앰, docs/47 16-28) */}
           <div className="flex flex-wrap items-center gap-2">
             해법
             {[
               { id: HERO_ALTERNATE, label: "번갈아" },
-              ...heroMethodsFor(settings.heroSize),
-            ].map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                data-hero-method={m.id}
-                aria-pressed={settings.heroMethod === m.id}
-                onClick={() =>
-                  updateSettings({ ...settings, heroMethod: m.id })
-                }
-                className={chip(settings.heroMethod === m.id)}
-              >
-                {m.label}
-              </button>
-            ))}
+              ...heroMethodsFor(heroSize),
+            ].map((m) => {
+              const on =
+                m.id === HERO_ALTERNATE
+                  ? effectiveHeroChoice(settings.heroMethod, heroSize) ===
+                    HERO_ALTERNATE
+                  : settings.heroMethod === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  data-hero-method={m.id}
+                  aria-pressed={on}
+                  onClick={() =>
+                    updateSettings({ ...settings, heroMethod: m.id })
+                  }
+                  className={chip(on)}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             강조
@@ -507,20 +495,16 @@ function KeymapSection({
             </span>
           </label>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex items-center gap-1">
+            {/* 설정은 크기와 상관없는 화면이라 지금 크기를 읽지도 바꾸지도 않는다(docs/47 16-28) */}
+            <div className="flex flex-wrap items-center gap-1">
               동작 목록 크기
-              <select
+              <SizePicker
+                attr="data-keymap-list-size"
+                sizes={ALL_SIZES}
                 value={n}
-                onChange={(e) => setN(Number(e.target.value))}
-                className="rounded bg-white/10 px-2 py-1"
-              >
-                {[2, 3, 4, 5, 6, 7].map((s) => (
-                  <option key={s} value={s} className="bg-neutral-800">
-                    {s}×{s}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onPick={setN}
+              />
+            </div>
             <span className="ml-auto text-white/60 text-xs">
               기본으로 되돌리기:
             </span>

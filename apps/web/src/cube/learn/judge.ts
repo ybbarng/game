@@ -402,15 +402,17 @@ export function maskFor(
       return maskFromPieces(n, []);
     case "centers":
       return maskFromPieces(n, cubeGroups(n, U).centers);
+    case "centers:U":
     case "centers:UF": {
-      const up = FACE_INDEX.U as number;
-      const front = FACE_INDEX.F as number;
+      // 이름의 면 글자(U, UF)에 든 면의 센터 블럭만 보인다
+      const faces = [...name.slice("centers:".length)].map(
+        (c) => FACE_INDEX[c] as number,
+      );
       return maskFromPieces(
         n,
-        cubeGroups(n, U).centers.filter((p) => {
-          const f = pieceFaces(n, p)[0];
-          return f === up || f === front;
-        }),
+        cubeGroups(n, U).centers.filter((p) =>
+          faces.includes(pieceFaces(n, p)[0] as number),
+        ),
       );
     }
     case "corners":

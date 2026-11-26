@@ -120,6 +120,30 @@ const BIG_TERMS: OrderedTerm[] = [
   { term: "날개", use: /날개/, define: /「날개」/ },
   { term: "축소법", use: /축소법/, define: /「축소법」/ },
   { term: "패리티", use: /패리티/, define: /「패리티」/ },
+  // 패리티 이름(사용자 2026-11-26, docs/47 1-1): OLL 패리티는 토끼이빨, PLL 패리티는 바보토끼이빨
+  { term: "토끼이빨", use: /(?<!바보)토끼이빨/, define: /「토끼이빨」/ },
+  { term: "바보토끼이빨", use: /바보토끼이빨/, define: /「바보토끼이빨」/ },
+];
+
+/** 6×6·7×7로 넓히기(docs/47 16-29) */
+const BIG67_TERMS: OrderedTerm[] = [
+  { term: "세로 열", use: /세로 열/, define: /「세로 열」/ },
+  { term: "막대", use: /막대/, define: /「막대」/ },
+  { term: "막대 넣기", use: /막대 넣기/, define: /「막대 넣기」/ },
+  // 「겹치다」와 큐브의 기초 「한 겹으로 함께 돌아요」(층)는 다른 말
+  { term: "겹", use: /(?<!한 )겹(?![치쳐친칠])/, define: /「바깥 겹」/ },
+  {
+    term: "4R(한가운데 층)",
+    use: /(^|[^0-9A-Za-z×-])4[RLUDFB]/m,
+    define: /4R은 바깥에서 넷째 층|위에서 넷째 층, 곧 한가운데 가로 층\(4U\)/,
+  },
+  {
+    term: "여러 안쪽 층(2-3Rw)",
+    use: /\d-\d[RLUDFB]w/,
+    define: /2-3Rw는 오른쪽에서 둘째·셋째 층/,
+  },
+  { term: "바깥 세 층(3Rw)", use: /(?<!-)3Rw/, define: /바깥 세 층 3Rw/ },
+  { term: "위 세 층(3Uw)", use: /(?<!-)3Uw/, define: /3Uw\(위 세 층\)/ },
 ];
 
 /** 블라인드 */
@@ -193,6 +217,7 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     },
   ],
   "555-reduction": [...NOTATION, ...BIG_TERMS],
+  "big-666-777": [...NOTATION, ...BIG_TERMS, ...BIG67_TERMS],
   "bld-op": [...NOTATION, ...CFOP_TERMS, ...BLD_TERMS],
 };
 
@@ -240,7 +265,7 @@ describe("큰 큐브 줄·칸 낱말", () => {
 // 「가운데 엣지 블럭」, 3×3과 견주는 「3×3의 엣지 블럭」, 뜻을 알리는 「엣지 블럭(날개)」만 쓴다(docs/47 16-23)
 describe("큰 큐브 엣지 낱말", () => {
   const PIECE_OK =
-    /(가운데 |3×3의 )엣지 블럭|엣지 블럭( ?(둘|셋|두 개|세 개|하나)|\(날개\))/g;
+    /(가운데 |3×3의 )엣지 블럭|엣지 블럭( ?(둘|셋|넷|다섯|두 개|세 개|하나)|\(날개\))/g;
   for (const course of COURSES) {
     if (course.size < 4) continue;
     it(`${course.title}: 날개가 붙은 덩이를 「엣지 블럭」으로 부르지 않는다`, () => {

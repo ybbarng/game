@@ -28,8 +28,8 @@ public struct CubeSettings: Equatable, Sendable {
   public var colorScheme = "standard"
   /// 단축키 표 칸에 면 색을 칠할지(사이트 `keyColors`)
   public var keyColors = true
-  /// 첫 화면 큐브 크기·해법(사이트 `heroSize`·`heroMethod`). 해법은 그 크기의 것이 아니면 「번갈아」(`alternate`)
-  public var heroSize = 3
+  /// 첫 화면 큐브 해법(사이트 `heroMethod`). 표에 없으면 「번갈아」(`alternate`). 크기는 보지 않는다: 사이트는 연출 크기를
+  /// 지금 크기로 바꾸며 `heroSize` 칸을 없앴고(docs/47 16-28), 앱 홈 시연은 앱의 큐브 크기를 따른다(`heroMethodId(n:)`)
   public var heroMethod = "alternate"
 
   /// 사이트 `HERO_METHODS`의 id(크기마다 표 차례)
@@ -75,8 +75,7 @@ public struct CubeSettings: Equatable, Sendable {
     if let b = d["sound"] as? NSNumber, isBool(b) { s.sound = b.boolValue }
     if let v = d["scrambleShow"] as? String, let show = ScrambleShow(rawValue: v) { s.scrambleShow = show }
     s.hiddenGray = (d["hidden"] as? String) == "gray"
-    if let h = d["heroSize"] as? NSNumber, isInt(h), heroMethods[h.intValue] != nil { s.heroSize = h.intValue }
-    if let m = d["heroMethod"] as? String, heroMethods[s.heroSize]?.contains(m) == true { s.heroMethod = m }
+    if let m = d["heroMethod"] as? String, heroMethods.values.contains(where: { $0.contains(m) }) { s.heroMethod = m }
     return s
   }
 

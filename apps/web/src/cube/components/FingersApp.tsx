@@ -3,6 +3,7 @@
 import { isRotation, parseMoves, solvedCube } from "@game/cube-engine";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import { presetKeymap } from "../input";
@@ -365,22 +366,15 @@ function GripChecklist() {
               >
                 {i + 1}. {t}
               </span>
-              <button
-                type="button"
-                aria-pressed={on}
-                onClick={(e) => {
-                  setDone((d) => (on ? d.filter((x) => x !== i) : [...d, i]));
-                  e.currentTarget.blur();
-                }}
-                className={cn(
-                  "min-h-8 self-start rounded-md px-3 py-1",
-                  on
-                    ? "bg-emerald-500/70 text-black"
-                    : "bg-white/10 hover:bg-white/15",
-                )}
+              <ToggleSwitch
+                on={on}
+                onChange={(v) =>
+                  setDone((d) => (v ? [...d, i] : d.filter((x) => x !== i)))
+                }
+                className="min-h-8 self-start"
               >
-                {on ? "✓ 따라 했어요" : "따라 했어요"}
-              </button>
+                따라 했어요
+              </ToggleSwitch>
             </li>
           );
         })}

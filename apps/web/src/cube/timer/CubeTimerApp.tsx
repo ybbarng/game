@@ -3,9 +3,11 @@
 import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 import { cn } from "@/lib/cn";
-
+import { SizePicker } from "../components/SizePicker";
+import { setCurrentSize, useCurrentSize } from "../current-size";
 import {
   addSession,
   addSolve,
@@ -28,7 +30,13 @@ import {
   solvesOf,
   type TimerBook,
 } from "./book";
-import { EVENT_INFO, TIMER_EVENTS, type TimerEvent } from "./events";
+import {
+  EVENT_INFO,
+  eventForSize,
+  plainEvent,
+  TIMER_EVENTS,
+  type TimerEvent,
+} from "./events";
 import { type Scramble, scrambleProvider } from "./fallback-scramble";
 import {
   INSPECTION_MS,
@@ -247,6 +255,22 @@ export function CubeTimerApp() {
   const phase = view?.phase ?? "idle";
   const active = phase !== "idle";
 
+  const pickEvent = useCallback(
+    (ev: TimerEvent) => {
+      update((b) => selectEvent(b, ev));
+      nextScramble(ev);
+      setSelected(null);
+    },
+    [update, nextScramble],
+  );
+  // 지금 크기로 연다(docs/47 16-28). 다른 화면·탭에서 바꾸면 대기 중일 때 따라간다
+  const currentSize = useCurrentSize();
+  useEffect(() => {
+    if (!loaded || active) return;
+    const want = eventForSize(book.event, currentSize);
+    if (want !== book.event) pickEvent(want);
+  }, [loaded, active, currentSize, book.event, pickEvent]);
+
   /** 대기에서 새 풀이를 시작할 수 있는지(섞기가 나와 있어야 한다) */
   const canBegin = useCallback(
     () => machine.view().phase !== "idle" || latest.current.scramble !== null,
@@ -329,9 +353,8 @@ export function CubeTimerApp() {
         <EventPicker
           event={event}
           onPick={(ev) => {
-            update((b) => selectEvent(b, ev));
-            nextScramble(ev);
-            setSelected(null);
+            setCurrentSize(EVENT_INFO[ev].size);
+            pickEvent(ev);
           }}
         />
 
@@ -415,25 +438,35 @@ function EventPicker({
   event: TimerEvent;
   onPick: (ev: TimerEvent) => void;
 }) {
+  const info = EVENT_INFO[event];
+  // 크기는 공통 크기 단추, 블라인드는 3×3에서 켜고 끄는 단추 하나(켜면 크기도 3×3)
+  const sizes = [
+    ...new Set(
+      TIMER_EVENTS.filter((ev) => !EVENT_INFO[ev].blind).map(
+        (ev) => EVENT_INFO[ev].size,
+      ),
+    ),
+  ];
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="종목">
-      {TIMER_EVENTS.map((ev) => (
-        <button
-          key={ev}
-          type="button"
-          aria-pressed={ev === event}
-          data-cube-event={ev}
-          onClick={() => onPick(ev)}
-          className={cn(
-            "rounded-full border px-3 py-1 text-sm",
-            ev === event
-              ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
-              : "border-white/20 text-white/70 hover:border-white/50",
-          )}
-        >
-          {EVENT_INFO[ev].label}
-        </button>
-      ))}
+    <nav
+      className="flex flex-wrap items-center gap-2"
+      aria-label="종목"
+      data-cube-event={event}
+    >
+      <SizePicker
+        attr="data-cube-timer-size"
+        sizes={sizes}
+        value={info.size}
+        onPick={(n) => onPick(plainEvent(n))}
+      />
+      <ToggleSwitch
+        on={info.blind}
+        data-cube-event-blind
+        onChange={(v) => onPick(v ? "333bf" : "333")}
+        className="text-sm"
+      >
+        블라인드
+      </ToggleSwitch>
     </nav>
   );
 }

@@ -6,6 +6,7 @@ import { GameHome } from "@/components/GameHome";
 import { RoomScreen } from "@/components/LazyRoomScreen";
 import { Chip } from "@/components/options/Chip";
 import { Section, SubScreen } from "@/components/options/SubScreen";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -91,15 +92,20 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
       </Section>
       <Section title="더 세는 약">
         <div className="flex flex-wrap gap-1.5">
-          <Chip active={s.chodan} onClick={() => s.set({ chodan: !s.chodan })}>
+          <ToggleSwitch
+            on={s.chodan}
+            onChange={(chodan) => s.set({ chodan })}
+            className="min-h-11 text-xs"
+          >
             초단 30점
-          </Chip>
-          <Chip
-            active={s.saodong}
-            onClick={() => s.set({ saodong: !s.saodong })}
+          </ToggleSwitch>
+          <ToggleSwitch
+            on={s.saodong}
+            onChange={(saodong) => s.set({ saodong })}
+            className="min-h-11 text-xs"
           >
             사오동 40점
-          </Chip>
+          </ToggleSwitch>
         </div>
       </Section>
       <Section title="컴퓨터 실력">

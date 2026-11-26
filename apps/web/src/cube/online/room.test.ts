@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { DelayNet, runUntil } from "@/net/race/race-fixture";
 import type { Transport } from "@/net/transport";
 import { type Scrambler, scrambleSeed } from "./race-game";
-import { CubeRoom, type RoomState } from "./room";
+import { CubeRoom, initialRoomSettings, type RoomState } from "./room";
 import { averageOf5, matchOver, standings } from "./standings";
 
 const NOVICE = levelText("novice");
@@ -61,6 +61,42 @@ function solveWhenReleased(clock: ManualClock, room: CubeRoom, delay: number) {
     });
   });
 }
+
+describe("큐브 대결 방: 처음 크기", () => {
+  it("방장의 지금 크기가 방에서 고를 수 있는 크기면 그 크기와 그 크기의 제한 시간으로 연다", () => {
+    expect(initialRoomSettings(4)).toEqual({ n: 4, timeLimitSec: 1200 });
+    expect(initialRoomSettings(2)).toEqual({ n: 2, timeLimitSec: 180 });
+  });
+
+  it("방장의 지금 크기가 방에 없는 크기(6×6·7×7)면 3×3으로 연다", () => {
+    expect(initialRoomSettings(6)).toEqual({ n: 3, timeLimitSec: 300 });
+    expect(initialRoomSettings(7)).toEqual({ n: 3, timeLimitSec: 300 });
+  });
+
+  it("방장이 처음 크기로 만든 방을 손님이 그대로 받는다", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    const host = new CubeRoom({
+      transport: net.join("h"),
+      clock,
+      isHost: true,
+      name: "방장",
+      scrambler: fake,
+      settings: initialRoomSettings(5),
+    });
+    const guest = new CubeRoom({
+      transport: net.join("g"),
+      clock,
+      isHost: false,
+      name: "손님",
+      scrambler: fake,
+    });
+    clock.advance(100);
+    expect(host.state?.settings.n).toBe(5);
+    expect(guest.state?.settings.n).toBe(5);
+    expect(guest.state?.settings.timeLimitSec).toBe(2400);
+  });
+});
 
 describe("큐브 대결 방", () => {
   it("손님이 들어오면 이름이 실린 방 상태를 받고, 방장이 컴퓨터를 더해 판을 열면 모두 같은 결과를 낸다", () => {

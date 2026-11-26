@@ -5,7 +5,7 @@ export const PARITY_4X4: AlgCase[] = [
   {
     id: "parity-4x4-oll",
     set: "parity-4x4",
-    name: "OLL 패리티(엣지 하나 뒤집기)",
+    name: "토끼이빨(OLL 패리티, 엣지 하나 뒤집기)",
     algs: [
       "Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'",
       "2R2 B2 U2 2L U2 2R' U2 2R U2 F2 2R F2 2L' B2 2R2",
@@ -15,7 +15,7 @@ export const PARITY_4X4: AlgCase[] = [
   {
     id: "parity-4x4-pll",
     set: "parity-4x4",
-    name: "PLL 패리티(맞은편 엣지 맞바꾸기)",
+    name: "바보토끼이빨(PLL 패리티, 맞은편 엣지 맞바꾸기)",
     algs: ["2R2 U2 2R2 Uw2 2R2 Uw2 U2"],
     note: "위 층 자리를 맞출 때 엣지 둘만 바뀐 모양(3×3에서는 없는 모양)이면 3×3 처음 맞추기의 코너 자리 단계에서 드러나요(제자리 코너가 꼭 둘 등). 그때 그대로 치고 옆면 맞추기부터 다시 해요. 이 공식은 위-앞·위-뒤 엣지를 맞바꿔요.",
   },

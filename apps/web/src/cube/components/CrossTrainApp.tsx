@@ -9,6 +9,7 @@ import {
 import { realClock } from "@game/fair-play/clock";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { addCrossRecord, crossStats, loadCrossRecords } from "../cross/records";
 import {
@@ -819,21 +820,13 @@ function Check({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={on}
+    <ToggleSwitch
+      on={on}
+      onChange={onChange}
       data-cross-option={`${label}:${on ? "on" : "off"}`}
-      onClick={(e) => {
-        onChange(!on);
-        e.currentTarget.blur();
-      }}
-      className={cn(
-        "rounded-lg px-2.5 py-1",
-        on ? "bg-sky-500 font-semibold text-black" : "bg-white/10",
-      )}
     >
       {label}
-    </button>
+    </ToggleSwitch>
   );
 }
 

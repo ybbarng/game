@@ -6,6 +6,7 @@ import { BEGINNER_222 } from "./lessons-222";
 import { FROM_333_222 } from "./lessons-222-from333";
 import { BASICS_333, BEGINNER_333 } from "./lessons-333";
 import { REDUCTION_444, REDUCTION_555 } from "./lessons-big";
+import { BIG_666_777 } from "./lessons-big67";
 import { BLD_OP } from "./lessons-bld";
 import { CFOP_INTRO } from "./lessons-cfop";
 import { ROUX } from "./lessons-roux";
@@ -29,6 +30,7 @@ const REQUIRES: Record<string, string[]> = {
   "444-reduction": ["333-beginner"],
   "444-yau": ["444-reduction", "cfop"],
   "555-reduction": ["444-reduction"],
+  "big-666-777": ["555-reduction"],
   "bld-op": ["cfop"],
 };
 
@@ -91,6 +93,8 @@ export const METHOD_COURSES: Course[] = [
   }),
   staged(YAU_444),
   staged(REDUCTION_555),
+  // 6×6·7×7은 4×4·5×5의 응용이라 새로 부딪히는 셋만 짧게(docs/47 16-29). 6×6·7×7 탭 둘에 함께 보인다(`sizes`)
+  BIG_666_777,
   staged(BLD_OP),
 ].map(needs);
 
@@ -103,6 +107,11 @@ export const COURSES: Course[] = [BASICS, ...METHOD_COURSES];
 /** 이 과정 다음에 배우면 좋은 과정(그 과정을 먼저 배울 것으로 둔 과정들, COURSES 차례) */
 export function nextCourses(course: Course): Course[] {
   return COURSES.filter((c) => c.requires?.includes(course.id));
+}
+
+/** 해법 배우기 크기 탭에서 이 과정을 보일 크기들(`sizes`, 없으면 `size` 하나) */
+export function courseSizes(course: Course): number[] {
+  return course.sizes ?? [course.size];
 }
 
 /** 과정 id → 과정 */

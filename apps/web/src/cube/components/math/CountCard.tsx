@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { sizeFor, useCurrentSize } from "../../current-size";
 import {
   bigNumberNote,
   COUNT_LEAD,
@@ -15,6 +16,7 @@ import {
   UNIVERSE_YEARS,
   yearsToSee,
 } from "../../math/counts";
+import { SizePicker } from "../SizePicker";
 import { Big, Lead, Pill, Quiz, Source } from "./ui";
 
 const SIZES = [2, 3, 4, 5] as const;
@@ -43,7 +45,10 @@ function duration(total: bigint, perSecond: bigint): string {
 
 /** 경우의 수: 조각별로 묻고 맞히며 곱을 쌓는다 */
 export function CountCard() {
-  const [size, setSize] = useState<Size>(3);
+  // 보는 화면: 지금 크기로 열고, 여기서 바꿔도 지금 크기는 그대로(docs/47 16-28)
+  const currentSize = useCurrentSize();
+  const [viewing, setSize] = useState<Size | null>(null);
+  const size = viewing ?? (sizeFor(SIZES, currentSize) as Size);
   const [done, setDone] = useState<Record<Size, number>>({
     2: 0,
     3: 0,
@@ -62,18 +67,13 @@ export function CountCard() {
   return (
     <div className="flex flex-col gap-3" data-count-size={size}>
       <Lead>{COUNT_LEAD}</Lead>
-      <div className="flex flex-wrap gap-1.5">
-        {SIZES.map((s) => (
-          <Pill
-            key={s}
-            active={s === size}
-            onClick={() => setSize(s)}
-            attr={{ "data-count-tab": String(s) }}
-          >
-            {s}×{s}
-          </Pill>
-        ))}
-      </div>
+      <SizePicker
+        optionAttr="data-count-tab"
+        sizes={SIZES}
+        value={size}
+        onPick={(s) => setSize(s as Size)}
+        className="self-start"
+      />
       <Lead>
         <span data-count-intro>{plan.intro}</span>
       </Lead>

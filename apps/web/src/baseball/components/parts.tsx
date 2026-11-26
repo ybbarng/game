@@ -3,6 +3,7 @@
 import { digitPool, type GuessEntry } from "@game/baseball-engine";
 import { memo, useEffect, useRef, useState } from "react";
 
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { playUiCue } from "@/game/ui-sound";
 import { cn } from "@/lib/cn";
 
@@ -582,19 +583,13 @@ export function NumberPad({
       </div>
       <div className="flex w-full max-w-xs gap-1.5">
         {onMemo && (
-          <button
-            type="button"
-            aria-pressed={inMemo}
-            onClick={() => setMemoMode((m) => !m)}
-            className={cn(
-              "rounded-xl border px-3 py-2 text-sm",
-              inMemo
-                ? "border-sky-300 bg-sky-300 font-semibold text-black"
-                : "border-white/10 bg-black/35",
-            )}
+          <ToggleSwitch
+            on={inMemo}
+            onChange={setMemoMode}
+            className="rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm"
           >
             ✎ 메모
-          </button>
+          </ToggleSwitch>
         )}
         {extra}
         <button

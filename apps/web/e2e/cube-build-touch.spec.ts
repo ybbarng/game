@@ -96,7 +96,7 @@ test(
     await page.goto("/cube/learn?lesson=333-start");
     await goToStep(page, "quiz");
     await expect(page.locator("[data-learn-quiz]")).toContainText(
-      "오른쪽 센터는",
+      "오른쪽 센터 블럭은",
     );
     await expect(
       page.locator("[data-cube-still] [data-cube-ready]").first(),

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/cn";
+import { SizePicker } from "../components/SizePicker";
+import { sizeFor, useCurrentSize } from "../current-size";
 import { installCaptureHook } from "./emblem3d/capture";
 import { TierHistoryChart } from "./TierHistoryChart";
 import { TierShowcase } from "./TierShowcase";
@@ -20,22 +21,28 @@ import {
   WCA_RESULTS_URL,
 } from "./table";
 
-/** 주소의 `?n=4`(없거나 표에 없는 크기면 3) */
-function sizeFromUrl(): number {
+/** 주소의 `?n=4`(없거나 표에 없는 크기면 null) */
+function sizeFromUrl(): number | null {
   try {
     const n = Number(new URLSearchParams(window.location.search).get("n"));
-    return (TIER_SIZES as readonly number[]).includes(n) ? n : 3;
+    return (TIER_SIZES as readonly number[]).includes(n) ? n : null;
   } catch {
-    return 3;
+    return null;
   }
 }
 
-/** 큐브 티어표(`/cube/tiers`, docs/47 14절) */
+/**
+ * 큐브 티어표(`/cube/tiers`, docs/47 14절). 보는 화면(docs/47 16-28): 주소 `?n=`가 있으면 그 크기, 없으면 지금 크기로
+ * 열고, 여기서 크기를 바꿔도 지금 크기는 그대로다
+ */
 export function TiersApp() {
-  const [n, setN] = useState(3);
+  const current = useCurrentSize();
+  /** 이 화면에서 고르거나 주소로 받은 크기(없으면 지금 크기) */
+  const [viewing, setViewing] = useState<number | null>(null);
+  const n = viewing ?? sizeFor(TIER_SIZES, current);
   const [basis, setBasis] = useState<TierBasis>("solo");
   useEffect(() => {
-    setN(sizeFromUrl());
+    setViewing(sizeFromUrl());
     setBasis(basisFromSearch(window.location.search));
     try {
       installCaptureHook(window.location.search);
@@ -46,7 +53,7 @@ export function TiersApp() {
   const { mine, goal, history } = useTierProgress(n, basis);
 
   const pick = (next: number) => {
-    setN(next);
+    setViewing(next);
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("n", String(next));
@@ -73,26 +80,13 @@ export function TiersApp() {
           <h1 className="font-bold text-lg">티어표</h1>
         </header>
 
-        <fieldset className="grid grid-cols-6 gap-1.5">
-          <legend className="sr-only">크기</legend>
-          {TIER_SIZES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={s === n}
-              data-cube-tier-size={s}
-              onClick={() => pick(s)}
-              className={cn(
-                "rounded-lg border py-2 font-semibold text-sm",
-                s === n
-                  ? "border-sky-300/70 bg-sky-500/25"
-                  : "border-white/15 bg-white/5 hover:bg-white/10",
-              )}
-            >
-              {s}×{s}
-            </button>
-          ))}
-        </fieldset>
+        <SizePicker
+          optionAttr="data-cube-tier-size"
+          sizes={TIER_SIZES}
+          value={n}
+          onPick={pick}
+          className="self-start"
+        />
 
         <TierShowcase n={n} mine={mine} goal={goal} basis={basis} />
         <TierHistoryChart n={n} history={history} />

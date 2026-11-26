@@ -1,4 +1,11 @@
-import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
+import {
+  inputReady,
+  keysFor,
+  no3d,
+  pickSize,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /**
@@ -47,7 +54,7 @@ async function startParty(
   }, seed);
   await page.clock.install();
   await page.goto("/cube/vs");
-  await page.locator("[data-cube-vs-size]").selectOption(size);
+  await pickSize(page, "[data-cube-vs-size]", size);
   await page.getByRole("button", { name: level, exact: true }).click();
   await page.locator('[data-cube-vs-party="hp"]').click();
   // 체력바는 시간 순위 「평균 대비」와 함께 쓰지 않는다
