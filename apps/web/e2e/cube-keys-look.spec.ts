@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { goStep, inputReady, no3d } from "./cube";
+import { goStep, inputReady, no3d, PAGES } from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -172,7 +172,8 @@ test(
   async ({ page }, info) => {
     // PC만
     await page.goto("/cube/learn?lesson=333-white-cross");
-    const count = await page.locator('[aria-label="단계"] li').count();
+    const count = await page.locator(`${PAGES} li`).count();
+    expect(count).toBeGreaterThan(1);
     await goStep(page, count - 1);
     const keys = page.locator("[data-cube-keys]");
     await expect(keys).toBeVisible();
