@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MethodsApp } from "@/cube/components/LearnApp";
+import { MethodsApp } from "@/cube/components/MethodsApp";
 
 export const metadata: Metadata = {
   title: { absolute: "해법 배우기" },
