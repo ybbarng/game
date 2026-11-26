@@ -1,4 +1,4 @@
-import { goStep, goToStep, no3d, shot } from "./cube";
+import { goStep, goToStep, no3d, PAGES, shot } from "./cube";
 import { expect, type Page, test } from "./test";
 
 /**
@@ -42,10 +42,7 @@ test("6×6·7×7로 넓히기: 5×5 축소법 끝 「다음에 할 것」이 권
 }) => {
   await no3d(page);
   await page.goto("/cube/learn?lesson=555-last-two-edges");
-  await goStep(
-    page,
-    (await page.locator('[aria-label="단계"] li').count()) - 1,
-  );
+  await goStep(page, (await page.locator(`${PAGES} li`).count()) - 1);
   const next = page.locator(
     '[data-course-next="555-reduction"] [data-next-course="big-666-777"]',
   );

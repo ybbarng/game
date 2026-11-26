@@ -122,9 +122,12 @@ export async function shot(
   });
 }
 
-/** 배우기: 단계 목록에서 i번째(0부터) 단계로 바로 간다 */
+/** 강 화면 쪽 칸 묶음(docs/47 16-31) */
+export const PAGES = "[data-lesson-pages]";
+
+/** 배우기: 쪽 칸에서 i번째(0부터) 쪽으로 바로 간다 */
 export async function goStep(page: Page, i: number): Promise<void> {
-  await page.locator('[aria-label="단계"] li').nth(i).locator("button").click();
+  await page.locator(`${PAGES} li`).nth(i).locator("button").click();
   await expect(page.locator("[data-step-kind]")).toHaveAttribute(
     "data-step",
     String(i),
@@ -136,10 +139,7 @@ export async function goStep(page: Page, i: number): Promise<void> {
  * 새로 만들어 느린 기기에서 오래 걸렸다(2026-11-04 #90)
  */
 export async function goToStep(page: Page, kind: string): Promise<void> {
-  await page
-    .locator(`[aria-label="단계"] [data-step-to="${kind}"]`)
-    .first()
-    .click();
+  await page.locator(`${PAGES} [data-step-to="${kind}"]`).first().click();
   await expect(page.locator("[data-step-kind]")).toHaveAttribute(
     "data-step-kind",
     kind,

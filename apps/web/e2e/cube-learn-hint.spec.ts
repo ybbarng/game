@@ -4,6 +4,7 @@ import {
   inputReady,
   keysFor,
   no3d,
+  PAGES,
   shot,
   useNotationKeys,
 } from "./cube";
@@ -18,7 +19,7 @@ test.beforeEach(({ page }) => no3d(page));
 
 /** 마지막 단계(무작위 해 보기)로 간다 */
 async function goLast(page: Page) {
-  const count = await page.locator('[aria-label="단계"] li').count();
+  const count = await page.locator(`${PAGES} li`).count();
   await goStep(page, count - 1);
 }
 
@@ -120,12 +121,11 @@ test("진도: 마지막으로 본 단계로 다시 열고, 해 보기가 남으�
   await goLast(page);
   const left = page.locator("[data-lesson-try-left]");
   await expect(left).toBeVisible();
-  // 해 보기가 남으면 「다음 단원」은 강조색이 아니다. 단계 띠 아래에는 아이콘 뜻
+  // 해 보기가 남으면 「다음 강」은 강조색이 아니다
   await expect(page.locator("[data-lesson-next]")).toHaveAttribute(
     "data-lesson-next",
     "plain",
   );
-  await expect(page.locator("[data-step-legend]")).toContainText("해보기");
   await shot(page, "learn-try-left", info.project.name);
   // 누르면 그 해 보기로
   const at = (await left.getAttribute("data-lesson-try-left")) as string;
@@ -149,7 +149,7 @@ test("진도: 해 보기 밖의 마친 단계(고르기)도 다시 열면 초록
 }) => {
   await page.goto("/cube/learn?lesson=333-ll-cross");
   await goStep(page, 2);
-  const third = page.locator('[aria-label="단계"] li').nth(2).locator("button");
+  const third = page.locator(`${PAGES} li`).nth(2).locator("button");
   await expect(page.locator("[data-step-kind]")).toHaveAttribute(
     "data-step-kind",
     "quiz",

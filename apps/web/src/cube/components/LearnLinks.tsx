@@ -35,12 +35,12 @@ export function CourseNext({ course }: { course: Course }) {
     >
       <h2 className="font-bold">다음에 할 것</h2>
       <p className="break-keep text-sm text-white/70">
-        「{course.title}」 과정을 다 봤어요. 손에 익을 때까지 여러 번 맞춰 보고,
+        「{course.title}」 강의를 다 봤어요. 손에 익을 때까지 여러 번 맞춰 보고,
         다음 것으로 넓혀 보세요.
       </p>
       {next.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-white/60 text-xs">다음 과정</h3>
+          <h3 className="text-white/60 text-xs">다음 강의</h3>
           <div className="flex flex-wrap gap-2">
             {next.map((c) => {
               const pick = c.id === recommended?.id;

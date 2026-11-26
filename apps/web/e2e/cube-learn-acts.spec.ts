@@ -3,6 +3,7 @@ import {
   goToStep,
   inputReady,
   no3d,
+  PAGES,
   shot,
   useNotationKeys,
 } from "./cube";
@@ -130,7 +131,7 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
 
   // 과정 끝: CFOP 마무리 단원의 마지막 단계
   await page.goto("/cube/learn?lesson=cfop-finale");
-  const steps = page.locator('ol[aria-label="단계"] button');
+  const steps = page.locator(`${PAGES} button`);
   await goStep(page, (await steps.count()) - 1);
   const next = page.locator('[data-course-next="cfop"]');
   await expect(next).toBeVisible();
@@ -460,4 +461,117 @@ test("배우기: 3×3을 아는 사람의 2×2는 코너만 보이는 3×3을 �
   await page.locator("[data-learn-quiz] [data-choice='0']").click();
   await expect(quiz).toHaveAttribute("data-act-passed", "");
   await shot(page, "learn-222-from333", info.project.name);
+});
+
+test("강 화면: 이동 경로에 해법 카드와 같은 해법 이름과 강의 이름", async ({
+  page,
+}) => {
+  for (const [lesson, label, href, back] of [
+    [
+      "cfop-f2l-pair",
+      "CFOP 해법",
+      "/cube/methods?method=cfop",
+      "프리드리히(CFOP) 강의",
+    ],
+    [
+      "333-white-cross",
+      "초보자 해법",
+      "/cube/methods?method=beginner",
+      "3×3 처음 맞추기(층별) 강의",
+    ],
+    [
+      "222-from333-corners",
+      "2×2 3×3을 아는 사람 해법",
+      "/cube/methods?method=222-from333",
+      "3×3을 아는 사람의 2×2 강의",
+    ],
+    [
+      "bld-edges",
+      "올드 포흐만 해법",
+      "/cube/methods?m=bld-op",
+      "블라인드(올드 포흐만) 강의",
+    ],
+  ] as const) {
+    await page.goto(`/cube/learn?lesson=${lesson}`);
+    const crumbs = page.getByRole("navigation", { name: "이동 경로" });
+    await expect(crumbs.locator("[data-lesson-method]")).toHaveText(label);
+    await expect(crumbs.locator("[data-lesson-method]")).toHaveAttribute(
+      "href",
+      href,
+    );
+    await expect(crumbs.locator("[data-lesson-back]")).toHaveText(back);
+  }
+  // 강 제목은 「n강 이름」(블라인드 강의는 블라인드란 → 지도 → 글자 붙이기 → 엣지 보내기)
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "4강 엣지 보내기",
+  );
+});
+
+test("강 화면 쪽 칸: 번호·종류·지금 쪽·마친 쪽을 칸 이름과 지금 쪽 줄로 읽는다", async ({
+  page,
+}) => {
+  // 첫 쪽을 마치고 마지막 쪽을 보던 기기
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem(
+      "cube.learn.v1",
+      JSON.stringify({
+        lessons: {
+          "cfop-f2l-pair": { passed: [], done: false, acted: [0], step: 15 },
+        },
+      }),
+    );
+  });
+  await page.goto("/cube/learn?lesson=cfop-f2l-pair");
+  const pages = page.getByRole("navigation", { name: "쪽" });
+  await expect(pages.locator("[data-page-now]")).toHaveText(
+    "16쪽 / 16쪽 · 문제",
+  );
+  await expect(pages.getByRole("button")).toHaveCount(16);
+  await expect(pages.getByRole("button").first()).toHaveAccessibleName(
+    "1쪽 찾아보기, 마침",
+  );
+  await expect(pages.getByRole("button").nth(1)).toHaveAccessibleName(
+    "2쪽 문제",
+  );
+  await expect(pages.getByRole("button").last()).toHaveAccessibleName(
+    "16쪽 문제, 지금 쪽",
+  );
+  await expect(pages.getByRole("button").last()).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  // 아이콘 뜻을 따로 적은 줄은 없다(칸 자체가 말한다)
+  await expect(page.locator("[data-step-legend]")).toHaveCount(0);
+  await pages.getByRole("button", { name: "9쪽 시연" }).click();
+  await expect(pages.locator("[data-page-now]")).toHaveText(
+    "9쪽 / 16쪽 · 시연",
+  );
+});
+
+test("강은 아무 곳이나 자유롭게: 처음 온 기기에서 마지막 강의 마지막 쪽을 바로 연다", async ({
+  page,
+}) => {
+  // 해법 배우기의 강 목록은 모두 링크(잠긴 칸 없음)
+  await page.goto("/cube/methods?m=bld-op");
+  const lessons = page.locator('[data-course="bld-op"] [data-lesson]');
+  await expect(lessons.first()).toBeVisible();
+  for (const a of await lessons.all()) {
+    await expect(a).toHaveAttribute("href", /^\/cube\/learn\?lesson=/);
+    await expect(a).not.toHaveAttribute("aria-disabled", /.*/);
+  }
+  // 진도가 없어도 마지막 강을 열고, 마지막 쪽으로 바로 간다
+  await lessons.last().click();
+  await expect(page.locator("main")).toHaveAttribute(
+    "data-cube-learn",
+    "bld-parity",
+  );
+  const buttons = page.locator(`${PAGES} button`);
+  await expect(buttons.and(page.locator(":disabled"))).toHaveCount(0);
+  const count = await buttons.count();
+  await goStep(page, count - 1);
+  // 마지막 쪽에서 「강 끝내기」가 눌리고 다음 강의 추천은 막지 않는다
+  await page.locator("[data-lesson-done]").click();
+  await expect(page.locator("[data-lesson-done]")).toHaveText("끝낸 강 ✓");
 });
