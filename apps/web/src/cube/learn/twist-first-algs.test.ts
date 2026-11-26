@@ -83,6 +83,31 @@ describe("노란 면 = R U R' + U + R U2 R'", () => {
     expect(upYellow(end)).toBe(1);
   });
 
+  it("노란 면 공식은 코너 셋을 같은 쪽으로 한 번씩 돌린다: 하나인 모양 둘은 셋이 같은 쪽으로 돌아가 있고, 앞-오른쪽 위 노란색이 앞이면 공식, 오른쪽이면 그 반대쪽(거꾸로)", () => {
+    // 코너 자리 스티커(윗면 칸부터 시계 방향): 노란 칸의 차례가 돌아간 쪽(0 = 위)
+    const SLOTS = [
+      [8, 9, 20],
+      [6, 18, 38],
+      [0, 36, 47],
+      [2, 45, 11],
+    ];
+    const twists = (s: PuzzleState) => {
+      const c = faceColors(3, s);
+      return SLOTS.map((xs) => xs.findIndex((i) => c[i] === 3)).filter(
+        (k) => k > 0,
+      );
+    };
+    expect(twists(at(YELLOW_FACE, down()))).toEqual([1, 1, 1]);
+    const front = at(invertAlg(YELLOW_FACE), down());
+    const right = at(invertAlg(YELLOW_FACE_BACK), down());
+    expect([twists(front), twists(right)]).toEqual([
+      [2, 2, 2],
+      [1, 1, 1],
+    ]);
+    // 앞-오른쪽 위 노란색: 공식으로 맞는 모양은 앞(20번 칸), 거꾸로로 맞는 모양은 위를 보는 블럭을 앞-왼쪽 위에 두면 오른쪽
+    expect(faceColors(3, front)[20]).toBe(3);
+  });
+
   it("거꾸로 R U2 R' U' R U' R'는 노란 면 공식의 수를 끝에서부터 반대로 친 것이다", () => {
     expect(YELLOW_FACE_BACK).toBe(invertAlg(YELLOW_FACE));
   });

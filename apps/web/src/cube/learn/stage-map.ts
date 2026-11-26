@@ -307,7 +307,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       },
       { title: "엣지 자리", lessons: ["333-tf-edges"], goal: "solved" },
     ],
-    lead: "노란 십자까지는 3×3 처음 맞추기와 같아요. 그 뒤를 위 층 코너 블럭의 방향부터 맞춰요.",
+    lead: "노란 십자까지는 3×3 처음 맞추기와 같아요. 그 뒤를 위 층 코너 블럭의 방향, 그러니까 노란색이 어느 쪽을 보는지부터 맞춰요.",
     demo: {
       scramble: BEGINNER_333_SCRAMBLE,
       moves: twistFirstDemoMoves(BEGINNER_333_SCRAMBLE),
@@ -316,9 +316,11 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     },
     quizzes: [
       {
-        question:
-          "3×3 처음 맞추기는 위 층 코너 블럭의 방향을 맨 끝에 맞췄어요. 이 해법에서는 언제 맞출까요?",
-        choices: ["노란 십자 바로 뒤, 자리보다 먼저", "엣지 자리 뒤 맨 끝에"],
+        question: "이 해법은 노란 십자 다음에 무엇부터 맞출까요?",
+        choices: [
+          "위 층 코너 블럭의 노란색을 모두 위로(노란 면)",
+          "위 층 엣지 블럭의 자리",
+        ],
         answer: 0,
         why: "노란 십자 바로 뒤에 노란 면으로 코너 블럭의 방향을 먼저 맞추고, 그다음 코너 블럭 자리와 엣지 블럭 자리를 맞춰요.",
       },

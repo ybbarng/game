@@ -330,7 +330,7 @@ export const BEGINNER_CASE_SHEETS: Record<
       {
         id: "one-front",
         alg: flip(YELLOW_FACE),
-        caption: "하나, 앞-오른쪽 위 노란색이 앞",
+        caption: "하나, 앞-왼쪽 위에 두면 앞-오른쪽 위 노란색이 앞",
         action: "위를 보는 코너 블럭을 앞-왼쪽 위에 두고 한 번 쳐요.",
       },
       {
@@ -390,7 +390,8 @@ export const BEGINNER_CASE_SHEETS: Record<
         id: "align",
         alg: flip("U"),
         caption: "네 면 모두 바른 짝, 위 층이 비켜남",
-        action: "윗면을 돌려 코너 블럭을 제자리에 넣어요. 많아야 세 번이에요.",
+        action:
+          "앞-오른쪽 위 코너 블럭의 제자리가 앞-왼쪽 위면 U, 뒤-오른쪽 위면 U', 뒤-왼쪽 위면 U2를 쳐요.",
       },
       {
         id: "one",
@@ -440,7 +441,8 @@ export const BEGINNER_CASE_SHEETS: Record<
         id: "turn",
         alg: `${flip(EDGE_CYCLE)} U`,
         caption: "위 층이 통째로 비켜남",
-        action: "윗면을 돌려 코너 블럭을 먼저 제자리에 넣어요.",
+        action:
+          "코너 자리 강에서처럼 앞-오른쪽 위 코너 블럭의 제자리를 보고 윗면을 먼저 돌려요.",
       },
     ],
   },

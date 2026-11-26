@@ -143,6 +143,34 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     expect(["U", "U'", "U2"].filter(after)).toEqual(["U"]);
   });
 
+  it("윗면 맞추기: 앞-오른쪽 위 코너 블럭의 제자리가 앞-왼쪽 위면 U, 뒤-오른쪽 위면 U', 뒤-왼쪽 위면 U2로 코너가 모두 제자리", () => {
+    // 위 층 구석의 옆 칸 둘(옆면 센터 번호): 앞-왼쪽 F·L, 뒤-오른쪽 B·R, 뒤-왼쪽 B·L
+    const RULE: [number[], string][] = [
+      [[22, 40], "U"],
+      [[49, 13], "U'"],
+      [[49, 40], "U2"],
+    ];
+    for (const off of ["U", "U'", "U2"]) {
+      const s = applyMoves(3, solvedCube(3), parseMoves(3, `z2 ${off}`));
+      const c = faceColors(3, s);
+      // 앞-오른쪽 위 코너 블럭의 옆 색 둘(오른쪽 9번, 앞 20번)
+      const side = [c[9], c[20]].sort().join();
+      const hit = RULE.find(
+        ([centers]) =>
+          centers
+            .map((i) => c[i])
+            .sort()
+            .join() === side,
+      );
+      const turn = hit?.[1] as string;
+      const after = applyMoves(3, s, parseMoves(3, turn));
+      expect(
+        runTwistFirstStage("corners", after).steps.length,
+        `${off} → ${turn}`,
+      ).toBe(0);
+    }
+  });
+
   it("바른 짝 없음 쪽: 바른 짝이 하나도 없고, 윗면을 돌려도 생기지 않는다", () => {
     const s = stateOf(stepWith("333-tf-corners", "바른 짝이 하나도 없을 때"));
     for (const u of ["", "U", "U2", "U'"])

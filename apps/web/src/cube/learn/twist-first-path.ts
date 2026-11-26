@@ -131,7 +131,7 @@ export const TWIST_FIRST_STAGES: TwistFirstStage[] = [
       {
         id: "align",
         shape: "네 면 모두 바른 짝",
-        hold: "윗면을 돌려 코너 블럭을 모두 제자리에",
+        hold: "앞-오른쪽 위 코너 블럭의 제자리가 앞-왼쪽 위면 U, 뒤-오른쪽 위면 U', 뒤-왼쪽 위면 U2",
         alg: "",
         times: 0,
       },
@@ -169,7 +169,7 @@ export const TWIST_FIRST_STAGES: TwistFirstStage[] = [
       {
         id: "turn",
         shape: "코너 블럭이 모두 같은 쪽으로 한 자리씩 비켜나 있음",
-        hold: "윗면을 돌려 코너 블럭을 모두 제자리에",
+        hold: "앞-오른쪽 위 코너 블럭의 제자리가 앞-왼쪽 위면 U, 뒤-오른쪽 위면 U', 뒤-왼쪽 위면 U2",
         alg: "",
         times: 0,
       },
