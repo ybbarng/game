@@ -29,14 +29,11 @@ import {
   MAP_SIZES,
   type MapMethod,
   type MapMethodId,
-  type MapNodeId,
-  methodNodes,
   methodSize,
 } from "../learn/solve-map";
 import {
   type EdgeSolo,
   methodSolo,
-  myNode,
   solveMethodOf,
 } from "../learn/solve-map-me";
 import {
@@ -145,19 +142,6 @@ function useMapCtx(s: MapState): MapCtx {
         out.set(m.id, methodSolo(m, mine.records));
     return out;
   }, [mine.records, mine.method, n]);
-  const me = useMemo(() => {
-    const out = new Map<MapNodeId, MapMethod[]>();
-    for (const m of MAP_METHODS) {
-      if (m.extra || methodSize(m) !== n) continue;
-      const at = myNode(m, s.progress);
-      if (!at) continue;
-      out.set(at, [...(out.get(at) ?? []), m]);
-    }
-    // 기록이 없으면 지도가 시작하는 「다 섞임」에
-    if (!out.size)
-      out.set(methodNodes(methodById(defaultOf(n)))[0] as MapNodeId, []);
-    return out;
-  }, [s.progress, n]);
   return {
     settings,
     methods,
@@ -165,7 +149,6 @@ function useMapCtx(s: MapState): MapCtx {
     progress: s.progress,
     train: mine.train,
     solo,
-    me,
     courseOf,
     lessonTitle: (id) => lessonTitle.get(id) ?? id,
     size: n,

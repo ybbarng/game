@@ -58,11 +58,13 @@ describe("줌·패닝 범위", () => {
 describe("길 꼬리표", () => {
   it("직관 걸음은 공식 없음, 앞에서 배운 공식만 쓰면 앞 공식, 셀 자료가 없으면 비운다", () => {
     const cfop = [methodById("cfop")];
+    const beginner = [methodById("beginner")];
     const e = (id: string) => edgeById(id) as MapEdge;
     expect([
       edgeFormulaLabel(e("cross"), cfop),
-      edgeFormulaLabel(e("f2l-pair-1"), cfop),
-      edgeFormulaLabel(e("f2l-pair-2"), cfop),
+      edgeFormulaLabel(e("f2l"), cfop),
+      // 첫 층 코너에서 배운 코너 돌리기 공식을 다시 쓴다
+      edgeFormulaLabel(e("beginner-corner-twist"), beginner),
       edgeFormulaLabel(e("zbll"), cfop),
     ]).toEqual(["공식 없음", "공식 9", "앞 공식", null]);
   });

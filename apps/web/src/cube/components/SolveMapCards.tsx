@@ -1,12 +1,10 @@
 "use client";
 
 // 해법 카드(해법 배우기 첫 모습, docs/47 16-30): 해법마다 카드 하나에 「다 섞임 → 큰 단계 … → 다 맞음」 그림 띠, 총 공식 수·잰
-// 평균 수, 내 진행(✓·「나」·잘하는·약한 걸음 색). 앞 카드와 같은 단계(같은 모양에 닿는 단계)는 앞 카드 색 표시로 묶는다.
-// 카드를 누르면 그 해법 화면(`?method=`)에서 세부 걸음을 모두 본다.
+// 평균 수, 내 진행(진도 밝기·잘하는·약한 걸음 색). 카드를 누르면 그 해법 화면(`?method=`)에서 세부 걸음을 모두 본다.
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import { wa } from "@/lib/josa";
 import {
   edgeById,
   type MapEdge,
@@ -16,16 +14,24 @@ import {
   methodStages,
   nodeById,
 } from "../learn/solve-map";
-import { type EdgeSkill, edgeLearn } from "../learn/solve-map-me";
+import {
+  arrowLit,
+  cellLit,
+  type EdgeSkill,
+  edgeProgress,
+  type StepProgress,
+  stageProgress,
+} from "../learn/solve-map-me";
 import {
   CUBE_CELL,
+  DIM,
   EdgeLines,
   FinishPanel,
   hrefOf,
   LoopChip,
   type MapCtx,
-  MeBadge,
   NodeCube,
+  ProgressSr,
   toggleClick,
 } from "./SolveMapViews";
 import { detours, METHOD_COLOR, methodTotals } from "./solve-map-model";
@@ -50,17 +56,17 @@ function Totals({ m }: { m: MapMethod }) {
 }
 
 /**
- * 단계 사이 화살표(그림). 끝낸 걸음은 해법 색, 아직이면 흐리게(내 위치가 함께 읽힌다).
- * 큐브 그림보다 덜 띄게 가늘게 그린다
+ * 단계 사이 화살표(그림). 그 단계를 배우는 중이거나 마쳤으면 해법 색으로 밝게(조금 굵게), 아직이면 흐리게
+ * (진도 밝기, docs/47 16-30)
  */
 function StepArrow({
   dir,
   color,
-  done,
+  lit,
 }: {
   dir: "right" | "down";
   color: string;
-  done: boolean;
+  lit: boolean;
 }) {
   const right = dir === "right";
   return (
@@ -70,13 +76,13 @@ function StepArrow({
       height={right ? 12 : 14}
       viewBox={right ? "0 0 14 12" : "0 0 12 14"}
       className="shrink-0"
-      data-step-arrow={done ? "done" : "todo"}
+      data-step-arrow={lit ? "lit" : "dim"}
     >
       <path
         d={right ? "M1 6 H11 M7 2 L12 6 L7 10" : "M6 1 V11 M2 7 L6 12 L10 7"}
         fill="none"
-        stroke={done ? color : "rgba(255,255,255,0.28)"}
-        strokeWidth={1.8}
+        stroke={lit ? color : "rgba(255,255,255,0.28)"}
+        strokeWidth={lit ? 2.4 : 1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -91,28 +97,13 @@ function loopsAt(m: MapMethod, id: MapNodeId, ctx: MapCtx) {
   return detours(ctx.size, ctx.from, [m]).filter((d) => d.at === id);
 }
 
-/** 이 해법 카드의 이 지점에 「나」를 둘까(기록이 없어 해법 없이 「다 섞임」에 둔 「나」는 모든 카드에) */
-function meAt(ctx: MapCtx, id: MapNodeId, m: MapMethod): boolean {
-  const at = ctx.me.get(id);
-  return !!at && (at.length === 0 || at.includes(m));
-}
-
-/** 지점으로 들어오는 길을 끝냈나(첫 지점은 null) */
-function arrivedDone(m: MapMethod, i: number, ctx: MapCtx): boolean {
-  if (!i) return false;
-  const e = edgeById(m.edges[i - 1] as string) as MapEdge;
-  return edgeLearn(e, ctx.progress) === "done";
-}
-
 interface StripCell {
   /** 칸 그림 지점(다 섞임, 그다음은 큰 단계 끝) */
   id: MapNodeId;
-  /** 이 단계의 세부 걸음을 모두 끝냈나(첫 칸은 false) */
-  done: boolean;
+  /** 이 단계의 진도(첫 칸 다 섞임은 none이지만 늘 밝다) */
+  progress: StepProgress;
   /** 잘하는·약한 걸음(단계가 걸음 하나일 때만, 혼자 맞추기 구간은 걸음마다라) */
   skill: EdgeSkill | null | undefined;
-  /** 「나」: 단계 안 지점에 있으면 지나온 단계 끝 칸에 */
-  me: boolean;
   /** 이 단계 안 지점(끝 포함)에 붙는 패리티 고리 */
   loops: ReturnType<typeof loopsAt>;
 }
@@ -122,92 +113,55 @@ function stripCells(m: MapMethod, ctx: MapCtx): StripCell[] {
   const nodes = methodNodes(m);
   const solo = ctx.solo.get(m.id);
   const stages = methodStages(m);
-  const meIdx = nodes.findIndex((id) => meAt(ctx, id, m));
-  const at = [0, ...stages.map((s) => nodes.indexOf(s.to))];
-  const meCell = meIdx < 0 ? -1 : at.filter((i) => i <= meIdx).length - 1;
   return [
     {
       id: nodes[0] as MapNodeId,
-      done: false,
+      progress: "none" as const,
       skill: undefined,
-      me: meCell === 0,
       loops: loopsAt(m, nodes[0] as MapNodeId, ctx),
     },
-    ...stages.map((s, k) => ({
+    ...stages.map((s) => ({
       id: s.to,
-      done: s.edges.every((e) => edgeLearn(e, ctx.progress) === "done"),
+      progress: stageProgress(s.edges, m, ctx.progress, ctx.courseOf),
       skill:
         s.edges.length === 1
           ? solo?.get((s.edges[0] as MapEdge).id)?.skill
           : undefined,
-      me: meCell === k + 1,
       loops: s.edges.flatMap((e) => loopsAt(m, e.to, ctx)),
     })),
   ];
 }
 
 /**
- * 앞 카드와 같은 단계: 이 해법의 큰 단계 끝 지점이 앞 카드(더 쉬운 해법)의 큰 단계 끝 지점이기도 하면 가장 앞 카드.
- * 다 섞임·다 맞음은 모든 해법이 같으니 보지 않는다
+ * 지점 그림 띠(큰 단계만). 넘치면 다음 줄로(휴대폰 폭에서 옆으로 밀지 않는다).
+ * 다른 해법과 같은 단계라는 표시는 두지 않는다: 끝 모습만 같아도 맞추는 방법은 다를 수 있고, 모습은 그림으로 보인다
+ * (2026-11-26 사용자, docs/47 16-30)
  */
-export function sameStages(
-  methods: readonly MapMethod[],
-): Map<string, Map<MapNodeId, MapMethod>> {
-  const out = new Map<string, Map<MapNodeId, MapMethod>>();
-  methods.forEach((m, i) => {
-    const ends = methodStages(m)
-      .slice(0, -1)
-      .map((s) => s.to);
-    const mine = new Map<MapNodeId, MapMethod>();
-    for (const id of ends) {
-      const first = methods
-        .slice(0, i)
-        .find((x) => methodStages(x).some((s) => s.to === id));
-      if (first) mine.set(id, first);
-    }
-    out.set(m.id, mine);
-  });
-  return out;
-}
-
-/** 같은 단계 표시에 부르는 짧은 이름(칸 폭 한 줄에 들게, 2026-11-26 HQ 검토) */
-const SHORT_TITLE: Partial<Record<MapMethod["id"], string>> = {
-  // 「2단계」만 쓰면 맞추는 차례의 둘째 단계로 읽힌다(처음 보는 독자 검토)
-  "two-look": "OLL·PLL",
-};
-
-/** 지점 그림 띠(큰 단계만). 넘치면 다음 줄로(휴대폰 폭에서 옆으로 밀지 않는다) */
-function Strip({
-  m,
-  ctx,
-  same,
-}: {
-  m: MapMethod;
-  ctx: MapCtx;
-  same?: Map<MapNodeId, MapMethod> | undefined;
-}) {
+function Strip({ m, ctx }: { m: MapMethod; ctx: MapCtx }) {
   return (
     <ol className="flex flex-wrap items-start gap-x-1 gap-y-2" data-card-strip>
-      {stripCells(m, ctx).map(({ id, done, skill, me, loops }, i) => {
-        const like = same?.get(id);
+      {stripCells(m, ctx).map(({ id, progress, skill, loops }, i) => {
+        const lit = cellLit(i === 0, progress);
         return [
           // 화살표는 다음 칸과 한 덩이(줄이 바뀌어도 줄 끝에 화살표만 남지 않게)
           <li key={id} className="flex shrink-0 items-start gap-1">
             {i > 0 && (
               <span aria-hidden className="pt-5">
-                <StepArrow dir="right" color={METHOD_COLOR[m.id]} done={done} />
+                <StepArrow
+                  dir="right"
+                  color={METHOD_COLOR[m.id]}
+                  lit={arrowLit(progress)}
+                />
               </span>
             )}
             <div
-              className="relative flex w-[72px] flex-col items-center gap-0.5"
-              data-strip-node={id}
-              data-same-as={like?.id}
-            >
-              {me && (
-                <span className="-top-2 -right-0 absolute z-10">
-                  <MeBadge methods={[]} />
-                </span>
+              className={cn(
+                "relative flex w-[72px] flex-col items-center gap-0.5",
+                !lit && DIM,
               )}
+              data-strip-node={id}
+              data-strip-lit={lit ? "lit" : "dim"}
+            >
               <div
                 className={cn("border-2 p-0.5", CUBE_CELL)}
                 style={{
@@ -221,25 +175,9 @@ function Strip({
                 className="w-full wrap-anywhere break-keep text-center text-[11px] leading-tight"
                 data-strip-name
               >
-                {done && <span className="text-emerald-300">✓ </span>}
                 {nodeById(id).title}
+                <ProgressSr p={progress} />
               </span>
-              {like && (
-                // 한 줄: 「= 초보자」(같은 표시 기호 + 앞 카드의 짧은 이름, 앞 카드 제목 색). 읽는 이름은 「초보자와 같음」
-                <span
-                  className="max-w-full overflow-hidden whitespace-nowrap rounded border px-1 text-center text-[10px] leading-tight"
-                  style={{
-                    borderColor: METHOD_COLOR[like.id],
-                    color: METHOD_COLOR[like.id],
-                  }}
-                  data-strip-same
-                >
-                  <span aria-hidden>
-                    = {SHORT_TITLE[like.id] ?? like.title}
-                  </span>
-                  <span className="sr-only">{wa(like.title)} 같음</span>
-                </span>
-              )}
             </div>
           </li>,
           ...loops.map((d) => (
@@ -261,7 +199,6 @@ export function CardsView({
   ctx: MapCtx;
   onOpen: (m: MapMethod) => void;
 }) {
-  const same = sameStages(ctx.methods);
   return (
     <div className="flex flex-col gap-3" data-map-cards>
       {ctx.methods.map((m) => (
@@ -285,7 +222,7 @@ export function CardsView({
             </span>
             <Totals m={m} />
           </span>
-          <Strip m={m} ctx={ctx} same={same.get(m.id)} />
+          <Strip m={m} ctx={ctx} />
         </a>
       ))}
     </div>
@@ -329,13 +266,17 @@ export function MethodScreen({
         {m.edges.map((id, i) => {
           const e = edgeById(id) as MapEdge;
           const href = hrefOf(e, m, ctx);
-          const me = meAt(ctx, e.to, m);
+          const progress = edgeProgress(e, m, ctx.progress, ctx.courseOf);
+          const lit = cellLit(false, progress);
           const body = (
             <>
               <span className="w-5 shrink-0 text-right text-sm text-white/50">
                 {i + 1}
               </span>
-              <span className={cn("shrink-0", CUBE_CELL)}>
+              <span
+                className={cn("shrink-0", CUBE_CELL, !lit && DIM)}
+                data-step-lit={lit ? "lit" : "dim"}
+              >
                 <NodeCube
                   id={e.to}
                   settings={ctx.settings}
@@ -346,21 +287,21 @@ export function MethodScreen({
               <span className="flex min-w-0 flex-col break-keep text-[11px] leading-tight wrap-anywhere">
                 <span className="font-medium text-sm">
                   {e.title} → {nodeById(e.to).title}
+                  <ProgressSr p={progress} />
                 </span>
                 <EdgeLines e={e} ctx={one} full />
               </span>
-              {me && <MeBadge methods={[]} />}
             </>
           );
           return (
             <li key={id}>
               {i > 0 && (
-                // 걸음 사이: 앞 걸음을 끝냈으면 해법 색
+                // 이 걸음으로 들어오는 화살표: 배우는 중부터 해법 색
                 <span aria-hidden className="flex py-0.5 pl-[58px]">
                   <StepArrow
                     dir="down"
                     color={METHOD_COLOR[m.id]}
-                    done={arrivedDone(m, i, ctx)}
+                    lit={arrowLit(progress)}
                   />
                 </span>
               )}
