@@ -7,6 +7,20 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.12.5</title>
+      <pubDate>Thu, 26 Nov 2026 05:03:38 +0000</pubDate>
+      <sparkle:version>0.12.5</sparkle:version>
+      <sparkle:shortVersionString>0.12.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;새 판을 알린 뒤 시간이 지나 「업데이트 확인」이나 설치를 누르면, 예전에 찾아 둔 판이 아니라 그때의 최신 판을 깔아요. Cubie가 켜지다 꺼지면 다음에는 저장된 창 위치 없이 안전하게 켜고, 새 판이 있으면 바로 깔 수 있게 보여 줘요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.12.5/Cubie.zip" length="10748435" type="application/octet-stream" sparkle:edSignature="PxDHmDMMqwVZtQHVsUGTPU9UZqjFIudQ9evm5piA1I3mfFs5MHdn48Vz0Xz/ui2ovrlYclChMtm16h8Cr7LKCg=="/>
+      <sparkle:deltas>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.4-0.12.5.delta" sparkle:deltaFrom="0.12.4" length="270010" type="application/octet-stream" sparkle:edSignature="hKLdmq0BrtRfFOcA4aFECsfEygv6ETQWThV9GCiqcQaqiCwcjtO0PHBY7sw5Tj/aVqWqDwqunWKPTzzskIv/DQ=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.3-0.12.5.delta" sparkle:deltaFrom="0.12.3" length="279494" type="application/octet-stream" sparkle:edSignature="tNjTNV/Z3zNFL0C22sMfeq5p0IWwaZpY0xBGumgVQFFKuf52JpP8FNPOW2YxvT2gFNOBGtTT/fzEl0o/yHo4BQ=="/>
+        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.2-0.12.5.delta" sparkle:deltaFrom="0.12.2" length="281294" type="application/octet-stream" sparkle:edSignature="ddFzfQyV2WEVqcjxXcyEMq8OLmrMnAG1wxWTKLT7vQ6yjdwartiFKs4eCGQpGelhQdRM46WASMuJZ2czfBw3Bw=="/>
+      </sparkle:deltas>
+    </item>
+    <item>
       <title>Cubie 0.12.4</title>
       <pubDate>Thu, 26 Nov 2026 03:36:48 +0000</pubDate>
       <sparkle:version>0.12.4</sparkle:version>
@@ -14,11 +28,6 @@
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <description>&lt;p&gt;큐브 창 크기를 바꾼 적이 있으면 0.11.6부터 0.12.3까지 켜자마자 꺼지던 것을 고쳤어요. 그 판에서 앱이 켜지지 않으면 앱 안 업데이트를 받을 수 없으니, GitHub 릴리스에서 Cubie.zip을 받아 응용 프로그램 폴더의 Cubie를 바꿔 넣어 주세요.&lt;/p&gt;</description>
       <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.12.4/Cubie.zip" length="10729370" type="application/octet-stream" sparkle:edSignature="9owQS8F+mgA3BNvAUApboNkEoelyA12HNAzaWpHr0cmi5B8pWR9ktMTZKVsidJ2dSSaR6xbjdHU8a6tyO46MDg=="/>
-      <sparkle:deltas>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.3-0.12.4.delta" sparkle:deltaFrom="0.12.3" length="163830" type="application/octet-stream" sparkle:edSignature="6zAb68AOc3gp8zIBrPxD9ueBPfKV0BxU3SmWBq7wbSI20VkztTT3fQ4ye4ssym2JoykxOmBlKUuiqhXLGDm/Aw=="/>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.2-0.12.4.delta" sparkle:deltaFrom="0.12.2" length="166510" type="application/octet-stream" sparkle:edSignature="x+mzRnj8DRczXFVRP2ayWfnGzBhp0+WdiwbHAcZtKeHbSGYFlHFJSDEHTwP5OM4oPcSNCrk/n8/QbsXq4lOwAA=="/>
-        <enclosure url="https://game.byb.kr/cubie/deltas/0.12.1-0.12.4.delta" sparkle:deltaFrom="0.12.1" length="203958" type="application/octet-stream" sparkle:edSignature="3zVAcdihd7Xs3yo1XX153PsM1fSjk6c/EG4bH7rWF+m655Fuzfd+1tUnb2DZPES3T0vLLIPska0bbztl0hmqCw=="/>
-      </sparkle:deltas>
     </item>
     <item>
       <title>Cubie 0.12.3</title>
