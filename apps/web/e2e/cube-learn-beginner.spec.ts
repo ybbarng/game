@@ -43,6 +43,45 @@ test("배우기: 첫 층 코너·코너 자리·코너 방향은 모양마다 �
   await shot(page, "learn-beginner-corner-twist", info.project.name);
 });
 
+test("배우기: 코너 방향 먼저 세 강은 둘째 쪽에 모든 경우 그림, 공식 쪽에 덩어리 짜임을 보인다(docs/47 16-33)", async ({
+  page,
+}, info) => {
+  const cases = (name: string) =>
+    page.locator(`[data-sheet="${name}"] [data-sheet-case]`);
+  const chunks = page.locator("[data-alg-chunks] [data-alg-chunk]");
+
+  await page.goto("/cube/learn?lesson=333-tf-face");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-face")).toHaveCount(8);
+  await expect(
+    page.locator(
+      '[data-sheet="beginner-tf-face"] [data-sheet-case="one-right"]',
+    ),
+  ).toContainText("거꾸로 한 번");
+  await shot(page, "learn-tf-face-cases", info.project.name);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(3);
+  await shot(page, "learn-tf-face-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-corners");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-corners")).toHaveCount(4);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(5);
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "첫 층 코너 돌리기 R' D' R D와 같은 꼴",
+  );
+  await shot(page, "learn-tf-corners-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-edges");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-edges")).toHaveCount(6);
+  await shot(page, "learn-tf-edges-cases", info.project.name);
+  await goStep(page, 3);
+  await expect(chunks).toHaveCount(4);
+  await shot(page, "learn-tf-edges-chunks", info.project.name);
+});
+
 test("공식 연습: 초보자 코너 방향 상황은 노란색이 보는 쪽으로 부른다", async ({
   page,
 }, info) => {

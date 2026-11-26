@@ -106,9 +106,14 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await screen.locator("[data-method-back]").click();
   await expect(page).toHaveURL(/\/cube\/methods$/);
   await expect(page.locator('[data-card="cfop"]')).toBeVisible();
+  // 코너 방향 먼저의 마지막 층 걸음은 그 강의 단원으로 간다(docs/47 16-33)
   await page.goto("/cube/methods?method=beginner-twist-first");
   await expect(
-    page.locator('[data-method-screen] [data-edge="twist-first-place"]'),
+    page.locator('[data-method-screen] [data-edge="twist-first-edges"]'),
+  ).toHaveAttribute("href", "/cube/learn?lesson=333-tf-edges");
+  await page.goto("/cube/methods?method=petrus");
+  await expect(
+    page.locator('[data-method-screen] [data-edge="petrus-f2l"]'),
   ).toHaveAttribute("aria-disabled", "true");
 });
 
@@ -124,10 +129,10 @@ test("전체 보기: 지도는 「다 섞임」에서 시작하고, 초보자 �
     "href",
     "/cube/learn?lesson=333-first-corners-up",
   );
-  // 단원이 없는 걸음(코너 방향 먼저)은 누를 수 없다
-  await expect(page.locator('[data-edge="twist-first"]')).toHaveAttribute(
-    "aria-disabled",
-    "true",
+  // 코너 방향 먼저 길의 꼬리표도 그 강의 단원으로 간다
+  await expect(page.locator('[data-edge="twist-first-face"]')).toHaveAttribute(
+    "href",
+    "/cube/learn?lesson=333-tf-face",
   );
   await page.locator("[data-map-close]").click();
   await expect(page.locator('[data-method-cards="3"]')).toBeVisible();
