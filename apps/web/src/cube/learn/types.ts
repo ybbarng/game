@@ -264,6 +264,17 @@ export interface LessonStep {
   beside?: BesideCube;
   /** demo: 과정의 단계 지도 시연(단계마다 멈추고 띠의 칸으로 고른다). alg는 모든 단계 수를 이은 것 */
   stageMap?: boolean;
+  /**
+   * demo·turn: 공식을 덩어리로 나눈 짜임(docs/47 16-31). 덩어리 수를 이으면 `alg`의 끝부분(쥐는 수 뒤 공식)과 같고,
+   * 화면은 공식 아래에 덩어리마다 수와 그 덩어리가 조각을 어떻게 옮기는지를 나란히 보인다
+   */
+  chunks?: AlgChunk[];
+}
+
+/** 공식의 덩어리 하나: 수와 그 수가 하는 일(해요체 한두 문장) */
+export interface AlgChunk {
+  moves: string;
+  says: string;
 }
 
 export interface BesideCube {
@@ -282,6 +293,15 @@ export const SHEETS = {
     "2단계 OLL·PLL 네 걸음의 모양 16가지 평면도(two-look-sheets.ts TWO_LOOK_GROUPS)",
   "ll-compare":
     "초보자 해법 마지막 층과 2단계 OLL·PLL 견주기(two-look-sheets.ts LL_COMPARE_TABLE)",
+  // 3×3 처음 맞추기 단계마다 나올 수 있는 모든 경우(beginner-cases.ts, docs/47 16-31)
+  "beginner-cross": "흰 십자: 흰 엣지 블럭이 있을 수 있는 여섯 경우",
+  "beginner-corners":
+    "첫 층 코너: 흰 코너 블럭의 여섯 경우(코너 돌리기 사다리 차례)",
+  "beginner-second": "둘째 층 엣지: 넣을 엣지 블럭의 네 경우",
+  "beginner-yellow-cross": "노란 십자: 윗면 모양 넷",
+  "beginner-edges": "옆면 맞추기: 윗면을 돌려 찾은 세 경우",
+  "beginner-corner-place": "코너 자리: 제자리 코너 블럭으로 가르는 네 경우",
+  "beginner-corner-twist": "코너 방향: 앞-오른쪽 위 코너 블럭의 세 경우",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

@@ -1,9 +1,11 @@
 "use client";
 
 import { ALG_SETS } from "../learn/alg-sets";
+import { isBeginnerSheet } from "../learn/beginner-cases";
 import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "../learn/bld";
 import { nextCourses } from "../learn/courses";
 import type { AlgSet, Course, SheetName } from "../learn/types";
+import { BeginnerCasesSheet } from "./BeginnerCasesSheet";
 import { MoveText } from "./MoveChip";
 import { LlCompareSheet, TwoLookCasesSheet } from "./TwoLookSheets";
 
@@ -142,6 +144,8 @@ export function LessonSheet({
   name: SheetName;
   colors: readonly number[];
 }) {
+  if (isBeginnerSheet(name))
+    return <BeginnerCasesSheet name={name} colors={colors} />;
   if (name === "2look-cases") return <TwoLookCasesSheet colors={colors} />;
   if (name === "ll-compare") return <LlCompareSheet />;
   const sheet = SHEET_DATA[name];

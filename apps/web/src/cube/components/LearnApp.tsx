@@ -42,6 +42,7 @@ import {
 import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
+import { AlgChunks } from "./AlgChunks";
 import { DemoCube } from "./DemoCube";
 import {
   CourseNext,
@@ -471,6 +472,13 @@ function LessonView({
             />
           )}
         </p>
+        {step.chunks && (step.kind === "demo" || step.kind === "turn") && (
+          <AlgChunks
+            chunks={step.chunks}
+            n={lesson.size}
+            keys={step.kind === "turn" || demoTurn}
+          />
+        )}
         {step.sheet && (
           <LessonSheet name={step.sheet} colors={settings.colors} />
         )}
