@@ -262,7 +262,13 @@ test("전체 보기 4×4: 「3×3 맞추기」는 그 자리에서 펼치고, 3�
   ]);
   await panel.locator('[data-finish-method="cfop"]').click();
   await panel.locator("[data-finish-hop]").click();
-  await expect(page).toHaveURL(/from=4&x=cfop&sel=cfop/);
+  await expect(page).toHaveURL(/[?&]from=4(&|$)/);
+  const q = new URL(page.url()).searchParams;
+  expect([q.get("view"), q.get("x"), q.get("sel")]).toEqual([
+    "map",
+    "cfop",
+    "cfop",
+  ]);
   await expect(
     page.locator('[data-map-sizes] [data-size="4"]'),
   ).toHaveAttribute("aria-pressed", "true");
