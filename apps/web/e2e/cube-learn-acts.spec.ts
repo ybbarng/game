@@ -396,6 +396,45 @@ test("배우기: 놀이판에서 모든 키로 돌려 보고, 다른 조각을 �
   await shot(page, "learn-pieces-play", info.project.name);
 });
 
+test("배우기: 놀이판 「모두 보기」는 켜고 끄는 스위치라 누를 때마다 켬·끔이 바뀐다", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=333-piece-moves");
+  await goToStep(page, "play");
+  const play = page.locator('[data-act="play"]');
+  await inputReady(page);
+  const shown = page.locator("[data-sticker-cell]:not([data-sticker-hidden])");
+  const hidden = page.locator("[data-sticker-cell][data-sticker-hidden]");
+  // 한 번 누르는 「처음으로」는 단추, 「모두 보기」는 스위치
+  await expect(play.getByRole("button", { name: "처음으로" })).toHaveCount(1);
+  await expect(play.getByRole("button", { name: "모두 보기" })).toHaveCount(0);
+  const all = play.getByRole("switch", { name: "모두 보기" });
+  await expect(all).toHaveAttribute("aria-checked", "false");
+  await expect(shown).toHaveCount(6);
+  await shot(page, "learn-play-all-off", info.project.name);
+
+  await all.click();
+  await expect(all).toHaveAttribute("aria-checked", "true");
+  await expect(hidden).toHaveCount(0);
+  await shot(page, "learn-play-all-on", info.project.name);
+
+  await all.click();
+  await expect(all).toHaveAttribute("aria-checked", "false");
+  await expect(shown).toHaveCount(6);
+
+  if (info.project.name === "desktop") {
+    // 키보드: 초점을 두고 Space·Enter로 켜고 끈다. 큐브는 돌지 않는다
+    await all.focus();
+    await page.keyboard.press("Space");
+    await expect(all).toHaveAttribute("aria-checked", "true");
+    await expect(all).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(all).toHaveAttribute("aria-checked", "false");
+    await expect(play).toHaveAttribute("data-play-turns", "0");
+  }
+});
+
 test("배우기: 첫 층 코너는 세 색 센터로 넣을 칸을 고른다", async ({
   page,
 }, info) => {
