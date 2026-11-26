@@ -56,7 +56,7 @@ describe("줌·패닝 범위", () => {
 });
 
 describe("길 꼬리표", () => {
-  it("직관 걸음은 꼬리표를 비우고(「공식 없음」을 붙이지 않음), 앞에서 배운 공식만 쓰면 앞 공식, 셀 자료가 없으면 비운다", () => {
+  it("직관 걸음은 꼬리표를 비우고(「공식 없음」을 붙이지 않음), 공식 수는 「n개」, 앞에서 배운 공식만 쓰면 「배운 공식」, 셀 자료가 없으면 비운다", () => {
     const cfop = [methodById("cfop")];
     const beginner = [methodById("beginner")];
     const e = (id: string) => edgeById(id) as MapEdge;
@@ -66,6 +66,6 @@ describe("길 꼬리표", () => {
       // 첫 층 코너에서 배운 코너 돌리기 공식을 다시 쓴다
       edgeFormulaLabel(e("beginner-corner-twist"), beginner),
       edgeFormulaLabel(e("zbll"), cfop),
-    ]).toEqual([null, "공식 9", "앞 공식", null]);
+    ]).toEqual([null, "공식 9개", "배운 공식", null]);
   });
 });

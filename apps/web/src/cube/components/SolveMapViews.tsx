@@ -274,7 +274,7 @@ export function LoopChip({
         <>
           <span className="whitespace-nowrap text-white/60">{d.loop.sub}</span>
           <span className="whitespace-nowrap text-white/80">
-            {`공식 ${f} · ${pm.turns}수 · ${pm.rate}% 판에 나옴`}
+            {`공식 ${f}개 · ${pm.turns}수 · ${pm.rate}% 판에 나옴`}
           </span>
           {train && (
             <span className="whitespace-nowrap text-sky-200">
@@ -598,8 +598,9 @@ function labelSize(e: MapEdge, ctx: MapCtx, on: boolean) {
     // 앞의 「✓ 」는 여유 폭(어림이 작으면 밀어도 겹친다)
     `✓ ${f} · ${turns ?? ""}수${e.lessons.length ? "" : " · 강 없음"}`,
   ];
+  // 단계 이름은 고르지 않은 길에도 늘 있다
+  lines.push(e.title);
   if (on) {
-    lines.push(e.title);
     if (edgeTrain(e, ctx.train)) lines.push("익숙 0/0 · 0.0초");
     if (edgeSolo(e, ctx)) lines.push("내 00.0초");
   }
@@ -826,11 +827,8 @@ function MapLayer({
   const placed = placeLabels(
     geo0.map((g) => ({
       ...g.label,
-      ...labelSize(
-        g.e,
-        ctx,
-        ctx.selected.some((m) => m.edges.includes(g.e.id)),
-      ),
+      // 모든 꼬리표가 같은 내용이라 크기도 늘 전체 내용으로 어림한다
+      ...labelSize(g.e, ctx, true),
     })),
     [...pos.values()].map((p) => ({
       x: p.x,
@@ -891,31 +889,26 @@ function MapLayer({
       </svg>
       {geo.map((g) => {
         const on = selectedEdges.has(g.e.id);
-        // 흐린 길에 적을 값이 없으면(셀 자료 없음·단원 있음) 꼬리표를 두지 않는다
-        if (!on && !edgeFormulaLabel(g.e, ctx.selected) && g.e.lessons.length)
-          return null;
         const m = ctx.selected.find((x) => x.edges.includes(g.e.id));
         const href = hrefOf(g.e, m, ctx);
+        // 모든 걸음에 단계 이름을 늘 붙인다. 고르지 않은 해법의 길도(2026-11-26 사용자 「CFOP가 꺼져 있어도 F2L이라는 이름은 있어야 해」)
         const body = (
           <>
-            {on && (
-              <span className="font-medium text-white">
-                {g.e.title}
-                {m && (
-                  <ProgressSr
-                    p={edgeProgress(g.e, m, ctx.progress, ctx.courseOf)}
-                  />
-                )}
-              </span>
-            )}
-            <EdgeLines e={g.e} ctx={ctx} full={on} />
+            <span className="font-medium text-white">
+              {g.e.title}
+              {m && (
+                <ProgressSr
+                  p={edgeProgress(g.e, m, ctx.progress, ctx.courseOf)}
+                />
+              )}
+            </span>
+            {/* 고르지 않은 길도 같은 내용으로(한 해법만 골라도 전체를 견준다, 2026-11-26 사용자) */}
+            <EdgeLines e={g.e} ctx={ctx} full />
           </>
         );
         const cls = cn(
-          "-translate-x-1/2 -translate-y-1/2 absolute flex flex-col items-center rounded-md px-1.5 py-0.5 text-[10px] leading-tight",
-          on
-            ? "border border-white/20 bg-neutral-800/95 text-white/80"
-            : "bg-neutral-900/80 text-white/35",
+          // 고른 길이든 아니든 같은 모습(포커스로 바꾸지 않는다, 2026-11-26 사용자)
+          "-translate-x-1/2 -translate-y-1/2 absolute flex flex-col items-center rounded-md border border-white/20 bg-neutral-800/95 px-1.5 py-0.5 text-[10px] text-white/80 leading-tight",
         );
         const style = { left: g.label.x, top: g.label.y, zIndex: on ? 3 : 1 };
         return href ? (

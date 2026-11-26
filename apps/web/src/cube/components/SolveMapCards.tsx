@@ -45,7 +45,8 @@ const SKILL_RING = {
 function Totals({ m }: { m: MapMethod }) {
   const t = methodTotals(m);
   const parts = [
-    t.formulas !== null ? `공식 ${t.formulas}` : null,
+    // 「공식 87」은 87번 공식처럼 읽혀 개수임을 드러낸다(2026-11-26 사용자)
+    t.formulas !== null ? `공식 ${t.formulas}개` : null,
     t.turns !== undefined ? `${t.turns}수` : null,
   ].filter(Boolean);
   return parts.length ? (

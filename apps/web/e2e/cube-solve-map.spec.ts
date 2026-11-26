@@ -54,7 +54,9 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
   const cfop = page.locator('[data-card="cfop"]');
   await expect(cfop.locator("[data-strip-node]")).toHaveCount(5);
   await expect(cfop.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
-  await expect(cfop.locator("[data-card-total]")).toHaveText("공식 87 · 55수");
+  await expect(cfop.locator("[data-card-total]")).toHaveText(
+    "공식 87개 · 55수",
+  );
   expect(
     await cfop
       .locator("[data-strip-node]")

@@ -104,7 +104,7 @@ export function edgeFormulaCount(
 }
 
 /**
- * 길에 붙일 공식 글: 앞 길에서 배운 공식만 다시 쓰면 「앞 공식」, 셀 자료가 없거나 직관 걸음(공식 0)이면 null.
+ * 길에 붙일 공식 글: 공식 수는 「공식 n개」, 앞 길에서 배운 공식만 다시 쓰면 「배운 공식」, 셀 자료가 없거나 직관 걸음(공식 0)이면 null.
  * 직관 걸음에 「공식 없음」을 붙이지 않는다(2026-11-26 사용자, 불필요한 표시)
  */
 export function edgeFormulaLabel(
@@ -113,15 +113,19 @@ export function edgeFormulaLabel(
 ): string | null {
   if (!e.formulas?.length) return null;
   const k = edgeFormulaCount(e, selected);
-  return k === 0 ? "앞 공식" : `공식 ${k}`;
+  // 「공식 9」는 9번 공식처럼 읽혀 개수임을 드러낸다(2026-11-26 사용자). 「앞 공식」도 뜻이 흐려 「배운 공식」
+  return k === 0 ? "배운 공식" : `공식 ${k}개`;
 }
 
-/** 길에 붙일 잰 평균 수(고른 해법 가운데 잰 값이 있는 첫 해법) */
+/**
+ * 길에 붙일 잰 평균 수: 고른 해법 가운데 잰 값이 있는 첫 해법, 없으면 그 길을 지나는 다른 해법.
+ * 고르지 않은 길에도 같은 값을 보여 한 해법만 골라도 전체를 견준다(2026-11-26 사용자)
+ */
 export function edgeTurns(
   e: MapEdge,
   selected: readonly MapMethod[],
 ): number | undefined {
-  for (const m of selected)
+  for (const m of [...selected, ...MAP_METHODS])
     if (m.edges.includes(e.id)) {
       const v = measuredStep(m.id, e.id);
       if (v !== undefined) return v;
