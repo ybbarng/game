@@ -22,6 +22,11 @@ import {
 } from "./big-path";
 import { solveReduced } from "./big-solve";
 import { solveTwoLook } from "./ll-compare";
+import {
+  runTwistFirstStage,
+  TWIST_FIRST_ORDER,
+  twistFirstMoves,
+} from "./twist-first-path";
 import type {
   Course,
   CourseStage,
@@ -98,6 +103,27 @@ function twoLookDemoMoves(scramble: string): string[] {
   const ll = solveTwoLook(s);
   const text = (xs: string[]) => xs.filter(Boolean).join(" ");
   return [text(lower), text(ll.oll), text(ll.pll)];
+}
+
+// 코너 방향 먼저: 초보자와 같은 섞기를 노란 십자까지는 초보자 단원 규칙으로, 그 뒤는 twist-first-path.ts로(docs/47 16-33)
+function twistFirstDemoMoves(scramble: string): string[] {
+  let s = play(solvedCube(3), scramble);
+  const text = (xs: string[]) => xs.filter(Boolean).join(" ");
+  const lower = (["cross", "corners", "second", "yellow-cross"] as const).map(
+    (id) => {
+      const flip = id === "second" ? "z2" : "";
+      s = play(s, flip);
+      const r = runStage(id, s);
+      s = r.state;
+      return text([flip, ...r.steps.map(stepMoves)]);
+    },
+  );
+  const rest = TWIST_FIRST_ORDER.map((id) => {
+    const r = runTwistFirstStage(id, s);
+    s = r.state;
+    return text(r.steps.map(twistFirstMoves));
+  });
+  return [...lower, ...rest];
 }
 
 // 2×2 둘: 같은 섞기 하나를 단원의 경우별 정해진 길(beginner-path-222.ts)로 푼 수(2026-11-10)
@@ -263,6 +289,38 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         ],
         answer: 0,
         why: "2×2는 코너뿐이라 3×3의 코너 단계만 남아요.",
+      },
+    ],
+  },
+  "333-twist-first": {
+    // 노란 십자까지 넷은 3×3 처음 맞추기 강의에서 배운다(이 강의에는 단원이 없다). 해법 카드 띠와 같은 일곱 단계
+    stages: [
+      { title: "흰 십자", lessons: [], goal: "white-cross" },
+      { title: "첫 층 코너", lessons: [], goal: "first-layer" },
+      { title: "둘째 층 엣지", lessons: [], goal: "second-layer" },
+      { title: "노란 십자", lessons: [], goal: "yellow-cross" },
+      { title: "노란 면", lessons: ["333-tf-face"], goal: "oll" },
+      {
+        title: "코너 자리",
+        lessons: ["333-tf-corners"],
+        goal: "yellow-corners",
+      },
+      { title: "엣지 자리", lessons: ["333-tf-edges"], goal: "solved" },
+    ],
+    lead: "노란 십자까지는 3×3 처음 맞추기와 같아요. 그 뒤를 위 층 코너 블럭의 방향부터 맞춰요.",
+    demo: {
+      scramble: BEGINNER_333_SCRAMBLE,
+      moves: twistFirstDemoMoves(BEGINNER_333_SCRAMBLE),
+      source:
+        "단원 규칙(노란 십자까지 beginner-path.ts runStage · 그 뒤 twist-first-path.ts runTwistFirstStage)",
+    },
+    quizzes: [
+      {
+        question:
+          "3×3 처음 맞추기는 위 층 코너 블럭의 방향을 맨 끝에 맞췄어요. 이 해법에서는 언제 맞출까요?",
+        choices: ["노란 십자 바로 뒤, 자리보다 먼저", "엣지 자리 뒤 맨 끝에"],
+        answer: 0,
+        why: "노란 십자 바로 뒤에 노란 면으로 코너 블럭의 방향을 먼저 맞추고, 그다음 코너 블럭 자리와 엣지 블럭 자리를 맞춰요.",
       },
     ],
   },

@@ -194,6 +194,34 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     { term: "기준 코너", use: /기준 코너/, define: /「기준 코너」/ },
     { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
   ],
+  // 코너 방향 먼저(docs/47 16-33): 앞 과정은 3×3 처음 맞추기라 CFOP 낱말은 쓰지 않는다
+  "333-twist-first": [
+    ...NOTATION,
+    {
+      term: "「노란 면」 공식",
+      use: /「노란 면」 공식/,
+      define: /「노란 면」 공식 R U R' U R U2 R'/,
+    },
+    { term: "바른 짝", use: /바른 짝/, define: /「바른 짝」이라고/ },
+    {
+      term: "위 층 코너 바꾸기",
+      use: /코너 바꾸기/,
+      define: /「위 층 코너 바꾸기」 공식 R' F R'/,
+    },
+    {
+      term: "엣지 돌리기",
+      use: /엣지 돌리기|오른손 먼저|왼손 먼저/,
+      define: /공식은 「엣지 돌리기」예요/,
+    },
+    {
+      term: "왼손 노란 면",
+      use: /왼손 노란 면|왼손 공식|왼손 꼴/,
+      define: /「왼손 노란 면」 공식 L' U' L/,
+    },
+    // 공식 쪽에서 「거울」을 쓰면 화면의 뒤쪽 보기 판(거울)과 헷갈린다
+    { term: "거울(쓰지 않음)", use: /거울/, define: /$^/ },
+    { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
+  ],
   "333-2look": [...NOTATION, ...CFOP_TERMS],
   cfop: [...NOTATION, ...CFOP_TERMS],
   roux: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],

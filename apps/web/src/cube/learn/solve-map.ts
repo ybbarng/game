@@ -49,6 +49,7 @@ import {
   SPLIT_RIGHT,
   WHITE_UP,
 } from "./lessons-cfop";
+import { EDGE_CYCLE } from "./twist-first-path";
 import { ZZ_PAIR_CASES } from "./zz-path";
 
 export type MapNodeId =
@@ -59,7 +60,6 @@ export type MapNodeId =
   | "yellow-cross"
   | "yellow-edges"
   | "ll-corners-placed"
-  | "ll-corners-oriented"
   | "oll"
   | "pll-corners"
   | "solved"
@@ -253,18 +253,11 @@ const BASE_NODES: readonly MapNode[] = [
   { id: "ll-corners-placed", title: "코너 자리", row: 8, col: 0, view: "z2" },
   // 다 맞음: 들어오는 앞 단계(마지막 층 걸음들)처럼 노란 면이 위(2026-11-26 사용자)
   { id: "solved", title: "다 맞음", row: 9.5, col: 0, view: "z2" },
-  // 초보자(코너 방향 먼저)
-  {
-    id: "ll-corners-oriented",
-    title: "코너 방향",
-    row: 8,
-    col: 1,
-    view: "z2",
-  },
-  // 2단계 OLL·PLL
-  { id: "oll", title: "노란 면", row: 7, col: 2, view: "z2" },
-  // 강의(lessons-2look.ts 「PLL: 코너 자리 → 엣지 자리」) 낱말
-  { id: "pll-corners", title: "코너 자리", row: 8, col: 2, view: "z2" },
+  // 초보자(코너 방향 먼저)와 2단계 OLL·PLL이 함께 지나는 노란 면 → 코너 자리(docs/47 16-33). 가장 왼쪽 해법인
+  // 코너 방향 먼저의 칸에 둔다
+  { id: "oll", title: "노란 면", row: 7, col: 1, view: "z2" },
+  // 강의(lessons-2look.ts 「PLL: 코너 자리 → 엣지 자리」·lessons-twist-first.ts 「코너 자리」) 낱말
+  { id: "pll-corners", title: "코너 자리", row: 8, col: 1, view: "z2" },
   // 루
   { id: "roux-fb", title: "첫 블록", row: 1, col: 4, view: "z2 y2" },
   { id: "roux-sb", title: "두 블록", row: 2, col: 4, view: "z2 y2" },
@@ -329,7 +322,7 @@ const F2L_TAUGHT = [
   EDGE_STUCK,
 ].map((alg) => F2L_CASES.find((c) => c.algs.includes(alg))?.id ?? alg);
 const ZZ_PAIR = ZZ_PAIR_CASES.map((c) => `zz-pair-${c.white}-${c.edge}`);
-/** 코너 셋 돌리기(Aa퍼뮤)와 대각 바꾸기(Y퍼뮤): 루 CMLL 둘째 걸음(lessons-roux.ts), 코너 방향 먼저 하는 초보자 */
+/** 코너 셋 돌리기(Aa퍼뮤)와 대각 바꾸기(Y퍼뮤): 루 CMLL 둘째 걸음(lessons-roux.ts) */
 const A_PERM = "pll-aa";
 const Y_PERM = "pll-y";
 
@@ -403,22 +396,31 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["333-ll-corner-twist"],
     formulas: [TWIST],
   },
-  // 초보자, 코너 방향 먼저(docs/47 0절 2026-11-04, 8-2 「다른 방식」): 단원 없음
+  // 초보자, 코너 방향 먼저(docs/47 16-33): 노란 십자 뒤 노란 면 → 코너 자리 → 엣지 자리. 공식은 2×2 처음 맞추기와
+  // 같은 노란 면(윗면)·코너 바꾸기와, 노란 면 공식과 그 거울을 이은 엣지 돌리기
   {
-    id: "twist-first",
-    from: "yellow-edges",
-    to: "ll-corners-oriented",
-    title: "코너 방향",
-    lessons: [],
-    formulas: [TWIST],
+    id: "twist-first-face",
+    from: "yellow-cross",
+    to: "oll",
+    title: "노란 면",
+    lessons: ["333-tf-face"],
+    formulas: [TOP_FACE],
   },
   {
-    id: "twist-first-place",
-    from: "ll-corners-oriented",
+    id: "twist-first-corners",
+    from: "oll",
+    to: "pll-corners",
+    title: "코너 자리",
+    lessons: ["333-tf-corners"],
+    formulas: [TOP_SWAP],
+  },
+  {
+    id: "twist-first-edges",
+    from: "pll-corners",
     to: "solved",
-    title: "코너 자리(A퍼뮤)",
-    lessons: [],
-    formulas: [A_PERM],
+    title: "엣지 자리",
+    lessons: ["333-tf-edges"],
+    formulas: [EDGE_CYCLE],
   },
   // 2단계 OLL·PLL(ZZ·페트루스 마지막 층도 같은 공식, zz-path.ts runZzLl)
   {
@@ -820,13 +822,13 @@ const MAP_METHODS_3: readonly MapMethod[] = [
   {
     id: "beginner-twist-first",
     title: "초보자(코너 방향 먼저)",
-    course: "333-beginner",
+    course: "333-twist-first",
     edges: [
       ...BEGINNER_LOWER,
       "beginner-yellow-cross",
-      "beginner-edges",
-      "twist-first",
-      "twist-first-place",
+      "twist-first-face",
+      "twist-first-corners",
+      "twist-first-edges",
     ],
   },
   {
@@ -952,7 +954,8 @@ export const PARITY_AT: Readonly<
   Partial<Record<MapMethodId, { oll: MapNodeId; pll: MapNodeId }>>
 > = {
   beginner: { oll: "f2l", pll: "yellow-edges" },
-  "beginner-twist-first": { oll: "f2l", pll: "yellow-edges" },
+  // 코너 방향 먼저는 코너 자리를 윗면을 돌려 맞추니, PLL 패리티는 엣지 자리 앞(코너 자리)에서 보인다
+  "beginner-twist-first": { oll: "f2l", pll: "pll-corners" },
   "two-look": { oll: "f2l", pll: "oll" },
   cfop: { oll: "f2l", pll: "oll" },
 };
@@ -1136,9 +1139,9 @@ export const methodSize = (m: MapMethod): CubeSize => m.size ?? 3;
 
 /**
  * 해법마다 잰 평균 수(큐브 전체 돌리기 x·y·z는 빼고 U2·M도 한 수, ll-compare.ts turnCount). 대회 섞기(cube-scramble
- * "333") 씨앗 1~seeds를 맞춘 평균의 반올림(solve-map-measure.ts measureMap). 초보자·2단계·ZZ는 단원 규칙
- * (beginner-path.ts·ll-compare.ts·zz-path.ts), CFOP·루는 컴퓨터 해법(@game/cube-ai solveCfop·solveRoux, 탐색이라
- * 사람보다 짧다). 코너 방향 먼저 하는 초보자와 페트루스는 끝까지 맞추는 규칙·해법이 없어 비운다. 루 컴퓨터 해법은
+ * "333") 씨앗 1~seeds를 맞춘 평균의 반올림(solve-map-measure.ts measureMap). 초보자·코너 방향 먼저·2단계·ZZ는 단원
+ * 규칙(beginner-path.ts·twist-first-path.ts·ll-compare.ts·zz-path.ts), CFOP·루는 컴퓨터 해법(@game/cube-ai
+ * solveCfop·solveRoux, 탐색이라 사람보다 짧다). 페트루스는 끝까지 맞추는 규칙·해법이 없어 비운다. 루 컴퓨터 해법은
  * CMLL을 한 번에 풀어 위 코너 방향·자리 두 길을 `cmll` 하나로 잰다. 2×2는 단원 규칙(beginner-path-222.ts, 오르테가는
  * 규칙이 없어 비움), 4×4·5×5는 앞부분 단원 규칙(big-path.ts·big-edges-555.ts·yau-solve.ts)과 3×3처럼 축소법 풀이
  * (big-solve.ts solveReduced, 초보자 마무리)로 잰다. CFOP 마무리는 큰 큐브 CFOP 풀이가 없어 뒤 묶음을 비운다.
@@ -1157,6 +1160,7 @@ export const MAP_MEASURE: {
   seeds: 30,
   turns: {
     beginner: 127,
+    "beginner-twist-first": 128,
     "two-look": 114,
     cfop: 55,
     roux: 54,
@@ -1176,6 +1180,15 @@ export const MAP_MEASURE: {
       "beginner-edges": 9,
       "beginner-corner-place": 9,
       "beginner-corner-twist": 23,
+    },
+    "beginner-twist-first": {
+      cross: 15,
+      "first-corners": 30,
+      "second-layer": 35,
+      "beginner-yellow-cross": 6,
+      "twist-first-face": 12,
+      "twist-first-corners": 11,
+      "twist-first-edges": 20,
     },
     "two-look": {
       cross: 15,
@@ -1395,10 +1408,6 @@ const LOOKS: Partial<Record<MapNodeId, Look>> = {
   },
   "yellow-edges": { solved: [...f2l, ...llEdges] },
   "ll-corners-placed": { solved: [...f2l, ...llEdges], placed: llCorners },
-  "ll-corners-oriented": {
-    solved: [...f2l, ...llEdges],
-    oriented: { pieces: llCorners, colors: [YELLOW] },
-  },
   oll: {
     solved: f2l,
     oriented: { pieces: [...llEdges, ...llCorners], colors: [YELLOW] },

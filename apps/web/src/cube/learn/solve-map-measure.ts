@@ -24,6 +24,11 @@ import {
 import { solveReduced } from "./big-solve";
 import { yellowCrossByFormula } from "./ll-compare";
 import type { MapMethodId } from "./solve-map";
+import {
+  runTwistFirstStage,
+  type TwistFirstStageId,
+  twistFirstMoves,
+} from "./twist-first-path";
 import { solveYau, type YauStageId } from "./yau-solve";
 import { runZzLl, solveZzByRules, stepMovesLl } from "./zz-path";
 
@@ -89,6 +94,23 @@ const RUNS: Partial<Record<MapMethodId, (text: string) => Run>> = {
       const r = runStage(id, s);
       s = r.state;
       run[edge] = join(r.steps.map(stepMoves));
+    }
+    return run;
+  },
+  "beginner-twist-first": (text) => {
+    const { s: start, run } = beginnerLower(play(solvedCube(3), text));
+    const cross = runStage("yellow-cross", start);
+    run["beginner-yellow-cross"] = join(cross.steps.map(stepMoves));
+    let s = cross.state;
+    const legs: [string, TwistFirstStageId][] = [
+      ["twist-first-face", "face"],
+      ["twist-first-corners", "corners"],
+      ["twist-first-edges", "edges"],
+    ];
+    for (const [edge, id] of legs) {
+      const r = runTwistFirstStage(id, s);
+      s = r.state;
+      run[edge] = join(r.steps.map(twistFirstMoves));
     }
     return run;
   },

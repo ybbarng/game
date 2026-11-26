@@ -41,7 +41,7 @@ const started = (l: LearnProgress["lessons"][string] | undefined) =>
   !!l && (l.done || l.passed.length > 0 || (l.acted?.length ?? 0) > 0);
 
 /**
- * 걸음 하나의 진도. 가르치는 강이 없는 걸음(단원 없음: 코너 방향 먼저·페트루스 F2L 마무리·COLL 등)은 마칠 길이
+ * 걸음 하나의 진도. 가르치는 강이 없는 걸음(단원 없음: 페트루스 F2L 마무리·COLL 등)은 마칠 길이
  * 없어 늘 「아직」이다
  */
 export function edgeProgress(

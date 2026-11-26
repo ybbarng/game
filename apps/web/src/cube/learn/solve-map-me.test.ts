@@ -30,11 +30,24 @@ describe("진도 밝기", () => {
       teachingLessons(edge("cross"), method("beginner"), courseOf),
       // 2단계 과정엔 십자 강이 없어 앞 과정(초보자) 강
       teachingLessons(edge("cross"), method("two-look"), courseOf),
-      teachingLessons(edge("twist-first"), method("beginner"), courseOf),
+      // 코너 방향 먼저: 노란 십자는 초보자 강, 노란 면부터는 코너 방향 먼저 강
+      teachingLessons(
+        edge("beginner-yellow-cross"),
+        method("beginner-twist-first"),
+        courseOf,
+      ),
+      teachingLessons(
+        edge("twist-first-face"),
+        method("beginner-twist-first"),
+        courseOf,
+      ),
+      teachingLessons(edge("petrus-f2l"), method("petrus"), courseOf),
     ]).toEqual([
       ["cfop-cross"],
       ["333-safe-turns", "333-white-cross"],
       ["333-safe-turns", "333-white-cross"],
+      ["333-ll-cross"],
+      ["333-tf-face"],
       [],
     ]);
   });
@@ -54,8 +67,44 @@ describe("진도 밝기", () => {
       p("beginner-edges", "beginner", DEMO_PROGRESS),
       p("cross", "beginner", half),
       p("cross", "cfop", half),
-      p("twist-first", "beginner-twist-first", all),
-    ]).toEqual(["done", "learning", "none", "learning", "none", "none"]);
+      p("petrus-f2l", "petrus", all),
+      p("twist-first-edges", "beginner-twist-first", all),
+    ]).toEqual([
+      "done",
+      "learning",
+      "none",
+      "learning",
+      "none",
+      "none",
+      "done",
+    ]);
+  });
+
+  it("코너 방향 먼저 카드 칸: 노란 십자까지 초보자 강을 마치고 노란 면 강을 시작하면 노란 십자 완료·노란 면 배우는 중", () => {
+    const m = method("beginner-twist-first");
+    const pr: LearnProgress = {
+      lessons: {
+        "333-safe-turns": done,
+        "333-white-cross": done,
+        "333-first-corners-up": done,
+        "333-second-layer": done,
+        "333-ll-cross": done,
+        "333-tf-face": { passed: [3], done: false },
+      },
+    };
+    expect(
+      methodStages(m).map(
+        (s) => `${s.to}:${stageProgress(s.edges, m, pr, courseOf)}`,
+      ),
+    ).toEqual([
+      "cross:done",
+      "first-layer:done",
+      "f2l:done",
+      "yellow-cross:done",
+      "oll:learning",
+      "pll-corners:none",
+      "solved:none",
+    ]);
   });
 
   it("카드 칸(큰 단계)은 강이 있는 걸음을 모두 마쳐야 완료다(2단계: 아래 두 층 완료, 노란 십자 완료, 노란 면 배우는 중)", () => {

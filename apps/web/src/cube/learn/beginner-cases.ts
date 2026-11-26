@@ -26,7 +26,25 @@ import {
   TWIST_TWO_FRONT,
   YELLOW_CROSS_BACK,
 } from "./lessons-333";
+import {
+  EDGES_NEIGHBOR,
+  EDGES_OPPOSITE,
+  FACE_NONE,
+  FACE_SIDES,
+  FACE_TWO_APART,
+  FACE_TWO_DIAGONAL,
+  FACE_TWO_SAME,
+  CORNERS_NONE as TF_CORNERS_NONE,
+} from "./lessons-twist-first";
 import { setupFor } from "./notation";
+import {
+  CORNER_SWAP,
+  EDGE_CYCLE,
+  EDGE_CYCLE_LEFT,
+  type TwistFirstStageId,
+  YELLOW_FACE,
+  YELLOW_FACE_BACK,
+} from "./twist-first-path";
 import type { AlgSet, MaskName, SheetName } from "./types";
 
 export interface BeginnerCase {
@@ -40,8 +58,13 @@ export interface BeginnerCase {
   action: string;
 }
 
+/** 그림이 보이는 단계: 3×3 처음 맞추기(beginner-path.ts) 또는 코너 방향 먼저 마지막 층(twist-first-path.ts) */
+export type CaseSheetStage =
+  | { path: "beginner"; id: PathStageId }
+  | { path: "twist-first"; id: TwistFirstStageId };
+
 export interface BeginnerCaseSheet {
-  stage: PathStageId;
+  stage: CaseSheetStage;
   /** 그림 꼴: 마지막 층 묶음이면 윗면 평면도, 아니면 비스듬한 큐브(`AlgPicture`) */
   set: AlgSet;
   mask?: MaskName;
@@ -53,7 +76,7 @@ const flip = (solution: string) => setupFor(solution, "z2");
 
 // 코너 돌리기 한 번마다 한 칸씩 옮겨 가는 차례(다 맞음까지 남은 횟수 = 칠 횟수, 거꾸로는 하나 거슬러 간다)
 const CORNERS: BeginnerCaseSheet = {
-  stage: "corners",
+  stage: { path: "beginner", id: "corners" },
   set: "f2l",
   mask: "first-layer",
   title: "흰 코너 블럭의 여섯 경우",
@@ -108,7 +131,7 @@ export const BEGINNER_CASE_SHEETS: Record<
   },
   "beginner-corners": CORNERS,
   "beginner-cross": {
-    stage: "cross",
+    stage: { path: "beginner", id: "cross" },
     set: "f2l",
     mask: "cross",
     title: "흰 엣지 블럭의 여섯 경우",
@@ -154,7 +177,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     ],
   },
   "beginner-second": {
-    stage: "second",
+    stage: { path: "beginner", id: "second" },
     set: "f2l",
     mask: "f2l",
     title: "넣을 엣지 블럭의 네 경우(위 층은 옆 색 센터를 앞에 두고 봐요)",
@@ -186,7 +209,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     ],
   },
   "beginner-yellow-cross": {
-    stage: "yellow-cross",
+    stage: { path: "beginner", id: "yellow-cross" },
     set: "2look-oll",
     mask: "ll-cross",
     title: "윗면 모양 넷",
@@ -213,7 +236,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     ],
   },
   "beginner-edges": {
-    stage: "edges",
+    stage: { path: "beginner", id: "edges" },
     set: "2look-pll",
     mask: "ll-edges",
     title: "윗면을 돌려 찾은 세 경우",
@@ -240,7 +263,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     ],
   },
   "beginner-corner-place": {
-    stage: "corner-place",
+    stage: { path: "beginner", id: "corner-place" },
     set: "2look-pll",
     title: "제자리 코너 블럭으로 가르는 네 경우",
     cases: [
@@ -266,7 +289,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     ],
   },
   "beginner-corner-twist": {
-    stage: "corner-twist",
+    stage: { path: "beginner", id: "corner-twist" },
     set: "2look-oll",
     title: "앞-오른쪽 위 코너 블럭으로 보는 네 경우",
     cases: [
@@ -294,6 +317,130 @@ export const BEGINNER_CASE_SHEETS: Record<
         caption: "노란색이 모두 위",
         action:
           "위 층 엣지 블럭이 옆 색 센터 위에 오게 윗면을 돌리면 끝이에요. 많아야 세 번이에요.",
+      },
+    ],
+  },
+  // 코너 방향 먼저(lessons-twist-first.ts, docs/47 16-33)
+  "beginner-tf-face": {
+    stage: { path: "twist-first", id: "face" },
+    set: "2look-oll",
+    mask: "oll",
+    title: "노란 십자가 맞은 윗면 모양 여덟",
+    cases: [
+      {
+        id: "one-front",
+        alg: flip(YELLOW_FACE),
+        caption: "하나, 앞-오른쪽 위 노란색이 앞",
+        action: "위를 보는 코너 블럭을 앞-왼쪽 위에 두고 한 번 쳐요.",
+      },
+      {
+        id: "one-right",
+        alg: flip(YELLOW_FACE_BACK),
+        caption: "하나, 앞-왼쪽 위에 두면 앞-오른쪽 위 노란색이 오른쪽",
+        action: "위를 보는 코너 블럭을 뒤-오른쪽 위에 두고 거꾸로 한 번 쳐요.",
+      },
+      {
+        id: "none-sides",
+        alg: flip(FACE_SIDES),
+        caption: "없음, 마주 보는 두 옆면에 둘씩",
+        action: "둘씩을 왼쪽과 오른쪽 면에 두고 두 번 쳐요.",
+      },
+      {
+        id: "none",
+        alg: flip(FACE_NONE),
+        caption: "없음, 노란색 둘인 옆면이 하나",
+        action: "그 면을 왼쪽에 두고 한 번 치면 하나인 모양이 돼요.",
+      },
+      {
+        id: "two",
+        alg: flip(FACE_TWO_SAME),
+        caption: "둘, 이웃하고 옆을 보는 둘이 한 면",
+        action:
+          "앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 치면 하나인 모양이 돼요.",
+      },
+      {
+        id: "two",
+        alg: flip(FACE_TWO_APART),
+        caption: "둘, 이웃하고 옆을 보는 둘이 다른 면",
+        action:
+          "앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 치면 하나인 모양이 돼요.",
+      },
+      {
+        id: "two",
+        alg: flip(FACE_TWO_DIAGONAL),
+        caption: "둘, 대각선",
+        action:
+          "앞-왼쪽 위 노란색이 앞을 보게 두고 한 번 치면 하나인 모양이 돼요.",
+      },
+      { id: "done", alg: "z2", caption: "넷 다 위", action: "끝이에요." },
+    ],
+  },
+  "beginner-tf-corners": {
+    stage: { path: "twist-first", id: "corners" },
+    set: "2look-pll",
+    title: "바른 짝으로 가르는 네 경우",
+    cases: [
+      {
+        id: "done",
+        alg: "z2",
+        caption: "네 면 모두 바른 짝, 코너 블럭 모두 제자리",
+        action: "끝이에요.",
+      },
+      {
+        id: "align",
+        alg: flip("U"),
+        caption: "네 면 모두 바른 짝, 위 층이 비켜남",
+        action: "윗면을 돌려 코너 블럭을 제자리에 넣어요. 많아야 세 번이에요.",
+      },
+      {
+        id: "one",
+        alg: flip(CORNER_SWAP),
+        caption: "바른 짝 한 면",
+        action: "그 면을 뒤에 두고 한 번 쳐요.",
+      },
+      {
+        id: "none",
+        alg: flip(TF_CORNERS_NONE),
+        caption: "바른 짝 없음",
+        action: "그대로 한 번 치면 바른 짝이 한 면 생겨요.",
+      },
+    ],
+  },
+  "beginner-tf-edges": {
+    stage: { path: "twist-first", id: "edges" },
+    set: "2look-pll",
+    title: "제자리 엣지 블럭으로 가르는 여섯 경우",
+    cases: [
+      { id: "done", alg: "z2", caption: "넷 다 제자리", action: "끝이에요." },
+      {
+        id: "right-first",
+        alg: flip(EDGE_CYCLE),
+        caption: "하나, 뒤에 두면 앞 블럭의 제자리가 왼쪽",
+        action: "오른손 먼저 한 번 쳐요.",
+      },
+      {
+        id: "left-first",
+        alg: flip(EDGE_CYCLE_LEFT),
+        caption: "하나, 뒤에 두면 앞 블럭의 제자리가 오른쪽",
+        action: "왼손 먼저 한 번 쳐요.",
+      },
+      {
+        id: "none",
+        alg: flip(EDGES_OPPOSITE),
+        caption: "없음, 마주 보는 둘씩 바뀜",
+        action: "그대로 오른손 먼저를 한 번 치면 하나가 생겨요.",
+      },
+      {
+        id: "none",
+        alg: flip(EDGES_NEIGHBOR),
+        caption: "없음, 이웃한 둘씩 바뀜",
+        action: "그대로 오른손 먼저를 한 번 치면 하나가 생겨요.",
+      },
+      {
+        id: "turn",
+        alg: `${flip(EDGE_CYCLE)} U`,
+        caption: "위 층이 통째로 비켜남",
+        action: "윗면을 돌려 코너 블럭을 먼저 제자리에 넣어요.",
       },
     ],
   },

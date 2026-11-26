@@ -10,6 +10,7 @@ import { BIG_666_777 } from "./lessons-big67";
 import { BLD_OP } from "./lessons-bld";
 import { CFOP_INTRO } from "./lessons-cfop";
 import { ROUX } from "./lessons-roux";
+import { TWIST_FIRST_333 } from "./lessons-twist-first";
 import { YAU_444 } from "./lessons-yau";
 import { PETRUS, ZZ } from "./lessons-zz";
 import { STAGE_SPECS, withStages } from "./stage-map";
@@ -21,6 +22,8 @@ import type { Course, Lesson } from "./types";
  * 「마지막 층을 공식으로」(2단계 OLL·PLL)는 초보자 해법과 CFOP 사이의 다리다(docs/47 16-25).
  */
 const REQUIRES: Record<string, string[]> = {
+  // 코너 방향 먼저는 노란 십자까지 3×3 처음 맞추기 강을 그대로 쓴다(docs/47 16-33)
+  "333-twist-first": ["333-beginner"],
   "222-from333": ["333-beginner"],
   "333-2look": ["333-beginner"],
   cfop: ["333-2look"],
@@ -62,6 +65,19 @@ export const METHOD_COURSES: Course[] = [
       "코너 방향",
     ],
     // 공식 훈련 묶음은 잇지 않는다: 2단계 OLL(10)은 이 과정에서 안 배운 공식이 대부분이다(다음 과정 「마지막 층을 공식으로」에서)
+  }),
+  withFinale(staged(TWIST_FIRST_333), {
+    rule: "random-cross",
+    stages: [
+      "흰 십자",
+      "첫 층 코너",
+      "둘째 층 엣지",
+      "노란 십자",
+      "노란 면",
+      "코너 자리",
+      "엣지 자리",
+    ],
+    elsewhere: "흰 십자부터 노란 십자까지는 3×3 처음 맞추기 강의에 있어요.",
   }),
   withFinale(staged(BEGINNER_222), {
     rule: "2x2-random",

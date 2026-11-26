@@ -304,6 +304,10 @@ export const SHEETS = {
   "beginner-edges": "옆면 맞추기: 윗면을 돌려 찾은 세 경우",
   "beginner-corner-place": "코너 자리: 제자리 코너 블럭으로 가르는 네 경우",
   "beginner-corner-twist": "코너 방향: 앞-오른쪽 위 코너 블럭의 세 경우",
+  // 3×3 초보자(코너 방향 먼저) 마지막 층(beginner-cases.ts, docs/47 16-33)
+  "beginner-tf-face": "노란 면: 노란 십자가 맞은 윗면 모양 여덟",
+  "beginner-tf-corners": "코너 자리: 바른 짝으로 가르는 네 경우",
+  "beginner-tf-edges": "엣지 자리: 제자리 엣지 블럭으로 가르는 여섯 경우",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 
