@@ -43,7 +43,7 @@ test("배우기: 첫 층 코너·코너 자리·코너 방향은 모양마다 �
   await shot(page, "learn-beginner-corner-twist", info.project.name);
 });
 
-test("배우기: 흰 십자는 첫머리에 다섯 모양을 훑고, 옆으로 옮겨 올리는 공식을 네 덩어리로 보이고, 끝에 모양마다 할 일을 다시 묶는다", async ({
+test("배우기: 흰 십자는 첫머리에 여섯 모양을 훑고, 옆으로 옮겨 올리는 공식을 네 덩어리로 보이고, 끝에 모양마다 할 일을 다시 묶는다", async ({
   page,
 }, info) => {
   const body = page.locator("[data-step-body]");
@@ -52,7 +52,7 @@ test("배우기: 흰 십자는 첫머리에 다섯 모양을 훑고, 옆으로 �
   // 3번(0부터 2): 할 일 없이 모양만
   await goStep(page, 2);
   const look = page.locator('[data-sheet="beginner-cross-look"]');
-  await expect(look.locator("[data-sheet-case]")).toHaveCount(5);
+  await expect(look.locator("[data-sheet-case]")).toHaveCount(6);
   await expect(look).not.toContainText("F2");
   await shot(page, "learn-beginner-cross-look", info.project.name);
 
@@ -68,7 +68,7 @@ test("배우기: 흰 십자는 첫머리에 다섯 모양을 훑고, 옆으로 �
   // 22번(0부터 21): 정리 그림은 모양마다 할 일
   await goStep(page, 21);
   const all = page.locator('[data-sheet="beginner-cross"]');
-  await expect(all.locator("[data-sheet-case]")).toHaveCount(5);
+  await expect(all.locator("[data-sheet-case]")).toHaveCount(6);
   await expect(all.locator('[data-sheet-case="down-side"]')).toContainText(
     "아래-오른쪽으로 데려와",
   );

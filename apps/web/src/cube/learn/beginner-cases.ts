@@ -99,13 +99,20 @@ const CORNERS: BeginnerCaseSheet = {
 };
 
 // 흰 엣지 블럭이 있을 수 있는 모양(2026-11-26 사용자 차례, docs/47 16-34). 아래 층은 바로 올리고(기본 모양 둘),
-// 가운데 층·위 층은 아래 층으로 내린다. 위 층은 흰색이 위든 옆이든 같은 수라 그림 둘에 경우 이름 하나다
+// 가운데 층·위 층은 아래 층으로 내린다. 위 층은 흰색이 위든 옆이든 같은 수라 그림 둘에 경우 이름 하나다.
+// 제자리에 바르게 든 것(그대로 둠)까지 여섯이면 흰 엣지 블럭 하나가 있을 수 있는 모든 모양이다
 const CROSS: BeginnerCaseSheet = {
   stage: "cross",
   set: "f2l",
   mask: "cross",
-  title: "흰 엣지 블럭의 다섯 모양",
+  title: "흰 엣지 블럭의 여섯 모양",
   cases: [
+    {
+      id: "done",
+      alg: "",
+      caption: "위 층, 흰색이 위이고 제자리",
+      action: "그대로 둬요.",
+    },
     {
       id: "down",
       alg: CROSS_DOWN_MOVE.setup,
