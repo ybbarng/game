@@ -116,39 +116,40 @@ export const BEGINNER_CASE_SHEETS: Record<
       {
         id: "down",
         alg: "F2",
-        caption: "기본 모양 하나: 아래 층, 흰색이 아래",
-        action: "제자리 밑으로 옮겨 앞면 반 바퀴로 올려요.",
+        caption: "첫째 기본 모양: 아래 층, 흰색이 아래",
+        action: "짝 색 센터 바로 밑으로 옮겨 앞면 반 바퀴로 올려요.",
       },
       {
         id: "middle",
         alg: "F",
-        caption: "기본 모양 둘: 가운데 층, 짝 색이 같은 색 센터 쪽",
+        caption:
+          "둘째 기본 모양: 가운데 층, 짝 색 스티커가 붙은 면의 센터도 짝 색",
         action:
           "짝 색 스티커가 보는 면을 앞으로 돌려 쥐고 앞면 한 번으로 올려요.",
       },
       {
         id: "middle-other",
         alg: CROSS_GUARD.setup,
-        caption: "가운데 층, 짝 색이 다른 센터 쪽",
-        action: "아래 층으로 내려 기본 모양 하나로 만들어요.",
+        caption: "가운데 층, 짝 색 스티커가 붙은 면의 센터가 다른 색",
+        action: "아래 층으로 내려 첫째 기본 모양으로 만들어요.",
       },
       {
         id: "down-side",
         alg: CROSS_DOWN_SIDE_TRY.setup,
         caption: "아래 층, 흰색이 옆",
-        action: "가운데 층으로 올려 기본 모양 둘로 만들어요.",
+        action: "가운데 층으로 올려 둘째 기본 모양으로 만들어요.",
       },
       {
         id: "top-side",
         alg: CROSS_FLIPPED.setup,
         caption: "위 층, 흰색이 옆",
-        action: "가운데 층으로 내려요.",
+        action: "가운데 층으로 내린 뒤 가운데 층 두 경우 가운데 하나대로 해요.",
       },
       {
         id: "top-wrong",
         alg: CROSS_TOP_WRONG.setup,
         caption: "위 층, 흰색이 위인데 다른 자리",
-        action: "아래 층으로 내려 기본 모양 하나로 만들어요.",
+        action: "아래 층으로 내려 첫째 기본 모양으로 만들어요.",
       },
     ],
   },
@@ -156,18 +157,18 @@ export const BEGINNER_CASE_SHEETS: Record<
     stage: "second",
     set: "f2l",
     mask: "f2l",
-    title: "넣을 엣지 블럭의 네 경우",
+    title: "넣을 엣지 블럭의 네 경우(위 층은 옆 색 센터를 앞에 두고 봐요)",
     cases: [
       {
         id: "front",
         alg: flip(RIGHT),
-        caption: "기본 모양 하나: 위 층, 위 색이 오른쪽 센터 색",
+        caption: "앞에서 넣는 모양: 위 층, 위 색이 오른쪽 센터 색",
         action: "제자리가 앞-오른쪽이에요. 앞면 쪽에서 넣어요.",
       },
       {
         id: "left",
         alg: `z2 y' ${setupFor(FROM_RIGHT)} y`,
-        caption: "기본 모양 둘: 위 층, 위 색이 왼쪽 센터 색",
+        caption: "오른쪽에서 넣는 모양: 위 층, 위 색이 왼쪽 센터 색",
         action: "제자리가 앞-왼쪽이에요. 돌려 쥐고 오른쪽 면 쪽에서 넣어요.",
       },
       {
@@ -233,7 +234,8 @@ export const BEGINNER_CASE_SHEETS: Record<
         id: "opposite",
         alg: `${flip(EDGE_OPPOSITE)} U`,
         caption: "제자리인 둘이 마주 봄",
-        action: "앞과 뒤에 두고 한 번 치면 이웃한 둘이 돼요.",
+        action:
+          "앞과 뒤에 두고 한 번 친 뒤 U'를 치면 앞과 오른쪽이 제자리인 이웃한 둘이 돼요.",
       },
     ],
   },
