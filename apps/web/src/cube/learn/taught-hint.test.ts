@@ -116,7 +116,7 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
   it("첫 층 코너: 단원 해 보기와 마무리 힌트가 같은 길(코너 돌리기·거꾸로만, 지름길 없음)", () => {
     const corners = lessonOf("333-first-corners-up");
     const label =
-      /^흰-[^ ]+ 코너: (칸 밑, 흰색이 (오른쪽|앞|아래)|제 칸에서 흰색이 (오른쪽|앞)|다른 칸에 들어가 있음)$|^흰 면을 위로/;
+      /^흰-[^ ]+ 코너: (자리 밑, 흰색이 (오른쪽|앞|아래)|제자리에서 흰색이 (오른쪽|앞)|다른 자리에 들어가 있음)$|^흰 면을 위로/;
     for (let seed = 1; seed <= 12; seed++) {
       const start = stepStart(corners, randomTry(corners), seed);
       const plan = makeHintPlan("corners", start);
