@@ -207,10 +207,11 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     {
       term: "공식 A·B",
       use: /공식 [AB](?![A-Za-z])|[AB]를 (한 번|쳐)/,
-      define: /시계 방향으로 돌려야 하면 공식 A, 반시계 방향이면 공식 B/,
+      define: /시계 방향으로 옮겨야 하면 공식 A, 반시계 방향이면 공식 B/,
     },
     // 공식 쪽에서 「거울」을 쓰면 화면의 뒤쪽 보기 판(거울)과 헷갈린다
-    { term: "거울(쓰지 않음)", use: /거울/, define: /$^/ },
+    // (화면의 「거울 판」을 가리키는 것은 괜찮다)
+    { term: "거울(쓰지 않음)", use: /거울(?! 판)/, define: /$^/ },
     { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
   ],
   "333-2look": [...NOTATION, ...CFOP_TERMS],

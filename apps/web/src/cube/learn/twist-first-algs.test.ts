@@ -94,6 +94,18 @@ describe("코너 방향 = R · (U' L' U) · R' · (U' L U)", () => {
     ]);
   });
 
+  it("R로 앞-오른쪽 위 코너 블럭이 뒤-오른쪽 위로 밀려나고, U' L' U가 그 블럭을 왼쪽 층 아래(뒤-왼쪽 아래)로 내리고 앞-왼쪽 아래 코너 블럭을 위 층으로 올린다", () => {
+    const top = TOP.UFR as Face[];
+    // 흰 면 아래로 쥐면 앞-왼쪽 아래 코너는 맞춘 큐브의 흰-초록-빨강(U F R)
+    const lowLeft: Face[] = ["U", "F", "R"];
+    expect(where(at("R", down()), top)).toBe(slot("UBR"));
+    expect(where(at("R U'", down()), top)).toBe(slot("UBL"));
+    const x = at("R U' L' U", down());
+    expect(where(x, top)).toBe(slot("DBL"));
+    // 앞-왼쪽 아래 코너 블럭이 위 층(윗면에 닿는 자리)으로 올라와 있다
+    expect(piecePlace(x, lowLeft)).toContain("U");
+  });
+
   it("공식 한 번이면 아래 두 층과 위 엣지는 모두 그대로, 위 층 코너 셋의 자리와 방향이 바뀐다", () => {
     const s = at(CORNER_TURN, down());
     expect(edgesHome(s)).toBe(true);
@@ -137,6 +149,31 @@ describe("코너 위치 A·B = 준비 · 덩어리 · 흐트러뜨림 · 덩어�
       UFR: slot("UBR"),
       UBR: slot("UBL"),
     });
+  });
+
+  it("A 덩어리마다: L로 앞-왼쪽 위가 앞-왼쪽 아래로, L B2 L'로 그것과 뒤-오른쪽 위가 맞바뀌고, F'로 앞-왼쪽 위에 온 블럭이 앞-왼쪽 아래로, 같은 덩어리로 그 블럭이 뒤-오른쪽 위로", () => {
+    const UFL = TOP.UFL as Face[];
+    const UBR = TOP.UBR as Face[];
+    const UBL = TOP.UBL as Face[];
+    expect(where(at("L", down()), UFL)).toBe(slot("DFL"));
+    const x = at("L L B2 L'", down());
+    expect([where(x, UFL), where(x, UBR)]).toEqual([slot("UBR"), slot("DFL")]);
+    // 그때 앞-왼쪽 위에 와 있는 것은 처음 뒤-왼쪽 위 블럭
+    expect(where(x, UBL)).toBe(slot("UFL"));
+    expect(where(at("L L B2 L' F'", down()), UBL)).toBe(slot("DFL"));
+    expect(where(at("L L B2 L' F' L B2 L'", down()), UBL)).toBe(slot("UBR"));
+  });
+
+  it("B 덩어리마다(A의 좌우 바꿈): R'로 앞-오른쪽 위가 앞-오른쪽 아래로, R' B2 R로 그것과 뒤-왼쪽 위가 맞바뀌고, F로 앞-오른쪽 위에 온 블럭이 앞-오른쪽 아래로, 같은 덩어리로 그 블럭이 뒤-왼쪽 위로", () => {
+    const UFR = TOP.UFR as Face[];
+    const UBL = TOP.UBL as Face[];
+    const UBR = TOP.UBR as Face[];
+    expect(where(at("R'", down()), UFR)).toBe(slot("DFR"));
+    const x = at("R' R' B2 R", down());
+    expect([where(x, UFR), where(x, UBL)]).toEqual([slot("UBL"), slot("DFR")]);
+    expect(where(x, UBR)).toBe(slot("UFR"));
+    expect(where(at("R' R' B2 R F", down()), UBR)).toBe(slot("DFR"));
+    expect(where(at("R' R' B2 R F R' B2 R", down()), UBR)).toBe(slot("UBL"));
   });
 
   it("B는 A의 왼쪽과 오른쪽을 바꾼 꼴이다(L ↔ R, 도는 방향은 모두 반대)", () => {

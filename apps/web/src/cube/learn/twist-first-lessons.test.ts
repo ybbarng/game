@@ -4,6 +4,7 @@ import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
+import { splitMoveText } from "../keys/move-keys";
 import { courseById } from "./courses";
 import { goalMet } from "./judge";
 import { TWIST_FIRST_333 } from "./lessons-twist-first";
@@ -108,11 +109,27 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     expect(placedCorners(s)).toEqual([0]);
   });
 
-  it("B 고르기 쪽: 제자리는 앞-왼쪽 위 하나이고 B 한 번이면 다 맞는다", () => {
-    const s = stateOf(stepWith("333-tf-place", "반시계 방향으로 돌려야 해요"));
-    expect(placedCorners(s)).toEqual([1]);
+  it("B 고르기 쪽: 제자리는 앞-오른쪽 위 하나이고, y로 다시 쥐고 B 한 번이면 다 맞는다", () => {
+    const s = stateOf(stepWith("333-tf-place", "반시계 방향으로 옮겨야 해요"));
+    expect(placedCorners(s)).toEqual([0]);
+    expect(nextTwistFirstStep("place", s)).toMatchObject({
+      caseId: "b",
+      hold: "y",
+    });
     expect(
-      goalMet(3, applyMoves(3, s, parseMoves(3, CORNER_B)), "solved"),
+      goalMet(3, applyMoves(3, s, parseMoves(3, `y ${CORNER_B}`)), "solved"),
+    ).toBe(true);
+  });
+
+  it("A 시연 쪽: 제자리는 앞-오른쪽 위, 앞-왼쪽 위 블럭의 제자리는 뒤-왼쪽 위라 A", () => {
+    const s = stateOf(stepWith("333-tf-place", "제자리가 뒤-왼쪽 위예요"));
+    expect(placedCorners(s)).toEqual([0]);
+    expect(nextTwistFirstStep("place", s)).toMatchObject({
+      caseId: "a",
+      hold: "",
+    });
+    expect(
+      goalMet(3, applyMoves(3, s, parseMoves(3, CORNER_A)), "solved"),
     ).toBe(true);
   });
 
@@ -152,6 +169,22 @@ describe("글", () => {
   it("강·쪽 첫머리를 틀 문장(「앞 단원에서」·「이 과정에서는」·「화면의 큐브는」)으로 열지 않는다", () => {
     const frame = /앞 단원에서|이 과정에서는|화면의 큐브는|이 단원에서는/;
     expect(texts().filter((t) => frame.test(t))).toEqual([]);
+  });
+
+  it("공식 B는 늘 「공식 B」로 불러 B면 돌리기 칩으로 그려지지 않는다", () => {
+    // 공식 줄 속 수는 앞이나 뒤가 빈칸 하나로 다른 수와 이어진다. 둘 다 아니면 홀로 선 글자다
+    const spaceOnly = (p?: { kind: string; text: string }) =>
+      p?.kind === "text" && /^ $/.test(p.text);
+    const bad = texts().filter((t) =>
+      splitMoveText(t).some(
+        (p, i, all) =>
+          p.kind === "move" &&
+          p.text === "B" &&
+          !spaceOnly(all[i - 1]) &&
+          !spaceOnly(all[i + 1]),
+      ),
+    );
+    expect(bad).toEqual([]);
   });
 
   it("강의 첫머리에 신광사 큐브 설명서의 해법이라는 것을 밝힌다", () => {

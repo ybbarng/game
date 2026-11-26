@@ -57,7 +57,7 @@ test("배우기: 코너 방향 먼저(신광사 해법) 두 강은 모든 경우
   await goStep(page, 2);
   await expect(chunks).toHaveCount(4);
   await expect(page.locator("[data-step-body]")).toContainText(
-    "첫 층 코너 돌리기 R' D' R D와 같은 꼴",
+    "첫 층 코너 돌리기 R' D' R D와 오른쪽 층의 방향만 반대인 같은 꼴",
   );
   await shot(page, "learn-tf-twist-chunks", info.project.name);
   // 관계도: 일곱 모양 + 다 맞음, 둘인 모양은 하나짜리 모양으로, 기본형은 다 맞음으로
@@ -76,7 +76,7 @@ test("배우기: 코너 방향 먼저(신광사 해법) 두 강은 모든 경우
 
   await page.goto("/cube/learn?lesson=333-tf-place");
   await goStep(page, 1);
-  await expect(cases("beginner-tf-place")).toHaveCount(5);
+  await expect(cases("beginner-tf-place")).toHaveCount(4);
   await goStep(page, 2);
   await expect(chunks).toHaveCount(5);
   await shot(page, "learn-tf-place-chunks", info.project.name);

@@ -28,7 +28,6 @@ import {
 } from "./lessons-333";
 import {
   PLACE_NONE,
-  PLACE_NONE_B,
   TWIST_DIAGONAL,
   TWIST_FISH,
   TWIST_FRONT,
@@ -334,8 +333,9 @@ export const BEGINNER_CASE_SHEETS: Record<
       {
         id: "fish",
         alg: flip(TWIST_FISH),
-        caption: "하나, 앞-오른쪽 위 노란색이 오른쪽",
-        action: "한 번 치면 기본형, 쥔 그대로 한 번 더요.",
+        caption: "하나, 노란색 오른쪽",
+        action:
+          "위를 보는 블럭을 앞-왼쪽 위에 두면 앞-오른쪽 위 노란색이 오른쪽이에요. 한 번 치면 기본형, 쥔 그대로 한 번 더 쳐요.",
       },
       {
         id: "side",
@@ -380,26 +380,23 @@ export const BEGINNER_CASE_SHEETS: Record<
       {
         id: "a",
         alg: flip(CORNER_A),
-        caption: "하나, 남은 셋이 시계 방향",
-        action: "제자리 블럭을 앞-오른쪽 위에 두고 A를 한 번 쳐요.",
+        caption:
+          "하나, 앞-오른쪽 위에 두면 앞-왼쪽 위 블럭의 제자리가 뒤-왼쪽 위",
+        action: "남은 셋을 시계 방향으로, 그대로 A를 한 번 쳐요.",
       },
       {
         id: "b",
-        alg: flip(CORNER_B),
-        caption: "하나, 남은 셋이 반시계 방향",
-        action: "제자리 블럭을 앞-왼쪽 위에 두고 B를 한 번 쳐요.",
+        alg: flip(`y ${CORNER_B}`),
+        caption:
+          "하나, 앞-오른쪽 위에 두면 앞-왼쪽 위 블럭의 제자리가 뒤-오른쪽 위",
+        action:
+          "남은 셋을 반시계 방향으로, 제자리 블럭을 y로 앞-왼쪽 위에 두고 공식 B를 한 번 쳐요.",
       },
       {
         id: "none",
         alg: flip(PLACE_NONE),
-        caption: "없음, 둘씩 바뀜",
-        action: "그대로 A를 한 번 치면 하나가 생겨요.",
-      },
-      {
-        id: "none",
-        alg: flip(PLACE_NONE_B),
-        caption: "없음, 둘씩 바뀜(다른 꼴)",
-        action: "그대로 A를 한 번 치면 하나가 생겨요.",
+        caption: "없음, 코너 블럭 둘씩이 서로 바뀜",
+        action: "그대로 A를 한 번 치면 제자리가 하나 생겨요.",
       },
     ],
   },
@@ -424,13 +421,13 @@ export const TWIST_FLOW: TwistFlowNode[] = [
   {
     id: "side",
     alg: flip(TWIST_SIDE),
-    title: "둘, 이웃·옆은 다른 면",
+    title: "둘, 옆을 보는 둘이 다른 면",
     to: "fish",
   },
   {
     id: "front",
     alg: flip(TWIST_FRONT),
-    title: "둘, 이웃·옆은 한 면",
+    title: "둘, 옆을 보는 둘이 한 면",
     to: "fish",
   },
   {
