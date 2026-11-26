@@ -192,6 +192,7 @@ export function ReplayView({
                 setBoard((b) => !b);
               }}
               active={board}
+              expanded={board}
             >
               상황판
             </Ctl>
@@ -239,18 +240,22 @@ function Ctl({
   label,
   onClick,
   active = false,
+  expanded,
   disabled = false,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
   active?: boolean;
+  /** 판을 여닫는 단추면 열렸는지(`aria-expanded`). 켜고 끄는 단추는 `ToggleSwitch`를 쓴다 */
+  expanded?: boolean;
   disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
+      aria-expanded={expanded}
       title={label}
       onClick={onClick}
       disabled={disabled}
