@@ -64,6 +64,6 @@ describe("길 꼬리표", () => {
       edgeFormulaLabel(e("f2l-pair-1"), cfop),
       edgeFormulaLabel(e("f2l-pair-2"), cfop),
       edgeFormulaLabel(e("zbll"), cfop),
-    ]).toEqual(["공식 없음", "공식 41", "앞 공식", null]);
+    ]).toEqual(["공식 없음", "공식 9", "앞 공식", null]);
   });
 });

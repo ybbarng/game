@@ -38,6 +38,17 @@ import {
   YELLOW_CROSS,
 } from "./beginner-path";
 import { TOP_FACE, TOP_SWAP } from "./beginner-path-222";
+import {
+  CORNER_STUCK,
+  EDGE_STUCK,
+  JOIN_FRONT,
+  JOIN_RIGHT,
+  PAIR_FRONT,
+  PAIR_RIGHT,
+  SPLIT_FRONT,
+  SPLIT_RIGHT,
+  WHITE_UP,
+} from "./lessons-cfop";
 import { ZZ_PAIR_CASES } from "./zz-path";
 
 export type MapNodeId =
@@ -307,7 +318,21 @@ const TWO_LOOK = {
   pllCorners: group(TWO_LOOK_PLL, "corners"),
   pllEdges: group(TWO_LOOK_PLL, "edges"),
 };
-const F2L_ALL = ids(F2L_CASES);
+/**
+ * CFOP F2L 걸음의 공식: 강의(「F2L 짝」 단원)가 가르치는 공식만 센다(2026-11-26 HQ 기본값, 사용자 답 전, docs/47 16-30).
+ * 공식 모음(algs-f2l.ts 41 상황)에 같은 공식이 있으면 그 상황 id, 없으면 강의 공식 그대로(칸에 박힌 엣지 빼내기)
+ */
+const F2L_TAUGHT = [
+  PAIR_RIGHT,
+  PAIR_FRONT,
+  JOIN_RIGHT,
+  JOIN_FRONT,
+  SPLIT_RIGHT,
+  SPLIT_FRONT,
+  WHITE_UP,
+  CORNER_STUCK,
+  EDGE_STUCK,
+].map((alg) => F2L_CASES.find((c) => c.algs.includes(alg))?.id ?? alg);
 const ZZ_PAIR = ZZ_PAIR_CASES.map((c) => `zz-pair-${c.white}-${c.edge}`);
 /** 코너 셋 돌리기(Aa퍼뮤)와 대각 바꾸기(Y퍼뮤): 루 CMLL 둘째 걸음(lessons-roux.ts), 코너 방향 먼저 하는 초보자 */
 const A_PERM = "pll-aa";
@@ -348,7 +373,7 @@ const BASE_EDGES: readonly MapEdge[] = [
     to,
     title: `F2L 짝 ${i + 1}`,
     lessons: ["cfop-f2l-pair"],
-    formulas: F2L_ALL,
+    formulas: F2L_TAUGHT,
   })),
   // 초보자 마지막 층
   {

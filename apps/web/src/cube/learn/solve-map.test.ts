@@ -293,10 +293,11 @@ describe("공식 수", () => {
       cross: 0,
       "first-corners": 1,
       "second-layer": 2,
-      "f2l-pair-1": 41,
-      "f2l-pair-2": 41,
-      "f2l-pair-3": 41,
-      "f2l-pair-4": 41,
+      // 강의가 가르치는 F2L 공식만(docs/47 16-30)
+      "f2l-pair-1": 9,
+      "f2l-pair-2": 9,
+      "f2l-pair-3": 9,
+      "f2l-pair-4": 9,
       "beginner-yellow-cross": 1,
       "beginner-edges": 1,
       "beginner-corner-place": 1,
@@ -359,7 +360,7 @@ describe("공식 수", () => {
       beginner: 6,
       "beginner-twist-first": 6,
       "two-look": 19,
-      cfop: 119,
+      cfop: 87,
       roux: 9,
       zz: 25,
       petrus: 13,
@@ -381,7 +382,7 @@ describe("공식 수", () => {
     const cfop = newFormulas(method("cfop"));
     expect(
       ["f2l-pair-1", "f2l-pair-2", "f2l-pair-4"].map((id) => cfop.get(id)),
-    ).toEqual([41, 0, 0]);
+    ).toEqual([9, 0, 0]);
     expect(newFormulas(method("beginner")).get("beginner-corner-twist")).toBe(
       0,
     );
