@@ -5,7 +5,8 @@ import { renderedLines } from "./word-wrap";
 
 /**
  * 해법 배우기(/cube/methods)의 해법 카드와 지도(docs/47 16-30). 첫 모습은 해법 카드 세로, 「전체 보기」는 지도,
- * 카드를 누르면 해법 화면. 여러 해법 고르기, 「나」 표시, 큰 큐브 「3×3 맞추기」 펼치기, 휴대폰 폭 줄바꿈.
+ * 카드를 누르면 해법 화면. 여러 해법 고르기, 끝낸 단계 ✓, 같은 단계·「나」 표시 없음, 큰 큐브 「3×3 맞추기」 펼치기,
+ * 휴대폰 폭 줄바꿈.
  */
 
 /** 이 기기의 배우기 진행(초보자 아래 두 층까지 끝냄, 노란 십자는 하는 중, 2단계 OLL·CFOP 십자·루 첫 블록 끝냄) */
@@ -36,7 +37,7 @@ const cardIds = (page: Page) =>
     .locator("[data-card]")
     .evaluateAll((els) => els.map((el) => el.getAttribute("data-card")));
 
-test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례로 세로, CFOP 띠는 큰 단계(다 섞임 + 십자·F2L·OLL·PLL), 앞 카드와 같은 단계는 표시로 묶는다", async ({
+test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례로 세로, CFOP 띠는 큰 단계(다 섞임 + 십자·F2L·OLL·PLL)", async ({
   page,
 }) => {
   await page.goto("/cube/methods");
@@ -54,27 +55,13 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
   await expect(cfop.locator("[data-strip-node]")).toHaveCount(5);
   await expect(cfop.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
   await expect(cfop.locator("[data-card-total]")).toHaveText("공식 87 · 55수");
-  // 십자·아래 두 층은 초보자와, 노란 면은 2단계와 같은 단계
   expect(
     await cfop
       .locator("[data-strip-node]")
       .evaluateAll((els) =>
-        els.map(
-          (el) =>
-            `${el.getAttribute("data-strip-node")}:${el.getAttribute("data-same-as") ?? ""}`,
-        ),
+        els.map((el) => el.getAttribute("data-strip-node")),
       ),
-  ).toEqual([
-    "scrambled:",
-    "cross:beginner",
-    "f2l:beginner",
-    "oll:two-look",
-    "solved:",
-  ]);
-  // 보이는 표시는 한 줄 「= OLL·PLL」, 읽는 이름은 「2단계 OLL·PLL과 같음」
-  const same = cfop.locator('[data-strip-node="oll"] [data-strip-same]');
-  await expect(same.locator("[aria-hidden]")).toHaveText("= OLL·PLL");
-  await expect(same.locator(".sr-only")).toHaveText("2단계 OLL·PLL과 같음");
+  ).toEqual(["scrambled", "cross", "f2l", "oll", "solved"]);
   // 시안 고르기 단추·견본 기록은 없다
   await expect(page.getByRole("button", { name: "견본 기록" })).toHaveCount(0);
   // 강의 목록(단원·연습)은 카드 아래에 그대로
@@ -107,15 +94,14 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   ).toHaveAttribute("aria-disabled", "true");
 });
 
-test("전체 보기: 지도는 「다 섞임」에서 시작하고 기록이 없으면 「나」도 거기, 초보자 길의 꼬리표는 그 단원으로 간다", async ({
+test("전체 보기: 지도는 「다 섞임」에서 시작하고, 초보자 길의 꼬리표는 그 단원으로 간다", async ({
   page,
 }) => {
   await page.goto("/cube/methods");
   await page.locator("[data-open-map]").click();
   await expect(page).toHaveURL(/view=map/);
   await expect(page.locator('[data-solve-map="map"]')).toBeVisible();
-  await expect(page.locator('[data-node="scrambled"] [data-me]')).toBeVisible();
-  await expect(page.locator("[data-node] [data-me]")).toHaveCount(1);
+  await expect(page.locator('[data-node="scrambled"]')).toBeVisible();
   await expect(page.locator('[data-edge="first-corners"]')).toHaveAttribute(
     "href",
     "/cube/learn?lesson=333-first-corners-up",
@@ -145,7 +131,7 @@ test("전체 보기: 해법을 여럿 고르면 주소에 담기고 고른 해�
 
 /**
  * 지도 안 상자(지점 그림·이름, 걸음 꼬리표) 가운데 주인이 다른 둘이 겹치는 쌍. 같은 지점의 그림·이름끼리는
- * 한 덩이라 보지 않는다. 「나」 표시는 지점 모서리에 일부러 걸쳐 두어 뺀다
+ * 한 덩이라 보지 않는다
  */
 async function overlaps(page: Page) {
   return page.evaluate(() => {
@@ -264,20 +250,56 @@ test("전체 보기: 처음 모습은 칸 이름이 11px 이상으로 읽히고 
     .toBeGreaterThanOrEqual(11);
 });
 
-test("기록이 있으면 지나온 길에 「나」, 카드에는 끝낸 단계에 ✓", async ({
-  page,
-}) => {
+test("기록이 있으면 카드에는 끝낸 단계에 ✓", async ({ page }) => {
   await withProgress(page);
   await page.goto("/cube/methods");
   const beginner = page.locator('[data-card="beginner"]');
   await expect(
-    beginner.locator('[data-strip-node="f2l"] [data-me]'),
-  ).toBeVisible();
-  await expect(
     beginner.locator('[data-strip-node="f2l"] [data-strip-name]'),
   ).toHaveText("✓ 아래 두 층");
-  await page.goto("/cube/methods?view=map&sel=beginner");
-  await expect(page.locator('[data-node="f2l"] [data-me]')).toBeVisible();
+});
+
+/**
+ * 카드·해법 화면·지도 안의 글 조각(화면 읽기용 글 포함) 가운데 같은 단계 표시(「= 초보자」·「초보자와 같음」)나
+ * 내 위치 「나」 표시인 것
+ */
+async function stageOrMeMarks(page: Page, root: string) {
+  return page.locator(root).evaluate((el) => {
+    const out: string[] = [];
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const t = (n.textContent ?? "").trim();
+      // JSX `= {이름}`은 글 조각 「=」와 이름으로 갈린다
+      if (t === "나" || t.includes("같음") || /^=(\s|$)/.test(t)) out.push(t);
+    }
+    return out;
+  });
+}
+
+test("카드·해법 화면·지도에는 같은 단계 표시와 「나」 표시가 없다(기록 없음·있음)", async ({
+  page,
+}) => {
+  for (const progress of [false, true]) {
+    if (progress) await withProgress(page);
+    await page.goto("/cube/methods?more=1");
+    await expect(page.locator('[data-card="cfop"]')).toBeVisible();
+    expect(
+      await stageOrMeMarks(page, "[data-map-cards]"),
+      `카드 기록 ${progress}`,
+    ).toEqual([]);
+    await page.goto("/cube/methods?method=cfop");
+    await expect(page.locator('[data-method-screen="cfop"]')).toBeVisible();
+    expect(
+      await stageOrMeMarks(page, '[data-method-screen="cfop"]'),
+      `해법 화면 기록 ${progress}`,
+    ).toEqual([]);
+    await page.goto("/cube/methods?view=map&sel=beginner,cfop&more=1");
+    await expect(page.locator('[data-node="scrambled"]')).toBeVisible();
+    expect(
+      await stageOrMeMarks(page, '[data-solve-map="map"]'),
+      `지도 기록 ${progress}`,
+    ).toEqual([]);
+  }
 });
 
 test("전체 보기 4×4: 「3×3 맞추기」는 그 자리에서 펼치고, 3×3 지도에 들렀다 「← 4×4」로 펼친 채 돌아온다(크기 단추는 4×4 그대로)", async ({
@@ -364,7 +386,7 @@ async function clippedOut(page: Page, root: string, scroller?: string) {
   );
 }
 
-test("휴대폰 폭(320·375·390·430)과 PC에서 카드·지도는 넘치거나 잘리지 않고, 칸 이름은 낱말 중간에서 줄이 바뀌지 않고 두 줄을 넘지 않으며, 같음 표시는 한 줄이다(2×2~5×5)", {
+test("휴대폰 폭(320·375·390·430)과 PC에서 카드·지도는 넘치거나 잘리지 않고, 칸 이름은 낱말 중간에서 줄이 바뀌지 않고 두 줄을 넘지 않는다(2×2~5×5)", {
   tag: ONLY_DESKTOP,
 }, async ({ page }) => {
   for (const w of [320, 375, 390, 430, 1280]) {
@@ -394,12 +416,6 @@ test("휴대폰 폭(320·375·390·430)과 PC에서 카드·지도는 넘치거�
         const lineWords = lines.flatMap((l) => l.split(/\s+/).filter(Boolean));
         if (lines.length > 2 || lineWords.join("|") !== words.join("|"))
           bad.push(lines.join(" / "));
-      }
-      for (const el of await page
-        .locator("[data-card] [data-strip-same] [aria-hidden]")
-        .all()) {
-        const lines = await renderedLines(el);
-        if (lines.length !== 1) bad.push(`같음 ${lines.join(" / ")}`);
       }
       expect(bad, `${w} ${n}×${n} 칸 글 줄바꿈`).toEqual([]);
     }

@@ -275,8 +275,6 @@ export interface MapCtx {
   train: TrainBook;
   /** 해법 id → 길마다 내 혼자 맞추기 구간 */
   solo: Map<string, Map<string, EdgeSolo>>;
-  /** 「나」가 있는 지점 → 그 해법들. 기록이 없으면 그 크기의 「다 섞임」 */
-  me: Map<MapNodeId, MapMethod[]>;
   courseOf: (lessonId: string) => string | undefined;
   /** 단원 id → 단원 제목 */
   lessonTitle: (lessonId: string) => string;
@@ -295,44 +293,11 @@ export interface MapCtx {
   hop: () => void;
 }
 
-/** 「나」 표시(해법마다 색 점) */
-export function MeBadge({ methods }: { methods: MapMethod[] }) {
-  return (
-    <span
-      className="inline-flex items-center gap-0.5 rounded-full bg-white px-1.5 py-px font-bold text-[11px] text-neutral-900"
-      data-me
-    >
-      나
-      {methods.map((m) => (
-        <span
-          key={m.id}
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ background: METHOD_COLOR[m.id] }}
-        />
-      ))}
-    </span>
-  );
-}
-
 /** 지도 틀의 지금 배율(A·C 지도 안에서만 1이 아니다) */
 const ZoomK = createContext(1);
 
 /** 이 배율보다 작으면 지점 그림 대신 점(그림이 너무 작아 알아볼 수 없다). 확대하면 그림이 나온다 */
 const PIC_MIN_K = 0.45;
-
-/** 지도 위 「나」: 전체 보기처럼 작게 줄여도 화면에서 이 크기보다 작아지지 않게 */
-export function MeOnMap({ methods }: { methods: MapMethod[] }) {
-  const k = useContext(ZoomK);
-  const s = Math.max(1, 0.9 / k);
-  return (
-    <span
-      className="inline-block"
-      style={{ transform: `scale(${s})`, transformOrigin: "center" }}
-    >
-      <MeBadge methods={methods} />
-    </span>
-  );
-}
 
 /** 지도 위 지점 그림: 작은 배율에서는 같은 자리의 점 하나 */
 function NodePic({ id, ctx, px }: { id: MapNodeId; ctx: MapCtx; px: number }) {
@@ -947,7 +912,6 @@ function MapLayer({
         const on = selectedNodes.has(id);
         const shared = ctx.selected.filter((m) => methodNodes(m).includes(id));
         const href = nodeHrefOf(id, ctx);
-        const me = ctx.me.get(id);
         const body = (
           <>
             <span
@@ -961,11 +925,6 @@ function MapLayer({
                 {nodeById(id).title}
               </span>
             </span>
-            {me && (
-              <span className="-top-2 -right-2 absolute">
-                <MeOnMap methods={me} />
-              </span>
-            )}
           </>
         );
         // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게

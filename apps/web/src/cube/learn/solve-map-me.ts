@@ -1,4 +1,4 @@
-// 해법 지도 위의 「나」(시안 2026-11-25): 이미 있는 기록을 지도 길에 겹친다. 새 저장 키는 만들지 않는다.
+// 해법 지도·카드의 내 기록(시안 2026-11-25): 이미 있는 기록을 지도 길에 겹친다(내 위치 「나」 표시는 2026-11-26 지움). 새 저장 키는 만들지 않는다.
 // - 진행: 배우기 진행 기록(cube.learn.v1, progress.ts)의 끝낸 단원·통과한 해 보기
 // - 공식 연습: 상황별 기록(cube.train.v1, TrainBook)의 익숙한 상황 수(practice/deck.ts familiar)와 평균 시간
 // - 혼자 맞추기: 구간 기록(cube.records.v1 splits)을 내 해법 단계(progress/methods.ts)로 읽은 구간 평균.
@@ -12,14 +12,7 @@ import { methodSplits, type SolveMethod } from "../progress/methods";
 import { parseSplits, type SolveRecord } from "../records";
 import { ALL_ALG_CASES } from "./alg-sets";
 import { averageMs, type LearnProgress, type TrainBook } from "./progress";
-import {
-  edgeById,
-  MAP_MEASURE,
-  type MapEdge,
-  type MapMethod,
-  type MapNodeId,
-  methodNodes,
-} from "./solve-map";
+import { MAP_MEASURE, type MapEdge, type MapMethod } from "./solve-map";
 
 export type EdgeLearn = "done" | "started" | "none";
 
@@ -30,23 +23,6 @@ export function edgeLearn(edge: MapEdge, p: LearnProgress): EdgeLearn {
   if (ls.some((l) => l && (l.passed.length > 0 || (l.acted?.length ?? 0) > 0)))
     return "started";
   return "none";
-}
-
-/**
- * 해법 하나에서 「나」의 자리: 앞에서부터 끝낸 길을 따라간 마지막 지점. 아무 길도 끝내지 않았으면 null(화면은
- * 어느 해법에도 자리가 없으면 「다 섞임」에 둔다).
- * 처음 길을 끝내지 않았으면 그 해법에는 아직 들어서지 않은 것이다
- */
-export function myNode(m: MapMethod, p: LearnProgress): MapNodeId | null {
-  const nodes = methodNodes(m);
-  let at = -1;
-  for (const [i, id] of m.edges.entries()) {
-    const e = edgeById(id);
-    // 단원이 없는 길에서는 멈춘다(끝냈는지 알 기록이 없다)
-    if (!e || edgeLearn(e, p) !== "done") break;
-    at = i;
-  }
-  return at < 0 ? null : (nodes[at + 1] as MapNodeId);
 }
 
 // ── 공식 연습 ──────────────────────────────────────────
