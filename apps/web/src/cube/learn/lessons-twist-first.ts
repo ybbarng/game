@@ -311,10 +311,10 @@ const corners: Lesson = {
     },
     {
       kind: "demo",
-      body: "흰색이 바닥을 보는 코너 블럭은 어느 쪽으로 올려도 흰색이 위로 오지 않아요. 그래서 먼저 흰색이 옆을 보게 눕혀요. 그 일을 하는 것이 다시 놓기 R' D2 R이에요. 그림에는 그 코너 블럭만 색을 보였어요. R'로 오른쪽 층을 돌리면 블럭이 층과 함께 굴러 바닥을 보던 흰색이 뒤를 봐요. D2로 그 블럭을 오른쪽 층 밖(아래-앞-왼쪽)으로 비켜 두고, R로 오른쪽 층을 되돌려요. 블럭은 흰색이 옆(앞)을 본 채 남아요. 그다음 D로 자리 밑에 데려오면 흰색이 오른쪽이라 코너 블럭 넣기로 넣어요(다음 해 보기).",
+      body: "흰색이 바닥을 보는 코너 블럭은 어느 쪽으로 올려도 흰색이 위로 오지 않아요. 그래서 먼저 흰색이 옆을 보게 눕혀요. 그 일을 하는 것이 다시 놓기 R' D2 R이에요. 그림에는 그 코너 블럭에 노란 고리를 둘렀어요. R'로 오른쪽 층을 돌리면 블럭이 층과 함께 굴러 바닥을 보던 흰색이 뒤를 봐요. D2로 그 블럭을 오른쪽 층 밖(아래-앞-왼쪽)으로 비켜 두고, R로 오른쪽 층을 되돌려요. 블럭은 흰색이 옆(앞)을 본 채 남아요. 그다음 D로 자리 밑에 데려오면 흰색이 오른쪽이라 코너 블럭 넣기로 넣어요(다음 해 보기).",
       setup: up(CORNER_DOWN_SOLVE),
       alg: CORNER_DOWN,
-      mask: "piece:UFR",
+      mask: "first-layer",
       chunks: [
         {
           moves: "R'",
@@ -348,10 +348,10 @@ const corners: Lesson = {
     },
     {
       kind: "demo",
-      body: "코너 블럭이 제자리에 들었는데 흰색이 옆을 보면 돌아가 있는 거예요. 위 층 다른 자리에 잘못 든 블럭도 같아요. 그 자리에 다른 코너 블럭을 넣는다고 생각해요. 넣으면 들어 있던 블럭이 밀려 나와요. 빼기 R' D' R은 아래 층 코너 블럭 하나를 위-앞-오른쪽 자리에 올려 넣는 수예요. 그 자리를 앞-오른쪽 위에 두고 치면, 들어 있던 블럭이 아래 층으로 밀려 나와요. 가운데 D'는 내려간 블럭을 옆으로 비키는 수라, 아랫면을 어느 쪽으로 돌려도 돼요. 그림에는 밀려 나올 블럭만 색을 보였어요. 나온 블럭은 경우대로 넣어요(다음 해 보기).",
+      body: "코너 블럭이 제자리에 들었는데 흰색이 옆을 보면 돌아가 있는 거예요. 위 층 다른 자리에 잘못 든 블럭도 같아요. 그 자리에 다른 코너 블럭을 넣는다고 생각해요. 넣으면 들어 있던 블럭이 밀려 나와요. 빼기 R' D' R은 아래 층 코너 블럭 하나를 위-앞-오른쪽 자리에 올려 넣는 수예요. 그 자리를 앞-오른쪽 위에 두고 치면, 들어 있던 블럭이 아래 층으로 밀려 나와요. 가운데 D'는 내려간 블럭을 옆으로 비키는 수라, 아랫면을 어느 쪽으로 돌려도 돼요. 그림에는 밀려 나올 블럭에 노란 고리를 둘렀어요. 나온 블럭은 경우대로 넣어요(다음 해 보기).",
       setup: up(CORNER_SLOT_SOLVE),
       alg: CORNER_PULL,
-      mask: "piece:UFR",
+      mask: "first-layer",
       chunks: [
         {
           moves: "R'",
@@ -758,9 +758,9 @@ const twist: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "위 층 엣지 블럭 넷이 제자리에 들었어요. 이번에는 위 층 코너 블럭의 방향을 맞춰요. 방향은 노란색이 어느 쪽을 보는지예요. 노란색을 모두 위로 올려요. 위 층 엣지 블럭은 이미 맞았으니 이제 윗면은 돌리지 않고, 쥘 때는 큐브를 y로 통째로 돌려 쥐어요. 이번 강에서는 노란색만 보니 다른 칸은 회색으로 가려 두었어요.",
+      body: "위 층 엣지 블럭 넷이 제자리에 들었어요. 이번에는 위 층 코너 블럭의 방향을 맞춰요. 방향은 노란색이 어느 쪽을 보는지예요. 노란색을 모두 위로 올려요. 위 층 엣지 블럭은 이미 맞았으니 이제 윗면은 돌리지 않고, 쥘 때는 큐브를 y로 통째로 돌려 쥐어요. 이번 강에서는 위 층 코너 블럭의 노란색만 보니, 코너 블럭의 다른 칸은 회색으로 가려 두었어요.",
       setup: flip(T),
-      mask: "oll",
+      mask: "ll-twist",
       quiz: {
         question: "노란색이 위를 보는 위 층 코너 블럭은 몇 개일까요?",
         choices: ["하나", "둘", "하나도 없어요"],
@@ -772,7 +772,7 @@ const twist: Lesson = {
       kind: "quiz",
       body: "위 엣지가 맞은 윗면은 그림의 여덟 모양 가운데 하나예요. 위를 보는 노란색이 둘인 모양 셋, 하나인 모양 둘, 하나도 없는 모양 둘, 넷 다인 모양이에요. 그림은 모양마다 쥘 모습대로 놓았고, 아래쪽이 앞이에요. 둘이 대각선인 모양을 설명서는 「기본형」이라고 불러요. 기본형은 그림처럼 쥐고 공식을 한 번 치면 다 맞아요.",
       setup: flip(T),
-      mask: "oll",
+      mask: "ll-twist",
       sheet: "beginner-tf-twist",
       quiz: {
         question: "이 큐브의 윗면은 어느 모양일까요?",
@@ -814,14 +814,14 @@ const twist: Lesson = {
       body: "나머지 모양도 그림처럼 쥐고 공식을 한 번 치면 다음 모양으로 가요. 아래 그림은 모양마다 그렇게 쥐고 한 번 치면 어느 모양이 되는지 화살표로 이은 관계도예요. 위를 보는 노란색이 하나도 없으면 둘이나 하나인 모양으로, 둘이나 하나인 모양은 모두 기본형으로, 기본형은 다 맞음으로 가요. 어느 모양에서 시작해도 공식을 많아야 세 번 치면 다 맞아요. 화살표 하나가 공식 한 번이에요. 시연은 맨 위 「없음, 둘인 면 하나」에서 공식을 한 번 쳐서 화살표가 가리키는 「둘, 옆이 한 면」이 되는 것을 보여요. 관계도에서 다른 모양을 누르면 그 모양에서 한 번 치는 시연으로 바뀌어요.",
       setup: flip(TW_BAR),
       alg: T,
-      mask: "oll",
+      mask: "ll-twist",
       sheet: "tf-flow",
     },
     {
       kind: "quiz",
       body: "관계도로 횟수를 세어 봐요. 지금 큐브는 위를 보는 노란색이 하나도 없어요.",
       setup: flip(TW_BAR),
-      mask: "oll",
+      mask: "ll-twist",
       quiz: {
         question:
           "위를 보는 노란색이 하나도 없는 모양에서 시작하면 공식을 모두 몇 번 칠까요?",
@@ -836,7 +836,7 @@ const twist: Lesson = {
       setup: flip(`y ${T}`),
       alg: `y ${T}`,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
@@ -844,7 +844,7 @@ const twist: Lesson = {
       setup: flip(TW_A),
       alg: TW_A,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
@@ -852,7 +852,7 @@ const twist: Lesson = {
       setup: flip(TW_B),
       alg: TW_B,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
@@ -860,7 +860,7 @@ const twist: Lesson = {
       setup: flip(TW_C),
       alg: TW_C,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
@@ -868,7 +868,7 @@ const twist: Lesson = {
       setup: flip(TW_D),
       alg: TW_D,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
@@ -876,7 +876,7 @@ const twist: Lesson = {
       setup: flip(TW_CROSS),
       alg: TW_CROSS,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
@@ -884,14 +884,14 @@ const twist: Lesson = {
       setup: flip(TW_BAR),
       alg: TW_BAR,
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
     },
     {
       kind: "try",
       body: "이번엔 혼자 위 층 코너 블럭 넷의 노란색을 모두 위로 올려 봐요. 모양을 보고 아래 관계도대로 쥐고 쳐요.",
       setup: { rule: "ll-edges-solved" },
       goal: "oll",
-      mask: "oll",
+      mask: "ll-twist",
       sheet: "tf-flow",
     },
   ],

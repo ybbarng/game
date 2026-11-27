@@ -462,6 +462,20 @@ export function maskFor(
       const g = cubeGroups(n, U);
       return maskFromPieces(n, [...g.f2l, ...g.lastLayerEdges], "gray");
     }
+    case "ll-twist":
+    case "f2l-oll": {
+      // 앞 단계까지 맞춘 조각(아래 두 층, ll-twist는 윗층 엣지까지)은 색으로, 이번 단계에서 볼 노란 칸도 색으로,
+      // 나머지 윗층 칸은 회색(2026-11-27 사용자 「앞 단계까지 맞춘 조각은 색」, docs/47 16-33)
+      const g = cubeGroups(n, U);
+      const shown =
+        name === "ll-twist" ? [...g.f2l, ...g.lastLayerEdges] : [...g.f2l];
+      const out = maskFromPieces(n, shown, "gray");
+      const topo = cubeTopology(n);
+      for (const p of [...g.lastLayerCorners, ...g.lastLayerEdges])
+        for (const s of topo.pieces[p]?.stickers ?? [])
+          if (stickerFace(n, s) === YELLOW) out[s] = "visible";
+      return out;
+    }
     default:
       return stageMask(n, name);
   }

@@ -306,7 +306,7 @@ const topFace: Lesson = {
       kind: "quiz",
       body: "앞 단원에서 첫 층을 맞추고 큐브를 뒤집어 흰 면을 아래로 보냈어요. 이번에는 위 층 코너 넷의 노란색이 모두 위를 보게 해서 윗면을 노랗게 만들어요. 흰 면을 아래로 뒤집었으니 위 층 코너 넷은 흰색의 맞은편 노랑이 붙은 코너 블럭이에요. 코너 블럭이 돌아 있는 꼴, 곧 노란색이 어느 면을 보는지를 「방향」이라고 해요. 코너 자리는 다음 단원에서 맞추니 지금은 방향만 봐요. 화면의 2×2는 첫 층이 맞고 흰 면이 아래에 있는 상태예요. 쓰는 공식은 「윗면 공식」 R U R' U R U2 R' 하나예요. 위 층 코너 셋의 방향을 바꾸고 첫 층은 그대로 둬요. 먼저 노란색이 위를 보는 위 층 코너를 세어요.",
       setup: flip(TOP_FACE),
-      mask: "oll",
+      mask: "f2l-oll",
       quiz: {
         question: "노란색이 위를 보는 코너는 몇 개일까요?",
         choices: ["0개", "1개", "2개"],
@@ -319,7 +319,7 @@ const topFace: Lesson = {
       body: "위를 보는 코너가 하나면 윗면을 돌려 그 코너 블럭을 앞-왼쪽 위에 둬요. 그때 앞-오른쪽 위 코너 블럭의 노란색이 앞을 보면 윗면 공식을 한 번 쳐요. 지금이 그 모양이에요.",
       setup: flip(TOP_FACE),
       alg: TOP_FACE,
-      mask: "oll",
+      mask: "f2l-oll",
     },
     {
       kind: "try",
@@ -327,7 +327,7 @@ const topFace: Lesson = {
       setup: flip(TOP_FACE),
       alg: TOP_FACE,
       goal: "2x2-top-face",
-      mask: "oll",
+      mask: "f2l-oll",
     },
     {
       kind: "try",
@@ -335,7 +335,7 @@ const topFace: Lesson = {
       setup: flip(TOP_FACE_BACK),
       alg: TOP_FACE_BACK,
       goal: "2x2-top-face",
-      mask: "oll",
+      mask: "f2l-oll",
     },
     {
       kind: "try",
@@ -343,7 +343,7 @@ const topFace: Lesson = {
       setup: flip(TOP_NONE_SIDES_SOLVE),
       alg: TOP_NONE_SIDES_SOLVE,
       goal: "2x2-top-face",
-      mask: "oll",
+      mask: "f2l-oll",
     },
     {
       kind: "try",
@@ -351,7 +351,7 @@ const topFace: Lesson = {
       setup: flip(TOP_NONE_SOLVE),
       alg: TOP_NONE_SOLVE,
       goal: "2x2-top-face",
-      mask: "oll",
+      mask: "f2l-oll",
     },
     {
       kind: "try",
@@ -359,14 +359,14 @@ const topFace: Lesson = {
       setup: flip(TOP_TWO_SOLVE),
       alg: TOP_TWO_SOLVE,
       goal: "2x2-top-face",
-      mask: "oll",
+      mask: "f2l-oll",
     },
     {
       kind: "try",
       body: "이제 처음부터 해 봐요. 화면의 2×2는 첫 층만 맞고 위 층은 섞인 상태예요. 위를 보는 노란색을 세고, 하나·없음·둘 가운데 맞는 경우대로 윗면을 노랗게 만들어요. 넷이면 이미 끝이고, 셋인 모양은 생기지 않아요.",
       setup: { rule: "2x2-first-layer-solved" },
       goal: "2x2-top-face",
-      mask: "oll",
+      mask: "f2l-oll",
     },
   ],
 };
