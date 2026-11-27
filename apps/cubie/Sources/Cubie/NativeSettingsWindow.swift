@@ -12,8 +12,12 @@ final class NativeSettingsWindow: NativeSheetWindow {
   let page: SettingsPageView
   private let scroll: ContentScrollView
 
-  init(store: KeyValueStore, onChange: @escaping () -> Void, openWeb: @escaping () -> Void) {
-    page = SettingsPageView(store: store)
+  /// `loginItem`이 없으면(스크린샷·실행 파일을 바로 띄움·측정 모드) 「로그인할 때 열기」를 보이지 않는다
+  init(
+    store: KeyValueStore, loginItem: LoginItemService? = nil, onChange: @escaping () -> Void,
+    openWeb: @escaping () -> Void
+  ) {
+    page = SettingsPageView(store: store, loginItem: loginItem)
     scroll = Self.pageScroll(page)
     super.init(title: "Cubie 키 배치·색", size: Self.size, content: scroll)
     page.onChange = onChange
@@ -63,13 +67,17 @@ final class SettingsPageView: FlippedView {
   private let keyColors = NSButton(checkboxWithTitle: SettingsSheet.keyColors, target: nil, action: nil)
   /// 체크 칸(사이트 차례)
   private var checks: [NSButton] { [stickerless, sound, keyColors] }
+  /// 「로그인할 때 열기」: 켜졌는지는 저장소가 아니라 시스템 로그인 항목 상태(`LoginItem`)
+  private let loginItem: LoginItemService?
+  private let loginCheck = NSButton(checkboxWithTitle: LoginItem.label, target: nil, action: nil)
   private let all = Chip(SettingsSheet.allSettings, look: Chip.Look(fill: NUI.white(0.1), size: 14, padX: 12, padY: 4))
 
   private var settingsText: String? { store.string(CubeSettings.key) }
   private var keymapText: String? { store.string(StoredKeymap.key) }
 
-  init(store: KeyValueStore) {
+  init(store: KeyValueStore, loginItem: LoginItemService? = nil) {
     self.store = store
+    self.loginItem = loginItem
     preview = CACubeView(frame: NSRect(x: 0, y: 0, width: 192, height: 144), n: 3)
     editor = KeymapEditorView(store: store)
     super.init(frame: NSRect(origin: .zero, size: NativeSettingsWindow.size.initial))
@@ -125,8 +133,14 @@ final class SettingsPageView: FlippedView {
       b.action = #selector(toggled(_:))
       b.font = NUI.font(14, mono: false)
     }
+    loginCheck.target = self
+    loginCheck.action = #selector(loginToggled)
+    loginCheck.font = NUI.font(14, mono: false)
+    loginCheck.isHidden = loginItem == nil
     all.action = { [weak self] in self?.openWeb?() }
-    var views: [NSView] = [back, title, keymapTitle, keysMap, keysLearn, customBox, port, colorsTitle, customChip, preview]
+    var views: [NSView] = [
+      back, title, keymapTitle, keysMap, keysLearn, customBox, port, colorsTitle, customChip, preview, loginCheck,
+    ]
     views.append(contentsOf: [viewTitle, speedLabel, speedValue, slider, showLabel, hiddenLabel, all])
     views.append(contentsOf: checks as [NSView])
     views.append(contentsOf: hiddenChips as [NSView])
@@ -180,6 +194,7 @@ final class SettingsPageView: FlippedView {
     stickerless.state = s.stickerless ? .on : .off
     sound.state = s.sound ? .on : .off
     keyColors.state = s.keyColors ? .on : .off
+    if let loginItem { loginCheck.state = LoginItem.isOn(loginItem.status) ? .on : .off }
     for (i, (id, _)) in SettingsSheet.hiddenChoices.enumerated() {
       let on = (id == "gray") == s.hiddenGray
       hiddenChips[i].look = Self.chipLook(on)
@@ -241,6 +256,13 @@ final class SettingsPageView: FlippedView {
   @objc private func toggled(_ b: NSButton) {
     let key = b === stickerless ? "stickerless" : b === sound ? "sound" : "keyColors"
     write(settings: SettingsSheet.updated(settingsText) { $0[key] = b.state == .on })
+  }
+
+  /// 등록·해제한 뒤 시스템 상태를 다시 읽어 보인다(실패하면 원래대로)
+  @objc private func loginToggled() {
+    guard let loginItem else { return }
+    let on = LoginItem.set(loginCheck.state == .on, service: loginItem)
+    loginCheck.state = on ? .on : .off
   }
 
   /// 칩 한 줄을 왼쪽부터 놓는다(gap 8). 끝 x를 돌려준다
@@ -322,6 +344,10 @@ final class SettingsPageView: FlippedView {
     y += 28 + 12
     for b in checks {
       b.frame = NSRect(x: x0, y: y, width: w, height: 20)
+      y += 20 + 12
+    }
+    if !loginCheck.isHidden {
+      loginCheck.frame = NSRect(x: x0, y: y, width: w, height: 20)
       y += 20 + 12
     }
     y += 12
