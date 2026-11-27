@@ -20,9 +20,10 @@ import {
 import { goalMet } from "./judge";
 import {
   BEGINNER_333,
-  CROSS_DOWN_SIDE,
-  CROSS_GUARD,
-  CROSS_TOP_SIDE,
+  CROSS_DOWN,
+  CROSS_FLIP,
+  CROSS_FLIPPED,
+  CROSS_MIDDLE,
   CROSS_TOP_WRONG,
 } from "./lessons-333";
 import { invertAlg, setupFor } from "./notation";
@@ -55,39 +56,65 @@ describe("덩어리를 이으면 쪽의 공식이다", () => {
     });
 });
 
-describe("흰 십자: 흐트러뜨리고 한 수로 바꾸고 되돌린다", () => {
-  it("F D F': F에 이미 올린 흰-초록도 내려가고, F'가 되돌리면 흰-빨강만 아래 층에 흰색이 아래로 남는다", () => {
-    const s = at(CROSS_GUARD.setup);
-    expect(home(s, ["U", "F"])).toBe(true);
-    expect(home(at("F", s), ["U", "F"])).toBe(false);
-    const after = at("F D F'", s);
-    expect(home(after, ["U", "F"])).toBe(true);
-    // 흰-빨강: 아래-오른쪽, 흰색이 아래(빨강 면을 앞으로 돌려 쥐면 첫째 기본 모양)
-    expect(piecePlace(after, ["U", "R"])).toEqual(["D", "R"]);
+describe("흰 십자: 앞면 아래에서 올리고, 옆면은 돌렸으면 되돌린다", () => {
+  const GREEN: Face[] = ["U", "F"];
+  const RED: Face[] = ["U", "R"];
+  const OTHERS: Face[][] = [RED, ["U", "B"], ["U", "L"]];
+
+  it("F2: 아래-앞에서 흰색이 아래면 제자리로, 흰색이 앞이면 제자리에서 뒤집혀 들어간다", () => {
+    expect(piecePlace(at(CROSS_DOWN.setup), GREEN)).toEqual(["D", "F"]);
+    expect(home(at("F2", at(CROSS_DOWN.setup)), GREEN)).toBe(true);
+    const flip = at(CROSS_FLIP.setup);
+    // 흰색이 앞, 초록이 아래
+    expect(piecePlace(flip, GREEN)).toEqual(["F", "D"]);
+    // F2 뒤: 제자리지만 흰색이 앞, 초록이 위
+    expect(piecePlace(at("F2", flip), GREEN)).toEqual(["F", "U"]);
   });
 
-  it("F D' F': 아래 층 흰-빨강이 앞-오른쪽으로 올라와 빨강 스티커가 빨강 센터 쪽(오른쪽)을 본다", () => {
-    const after = at("F D' F'", at(CROSS_DOWN_SIDE.setup));
-    expect(home(after, ["U", "F"])).toBe(true);
-    expect(piecePlace(after, ["U", "R"])).toEqual(["F", "R"]);
+  it("D R F' R': D로 아래-오른쪽에 흰색이 오른쪽, R로 앞-오른쪽에 세우며 흰-빨강이 빠지고, F'로 올리고, R'로 흰-빨강을 되돌린다", () => {
+    const s = at(CROSS_FLIP.setup);
+    const d = at("D", s);
+    expect(piecePlace(d, GREEN)).toEqual(["R", "D"]);
+    const r = at("R", d);
+    // 초록 스티커가 앞(초록 센터 쪽), 흰 스티커가 오른쪽
+    expect(piecePlace(r, GREEN)).toEqual(["R", "F"]);
+    expect(home(r, RED)).toBe(false);
+    expect(where(r, RED)).toBe("BR");
+    const f = at("F'", r);
+    expect(home(f, GREEN)).toBe(true);
+    expect(home(f, RED)).toBe(false);
+    const back = at("R'", f);
+    expect(home(back, RED)).toBe(true);
+    expect(goalMet(3, back, "white-cross")).toBe(true);
   });
 
-  it("위 층 흰색 옆: y' F로 내리면 짝 색이 같은 색 센터 쪽인 가운데 층(둘째 기본 모양)", () => {
-    const s = at(CROSS_TOP_SIDE.setup);
-    // 흰-초록이 위-왼쪽, 흰색이 왼쪽
-    expect(piecePlace(s, ["U", "F"])).toEqual(["L", "U"]);
-    const down = at("y' F", s);
-    // 돌려 쥔 뒤 오른쪽 면이 초록(맞춘 큐브의 F 센터): 초록 스티커가 그 면을 본다
-    const [white, green] = piecePlace(down, ["U", "F"]);
-    expect(white).toBe("F");
-    expect(green).toBe("R");
-    expect(goalMet(3, at("y F", down), "white-cross")).toBe(true);
+  it("R' D' R: 앞-오른쪽 블럭을 아래-앞으로 내리고, 함께 앞-오른쪽으로 내려온 흰-빨강을 되돌린다", () => {
+    const s = at(CROSS_MIDDLE.setup);
+    expect(where(s, GREEN)).toBe("FR");
+    const r1 = at("R'", s);
+    expect(where(r1, GREEN)).toBe("DR");
+    expect(where(r1, RED)).toBe("FR");
+    const r2 = at("D'", r1);
+    expect(where(r2, GREEN)).toBe("DF");
+    const r3 = at("R", r2);
+    expect(home(r3, RED)).toBe(true);
+    // 흰색이 아래: 첫째 기본 모양
+    expect(piecePlace(r3, GREEN)).toEqual(["D", "F"]);
   });
 
-  it("위 층 흰색 위 다른 자리: F2로 내리면 흰색이 아래를 본다(첫째 기본 모양)", () => {
+  it("위 층 F2: 위-앞 블럭만 아래-앞으로 내려가고 다른 흰 엣지는 그대로다", () => {
+    const after = at("F2", at(CROSS_FLIPPED.setup));
+    expect(piecePlace(after, GREEN)).toEqual(["F", "D"]);
+    for (const p of OTHERS) expect(home(after, p), p.join("")).toBe(true);
+  });
+
+  it("위 층 흰색 위 다른 자리: 빨강 면을 앞으로 쥐고 F2로 내리면 빨강 센터 밑의 흰-빨강이 함께 올라가 제자리에 든다", () => {
     const s = at(CROSS_TOP_WRONG.setup);
-    expect(piecePlace(s, ["U", "F"])[0]).toBe("U");
-    expect(piecePlace(at("y F2", s), ["U", "F"])[0]).toBe("D");
+    expect(where(s, GREEN)).toBe("RU");
+    expect(piecePlace(s, RED)).toEqual(["D", "R"]);
+    const after = at("y F2 y'", s);
+    expect(home(after, RED)).toBe(true);
+    expect(piecePlace(after, GREEN)).toEqual(["D", "R"]);
   });
 });
 

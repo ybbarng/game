@@ -294,7 +294,10 @@ export const SHEETS = {
   "ll-compare":
     "초보자 해법 마지막 층과 2단계 OLL·PLL 견주기(two-look-sheets.ts LL_COMPARE_TABLE)",
   // 3×3 처음 맞추기 단계마다 나올 수 있는 모든 경우(beginner-cases.ts, docs/47 16-32)
-  "beginner-cross": "흰 십자: 흰 엣지 블럭이 있을 수 있는 여섯 경우",
+  "beginner-cross-look":
+    "흰 십자: 흰 엣지 블럭이 있을 수 있는 여섯 모양(첫머리, 올리는 법을 배우기 전이라 할 일 없이)",
+  "beginner-cross":
+    "흰 십자: 흰 엣지 블럭의 여섯 모양과 모양마다 할 일(제자리는 두고, 아래 층은 올리고, 가운데·위 층은 내린다)",
   "beginner-corners-look":
     "첫 층 코너: 흰 코너 블럭의 여섯 경우(첫머리, 공식을 배우기 전이라 횟수 없이)",
   "beginner-corners":

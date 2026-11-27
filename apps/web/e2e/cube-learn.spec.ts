@@ -292,22 +292,23 @@ test(
 );
 
 test(
-  "배우기: 흰 십자 경우별 해 보기(가운데 층, 짝 색 쪽 면으로 올리기)",
+  "배우기: 흰 십자 경우별 해 보기(흰색이 옆, 옆으로 옮겨 세우고 올린 뒤 되돌리기)",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
     await useNotationKeys(page);
     await page.goto("/cube/learn?lesson=333-white-cross");
-    // 12번: 흰색이 앞을 보는 가운데 층 엣지를 빨강 면을 앞으로 돌려 쥐고(y) 앞면으로 올린다(F)
-    await goStep(page, 12);
+    // 8번: 빨강 센터 밑에서 흰색이 옆을 보는 엣지를 빨강 센터를 앞으로 돌려 쥐고(y) 옆으로 옮겨(D) 세우고(R)
+    // 올리고(F') 되돌린다(R')
+    await goStep(page, 8);
     const section = page.locator("[data-step-kind]");
     await expect(section).toHaveAttribute("data-step-kind", "try");
-    await expect(section).toContainText("빨강 면을 앞으로");
+    await expect(section).toContainText("빨강 센터를 앞으로");
     await inputReady(page);
     await shot(page, "learn-cross-case", info.project.name);
 
     // 키보드 조작은 데스크톱만
-    // 힌트는 한 수씩 보여 준다(y F)
-    for (const want of ["y", "F"]) {
+    // 힌트는 한 수씩 보여 준다(y D R F' R')
+    for (const want of ["y", "D", "R", "F'", "R'"]) {
       await page.locator("[data-cube-hint-button]").click();
       const hint = page.locator("[data-cube-hint]");
       await expect(hint).toHaveAttribute("data-cube-hint", want);

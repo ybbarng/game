@@ -15,14 +15,23 @@ import { COURSES } from "./index";
 import { findHit, revealFound } from "./interact";
 import { goalMet, maskFor } from "./judge";
 import {
-  CROSS_DOWN_SIDE,
-  CROSS_DOWN_SIDE_TRY,
+  CROSS_DOWN,
+  CROSS_DOWN_FAR,
+  CROSS_DOWN_L,
+  CROSS_DOWN_MOVE,
+  CROSS_DOWN_R,
+  CROSS_FLIP,
+  CROSS_FLIP_R,
   CROSS_FLIPPED,
   CROSS_FLIPPED_TRY,
-  CROSS_GUARD,
-  CROSS_GUARD_TRY,
   CROSS_MIDDLE,
-  CROSS_MIDDLE_R,
+  CROSS_MIDDLE_L,
+  CROSS_MIDDLE_SIDE,
+  CROSS_SIDE,
+  CROSS_SIDE_MOVE,
+  CROSS_SIDE_TRY,
+  CROSS_TOP_WRONG,
+  CROSS_TOP_WRONG_TRY,
   CROSS_WRONG_TOP,
   CROSS_WRONG_TOP_TRY,
   SAFE_SETUP,
@@ -127,67 +136,111 @@ describe("흰 십자: 경우별 시연", () => {
     }
   });
 
+  // 상황마다 글(where·쪽 글)이 말하는 자리, 그 자리의 색, 흰 스티커가 보는 면
+  const PLACES: [string, { setup: string }, FaceLetter[], number[], number][] =
+    [
+      ["아래-앞, 흰색 아래", CROSS_DOWN, ["D", "F"], [0, 2], F.D],
+      ["흰-빨강 빨강 센터 밑", CROSS_DOWN_R, ["D", "R"], [0, 1], F.D],
+      ["흰-주황 주황 센터 밑", CROSS_DOWN_L, ["D", "L"], [0, 4], F.D],
+      ["아래-오른쪽, 흰색 아래", CROSS_DOWN_MOVE, ["D", "R"], [0, 2], F.D],
+      ["아래-앞, 흰색 앞", CROSS_FLIP, ["D", "F"], [0, 2], F.F],
+      ["흰-빨강 빨강 센터 밑, 흰색 옆", CROSS_FLIP_R, ["D", "R"], [0, 1], F.R],
+      ["아래-오른쪽, 흰색 오른쪽", CROSS_SIDE, ["D", "R"], [0, 2], F.R],
+      ["아래-뒤, 흰색 뒤", CROSS_SIDE_MOVE, ["D", "B"], [0, 2], F.B],
+      [
+        "흰-주황 아래-오른쪽, 흰색 오른쪽",
+        CROSS_SIDE_TRY,
+        ["D", "R"],
+        [0, 4],
+        F.R,
+      ],
+      ["앞-오른쪽, 흰색 앞", CROSS_MIDDLE, ["F", "R"], [0, 2], F.F],
+      ["앞-왼쪽, 흰색 왼쪽", CROSS_MIDDLE_L, ["F", "L"], [0, 2], F.L],
+      ["앞-오른쪽, 흰색 오른쪽", CROSS_MIDDLE_SIDE, ["F", "R"], [0, 2], F.R],
+      ["제자리에서 뒤집힘", CROSS_FLIPPED, ["U", "F"], [0, 2], F.F],
+      ["흰-빨강 제자리에서 뒤집힘", CROSS_FLIPPED_TRY, ["U", "R"], [0, 1], F.R],
+      ["흰-초록이 흰-빨강 자리", CROSS_TOP_WRONG, ["U", "R"], [0, 2], F.U],
+      ["흰-빨강이 위-앞", CROSS_WRONG_TOP, ["U", "F"], [0, 1], F.U],
+      ["흰-주황이 위-오른쪽", CROSS_WRONG_TOP_TRY, ["U", "R"], [0, 4], F.U],
+    ];
+
   it("글이 말하는 엣지 자리와 흰색이 보는 쪽", () => {
-    const at = (c: { setup: string }) => play(3, c.setup);
-    // 가운데 줄 앞-오른쪽: 흰색이 오른쪽 / 앞
-    expect(faceOf(3, at(CROSS_MIDDLE), ["F", "R"], WHITE)).toBe(F.R);
-    expect(faceOf(3, at(CROSS_MIDDLE_R), ["F", "R"], WHITE)).toBe(F.F);
-    expect(faceOf(3, at(CROSS_GUARD), ["F", "R"], WHITE)).toBe(F.R);
-    // 흰-빨강인데 빨강이 앞면에 붙음
-    expect(faceOf(3, at(CROSS_GUARD), ["F", "R"], F.R)).toBe(F.F);
-    // 흰-초록인데 초록이 오른쪽 면에 붙음
-    expect(faceOf(3, at(CROSS_GUARD_TRY), ["F", "R"], F.F)).toBe(F.R);
-    // 아래층 흰색 옆: 흰-빨강이 아래-오른쪽(흰색 오른쪽), 흰-초록이 아래-앞(흰색 앞)
-    expect(colorsAt(3, at(CROSS_DOWN_SIDE), ["D", "R"])).toEqual([0, 1]);
-    expect(faceOf(3, at(CROSS_DOWN_SIDE), ["D", "R"], WHITE)).toBe(F.R);
-    expect(colorsAt(3, at(CROSS_DOWN_SIDE_TRY), ["D", "F"])).toEqual([0, 2]);
-    expect(faceOf(3, at(CROSS_DOWN_SIDE_TRY), ["D", "F"], WHITE)).toBe(F.F);
-    // 윗층 제자리에서 뒤집힘
-    expect(colorsAt(3, at(CROSS_FLIPPED), ["U", "F"])).toEqual([0, 2]);
-    expect(faceOf(3, at(CROSS_FLIPPED), ["U", "F"], WHITE)).toBe(F.F);
-    expect(colorsAt(3, at(CROSS_FLIPPED_TRY), ["U", "R"])).toEqual([0, 1]);
-    expect(faceOf(3, at(CROSS_FLIPPED_TRY), ["U", "R"], WHITE)).toBe(F.R);
-    // 윗층 흰색 위, 엉뚱한 자리: 흰-빨강이 위-앞, 흰-주황이 위-오른쪽
-    expect(colorsAt(3, at(CROSS_WRONG_TOP), ["U", "F"])).toEqual([0, 1]);
-    expect(faceOf(3, at(CROSS_WRONG_TOP), ["U", "F"], WHITE)).toBe(F.U);
-    expect(colorsAt(3, at(CROSS_WRONG_TOP_TRY), ["U", "R"])).toEqual([0, 4]);
+    for (const [name, c, at, colors, white] of PLACES) {
+      const s = play(3, c.setup);
+      expect(colorsAt(3, s, at), name).toEqual(colors);
+      expect(faceOf(3, s, at, WHITE), name).toBe(white);
+    }
   });
 
-  it("경우별 모범 답은 힌트(경우별 정해진 길)가 내는 수와 같고, F·D·y만 쓴다", () => {
+  it("경우별 모범 답은 힌트(경우별 정해진 길)가 내는 수와 같다", () => {
     for (const c of [
+      CROSS_DOWN,
+      CROSS_DOWN_R,
+      CROSS_DOWN_L,
+      CROSS_DOWN_MOVE,
+      CROSS_DOWN_FAR,
+      CROSS_FLIP,
+      CROSS_FLIP_R,
+      CROSS_SIDE,
+      CROSS_SIDE_MOVE,
+      CROSS_SIDE_TRY,
       CROSS_MIDDLE,
-      CROSS_MIDDLE_R,
-      CROSS_GUARD,
-      CROSS_GUARD_TRY,
-      CROSS_DOWN_SIDE,
-      CROSS_DOWN_SIDE_TRY,
+      CROSS_MIDDLE_L,
+      CROSS_MIDDLE_SIDE,
       CROSS_FLIPPED,
       CROSS_FLIPPED_TRY,
+      CROSS_TOP_WRONG,
+      CROSS_TOP_WRONG_TRY,
       CROSS_WRONG_TOP,
       CROSS_WRONG_TOP_TRY,
     ]) {
       const plan = makeHintPlan("cross", play(3, c.setup));
       expect(plan?.moves.join(" "), c.alg).toBe(c.alg);
-      expect(c.alg).toMatch(/^([FDy]['2]? ?)+$/);
     }
   });
 
-  it("단원의 흰 십자 모범 답은 모두 F·D·y만 쓴다", () => {
-    for (const step of lesson.steps)
-      if (step.alg) expect(step.alg, step.body).toMatch(/^([FDy]['2]? ?)+$/);
+  it("단원의 흰 십자 모범 답은 y·D·F와, 같은 공식 안에서 되돌리는 오른쪽 면(R F' R'·R' D' R)만 쓴다", () => {
+    for (const step of lesson.steps) {
+      if (!step.alg) continue;
+      const rest = step.alg.replaceAll("R F' R'", "").replaceAll("R' D' R", "");
+      expect(rest, step.alg).toMatch(/^([FDy]['2]? ?|\s)*$/);
+    }
   });
 
-  it("고르기: 가운데 줄은 옆색이 붙은 면을 앞으로 가져와 앞면으로 올린다", () => {
-    const s = play(3, CROSS_MIDDLE_R.setup);
+  it("고르기: 아래-앞에서 흰색이 앞이면 F2로 올려도 제자리에서 뒤집혀 들어간다", () => {
+    const s = play(3, "F2", play(3, CROSS_FLIP.setup));
+    expect(goalMet(3, s, "white-cross")).toBe(false);
+    expect(colorsAt(3, s, ["U", "F"])).toEqual([0, 2]);
+    expect(faceOf(3, s, ["U", "F"], WHITE)).toBe(F.F);
+  });
+
+  it("고르기: 아래-오른쪽에서 흰색이 오른쪽이면 R부터 친다(D부터 치면 아래-뒤로 비켜나 R F' R'로 맞지 않는다)", () => {
+    const s = play(3, CROSS_SIDE.setup);
     const ok = (alg: string) => goalMet(3, play(3, alg, s), "white-cross");
-    expect(ok("y F")).toBe(true);
-    for (const wrong of ["F", "F'", "U", "U'"]) expect(ok(wrong)).toBe(false);
+    expect(ok("R F' R'")).toBe(true);
+    expect(colorsAt(3, play(3, "D", s), ["D", "B"])).toEqual([0, 2]);
+    for (const wrong of ["D R F' R'", "F2"])
+      expect(ok(wrong), wrong).toBe(false);
   });
 
-  it("고르기: 아래층 흰색 옆을 반 바퀴로 올리면 뒤집혀 올라간다", () => {
-    const s = play(3, `${CROSS_DOWN_SIDE.setup} R2`);
-    expect(colorsAt(3, s, ["U", "R"])).toEqual([0, 1]);
-    expect(faceOf(3, s, ["U", "R"], WHITE)).toBe(F.R);
+  it("고르기: 흰 엣지 셋을 올린 큐브에서 아랫면은 몇 번 돌려도 셋이 그대로이고, 오른쪽 면·윗면은 흐트러뜨린다", () => {
+    const s = play(3, CROSS_SIDE_MOVE.setup);
+    const placed = (t: PuzzleState) =>
+      (
+        [
+          ["U", "R"],
+          ["U", "B"],
+          ["U", "L"],
+        ] as FaceLetter[][]
+      ).filter(
+        (at) =>
+          faceOf(3, t, at, WHITE) === F.U &&
+          colorsAt(3, t, at)[1] === F[at[1] as FaceLetter],
+      ).length;
+    expect(placed(s)).toBe(3);
+    for (const d of ["D", "D'", "D2"]) expect(placed(play(3, d, s)), d).toBe(3);
+    expect(placed(play(3, "R", s))).toBe(2);
+    expect(placed(play(3, "U", s))).toBe(0);
   });
 });
 
