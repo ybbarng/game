@@ -30,6 +30,7 @@ import {
   hrefOf,
   LoopChip,
   type MapCtx,
+  MethodAlias,
   NodeCube,
   ProgressSr,
   toggleClick,
@@ -215,11 +216,14 @@ export function CardsView({
           data-card={m.id}
         >
           <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <span
-              className="break-keep font-semibold text-lg"
-              style={{ color: METHOD_COLOR[m.id] }}
-            >
-              {m.title}
+            <span className="flex min-w-0 flex-col">
+              <span
+                className="break-keep font-semibold text-lg"
+                style={{ color: METHOD_COLOR[m.id] }}
+              >
+                {m.title}
+              </span>
+              <MethodAlias m={m} className="text-sm" />
             </span>
             <Totals m={m} />
           </span>
@@ -254,11 +258,9 @@ export function MethodScreen({
         >
           ← 해법 목록
         </button>
-        <h2
-          className="break-keep font-semibold text-xl"
-          style={{ color: METHOD_COLOR[m.id] }}
-        >
-          {m.title}
+        <h2 className="flex flex-col break-keep font-semibold text-xl">
+          <span style={{ color: METHOD_COLOR[m.id] }}>{m.title}</span>
+          <MethodAlias m={m} className="text-sm" />
         </h2>
         <Totals m={m} />
       </div>

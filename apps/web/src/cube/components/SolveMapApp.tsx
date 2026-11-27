@@ -45,7 +45,7 @@ import { loadRecords, type SolveRecord } from "../records";
 import { useCubeSettings } from "../settings";
 import { SizePicker } from "./SizePicker";
 import { CardsView } from "./SolveMapCards";
-import { type MapCtx, MapView } from "./SolveMapViews";
+import { type MapCtx, MapView, MethodAlias } from "./SolveMapViews";
 import {
   isExtra,
   METHOD_COLOR,
@@ -436,6 +436,7 @@ export function MapScreen({
                     style={{ background: METHOD_COLOR[m.id] }}
                   />
                   <span className="font-medium">{m.title}</span>
+                  <MethodAlias m={m} className="text-xs" />
                   {t.formulas !== null && (
                     <span className="whitespace-nowrap text-white/60 text-xs">
                       공식 {t.formulas}개

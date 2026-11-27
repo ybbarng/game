@@ -30,6 +30,10 @@ describe("강 화면 이동 경로의 해법 이름(docs/47 16-31)", () => {
   it("3×3은 해법 이름만, 다른 크기는 크기를 앞에 붙인다", () => {
     expect(courseMethod(course("cfop"))?.label).toBe("CFOP 해법");
     expect(courseMethod(course("333-beginner"))?.label).toBe("초보자 해법");
+    // 둘째 이름이 있는 해법은 함께 적고 「해법」을 두 번 쓰지 않는다(2026-11-27 사용자)
+    expect(courseMethod(course("333-twist-first"))?.label).toBe(
+      "초보자(코너 방향 먼저) · 신광사 해법",
+    );
     expect(courseMethod(course("222-beginner"))?.label).toBe(
       "2×2 처음 맞추기 해법",
     );

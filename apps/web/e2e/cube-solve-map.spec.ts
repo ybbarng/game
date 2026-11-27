@@ -51,6 +51,11 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
     "zz",
     "petrus",
   ]);
+  // 초보자(코너 방향 먼저) 카드에는 둘째 이름 「신광사 해법」이 함께 보이고, 다른 카드에는 둘째 이름이 없다(2026-11-27)
+  await expect(page.locator("[data-card] [data-method-alias]")).toHaveCount(1);
+  await expect(
+    page.locator('[data-card="beginner-twist-first"] [data-method-alias]'),
+  ).toHaveText("신광사 해법");
   const cfop = page.locator('[data-card="cfop"]');
   await expect(cfop.locator("[data-strip-node]")).toHaveCount(5);
   await expect(cfop.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
@@ -108,8 +113,14 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await screen.locator("[data-method-back]").click();
   await expect(page).toHaveURL(/\/cube\/methods$/);
   await expect(page.locator('[data-card="cfop"]')).toBeVisible();
-  // 코너 방향 먼저(신광사 해법)의 일곱 걸음은 그 강의 단원으로 간다(docs/47 16-33)
+  // 코너 방향 먼저(신광사 해법)의 일곱 걸음은 그 강의 단원으로 간다(docs/47 16-33). 머리에는 두 이름이 함께 보인다
   await page.goto("/cube/methods?method=beginner-twist-first");
+  await expect(page.locator("[data-method-screen] h2")).toContainText(
+    "초보자(코너 방향 먼저)",
+  );
+  await expect(
+    page.locator("[data-method-screen] h2 [data-method-alias]"),
+  ).toHaveText("신광사 해법");
   for (const [edge, lesson] of [
     ["twist-first-cross", "333-tf-cross"],
     ["twist-first-corners", "333-tf-corners"],

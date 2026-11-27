@@ -836,6 +836,11 @@ export type MapMethodId =
 export interface MapMethod {
   id: MapMethodId;
   title: string;
+  /**
+   * 함께 부르는 둘째 이름. 이름이 보이는 곳(카드·해법 화면 머리·지도의 해법 칩·강 경로)에 이름과 함께 보인다
+   * (2026-11-27 사용자: 「초보자(코너 방향 먼저)」는 그대로 두고 「신광사 해법」을 함께 적는다)
+   */
+  alias?: string;
   /** 기본으로 접어 두는 해법(사이트에 단원이 없거나 다른 크기). 켜고 끌 수 있다 */
   extra?: boolean;
   /** 길을 누르면 이 과정의 단원을 먼저 연다(길에 단원이 여럿일 때) */
@@ -875,6 +880,7 @@ const MAP_METHODS_3: readonly MapMethod[] = [
   {
     id: "beginner-twist-first",
     title: "초보자(코너 방향 먼저)",
+    alias: "신광사 해법",
     course: "333-twist-first",
     edges: [
       "twist-first-cross",
