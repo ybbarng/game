@@ -62,7 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       return
     }
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    statusItem.button?.image = Self.menuIcon("MenuIcon", fallback: "cube", label: "Cubie")
     let menu = NSMenu()
     menu.delegate = self
     statusItem.menu = menu
@@ -70,11 +69,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     hotKey = HotKey { [weak self] in self?.toggleFocus() }
     hotKeyOK = hotKey.register(keyCode: Config.hotKeyCode, modifiers: Config.hotKeyModifiers)
     if Config.debug { print("[cubie] hotkey \(Config.hotKeyLabel) registered=\(hotKeyOK)"); fflush(stdout) }
-    if !hotKeyOK {
-      // 다른 앱이 이미 잡았다: 메뉴 막대 아이콘에 표시하고 메뉴 첫 줄에 알린다
-      statusItem.button?.image = Self.menuIcon(
-        "MenuIconWarn", fallback: "exclamationmark.triangle", label: "Cubie 단축키 실패")
+    // 단축키를 다른 앱이 이미 잡았으면(`hotKeyOK` 거짓) 메뉴 막대 아이콘에 딱지를 붙이고 메뉴 첫 줄에 알린다
+    updateMenuIcon()
+    // 막대 밝기(배경 화면에 따라 밝은·어두운 막대)가 바뀌면 단색 층 색을 다시 고른다
+    menuIconAppearance = statusItem.button?.observe(\.effectiveAppearance) { [weak self] _, _ in
+      DispatchQueue.main.async { self?.updateMenuIcon() }
     }
+    // 크기를 바꾸거나 판을 맞춰 티어가 바뀌면 다시 그린다
+    cube.onProfile = { [weak self] in self?.updateMenuIcon() }
 
     // 다른 앱이 앞으로 올 때마다 기억한다(창을 직접 눌러 왔을 때도 Esc로 돌아갈 곳)
     NSWorkspace.shared.notificationCenter.addObserver(
@@ -150,17 +152,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + LaunchGuard.clearDelay) { Launch.finished() }
   }
 
-  /// 메뉴 막대 아이콘: .app 안 Resources의 템플릿 그림(1x·2x, 맥이 막대 색에 맞춰 칠한다).
-  /// .app 밖에서 실행 파일만 띄웠으면 그림이 없어 SF Symbol로 대신한다
-  private static func menuIcon(_ name: String, fallback: String, label: String) -> NSImage? {
-    if let image = Bundle.main.image(forResource: name) {
-      image.size = NSSize(width: 18, height: 18)
-      image.isTemplate = true
-      image.accessibilityDescription = label
-      return image
-    }
-    return NSImage(systemSymbolName: fallback, accessibilityDescription: label)
+  /// 메뉴 막대 아이콘(docs/52 5-26): 지금 크기에 티어가 있으면 그 티어 엠블럼과 크기 숫자, 없으면 기본 아이콘.
+  /// 단축키 실패면 어느 쪽이든 오른쪽 아래 느낌표 딱지. 그린 것과 같으면 그대로 둔다
+  private func updateMenuIcon() {
+    guard let button = statusItem?.button else { return }
+    let look = MenuTierIcon.look(tier: cube.profile.emblemTier, n: cube.state.n, warn: !hotKeyOK)
+    let dark = button.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    // 기본 아이콘은 템플릿이라 막대 밝기와 상관없다
+    let key = MenuIconKey(look: look, dark: { if case .plain = look { return false } else { return dark } }())
+    guard key != menuIconKey else { return }
+    menuIconKey = key
+    button.image = MenuIconArt.image(look, dark: dark)
+    if Config.debug { print("[cubie] menu icon \(look) dark=\(dark)"); fflush(stdout) }
   }
+
+  private struct MenuIconKey: Equatable {
+    var look: MenuTierIcon.Look
+    var dark: Bool
+  }
+  private var menuIconKey: MenuIconKey?
+  private var menuIconAppearance: NSKeyValueObservation?
 
   func applicationWillTerminate(_ notification: Notification) {
     hotKey?.unregister()
