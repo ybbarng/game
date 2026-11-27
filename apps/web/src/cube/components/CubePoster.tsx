@@ -32,9 +32,11 @@ const BODY_FILL: Partial<Record<Normal, string>> = {
 const EDGE_LIGHT = "rgba(255,255,255,0.13)";
 const BODY_DEFAULT = "#0d0d0f";
 const HIDDEN = { black: 0x111111, gray: 0x6b6b6b } as const;
+/** 거울 판 칸 색에 곱하는 값(3D 장면 cube-view.ts MIRROR_TINT, 조명 없이 칠한다) */
+const MIRROR_TINT = 0.86;
 
-function shade(color: number, k: number): string {
-  const ch = (v: number) => Math.min(255, Math.round(v * k + SHADE_LIFT));
+function shade(color: number, k: number, lift = SHADE_LIFT): string {
+  const ch = (v: number) => Math.min(255, Math.round(v * k + lift));
   const r = ch((color >> 16) & 255);
   const g = ch((color >> 8) & 255);
   const b = ch(color & 255);
@@ -54,7 +56,13 @@ export function CubePoster({
   patterns,
   slotOf,
   onSticker,
+  mirror = false,
 }: {
+  /**
+   * 3D 장면의 거울 판(뒤·왼쪽·아랫면의 거울상)을 같은 자리·같은 크기로 함께 그린다. 카메라도 장면처럼 큐브와 판 셋이
+   * 다 들어오는 자리로 물러난다. 배우기의 작은 그림이 여럿인 곳(단계 띠·경우 표)이 쓴다(docs/47 16-37)
+   */
+  mirror?: boolean;
   /**
    * 스티커 정체 → 지금 자리 번호(f*n*n + k). 주면 칸마다 자리·가림·표시를 속성(`data-sticker` 등)으로 달아
    * 시험과 누르기가 읽는다. 뒤쪽 그림(돌려 쥔 상태)도 원래 상태의 자리를 알린다
@@ -77,8 +85,9 @@ export function CubePoster({
   shadow?: boolean;
   className?: string;
 }) {
-  const s = posterShapes(n, stickers, width, height, stickerless);
+  const s = posterShapes(n, stickers, width, height, stickerless, mirror);
   const gid = `cube-poster-shadow-${n}`;
+  const glassId = `cube-poster-glass-${n}`;
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
@@ -87,6 +96,7 @@ export function CubePoster({
       className={className}
       aria-hidden
       data-cube-poster={n}
+      data-cube-poster-mirror={s.mirror ? "" : undefined}
     >
       {shadow && (
         <>
@@ -104,6 +114,49 @@ export function CubePoster({
             ry={s.shadow.ry}
             fill={`url(#${gid})`}
           />
+        </>
+      )}
+      {s.mirror && (
+        <>
+          <defs>
+            {/* 3D 장면 판 무늬(cube-view.ts glassTexture)의 바탕 기울기와 테두리 */}
+            <linearGradient id={glassId} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="rgb(46,56,78)" stopOpacity={0.62} />
+              <stop offset="1" stopColor="rgb(14,18,28)" stopOpacity={0.5} />
+            </linearGradient>
+          </defs>
+          {s.mirror.plates.map((p) => (
+            <polygon
+              key={p.normal}
+              points={p.points}
+              fill={`url(#${glassId})`}
+              stroke="rgba(255,255,255,0.26)"
+              strokeWidth={0.8}
+              strokeLinejoin="round"
+              data-poster-plate={p.normal}
+            />
+          ))}
+          {s.mirror.cells.map((c, i) => {
+            const color =
+              c.color === null ? HIDDEN[hidden] : (colors[c.color] ?? 0);
+            const mark = c.mark ?? null;
+            return (
+              <polygon
+                // biome-ignore lint/suspicious/noArrayIndexKey: 판 칸 차례가 곧 열쇠
+                key={`m${i}`}
+                points={c.points}
+                fill={shade(color, MIRROR_TINT, 0)}
+                stroke={mark ? hexColor(MARK_COLOR[mark]) : undefined}
+                strokeWidth={mark ? 1.6 : undefined}
+                strokeLinejoin="round"
+                data-poster-mirror={c.color ?? "hidden"}
+                data-mirror-face={c.normal}
+                data-mirror-sticker={
+                  slotOf && c.id !== undefined ? slotOf(c.id) : undefined
+                }
+              />
+            );
+          })}
         </>
       )}
       {s.body.map((b) => (

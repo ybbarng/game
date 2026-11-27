@@ -1,4 +1,4 @@
-import type { BackView } from "./settings";
+import type { BackView, CubeSettings } from "./settings";
 
 /**
  * 뒷면 보기(docs/47 5절, 2026-11-04): 설정 「거울 / 끔」과 놓인 자리에서 실제로 무엇을 보일지 정한다.
@@ -31,6 +31,20 @@ export function backViewFor(
   if (!can3d) return "off";
   if (setting === "mirror" && width !== null && width < minWidth) return "off";
   return setting;
+}
+
+/**
+ * 배우기 강 안 큐브의 뒷면 보기(docs/47 16-37, 2026-11-27 사용자 「강의 안의 큐브도 거울상 만들어서 큐비랑 맞춰줘」).
+ * 강의 모든 큐브(시연·문제·찾기·곁 그림·단계 띠·경우 표)가 해 보기 큐브와 같은 스위치를 따른다: 설정 「거울 / 끔」이
+ * 거울이고, 해 보기 큐브 곁 「거울」 스위치(`backViewShown`)가 켜져 있을 때만 거울. Cubie가 메뉴 「거울」 하나로
+ * 맞추기·다시 보기를 함께 켜고 끄는 것과 같다
+ */
+export function lessonBackView(
+  settings: Pick<CubeSettings, "backView" | "backViewShown">,
+): BackView {
+  return settings.backView === "mirror" && settings.backViewShown
+    ? "mirror"
+    : "off";
 }
 
 /**

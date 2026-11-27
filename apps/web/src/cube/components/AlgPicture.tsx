@@ -17,6 +17,11 @@ const TOP_SETS: ReadonlySet<AlgSet> = new Set([
   "ortega-pbl",
 ]);
 
+/** 그 묶음 그림이 윗면 평면도인지 */
+export function isTopSet(set: AlgSet): boolean {
+  return TOP_SETS.has(set);
+}
+
 const U = 0;
 const R = 1;
 const F = 2;
@@ -35,7 +40,10 @@ export function AlgPicture({
   colors,
   className,
   mask,
+  mirror = false,
 }: {
+  /** 비스듬한 큐브에 거울 판(배우기 경우 표, docs/47 16-37). 윗면 평면도에는 쓰지 않는다 */
+  mirror?: boolean;
   set: AlgSet;
   n: number;
   state: PuzzleState;
@@ -60,6 +68,7 @@ export function AlgPicture({
         width={200}
         height={200}
         shadow={false}
+        mirror={mirror}
         className={className}
       />
     );

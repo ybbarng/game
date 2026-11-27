@@ -35,7 +35,13 @@ export function CubePosterPair({
   onSticker,
   hidden,
   frontOnly = false,
+  mirror = false,
 }: {
+  /**
+   * 그림 둘 대신 큐브 하나 + 거울 판(3D 장면과 같은 자리·크기, `CubePoster` `mirror`). 배우기의 작은 그림이
+   * 여럿인 곳이 쓴다(docs/47 16-37). 이때는 그림 아래 글을 달지 않는다
+   */
+  mirror?: boolean;
   /** 앞쪽(위·앞·오른쪽) 한 장만(좁은 자리의 작은 그림) */
   frontOnly?: boolean;
   /** 가림(스티커 정체마다). 가린 칸은 `hidden` 색으로 */
@@ -79,6 +85,26 @@ export function CubePosterPair({
     return (id: number) => at.get(id) ?? id;
   }, [state]);
   if (!sides) return <>{fallback ?? null}</>;
+  if (mirror)
+    return (
+      <div className={className} data-cube-posters="mirror">
+        <CubePoster
+          n={n}
+          stickers={sides[0].stickers}
+          colors={lookColors(settings.colors, look)}
+          patterns={lookPatterns(look)}
+          width={POSTER_PX}
+          height={POSTER_PX}
+          stickerless={settings.stickerless}
+          hidden={hidden ?? settings.hidden}
+          slotOf={slotOf}
+          onSticker={onSticker}
+          shadow={settings.quality !== "low"}
+          mirror
+          className="h-auto w-full"
+        />
+      </div>
+    );
   return (
     <div
       className={cn(

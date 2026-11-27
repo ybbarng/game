@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   backViewFor,
   backViewText,
+  lessonBackView,
   MIRROR_MIN_WIDTH,
   MIRROR_VIEW_MIN_WIDTH,
 } from "./back-view";
 import { COURSES } from "./learn";
+import { DEFAULT_SETTINGS } from "./settings";
 
 describe("뒷면 보기 고르기", () => {
   it("3D를 못 그리면 거울 없이(큐브 그림 둘이 여섯 면을 보인다)", () => {
@@ -28,6 +30,19 @@ describe("뒷면 보기 고르기", () => {
     expect(backViewFor("mirror", w, true, w)).toBe("mirror");
     expect(backViewFor("mirror", w - 1, true, w)).toBe("off");
     expect(backViewFor("off", 800, true, w)).toBe("off");
+  });
+
+  it("강 안 큐브는 설정이 거울이고 해 보기 「거울」 스위치가 켜졌을 때만 거울", () => {
+    expect(lessonBackView({ backView: "mirror", backViewShown: true })).toBe(
+      "mirror",
+    );
+    expect(lessonBackView({ backView: "mirror", backViewShown: false })).toBe(
+      "off",
+    );
+    expect(lessonBackView({ backView: "off", backViewShown: true })).toBe(
+      "off",
+    );
+    expect(lessonBackView(DEFAULT_SETTINGS)).toBe("mirror");
   });
 });
 
