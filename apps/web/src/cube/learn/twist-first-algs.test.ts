@@ -150,6 +150,51 @@ describe("첫 층 코너: 코너 넣기 F' R F R' = (F', R)의 「돌리고 · �
     ]);
   });
 
+  it("빼기의 가운데 아랫면 돌리기는 어느 쪽이든 된다: R2 D R2·R2 D' R2, R' D' R·R' D R 모두 맞춘 것을 지키고, 들어 있던 블럭이 아래 층으로 밀려 나오며 다른 아래 층 블럭이 그 자리에 들어간다(2026-11-27 사용자)", () => {
+    for (const d of ["D", "D'"]) {
+      // 흰 십자: 위-오른쪽 블럭이 아래 층으로, 나머지 흰 엣지 셋은 그대로
+      const e = at(`R2 ${d} R2`, solvedCube(3));
+      expect(whereUp(e, ["U", "R"]).includes("D"), d).toBe(true);
+      expect(
+        [
+          ["U", "F"],
+          ["U", "B"],
+          ["U", "L"],
+        ].map((p) => whereUp(e, p as Face[]) === slot(p.join(""))),
+        d,
+      ).toEqual([true, true, true]);
+      // 그 자리에는 아래 층 엣지 블럭 하나가 올라간다
+      expect(
+        [
+          ["D", "F"],
+          ["D", "R"],
+          ["D", "B"],
+          ["D", "L"],
+        ].filter((p) => whereUp(e, p as Face[]) === slot("UR")).length,
+        d,
+      ).toBe(1);
+      // 첫 층 코너: 위-앞-오른쪽 블럭이 아래 층으로, 흰 십자와 다른 흰 코너 블럭 셋은 그대로, 아래 층 코너 블럭이 올라감
+      const c = at(`R' ${d} R`, solvedCube(3));
+      expect(whereUp(c, ["U", "F", "R"]).includes("D"), d).toBe(true);
+      expect(goalMet(3, c, "white-cross"), d).toBe(true);
+      expect(
+        [
+          ["U", "F", "L"],
+          ["U", "B", "L"],
+          ["U", "B", "R"],
+        ].map((p) => whereUp(c, p as Face[]) === slot(p.join(""))),
+        d,
+      ).toEqual([true, true, true]);
+      const up = [
+        ["D", "F", "R"],
+        ["D", "F", "L"],
+        ["D", "B", "R"],
+        ["D", "B", "L"],
+      ].filter((p) => whereUp(c, p as Face[]) === slot("UFR"));
+      expect(up.length, d).toBe(1);
+    }
+  });
+
   it("빼기 R2 D R2도 아래-앞 엣지 블럭을 위-오른쪽 자리에 올려 넣고, 들어 있던 블럭은 아래-뒤로 밀려 나온다", () => {
     const s = at(CROSS_PULL, solvedCube(3));
     expect([whereUp(s, ["D", "F"]), whereUp(s, ["U", "R"])]).toEqual([
