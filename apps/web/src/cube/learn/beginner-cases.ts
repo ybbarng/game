@@ -7,9 +7,10 @@ import {
   CORNER_CYCLE,
   CORNER_CYCLE_BACK,
   CORNERS_NONE,
-  CROSS_DOWN_SIDE_TRY,
+  CROSS_DOWN_MOVE,
+  CROSS_FLIP,
   CROSS_FLIPPED,
-  CROSS_GUARD,
+  CROSS_MIDDLE,
   CROSS_TOP_WRONG,
   DOT_TO_CROSS,
   EDGE_OPPOSITE,
@@ -97,6 +98,55 @@ const CORNERS: BeginnerCaseSheet = {
   ],
 };
 
+// 흰 엣지 블럭이 있을 수 있는 모양(2026-11-26 사용자 차례, docs/47 16-34). 아래 층은 바로 올리고(기본 모양 둘),
+// 가운데 층·위 층은 아래 층으로 내린다. 위 층은 흰색이 위든 옆이든 같은 수라 그림 둘에 경우 이름 하나다.
+// 제자리에 바르게 든 것(그대로 둠)까지 여섯이면 흰 엣지 블럭 하나가 있을 수 있는 모든 모양이다
+const CROSS: BeginnerCaseSheet = {
+  stage: "cross",
+  set: "f2l",
+  mask: "cross",
+  title: "흰 엣지 블럭의 여섯 모양",
+  cases: [
+    {
+      id: "done",
+      alg: "",
+      caption: "위 층, 흰색이 위이고 제자리",
+      action: "그대로 둬요.",
+    },
+    {
+      id: "down",
+      alg: CROSS_DOWN_MOVE.setup,
+      caption: "아래 층, 흰색이 아래",
+      action: "짝 색 센터를 앞으로 쥐고 아래-앞으로 데려와 F2로 올려요.",
+    },
+    {
+      id: "down-side",
+      alg: CROSS_FLIP.setup,
+      caption: "아래 층, 흰색이 옆",
+      action:
+        "짝 색 센터를 앞으로 쥐고 아래-오른쪽으로 데려와 R F' R'로 올려요.",
+    },
+    {
+      id: "middle",
+      alg: CROSS_MIDDLE.setup,
+      caption: "가운데 층",
+      action: "앞-오른쪽에 오게 쥐고 R' D' R로 아래 층에 내려요.",
+    },
+    {
+      id: "top",
+      alg: CROSS_TOP_WRONG.setup,
+      caption: "위 층, 흰색이 위인데 다른 자리",
+      action: "위-앞에 오게 쥐고 F2로 아래 층에 내려요.",
+    },
+    {
+      id: "top",
+      alg: CROSS_FLIPPED.setup,
+      caption: "위 층, 흰색이 옆",
+      action: "위-앞에 오게 쥐고 F2로 아래 층에 내려요.",
+    },
+  ],
+};
+
 export const BEGINNER_CASE_SHEETS: Record<
   Extract<SheetName, `beginner-${string}`>,
   BeginnerCaseSheet
@@ -107,52 +157,12 @@ export const BEGINNER_CASE_SHEETS: Record<
     cases: CORNERS.cases.map((c) => ({ ...c, action: "" })),
   },
   "beginner-corners": CORNERS,
-  "beginner-cross": {
-    stage: "cross",
-    set: "f2l",
-    mask: "cross",
-    title: "흰 엣지 블럭의 여섯 경우",
-    cases: [
-      {
-        id: "down",
-        alg: "F2",
-        caption: "첫째 기본 모양: 아래 층, 흰색이 아래",
-        action: "짝 색 센터 바로 밑으로 옮겨 앞면 반 바퀴로 올려요.",
-      },
-      {
-        id: "middle",
-        alg: "F",
-        caption:
-          "둘째 기본 모양: 가운데 층, 짝 색 스티커가 붙은 면의 센터도 짝 색",
-        action:
-          "짝 색 스티커가 보는 면을 앞으로 돌려 쥐고 앞면 한 번으로 올려요.",
-      },
-      {
-        id: "middle-other",
-        alg: CROSS_GUARD.setup,
-        caption: "가운데 층, 짝 색 스티커가 붙은 면의 센터가 다른 색",
-        action: "아래 층으로 내려 첫째 기본 모양으로 만들어요.",
-      },
-      {
-        id: "down-side",
-        alg: CROSS_DOWN_SIDE_TRY.setup,
-        caption: "아래 층, 흰색이 옆",
-        action: "가운데 층으로 올려 둘째 기본 모양으로 만들어요.",
-      },
-      {
-        id: "top-side",
-        alg: CROSS_FLIPPED.setup,
-        caption: "위 층, 흰색이 옆",
-        action: "가운데 층으로 내린 뒤 가운데 층 두 경우 가운데 하나대로 해요.",
-      },
-      {
-        id: "top-wrong",
-        alg: CROSS_TOP_WRONG.setup,
-        caption: "위 층, 흰색이 위인데 다른 자리",
-        action: "아래 층으로 내려 첫째 기본 모양으로 만들어요.",
-      },
-    ],
+  // 첫머리에서 훑을 때는 올리는 법을 배우기 전이라 모양만
+  "beginner-cross-look": {
+    ...CROSS,
+    cases: CROSS.cases.map((c) => ({ ...c, action: "" })),
   },
+  "beginner-cross": CROSS,
   "beginner-second": {
     stage: "second",
     set: "f2l",
