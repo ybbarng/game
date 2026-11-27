@@ -123,7 +123,7 @@ test("큐브와 만나기 첫머리: 환영 → 스티커 54개 → 「조각으
   await shot(page, "basics-start-4", info.project.name);
 });
 
-test("크기 탭: 탭마다 그 크기의 조각 강, 표기 읽기·연습·해법 배우기는 늘 보이고, 분해 모델은 3×3에만", async ({
+test("크기 탭: 탭마다 그 크기의 조각 강과 그 크기의 분해 모델, 표기 읽기·연습·해법 배우기는 늘 보인다", async ({
   page,
 }, info) => {
   await no3d(page);
@@ -143,7 +143,12 @@ test("크기 탭: 탭마다 그 크기의 조각 강, 표기 읽기·연습·해
     "aria-pressed",
     "true",
   );
-  await expect(page.locator("[data-basics-model]")).toHaveCount(1);
+  // 분해 모델: 3D를 못 그리면 그 크기의 SVG(docs/47 16-36)
+  const model = (n: string) =>
+    expect(
+      page.locator(`[data-basics-model="${n}"] [data-cube-exploded="${n}"]`),
+    ).toBeVisible();
+  await model("3");
 
   const lessonIds = () =>
     page
@@ -175,8 +180,8 @@ test("크기 탭: 탭마다 그 크기의 조각 강, 표기 읽기·연습·해
         .locator("[data-cube-basics] [data-lesson] span.truncate")
         .allTextContents(),
     ).toEqual(titles);
-    // 그 크기 분해 모델은 아직 없다: 자리도 두지 않는다
-    await expect(page.locator("[data-basics-model]")).toHaveCount(0);
+    await model(n);
+    await expect(page.locator("[data-basics-model]")).toHaveCount(1);
     await always();
     expect(
       await page.evaluate(
@@ -267,5 +272,31 @@ test(
     // 100px × 0.012 = 1.2라디안 돌고, 손을 떼도 그대로
     await expect.poll(yaw).toBeCloseTo(rest + 1.2, 2);
     await shot(page, "basics-3d", info.project.name);
+  },
+);
+
+test(
+  "큐브의 기초 3D: 크기 탭마다 그 크기의 분해 모델, 멈춘 각과 그리기 횟수",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    // 멈춘 각(core-spin.ts REST_YAW_DEG)과 재질 수(검은 플라스틱 + 쇠 + 스티커 면 색, core-model-sizes.ts)
+    for (const [n, deg, calls] of [
+      ["2", 150, "5"],
+      ["4", 240, "4"],
+      ["5", 240, "8"],
+    ] as const) {
+      await page.goto(`/cube/basics?n=${n}`);
+      const canvas = page.locator(
+        `[data-basics-model="${n}"] [data-core-cube="live"]`,
+      );
+      await expect(canvas).toBeVisible({ timeout: 30_000 });
+      await expect(canvas).toHaveAttribute("data-core-size", n);
+      await expect
+        .poll(async () => Number(await canvas.getAttribute("data-core-yaw")))
+        .toBeCloseTo((deg * Math.PI) / 180, 2);
+      await expect(canvas).toHaveAttribute("data-core-calls", calls);
+      await shot(page, `basics-3d-${n}`, info.project.name);
+    }
   },
 );

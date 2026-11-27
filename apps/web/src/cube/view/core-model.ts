@@ -21,7 +21,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 
 /** cube-view.ts와 같은 조각 크기·둥글기·스티커 */
 export const CUBIE = 0.97;
-const CUBIE_RADIUS = 0.1;
+export const CUBIE_RADIUS = 0.1;
 const STICKER = 0.8;
 const STICKER_RADIUS = 0.1;
 const LIFT = 0.004;
@@ -142,7 +142,7 @@ function rectShell(
 }
 
 /** 축(z)을 따라 감긴 스프링 */
-class Helix extends THREE.Curve<THREE.Vector3> {
+export class Helix extends THREE.Curve<THREE.Vector3> {
   constructor(
     private readonly radius: number,
     private readonly length: number,
@@ -161,7 +161,7 @@ class Helix extends THREE.Curve<THREE.Vector3> {
 }
 
 /** z축 원기둥(`z0`~`z1`) */
-function zCylinder(
+export function zCylinder(
   r: number,
   z0: number,
   z1: number,
@@ -174,7 +174,7 @@ function zCylinder(
 }
 
 /** z축 둘레 속 빈 통(`rIn`~`rOut`, `z0`~`z1`) */
-function zTube(
+export function zTube(
   rIn: number,
   rOut: number,
   z0: number,
@@ -197,14 +197,31 @@ function zTube(
 export interface CoreModel {
   /** 검은 플라스틱(몸통·발·받침·심) 한 덩이 */
   body: THREE.BufferGeometry;
-  /** 쇠(나사·스프링) 한 덩이 */
-  metal: THREE.BufferGeometry;
+  /** 쇠(나사·스프링) 한 덩이. 쇠가 없는 짜임(4×4 세베스테니 꼴)은 null */
+  metal: THREE.BufferGeometry | null;
   /** 면 번호별 스티커 한 덩이 */
   stickers: Map<number, THREE.BufferGeometry>;
 }
 
+/** 조각 몸통 바깥 면에 붙는 스티커 판(+z 면, 몸통 가운데가 원점) */
+export function stickerGeometry(): THREE.BufferGeometry {
+  const g = new THREE.ExtrudeGeometry(
+    roundedRect(STICKER - 0.012, STICKER_RADIUS),
+    {
+      depth: 0.008,
+      bevelEnabled: true,
+      bevelThickness: 0.006,
+      bevelSize: 0.006,
+      bevelSegments: 2,
+      curveSegments: 6,
+    },
+  );
+  g.translate(0, 0, 0.006 + HALF + LIFT);
+  return g;
+}
+
 /** 합칠 수 있게 위치·법선만 남긴 색인 없는 도형으로 */
-function plain(g: THREE.BufferGeometry): THREE.BufferGeometry {
+export function plain(g: THREE.BufferGeometry): THREE.BufferGeometry {
   const n = g.index ? g.toNonIndexed() : g.clone();
   for (const name of Object.keys(n.attributes))
     if (name !== "position" && name !== "normal") n.deleteAttribute(name);
@@ -236,17 +253,7 @@ export function buildCoreModel(): CoreModel {
   const boxGeo = keep(
     new RoundedBoxGeometry(CUBIE, CUBIE, CUBIE, 3, CUBIE_RADIUS),
   );
-  const stickerGeo = keep(
-    new THREE.ExtrudeGeometry(roundedRect(STICKER - 0.012, STICKER_RADIUS), {
-      depth: 0.008,
-      bevelEnabled: true,
-      bevelThickness: 0.006,
-      bevelSize: 0.006,
-      bevelSegments: 2,
-      curveSegments: 6,
-    }),
-  );
-  stickerGeo.translate(0, 0, 0.006 + HALF + LIFT);
+  const stickerGeo = keep(stickerGeometry());
   const z = new THREE.Vector3(0, 0, 1);
 
   /** 몸통과 바깥 면 스티커 */
