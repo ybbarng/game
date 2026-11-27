@@ -55,6 +55,8 @@ final class NativeCubeWindow: FloatingWindow {
   private var keysPanelOpen = false
   /// 기록을 남겼다(열린 기록 창에 넣는다)
   var onRecorded: (() -> Void)?
+  /// 프로필(지금 크기·그 크기의 티어)을 다시 셈했다(메뉴 막대 아이콘을 다시 그린다, docs/52 5-26)
+  var onProfile: (() -> Void)?
   /// 다 맞춘 판(확인·재기용)
   private(set) var solvedCount = 0
 
@@ -682,6 +684,7 @@ final class NativeCubeWindow: FloatingWindow {
     profile = Profile(
       name: name ?? Profile.placeholder.name, tierText: Profile.tierText(n: n, tierName: tier?.name),
       emblem: tier.flatMap { EmblemArt.stillData($0.id) }, emblemTier: tier?.id)
+    onProfile?()
   }
 
   // MARK: 떠 있을 때(docs/47 15-5)

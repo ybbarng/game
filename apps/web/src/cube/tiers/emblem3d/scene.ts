@@ -102,6 +102,11 @@ export interface BuildOptions {
   pageColor: string;
   /** 뒤 조명 세기 배수(찍은 그림은 작게 보여 대비가 커야 해서 줄인다). 기본 1 */
   backGlow?: number;
+  /**
+   * 큐브 한 변의 조각 수. 기본 3. 1이면 조각 하나를 3×3 큐브 크기로 키운 한 덩이
+   * (Cubie 메뉴 막대 아이콘이 쓴다, `scripts/render-menubar-icons.mjs`)
+   */
+  cubeCells?: 1 | 3;
 }
 
 export interface EmblemScene {
@@ -774,14 +779,24 @@ export function buildEmblemScene(
   );
   // 왕관 상자는 그대로 네모(모양을 바꾸는 것은 큐브 조각만)
   const crownGeo = sl?.shape ? keep(stepBox(T, CUBIE, CUBIE_BEVEL)) : cubieGeo;
-  for (let x = -1; x <= 1; x++)
-    for (let y = -1; y <= 1; y++)
-      for (let z = -1; z <= 1; z++) {
-        const m = new T.Mesh(cubieGeo, blockMat);
-        m.position.set(x, y, z);
-        cube.add(m);
-      }
-  if (!gem) {
+  if (opt.cubeCells === 1) {
+    // 한 덩이: 3×3 큐브 바깥 크기(2 + CUBIE)에 맞춘다. 보석 빛길은 조각 자기 좌표에서 셈하므로
+    // 같은 조각 모양을 배율로 키워 깎은 면·계단 컷이 그대로 따라오게 하고, 금속은 같은 둥글림의 큰 상자
+    const edge = 2 + CUBIE;
+    const m = gem
+      ? new T.Mesh(cubieGeo, blockMat)
+      : new T.Mesh(keep(stepBox(T, edge, CUBIE_BEVEL * 2)), blockMat);
+    if (gem) m.scale.setScalar(edge / CUBIE);
+    cube.add(m);
+  } else
+    for (let x = -1; x <= 1; x++)
+      for (let y = -1; y <= 1; y++)
+        for (let z = -1; z <= 1; z++) {
+          const m = new T.Mesh(cubieGeo, blockMat);
+          m.position.set(x, y, z);
+          cube.add(m);
+        }
+  if (!gem && opt.cubeCells !== 1) {
     // 조각 사이 틈이 어둡게 보이게 속을 채운다
     const core = new T.Mesh(
       keep(new T.BoxGeometry(2.9, 2.9, 2.9)),

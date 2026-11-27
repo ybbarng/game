@@ -49,6 +49,8 @@ strip -rSTx "$APP/Contents/MacOS/Cubie"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 # 앱 아이콘(scripts/icon/make-art.mjs)과 메뉴 막대 아이콘(scripts/make-menu-icon.swift)
 cp Resources/AppIcon.icns Resources/MenuIcon*.png "$APP/Contents/Resources/"
+# 메뉴 막대 티어 아이콘 층(scripts/make-menu-tier-icons.swift, docs/52 5-26)
+cp -R Resources/MenuTier "$APP/Contents/Resources/"
 # 티어 엠블럼(네이티브 화면). 사이트 3D 엠블럼을 정면에서 찍은 정지 그림, apps/web/scripts/render-emblem-posters.mjs가 만든다
 cp -R Resources/Emblems "$APP/Contents/Resources/"
 # 티어표 진열 사다리 칸 그림은 사이트 진열 칸 그림을 그대로 쓴다(17각 띠, 같은 render-emblem-posters.mjs가 만든다, docs/52 5-11)

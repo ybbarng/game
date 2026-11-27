@@ -954,6 +954,13 @@ export interface ShotJob {
    * 몸 밖은 0(검정, 불투명). 앱은 같은 각의 색 그림에 이 배율을 곱해 흰색보다 밝게 그린다
    */
   boost?: boolean;
+  /**
+   * `core`면 몸 가운데 큐브만 찍는다(틀·날개·볏·왕관·빛살을 숨기고 후광 없이). Cubie 메뉴 막대 아이콘이 쓴다
+   * (`scripts/render-menubar-icons.mjs`, 큐브 재질 층과 틀 층에서 큐브 자리를 비울 때)
+   */
+  part?: "core";
+  /** 큐브 한 변의 조각 수(장면 `BuildOptions.cubeCells`). 1이면 칸 없는 한 덩이. Cubie 메뉴 막대 아이콘이 쓴다 */
+  cubeCells?: 1 | 3;
 }
 
 /** 배율 지도를 찍을 때 톤 매핑 전 밝기를 이만큼 줄여 0~1 안에 담는다(`HDR_KNEE` 끝 8까지) */
@@ -1050,6 +1057,7 @@ export async function captureShots(
         backdrop: true,
         pageColor: PAGE_COLOR,
         backGlow: 0.5,
+        ...(job.cubeCells ? { cubeCells: job.cubeCells } : {}),
       });
       // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
       built.camera.position.z *= 39 / 43 / (job.fill ?? 1);
@@ -1057,6 +1065,17 @@ export async function captureShots(
       const env = pmrem.fromScene(built.studio, 0.02).texture;
       pmrem.dispose();
       built.applyEnvironment(env);
+      if (job.part === "core") {
+        // 큐브 밖의 몸 조각을 숨긴다(배경판·그림자·후광 같은 뒤는 그대로 두어 보석이 뒤를 비춘다)
+        const inCore = (o: THREE.Object3D): boolean => {
+          for (let p: THREE.Object3D | null = o; p; p = p.parent)
+            if (p === built.core) return true;
+          return false;
+        };
+        built.spin.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh && !inCore(o)) o.visible = false;
+        });
+      }
       // 셰이더를 주 스레드를 막지 않고 먼저 짓는다(그리면서 지으면 티어마다 수백 ms 멈췄다)
       built.update();
       await renderer.compileAsync(built.scene, built.camera);
@@ -1137,7 +1156,7 @@ export async function captureShots(
             ctx.drawImage(edge, dx * ow, dy * ow);
         }
         // 3) 후광을 뒤에
-        const haloGain = job.halo ?? 1;
+        const haloGain = job.part === "core" ? 0 : (job.halo ?? 1);
         if (lv >= 6 && haloGain > 0) {
           const hex = Number.parseInt(LOOK[tier].tint.slice(1), 16);
           const rgb = `${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255}`;
