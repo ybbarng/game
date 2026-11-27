@@ -298,7 +298,7 @@ export function PartsPanel({
       </p>
       <Stage
         stage={stage}
-        label="칸을 누르면 그 조각을 들어요. 끌면 둘러볼 수 있어요."
+        label="칸을 누르면 그 조각을 들어요."
         fallback={
           <CubePosterPair
             n={N}
