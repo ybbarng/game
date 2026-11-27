@@ -62,6 +62,7 @@ final class SheetWindows: NSObject, NSWindowDelegate {
       // 바꾸면 바로 큐브 창(색·회전 시간·스티커·소리·섞기 연출·키 배치)과 단축키 표가 다시 읽는다
       s = NativeSettingsWindow(
         store: cube.store,
+        loginItem: SystemLoginItem.ifAvailable(),
         onChange: { [weak self] in self?.onSettingsChanged?() },
         openWeb: { [weak self] in self?.openSiteSettings() })
     }
