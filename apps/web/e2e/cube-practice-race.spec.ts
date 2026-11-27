@@ -20,21 +20,49 @@ async function atProblem(page: Page, i: number): Promise<string> {
   return (await view(page).getAttribute("data-practice-answer")) as string;
 }
 
-/** 10문제를 친다. `missAt`번째 문제에서는 먼저 틀린 수(B) 하나 */
-async function typeRound(page: Page, missAt = -1) {
+/**
+ * 시계를 멈춰 둔 채(`startPaused`) 지금 문제가 i번째일 때까지 수 하나 길이(`TICK_MS`)씩 감아 공식을 돌려준다
+ */
+async function atProblemPaused(page: Page, i: number): Promise<string> {
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await view(page).getAttribute("data-practice-index")) === `${i}`,
+    { step: TICK_MS },
+  );
+  return (await view(page).getAttribute("data-practice-answer")) as string;
+}
+
+/**
+ * 컴퓨터와 겨룰 때 내 수 하나마다 감는 시간. 입문 컴퓨터는 문제마다 1.2초 생각하고 수마다 0.9초 걸리므로
+ * (`VERSUS_BOT_SPEED.novice`) 내가 문제마다 늘 먼저 끝낸다
+ */
+const TICK_MS = 40;
+
+/**
+ * 10문제를 친다. `missAt`번째 문제에서는 먼저 틀린 수(B) 하나. `paused`면 시계를 멈춰 둔 채 수마다 `TICK_MS`만 감는다
+ * (시계를 흐르게 두면 키를 치는 실제 시간만큼 컴퓨터도 두어 기기 속도에 따라 순위가 달라진다)
+ */
+async function typeRound(page: Page, missAt = -1, paused = false) {
+  const press = async (k: string) => {
+    await page.keyboard.press(k);
+    if (paused) await page.clock.fastForward(TICK_MS);
+  };
   for (let i = 0; i < 10; i++) {
-    const answer = await atProblem(page, i);
+    const answer = paused
+      ? await atProblemPaused(page, i)
+      : await atProblem(page, i);
     if (i === missAt) {
       // 2층 상황은 모두 첫 수가 U·U'라 B는 늘 틀린 수
       expect(answer).toMatch(/^U/);
-      await page.keyboard.press("KeyB");
+      await press("KeyB");
       await expect(page.locator('[data-token-state="wrong"]')).toHaveCount(1);
       // 그 한 수의 키만 보인다
       await expect(page.locator("[data-practice-wrong-keys]")).toContainText(
         "U",
       );
     }
-    for (const k of keysFor(answer)) await page.keyboard.press(k);
+    for (const k of keysFor(answer)) await press(k);
   }
 }
 
@@ -54,12 +82,21 @@ test("컴퓨터와 대결: 공식 연습 한 판(2층, 입문 컴퓨터)", async
   await expect(page.locator("[data-cube-vs-size]")).toBeHidden();
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await shot(page, "practice-vs-setup", info.project.name);
+  // 시계를 멈추고 시작한다. 그 뒤로는 감는 만큼만 흘러, 컴퓨터는 계획 시각이 지난 수만 둔다
+  // (페이지에서 읽은 뒤에도 시계가 흐르므로 넉넉히 1초 뒤에서 멈춘다)
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   await page.locator("[data-cube-vs-start]").click();
 
   // 준비 3초 뒤 친다
-  await expect(view(page)).toHaveAttribute("data-cube-race-phase", "race", {
-    timeout: 30_000,
-  });
+  const racing = page.locator(
+    '[data-cube-practice-race][data-cube-race-phase="race"]',
+  );
+  const ready = page.locator("[data-cube-stage][data-input-ready]");
+  await fastForwardUntil(
+    page,
+    async () => (await racing.count()) > 0 && (await ready.count()) > 0,
+    { step: 50, timeout: 30_000 },
+  );
   await inputReady(page);
   await expect(page.locator("[data-practice-count]")).toHaveText("1 / 10");
   const peer = page.locator('[data-cube-peer="bot1"]');
@@ -68,12 +105,13 @@ test("컴퓨터와 대결: 공식 연습 한 판(2층, 입문 컴퓨터)", async
   await shot(page, "practice-vs-race", info.project.name);
 
   if (info.project.name === "desktop") {
-    await typeRound(page, 0);
+    await typeRound(page, 0, true);
     await expect(page.locator('section[data-cube-peer="me"]')).toHaveAttribute(
       "data-cube-peer-status",
       "done",
     );
   }
+  await page.clock.resume();
   // 컴퓨터가 끝내거나 제한 시간이 지날 때까지 감는다
   const result = page.locator('[data-cube-result="final"]');
   await fastForwardUntil(page, () => result.isVisible(), {
