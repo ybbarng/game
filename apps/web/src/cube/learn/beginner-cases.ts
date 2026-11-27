@@ -2,7 +2,9 @@
 // 가르친다」). 단계 첫머리 쪽이 이 그림을 늘어놓고, 경우마다 「이 모양이면 → 이렇게」를 한 줄로 닫는다. 그림은 흰 십자·
 // 첫 층·둘째 층이 비스듬한 큐브(위·앞·오른쪽), 마지막 층이 윗면 평면도다(전개도 아님). 경우마다 그 상황을 만드는 수와
 // 경우별 정해진 길(beginner-path.ts)의 경우 이름을 두어, 시험(beginner-cases.test.ts)이 그림이 정말 그 경우인지 본다.
-import { type PathStageId, TWIST } from "./beginner-path";
+import { solvedCube } from "@game/cube-engine";
+
+import { type PathStageId, play, TWIST } from "./beginner-path";
 import {
   CORNER_CYCLE,
   CORNER_CYCLE_BACK,
@@ -53,6 +55,7 @@ import {
   CORNER_TURN,
   CROSS_FRONT,
   EDGE_FLIP,
+  gripPieces,
   SECOND_A,
   SECOND_B,
   type TwistFirstStageId,
@@ -656,7 +659,9 @@ export function withFlowPick(
   if (!pick || step.kind !== "demo" || step.sheet !== "tf-flow") return step;
   const node = TWIST_FLOW.find((n) => n.id === pick);
   if (!node?.to) return step;
-  return { ...step, setup: { alg: node.alg }, alg: CORNER_TURN };
+  // 고른 모양의 쥐는 기준 코너에 노란 고리(learn/focus.ts)
+  const focus = gripPieces("twist", play(solvedCube(3), node.alg));
+  return { ...step, setup: { alg: node.alg }, alg: CORNER_TURN, focus };
 }
 
 export const isBeginnerSheet = (

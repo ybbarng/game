@@ -768,6 +768,82 @@ export function nextTwistFirstStep(
   return NEXT[stage](s);
 }
 
+// ── 쥐는 기준 조각 ────────────────────────────────────
+
+/** 면 글자들이 만나는 자리의 스티커 번호(엣지·코너) */
+function slotByFaces(faces: string): readonly number[] {
+  const want = [...faces].sort().join("");
+  const slot = [...EDGE_SLOTS, ...CORNER_SLOTS].find(
+    (sl) =>
+      sl
+        .map((i) => faceOf(i))
+        .sort()
+        .join("") === want,
+  );
+  if (!slot) throw new Error(`자리 없음: ${faces}`);
+  return slot;
+}
+const colorsAt = (s: PuzzleState, faces: string) => {
+  const col = faceColors(3, s);
+  return slotByFaces(faces).map((i) => col[i] as number);
+};
+/** 색 묶음의 조각이 지금 든 자리 이름(면 글자) */
+const placeOf = (s: PuzzleState, colors: readonly number[]) =>
+  [...pieceAt(s, colors).values()].join("");
+
+/** 쥔 모습에서 기준으로 보는 자리(면 글자)와 함께 보일 센터 색(조각의 색 가운데 흰색·노란색 말고) */
+const GRIP_AT: Record<string, { places: string[]; centers?: boolean }> = {
+  "cross/down": { places: ["DF"], centers: true },
+  "cross/front": { places: ["DF"], centers: true },
+  "cross/middle": { places: ["FR"], centers: true },
+  "cross/top": { places: ["UR"], centers: true },
+  "corners/right": { places: ["DFR"], centers: true },
+  "corners/front": { places: ["DFR"], centers: true },
+  "corners/down": { places: ["DFR"], centers: true },
+  "corners/slot": { places: ["UFR"], centers: true },
+  "second/right": { places: ["UF"], centers: true },
+  "second/left": { places: ["UF"], centers: true },
+  "second/stuck": { places: ["FR"] },
+  "eo/base": { places: ["UB", "UL"] },
+  "eo/line": { places: ["UF", "UB"] },
+  "ep/adjacent": { places: ["UB"] },
+  "twist/bar": { places: ["UFL", "UBL"] },
+  "place/a": { places: ["UFR", "UFL", "UBL"] },
+  "place/b": { places: ["UFL", "UFR", "UBR"] },
+};
+
+/**
+ * 그 단계 다음 한 걸음에서 쥐는 기준이 되는 조각이 지금(쥐기 전) 든 자리 이름(2026-11-27 사용자 「잡는 기준은 그림에서
+ * 강조」). 흰 십자는 올릴 엣지 블럭과 짝 색 센터, 첫 층 코너는 코너 블럭과 넣을 자리를 알려 주는 옆 센터 둘, 둘째 층은
+ * 넣을 엣지 블럭과 위 색·옆 색 센터, 엣지 방향은 ㄱ자·일자 두 엣지, 엣지 위치는 뒤에 둘(마주 보면 맞은 둘) 엣지,
+ * 코너 방향은 노란색이 위를 보는 코너(둘인 옆면 모양은 그 둘), 코너 위치는 제자리 코너와 헤드라이트 둘. 없으면 빈 목록
+ */
+export function gripPieces(stage: TwistFirstStageId, s: PuzzleState): string[] {
+  const st = NEXT[stage](s);
+  if (!st) return [];
+  const held = play(s, st.hold);
+  const key = `${stage}/${st.caseId}`;
+  let places = GRIP_AT[key]?.places ?? [];
+  if (key === "ep/opposite") {
+    const m = edgesMatched(held);
+    places = m.map((f) => `U${f}`);
+  }
+  if (stage === "twist" && st.caseId !== "bar" && st.caseId !== "cross") {
+    const ys = cornerYellows(held);
+    places = ["UFR", "UFL", "UBL", "UBR"].filter((_, k) => ys[k] === "U");
+  }
+  const col = faceColors(3, s);
+  const out: string[] = [];
+  for (const p of places) {
+    const colors = colorsAt(held, p);
+    out.push(placeOf(s, colors));
+    if (GRIP_AT[key]?.centers)
+      for (const c of colors)
+        if (c !== WHITE && c !== YELLOW) out.push(centerOf(col, c));
+  }
+  return out;
+}
+
 export interface TwistFirstRun {
   state: PuzzleState;
   steps: TwistFirstStep[];

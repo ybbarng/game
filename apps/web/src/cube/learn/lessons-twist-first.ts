@@ -143,6 +143,7 @@ const cross: Lesson = {
     {
       kind: "demo",
       body: "흰색이 아래를 보면 앞면을 반 바퀴 돌려요. 아래-앞 블럭이 위-앞으로 올라가면서 흰색이 위를, 짝 색이 앞을 봐요.",
+      focus: ["DF", "F"],
       setup: up("F2"),
       alg: "F2",
       mask: "cross",
@@ -150,6 +151,7 @@ const cross: Lesson = {
     {
       kind: "try",
       body: "흰-빨강 엣지 블럭이 아래 층에 있어요. 빨강 센터가 앞에 오게 큐브를 돌려 쥐고, 아랫면을 돌려 블럭을 바로 아래로 데려온 뒤 올려 보세요.",
+      focus: ["DF", "R"],
       setup: up("y D F2"),
       alg: "y D F2",
       goal: "white-cross",
@@ -158,6 +160,7 @@ const cross: Lesson = {
     {
       kind: "demo",
       body: "흰색이 앞을 보면 F2로는 흰색이 앞을 본 채 올라가요. 그래서 블럭을 옆으로 옮겨 올리는 「옆에서 올리기」 D R F' R'를 쳐요. 가운데 R F' R'는 R로 비키고, F' 한 수로 넣고, R'로 되돌리는 짜임이에요.",
+      focus: ["DF", "F"],
       setup: up(CROSS_FRONT),
       alg: CROSS_FRONT,
       mask: "cross",
@@ -183,6 +186,7 @@ const cross: Lesson = {
     {
       kind: "try",
       body: "흰색이 앞을 보는 블럭이에요. 짝 색 센터가 앞에 오게 돌려 쥐고 옆에서 올리기를 쳐 보세요.",
+      focus: ["DL", "L"],
       setup: up(`y' ${CROSS_FRONT}`),
       alg: `y' ${CROSS_FRONT}`,
       goal: "white-cross",
@@ -191,6 +195,7 @@ const cross: Lesson = {
     {
       kind: "demo",
       body: "흰 엣지 블럭이 위 층의 다른 자리에 들었거나 제자리에서 뒤집혀 있으면, 그 자리에 다른 블럭을 넣는다고 생각해요. 넣으면 들어 있던 블럭이 밀려 나와요. 「빼기」 R2 D R2는 아래 층 엣지 블럭 하나를 위-오른쪽 자리에 올려 넣는 수라, 잘못 든 블럭을 위-오른쪽에 두고 치면 그 블럭이 아래 층으로 밀려 나와요. 가운데 D는 내려간 블럭을 옆으로 비키는 수라, 아랫면을 어느 쪽으로 돌려도 돼요. 지금은 위-오른쪽 흰 엣지 블럭이 제자리에서 뒤집혀 있어요. 빼기 한 번을 쳐서 밀려 나오는 것을 보세요.",
+      focus: ["UR", "R"],
       setup: up(CROSS_TOP_SOLVE),
       alg: CROSS_PULL,
       mask: "cross",
@@ -212,6 +217,7 @@ const cross: Lesson = {
     {
       kind: "try",
       body: "흰 엣지 블럭이 위 층에서 뒤집혀 있어요. 그 블럭이 위-오른쪽에 오게 돌려 쥐고 빼기 R2 D R2로 내린 뒤, 아래 층 경우대로 올려 보세요. 내려간 블럭은 흰색이 옆을 봐서, 짝 색 센터 바로 아래로 데려온 뒤 옆에서 올리기를 쳐요.",
+      focus: ["UF", "F"],
       setup: up(`y' ${CROSS_TOP_SOLVE}`),
       alg: `y' ${CROSS_TOP_SOLVE}`,
       goal: "white-cross",
@@ -220,6 +226,7 @@ const cross: Lesson = {
     {
       kind: "try",
       body: "흰 엣지 블럭이 가운데 층 앞-오른쪽에 있어요. 설명서에는 없는 경우라서, 첫 층 코너에서 쓸 빼기 R' D' R로 아래 층에 내려요. 그다음 아래 층 경우대로 올려 보세요.",
+      focus: ["FR", "F"],
       setup: up(CROSS_MID_SOLVE),
       alg: CROSS_MID_SOLVE,
       goal: "white-cross",
@@ -271,6 +278,7 @@ const corners: Lesson = {
     {
       kind: "demo",
       body: "코너 블럭 넣기 F' R F R'는 네 수예요. 한 면을 돌리고, 다른 면을 돌리고, 처음 면을 되돌리고, 다른 면도 되돌리는 꼴이에요. 이 꼴은 뒤 단계 공식에도 자주 나와요. 앞면으로 코너 블럭을 올려 오른쪽 층으로 비켜 두고, 앞면을 되돌린 뒤 오른쪽 층을 되돌려 넣어요.",
+      focus: ["DFR", "R", "F"],
       setup: up(CORNER_IN),
       alg: CORNER_IN,
       mask: "first-layer",
@@ -296,6 +304,7 @@ const corners: Lesson = {
     {
       kind: "try",
       body: "넣을 자리가 다른 구석이고 코너 블럭도 자리 밑이 아니에요. 자리가 앞-오른쪽 위에 오게 돌려 쥐고, 아랫면을 돌려 코너 블럭을 자리 밑으로 데려와 넣어 보세요.",
+      focus: ["DLF", "R", "F"],
       setup: up(`D ${CORNER_IN}`),
       alg: `D ${CORNER_IN}`,
       goal: "first-layer",
@@ -304,6 +313,7 @@ const corners: Lesson = {
     {
       kind: "try",
       body: "넣을 자리가 앞-오른쪽 위가 아니에요. 큐브를 y로 돌려 쥐고 넣어 보세요.",
+      focus: ["DLF", "F", "L"],
       setup: up(`y' ${CORNER_IN}`),
       alg: `y' ${CORNER_IN}`,
       goal: "first-layer",
@@ -311,7 +321,8 @@ const corners: Lesson = {
     },
     {
       kind: "demo",
-      body: "흰색이 바닥을 보는 코너 블럭은 어느 쪽으로 올려도 흰색이 위로 오지 않아요. 그래서 먼저 흰색이 옆을 보게 눕혀요. 그 일을 하는 것이 다시 놓기 R' D2 R이에요. 그림에는 그 코너 블럭에 노란 고리를 둘렀어요. R'로 오른쪽 층을 돌리면 블럭이 층과 함께 굴러 바닥을 보던 흰색이 뒤를 봐요. D2로 그 블럭을 오른쪽 층 밖(아래-앞-왼쪽)으로 비켜 두고, R로 오른쪽 층을 되돌려요. 블럭은 흰색이 옆(앞)을 본 채 남아요. 그다음 D로 자리 밑에 데려오면 흰색이 오른쪽이라 코너 블럭 넣기로 넣어요(다음 해 보기).",
+      body: "흰색이 바닥을 보는 코너 블럭은 어느 쪽으로 올려도 흰색이 위로 오지 않아요. 그래서 먼저 흰색이 옆을 보게 눕혀요. 그 일을 하는 것이 다시 놓기 R' D2 R이에요. 그림에는 그 코너 블럭과 넣을 자리를 알려 주는 옆 센터 둘에 노란 고리를 둘렀어요. R'로 오른쪽 층을 돌리면 블럭이 층과 함께 굴러 바닥을 보던 흰색이 뒤를 봐요. D2로 그 블럭을 오른쪽 층 밖(아래-앞-왼쪽)으로 비켜 두고, R로 오른쪽 층을 되돌려요. 블럭은 흰색이 옆(앞)을 본 채 남아요. 그다음 D로 자리 밑에 데려오면 흰색이 오른쪽이라 코너 블럭 넣기로 넣어요(다음 해 보기).",
+      focus: ["DFR", "R", "F"],
       setup: up(CORNER_DOWN_SOLVE),
       alg: CORNER_DOWN,
       mask: "first-layer",
@@ -333,6 +344,7 @@ const corners: Lesson = {
     {
       kind: "try",
       body: "흰색이 아래를 보는 코너 블럭이에요. 넣을 자리가 앞-오른쪽 위에 오게 돌려 쥐고 다시 놓기부터 해 보세요.",
+      focus: ["DRB", "B", "R"],
       setup: up(`y ${CORNER_DOWN_SOLVE}`),
       alg: `y ${CORNER_DOWN_SOLVE}`,
       goal: "first-layer",
@@ -341,6 +353,7 @@ const corners: Lesson = {
     {
       kind: "try",
       body: "자리 밑에서 흰색이 앞을 봐요. 설명서에는 없는 경우라서, 아랫면을 D2로 돌려 비킨 뒤 빼기 R' D' R을 치면 흰색이 오른쪽인 모양이 돼요. 그다음 코너 블럭 넣기로 넣어 보세요.",
+      focus: ["DFR", "F", "R"],
       setup: up(CORNER_FRONT_SOLVE),
       alg: CORNER_FRONT_SOLVE,
       goal: "first-layer",
@@ -348,7 +361,8 @@ const corners: Lesson = {
     },
     {
       kind: "demo",
-      body: "코너 블럭이 제자리에 들었는데 흰색이 옆을 보면 돌아가 있는 거예요. 위 층 다른 자리에 잘못 든 블럭도 같아요. 그 자리에 다른 코너 블럭을 넣는다고 생각해요. 넣으면 들어 있던 블럭이 밀려 나와요. 빼기 R' D' R은 아래 층 코너 블럭 하나를 위-앞-오른쪽 자리에 올려 넣는 수예요. 그 자리를 앞-오른쪽 위에 두고 치면, 들어 있던 블럭이 아래 층으로 밀려 나와요. 가운데 D'는 내려간 블럭을 옆으로 비키는 수라, 아랫면을 어느 쪽으로 돌려도 돼요. 그림에는 밀려 나올 블럭에 노란 고리를 둘렀어요. 나온 블럭은 경우대로 넣어요(다음 해 보기).",
+      body: "코너 블럭이 제자리에 들었는데 흰색이 옆을 보면 돌아가 있는 거예요. 위 층 다른 자리에 잘못 든 블럭도 같아요. 그 자리에 다른 코너 블럭을 넣는다고 생각해요. 넣으면 들어 있던 블럭이 밀려 나와요. 빼기 R' D' R은 아래 층 코너 블럭 하나를 위-앞-오른쪽 자리에 올려 넣는 수예요. 그 자리를 앞-오른쪽 위에 두고 치면, 들어 있던 블럭이 아래 층으로 밀려 나와요. 가운데 D'는 내려간 블럭을 옆으로 비키는 수라, 아랫면을 어느 쪽으로 돌려도 돼요. 그림에는 밀려 나올 블럭과 그 블럭의 옆 센터 둘에 노란 고리를 둘렀어요. 나온 블럭은 경우대로 넣어요(다음 해 보기).",
+      focus: ["URF", "F", "R"],
       setup: up(CORNER_SLOT_SOLVE),
       alg: CORNER_PULL,
       mask: "first-layer",
@@ -370,6 +384,7 @@ const corners: Lesson = {
     {
       kind: "try",
       body: "앞-오른쪽 위가 아닌 구석에 코너 블럭이 돌아간 채 들어가 있어요. 그 블럭을 앞-오른쪽 위에 두고 빼기로 내린 뒤 경우대로 넣어 보세요.",
+      focus: ["UFL", "L", "F"],
       setup: up(`y' ${CORNER_SLOT_SOLVE}`),
       alg: `y' ${CORNER_SLOT_SOLVE}`,
       goal: "first-layer",
@@ -422,6 +437,7 @@ const second: Lesson = {
     {
       kind: "demo",
       body: "오른쪽 넣기는 U R U' R' F R' F' R, 여덟 수예요. 네 수짜리 덩어리 둘로 보면 쉬워요. 두 덩어리 모두 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 한 면을 돌리고, 다른 면을 돌리고, 처음 면을 되돌리고, 다른 면도 되돌려요. 뒤 덩어리 F R' F' R은 코너 블럭 넣기와 도는 방향만 모두 반대예요.",
+      focus: ["UF", "R", "F"],
       setup: flip(A3),
       alg: A3,
       mask: "f2l",
@@ -439,6 +455,7 @@ const second: Lesson = {
     {
       kind: "demo",
       body: "왼쪽 넣기는 U' L' U L F' L F L'예요. 오른쪽 넣기의 왼쪽과 오른쪽을 바꾼 꼴이라, R 자리에 L이 오고 도는 방향은 모두 반대예요. 앞-왼쪽 자리에 넣어요.",
+      focus: ["UF", "L", "F"],
       setup: flip(B3),
       alg: B3,
       mask: "f2l",
@@ -456,6 +473,7 @@ const second: Lesson = {
     {
       kind: "try",
       body: "오른쪽 넣기로 넣어 보세요. 이번 쪽부터는 노란색이 붙은 엣지 블럭을 까맣게 가려 두었어요. 위 층에서 색이 보이는 엣지 블럭이 넣을 블럭이에요.",
+      focus: ["UF", "R", "F"],
       setup: flip(A3),
       alg: A3,
       goal: "second-layer",
@@ -464,6 +482,7 @@ const second: Lesson = {
     {
       kind: "try",
       body: "왼쪽 넣기로 넣어 보세요.",
+      focus: ["UF", "L", "F"],
       setup: flip(B3),
       alg: B3,
       goal: "second-layer",
@@ -472,6 +491,7 @@ const second: Lesson = {
     {
       kind: "try",
       body: "엣지 블럭이 아직 옆 색 센터 위에 있지 않아요. 윗면을 돌려 옆 색 센터 위로 옮기고, 그 면을 앞으로 돌려 쥔 뒤 위 색을 보고 넣어 보세요.",
+      focus: ["UB", "B", "R"],
       setup: flip(`U y ${A3}`),
       alg: `U y ${A3}`,
       goal: "second-layer",
@@ -480,6 +500,7 @@ const second: Lesson = {
     {
       kind: "try",
       body: "이번에도 윗면을 돌려 옮기고, 그 면을 앞으로 쥐고 위 색을 보고 넣어 보세요.",
+      focus: ["UB", "B", "L"],
       setup: flip(`U' y' ${B3}`),
       alg: `U' y' ${B3}`,
       goal: "second-layer",
@@ -488,6 +509,7 @@ const second: Lesson = {
     {
       kind: "demo",
       body: "위 층에 넣을 엣지 블럭이 없으면 가운데 층에 잘못 든 엣지 블럭이 있어요. 잘못 든 자리를 앞-오른쪽으로 돌려 쥐고 오른쪽 넣기를 한 번 쳐서 빼요. 빼려고 노란 엣지 블럭을 잠깐 넣는 건 괜찮아요. 빠진 블럭은 위 층에 올라오니 경우대로 다시 넣어요(다음 해 보기). 지금은 앞-오른쪽 엣지 블럭이 제자리에서 뒤집혀 있어요. 오른쪽 넣기 한 번으로 그 블럭이 빠지는 것을 보세요.",
+      focus: ["FR"],
       setup: flip(SECOND_STUCK),
       alg: A3,
       mask: "f2l",
@@ -505,6 +527,7 @@ const second: Lesson = {
     {
       kind: "try",
       body: "이번엔 앞-왼쪽 자리에 엣지 블럭이 잘못 들어가 있어요. 그 자리를 앞-오른쪽으로 돌려 쥐고 오른쪽 넣기로 뺀 뒤, 빠진 블럭을 경우대로 넣어 보세요.",
+      focus: ["FL"],
       setup: flip(`y' ${SECOND_STUCK}`),
       alg: `y' ${SECOND_STUCK}`,
       goal: "second-layer",
@@ -559,6 +582,7 @@ const edgeFlip: Lesson = {
     {
       kind: "demo",
       body: "기본형은 노란 스티커 둘이 뒤와 왼쪽에 오게 두고 「엣지 방향」 공식 R' U' F' U F R을 한 번 쳐요. 가운데 네 수 U' F' U F는 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 그 앞뒤를 R'와 R로 감싸요. R'로 준비하고, 덩어리를 친 뒤, R로 준비를 되돌리는 짜임이에요.",
+      focus: ["UB", "UL"],
       setup: flip(F4),
       alg: F4,
       mask: "ll-cross",
@@ -580,6 +604,7 @@ const edgeFlip: Lesson = {
     {
       kind: "try",
       body: "기본형이 다른 곳에 있어요. 노란 스티커 둘이 뒤와 왼쪽에 오게 윗면을 돌리고 공식을 한 번 쳐 보세요. 왼쪽과 앞이면 U, 앞과 오른쪽이면 U2, 오른쪽과 뒤면 U'예요.",
+      focus: ["UL", "UF"],
       setup: flip(`U ${F4}`),
       alg: `U ${F4}`,
       goal: "yellow-cross",
@@ -600,6 +625,7 @@ const edgeFlip: Lesson = {
     {
       kind: "try",
       body: "일자가 앞뒤로 서 있어요. 공식을 한 번 쳐서 기본형을 보고, 쥔 그대로 한 번 더 쳐 보세요.",
+      focus: ["UF", "UB"],
       setup: flip(EO_LINE),
       alg: EO_LINE,
       goal: "yellow-cross",
@@ -608,6 +634,7 @@ const edgeFlip: Lesson = {
     {
       kind: "try",
       body: "일자가 가로로 누워 있어요. U로 세우고 공식을 두 번 쳐 보세요.",
+      focus: ["UR", "UL"],
       setup: flip(`U ${EO_LINE}`),
       alg: `U ${EO_LINE}`,
       goal: "yellow-cross",
@@ -673,6 +700,7 @@ const edgePlace: Lesson = {
     {
       kind: "demo",
       body: "제자리 엣지 블럭이 하나뿐이고 그것이 뒤에 있으면 「엣지 위치」 공식 R' U' R U' R' U2 R을 한 번 쳐요. 뒤 엣지 블럭은 그대로 두고, 나머지 셋을 앞 → 왼쪽 → 오른쪽 → 앞으로 한 칸씩 돌려 넷 다 제자리에 넣어요. 공식은 R' U' R과 R' U2 R, 같은 꼴 둘 사이에 U'를 끼운 거예요. 둘째 덩어리만 가운데가 반 바퀴 U2예요.",
+      focus: ["UB"],
       setup: flip(C5),
       alg: C5,
       mask: "ll-edges",
@@ -705,6 +733,7 @@ const edgePlace: Lesson = {
     {
       kind: "try",
       body: "U'로 한 칸 더 돌려 뒤 하나만 맞게 하고 공식을 쳐 보세요.",
+      focus: ["UR"],
       setup: flip(EP_ADJACENT),
       alg: EP_ADJACENT,
       goal: "yellow-edges",
@@ -713,6 +742,7 @@ const edgePlace: Lesson = {
     {
       kind: "try",
       body: "이번엔 하나만 맞은 엣지 블럭이 오른쪽에 있어요. 윗면은 돌리지 말고, 큐브를 y로 돌려 쥐어 그것을 뒤로 가져온 뒤 쳐 보세요.",
+      focus: ["UL"],
       setup: flip(`y ${C5}`),
       alg: `y ${C5}`,
       goal: "yellow-edges",
@@ -733,6 +763,7 @@ const edgePlace: Lesson = {
     {
       kind: "try",
       body: "앞과 뒤 엣지 블럭이 맞고 마주 보고 있어요. 쥔 그대로 공식을 한 번 친 뒤, 윗면을 돌려 이웃한 둘을 찾고 한 칸 더 돌려 쳐 보세요.",
+      focus: ["UR", "UL"],
       setup: flip(EP_OPPOSITE),
       alg: EP_OPPOSITE,
       goal: "yellow-edges",
@@ -788,6 +819,7 @@ const twist: Lesson = {
     {
       kind: "demo",
       body: "지금이 기본형을 쥘 모습이에요. 「코너 방향」 공식 R' F' L' F R F' L F를 한 번 치면 다 맞아요. 이 공식은 코너 블럭 넣기 F' R F R'와 같은 꼴이에요. 코너 블럭 넣기는 F'로 흐트러뜨리고, R 한 수로 옮기고, F와 R'로 차례로 되돌렸어요. 이 공식은 R'로 흐트러뜨리고, 한 수 대신 덩어리 F' L' F로 옮기고, R로 되돌린 뒤, 그 덩어리를 되돌리는 F' L F를 쳐요. 되돌리는 덩어리는 가운데 L'만 L로 바뀌어요.",
+      focus: ["URF", "ULB"],
       setup: flip(T),
       alg: T,
       chunks: [
@@ -812,6 +844,7 @@ const twist: Lesson = {
     {
       kind: "demo",
       body: "나머지 모양도 그림처럼 쥐고 공식을 한 번 치면 다음 모양으로 가요. 아래 그림은 모양마다 그렇게 쥐고 한 번 치면 어느 모양이 되는지 화살표로 이은 관계도예요. 위를 보는 노란색이 하나도 없으면 둘이나 하나인 모양으로, 둘이나 하나인 모양은 모두 기본형으로, 기본형은 다 맞음으로 가요. 어느 모양에서 시작해도 공식을 많아야 세 번 치면 다 맞아요. 화살표 하나가 공식 한 번이에요. 시연은 맨 위 「없음, 둘인 면 하나」에서 공식을 한 번 쳐서 화살표가 가리키는 「둘, 옆이 한 면」이 되는 것을 보여요. 관계도에서 다른 모양을 누르면 그 모양에서 한 번 치는 시연으로 바뀌어요.",
+      focus: ["UFL", "ULB"],
       setup: flip(TW_BAR),
       alg: T,
       mask: "ll-twist",
@@ -833,6 +866,7 @@ const twist: Lesson = {
     {
       kind: "try",
       body: "기본형을 다르게 돌려 놓았어요. 그림처럼 위를 보는 둘이 앞-오른쪽 위와 뒤-왼쪽 위에, 앞-왼쪽 위 노란색이 왼쪽을 보게 큐브를 y로 돌려 쥐고 공식을 한 번 쳐 보세요.",
+      focus: ["UBR", "UFL"],
       setup: flip(`y ${T}`),
       alg: `y ${T}`,
       goal: "oll",
@@ -841,6 +875,7 @@ const twist: Lesson = {
     {
       kind: "try",
       body: "위를 보는 둘이 왼쪽에 있고, 오른쪽 둘의 노란색이 앞과 뒤를 봐요. 위를 보는 둘이 왼쪽인 그대로 한 번 치면 기본형이 돼요. 쥔 그대로 한 번 더 쳐 보세요.",
+      focus: ["UFL", "ULB"],
       setup: flip(TW_A),
       alg: TW_A,
       goal: "oll",
@@ -849,6 +884,7 @@ const twist: Lesson = {
     {
       kind: "try",
       body: "위를 보는 둘이 오른쪽에 있고, 왼쪽 둘의 노란색이 모두 왼쪽을 봐요. 그대로 한 번 친 뒤, 기본형 모습이 되게 y로 돌려 쥐고 한 번 더 쳐 보세요.",
+      focus: ["URF", "UBR"],
       setup: flip(TW_B),
       alg: TW_B,
       goal: "oll",
@@ -857,6 +893,7 @@ const twist: Lesson = {
     {
       kind: "try",
       body: "위를 보는 노란색이 뒤-왼쪽 위 하나이고, 앞-왼쪽 위 노란색이 앞을 봐요. 그대로 한 번 친 뒤, 기본형 모습이 되게 y2로 돌려 쥐고 한 번 더 쳐 보세요.",
+      focus: ["ULB"],
       setup: flip(TW_C),
       alg: TW_C,
       goal: "oll",
@@ -865,6 +902,7 @@ const twist: Lesson = {
     {
       kind: "try",
       body: "위를 보는 노란색이 앞-오른쪽 위 하나이고, 앞-왼쪽 위 노란색이 왼쪽을 봐요. 그대로 한 번 친 뒤, 기본형 모습이 되게 y'로 돌려 쥐고 한 번 더 쳐 보세요.",
+      focus: ["URF"],
       setup: flip(TW_D),
       alg: TW_D,
       goal: "oll",
@@ -881,6 +919,7 @@ const twist: Lesson = {
     {
       kind: "try",
       body: "위를 보는 노란색이 없고, 노란색 둘인 옆면이 왼쪽에 하나 있어요. 그대로 한 번 치면 둘인 모양이 돼요. 관계도대로 이어서 쳐 보세요.",
+      focus: ["UFL", "ULB"],
       setup: flip(TW_BAR),
       alg: TW_BAR,
       goal: "oll",
@@ -941,6 +980,7 @@ const place: Lesson = {
     {
       kind: "demo",
       body: "제자리 코너 블럭이 앞-오른쪽 위, 헤드라이트가 왼쪽 면이에요. 공식 A(R U B L B' R' B L' B' R U' R')를 쳐요. 앞-오른쪽 위는 그대로이고 남은 셋이 위에서 보아 시계 방향으로 한 칸씩 옮겨요. 열두 수지만 손으로 외우기 쉬워요. 앞은 「올리고 돌리고」, 가운데는 뒷면을 타고 「왼쪽으로 가서 내리고, 오른쪽으로 와서 내리고, 왼쪽으로 가서 올리고, 오른쪽으로 와서 올리고」, 끝은 앞을 되돌리는 「돌리고 내리고」예요. 올리고 내리는 것은 앞면에서 본 왼쪽·오른쪽 층의 움직임이에요.",
+      focus: ["URF", "UFL", "ULB"],
       setup: flip(A),
       alg: A,
       chunks: [
@@ -973,6 +1013,7 @@ const place: Lesson = {
     {
       kind: "try",
       body: "제자리 코너 블럭이 앞면 위에 있지 않아요. 제자리 블럭이 앞면 위에, 헤드라이트가 왼쪽이나 오른쪽 면에 오게 y로 돌려 쥐고 쳐 보세요.",
+      focus: ["UBR", "URF", "UFL"],
       setup: flip(`y ${A}`),
       alg: `y ${A}`,
       goal: "solved",
@@ -980,6 +1021,7 @@ const place: Lesson = {
     {
       kind: "quiz",
       body: "제자리 코너 블럭이 앞-오른쪽 위에 있지만, 헤드라이트가 뒤 면에 있어요. 이렇게 쥐면 안 돼요. 제자리 블럭이 앞면 위에 있으면서 헤드라이트가 왼쪽이나 오른쪽 면에 오는 방향을 찾아 돌려 쥐어요.",
+      focus: ["URF", "UBR", "ULB"],
       setup: flip(`y ${B}`),
       quiz: {
         question: "어떻게 쥐고 무엇을 칠까요?",
@@ -994,6 +1036,7 @@ const place: Lesson = {
     {
       kind: "demo",
       body: "공식 B(L' U' B' R' B L B' R B L' U L)는 공식 A를 좌우로 바꾼 꼴이에요. 왼쪽과 오른쪽만 바꿔 같은 말로 쳐요. 「올리고 돌리고」를 왼쪽 층으로 하고, 뒷면을 타고 오른쪽으로 먼저 가요. 제자리 블럭이 앞-왼쪽 위, 헤드라이트가 오른쪽 면일 때 쳐요. 앞-왼쪽 위는 그대로 두고 남은 셋을 반시계 방향으로 옮겨요.",
+      focus: ["UFL", "URF", "UBR"],
       setup: flip(B),
       alg: B,
       chunks: [
@@ -1026,6 +1069,7 @@ const place: Lesson = {
     {
       kind: "try",
       body: "앞 문제의 모양이에요. y로 돌려 쥐어 헤드라이트를 오른쪽 면에 두고 공식 B를 한 번 쳐 보세요.",
+      focus: ["URF", "UBR", "ULB"],
       setup: flip(`y ${B}`),
       alg: `y ${B}`,
       goal: "solved",
