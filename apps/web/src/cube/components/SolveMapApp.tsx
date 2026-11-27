@@ -367,9 +367,10 @@ export function MapScreen({
   ).sort(byLane);
   const chosenIds = ctx.selected.map((m) => m.id);
   return (
+    // 바깥 틀도 스크롤되지 않는 상자로(지도 틀이 clip이면 포커스·스크롤이 이 틀을 대신 밀어 화면 전체가 어긋난다)
     <div
       data-game="cube"
-      className="fixed inset-0 flex flex-col overflow-hidden bg-neutral-900 text-white"
+      className="fixed inset-0 flex flex-col overflow-clip bg-neutral-900 text-white"
     >
       <main
         className="flex min-h-0 flex-1 flex-col break-keep"

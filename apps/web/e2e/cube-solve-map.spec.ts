@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { ONLY_DESKTOP } from "./projects";
 import { expect, test } from "./test";
 import { renderedLines } from "./word-wrap";
@@ -456,23 +456,66 @@ test("카드·해법 화면·지도에는 같은 단계 표시와 「나」 표�
   }
 });
 
+/**
+ * 지도를 끌어 `target`을 지도 틀 안으로 데려온다(사람이 하듯). 지도 틀은 스크롤되지 않는 상자라 Playwright가 화면 밖
+ * 요소를 스크롤해 누를 수 없다(예전에는 틀이 스크롤됐다가 되돌려지며 누르기가 가끔 사라졌다, 2026-11-27)
+ */
+async function dragIntoView(page: Page, target: Locator) {
+  const frame = page.locator("[data-map-frame]");
+  for (let i = 0; i < 6; i++) {
+    const f = await frame.boundingBox();
+    const t = await target.boundingBox();
+    if (!f || !t) throw new Error("지도 틀이나 대상이 없음");
+    if (
+      t.x >= f.x &&
+      t.y >= f.y &&
+      t.x + t.width <= f.x + f.width &&
+      t.y + t.height <= f.y + f.height
+    )
+      return;
+    // 한 번에 틀 반만큼까지. 시작 자리는 끄는 방향 반대쪽 4분의 1 자리(오른쪽 위 단추·오른쪽 아래 미니맵을 피한다)
+    const lim = (d: number, size: number) =>
+      Math.max(-size / 2, Math.min(size / 2, d));
+    const dx = lim(f.x + f.width / 2 - (t.x + t.width / 2), f.width);
+    const dy = lim(f.y + f.height / 2 - (t.y + t.height / 2), f.height);
+    const sx = f.x + f.width * (dx < 0 ? 0.75 : 0.25);
+    const sy = f.y + f.height * (dy < 0 ? 0.75 : 0.25);
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    await page.mouse.move(sx + dx, sy + dy, { steps: 8 });
+    await page.mouse.up();
+  }
+  throw new Error("끌어도 대상이 지도 틀 안으로 오지 않음");
+}
+
 test("전체 보기 4×4: 「3×3 맞추기」는 그 자리에서 펼치고, 3×3 지도에 들렀다 「← 4×4」로 펼친 채 돌아온다(크기 단추는 4×4 그대로)", async ({
   page,
 }) => {
   await page.goto("/cube/methods");
   await page.locator('[data-size-tab="4"]').click();
   await page.locator("[data-open-map]").click();
-  await page.locator('[data-edge="444-reduction:333"]').click();
+  const jump = page.locator('[data-edge="444-reduction:333"]');
+  await dragIntoView(page, jump);
+  await jump.click();
   const panel = page.locator("[data-finish-panel]");
   await expect(panel).toHaveAttribute("data-finish-panel", "beginner");
   await expect(page).toHaveURL(/x=beginner/);
+  // 펼친 칸의 머리 줄(3×3 지도 링크)과 해법 칩은 휴대폰 세로에서도 화면 안에 다 보인다(지도가 펼친 칸에 맞춘다).
+  // 비율 0.99: 확대 배율(1.2 등)에서 상자 끝이 소수점만큼 걸쳐 0.9999…가 나온다. 고치기 전에는 0이었다
+  const whole = { ratio: 0.99 };
+  const hop = panel.locator("[data-finish-hop]");
+  const cfop = panel.locator('[data-finish-method="cfop"]');
+  await expect(hop).toBeInViewport(whole);
+  await expect(cfop).toBeInViewport(whole);
   // 고리는 초보자의 패리티 자리(둘째 층 엣지 뒤, 옆면 맞추기 뒤)에 한국 이름으로
   await expect(panel.locator("[data-parity-loop]")).toHaveText([
     /^토끼이빨OLL 패리티/,
     /^바보토끼이빨PLL 패리티/,
   ]);
-  await panel.locator('[data-finish-method="cfop"]').click();
-  await panel.locator("[data-finish-hop]").click();
+  await cfop.click();
+  await expect(cfop).toHaveAttribute("aria-pressed", "true");
+  await expect(hop).toBeInViewport(whole);
+  await hop.click();
   await expect(page).toHaveURL(/[?&]from=4(&|$)/);
   const q = new URL(page.url()).searchParams;
   expect([q.get("view"), q.get("x"), q.get("sel")]).toEqual([
