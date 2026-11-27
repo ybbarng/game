@@ -1,4 +1,11 @@
-import { goStep, no3d, shot } from "./cube";
+import {
+  goStep,
+  inputReady,
+  keysFor,
+  no3d,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -61,7 +68,7 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await goStep(page, 5);
   await expect(cases("beginner-tf-cross")).toHaveCount(4);
   await shot(page, "learn-tf-cross-cases", info.project.name);
-  await goStep(page, 9);
+  await goStep(page, 10);
   await expect(chunks).toHaveCount(4);
   await expect(body).toContainText("D R F' R'");
   await shot(page, "learn-tf-cross-chunks", info.project.name);
@@ -95,7 +102,7 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await expect(chunks).toHaveCount(3);
   await expect(body).toContainText("R' U' R U' R' U2 R");
   await shot(page, "learn-tf-ep-chunks", info.project.name);
-  await goStep(page, 3);
+  await goStep(page, 2);
   await expect(cases("beginner-tf-ep")).toHaveCount(3);
   await shot(page, "learn-tf-ep-cases", info.project.name);
 
@@ -205,6 +212,37 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
     "",
   );
   await shot(page, "learn-tf-place-grip", info.project.name);
+});
+
+test("배우기: 신광사 쥐어 보기는 큐브 전체를 돌려 맞는 쥐기가 되면 통과하고, 층 돌리기는 받지 않는다", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=333-tf-place");
+  // 쥐기 문제(4) 바로 뒤 쪽(5): 쥐기 문제의 틀린 쥐기 「헤드라이트가 뒤」에서 시작한다
+  await goStep(page, 5);
+  const look = page.locator('[data-act="look"]');
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    "look",
+  );
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "직접 쥐어 봐요",
+  );
+  await inputReady(page);
+  await shot(page, "learn-tf-place-hold-0", info.project.name);
+  if (info.project.name !== "desktop") return;
+  // 층 돌리기는 받지 않는다
+  await page.keyboard.press("KeyR");
+  await expect(look).toContainText("여기서는 층을 돌리지 않아요");
+  await expect(look).not.toHaveAttribute("data-act-passed", "");
+  // y를 한 번씩: 헤드라이트가 오른쪽 → 앞 → 왼쪽(맞는 쥐기)
+  for (const [i, passed] of [false, false, true].entries()) {
+    for (const k of keysFor("y")) await page.keyboard.press(k);
+    if (passed) await expect(look).toHaveAttribute("data-act-passed", "");
+    else await expect(look).not.toHaveAttribute("data-act-passed", "");
+    await shot(page, `learn-tf-place-hold-${i + 1}`, info.project.name);
+  }
 });
 
 test("배우기: 흰 십자는 첫머리에 여섯 모양을 훑고, 옆으로 옮겨 올리는 공식을 네 덩어리로 보이고, 끝에 모양마다 할 일을 다시 묶는다", async ({

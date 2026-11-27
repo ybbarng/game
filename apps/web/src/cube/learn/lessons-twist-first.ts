@@ -5,6 +5,9 @@
 // 관계도(`tf-flow`)로도 보인다. 경우와 공식·횟수의 원본은 twist-first-path.ts이고, 쪽의 모범 답은 그 규칙이 같은
 // 상황에서 내는 수와 같다(twist-first-lessons.test.ts). 덩어리 글이 말한 일은 twist-first-algs.test.ts가 엔진으로 확인한다.
 // 설명서 그림·글은 옮기지 않고 공식만 쓴다. 퍼뮤·수네 같은 전문 이름은 쓰지 않는다.
+import { solvedCube } from "@game/cube-engine";
+
+import { play } from "./beginner-path";
 import { setupFor } from "./notation";
 import {
   CORNER_A,
@@ -19,8 +22,10 @@ import {
   CROSS_PULL,
   EDGE_CYCLE,
   EDGE_FLIP,
+  gripPieces,
   SECOND_A,
   SECOND_B,
+  type TwistFirstStageId,
 } from "./twist-first-path";
 import type { Course, Lesson, LessonStep } from "./types";
 
@@ -49,28 +54,43 @@ export const GRIP_QUESTION = "공식을 치기 전에 어떻게 잡아야 할까
  * 그 걸음을 끝내는지 엔진으로 본다
  */
 function gripQuiz(
+  stage: TwistFirstStageId,
   body: string,
   setup: { alg: string },
   focus: string[],
   mask: LessonStep["mask"],
   pictures: [string, string][],
   why: string,
-): LessonStep {
+  tryBody: string,
+): [LessonStep, LessonStep] {
   const answer = pictures.findIndex(([y]) => y === "");
-  return {
-    kind: "quiz",
-    body,
-    setup,
-    focus,
-    ...(mask ? { mask } : {}),
-    quiz: {
-      question: GRIP_QUESTION,
-      choices: pictures.map(([, c]) => c),
-      answer,
-      why,
-      pictures: pictures.map(([y]) => ({ alg: y })),
+  const off = pictures[0]?.[0] || (pictures[1]?.[0] as string);
+  return [
+    {
+      kind: "quiz",
+      body,
+      setup,
+      focus,
+      ...(mask ? { mask } : {}),
+      quiz: {
+        question: GRIP_QUESTION,
+        choices: pictures.map(([, c]) => c),
+        answer,
+        why,
+        pictures: pictures.map(([y]) => ({ alg: y })),
+      },
     },
-  };
+    // 쥐어 보기: 문제의 틀린 쥐기(그림 하나)에서 시작해, 큐브 전체를 돌려 맞는 쥐기가 되면 통과(`gripReady`).
+    // 고리는 같은 기준 조각이 돌려 놓인 자리
+    {
+      kind: "look",
+      body: tryBody,
+      setup: { alg: `${setup.alg} ${off}` },
+      focus: gripPieces(stage, play(solvedCube(3), `${setup.alg} ${off}`)),
+      ...(mask ? { mask } : {}),
+      look: { grip: stage },
+    },
+  ];
 }
 
 const A3 = SECOND_A;
@@ -181,7 +201,8 @@ const cross: Lesson = {
       alg: "F2",
       mask: "cross",
     },
-    gripQuiz(
+    ...gripQuiz(
+      "cross",
       "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 올릴 엣지 블럭과 짝 색 센터예요. F2로 올리려면 어떻게 쥘까요?",
       up("F2"),
       ["DF", "F"],
@@ -193,6 +214,7 @@ const cross: Lesson = {
         ["y", "블럭과 짝 색 센터가 왼쪽"],
       ],
       "F2는 앞면을 반 바퀴 돌려요. 올릴 블럭과 짝 색 센터가 앞에 와야 블럭이 제자리로 올라가요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 올릴 엣지 블럭과 짝 색 센터가 앞에 오게 쥐어요.",
     ),
     {
       kind: "try",
@@ -347,7 +369,8 @@ const corners: Lesson = {
         },
       ],
     },
-    gripQuiz(
+    ...gripQuiz(
+      "corners",
       "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 넣을 코너 블럭과 넣을 자리를 알려 주는 옆 센터 둘이에요. 코너 블럭 넣기 F' R F R'로 넣으려면 어떻게 쥘까요?",
       up(CORNER_IN),
       ["DFR", "R", "F"],
@@ -359,6 +382,7 @@ const corners: Lesson = {
         ["y'", "코너 블럭이 뒤-오른쪽 아래"],
       ],
       "코너 블럭 넣기는 앞-오른쪽 위 자리에 넣어요. 넣을 자리가 앞-오른쪽 위에 오고 코너 블럭이 그 바로 밑에 있게 쥐어요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 넣을 자리가 앞-오른쪽 위에 오고 코너 블럭이 그 바로 밑에 있게 쥐어요.",
     ),
     {
       kind: "try",
@@ -529,7 +553,8 @@ const second: Lesson = {
         },
       ],
     },
-    gripQuiz(
+    ...gripQuiz(
+      "second",
       "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 넣을 엣지 블럭과 그 블럭의 두 색 센터예요. 오른쪽 넣기로 넣으려면 어떻게 쥘까요?",
       flip(A3),
       ["UF", "R", "F"],
@@ -541,6 +566,7 @@ const second: Lesson = {
         ["y'", "엣지 블럭이 오른쪽 위"],
       ],
       "오른쪽 넣기는 앞 위 엣지 블럭을 앞-오른쪽 자리로 넣어요. 블럭이 옆 색 센터 위에 있는 면을 앞으로 쥐어요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 엣지 블럭이 옆 색 센터 위에 있는 면을 앞으로 쥐어요.",
     ),
     {
       kind: "try",
@@ -673,7 +699,8 @@ const edgeFlip: Lesson = {
         },
       ],
     },
-    gripQuiz(
+    ...gripQuiz(
+      "eo",
       "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 ㄱ자를 이루는 엣지 블럭 둘이에요. 엣지 방향 공식으로 십자를 만들려면 어떻게 쥘까요?",
       flip(F4),
       ["UB", "UL"],
@@ -685,6 +712,7 @@ const edgeFlip: Lesson = {
         ["", "노란 스티커가 뒤와 왼쪽"],
       ],
       "기본형은 노란 스티커 둘이 뒤와 왼쪽일 때 공식 한 번으로 십자가 돼요. 다른 쪽으로 쥐면 십자가 되지 않아요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 ㄱ자의 노란 스티커 둘이 뒤와 왼쪽에 오게 쥐어요.",
     ),
     {
       kind: "try",
@@ -801,19 +829,6 @@ const edgePlace: Lesson = {
         },
       ],
     },
-    gripQuiz(
-      "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 제자리 엣지 블럭이에요. 엣지 위치 공식으로 넷을 맞추려면 어떻게 쥘까요?",
-      flip(C5),
-      ["UB"],
-      "ll-edges",
-      [
-        ["", "제자리 엣지 블럭이 뒤"],
-        ["y2", "제자리 엣지 블럭이 앞"],
-        ["y", "제자리 엣지 블럭이 오른쪽"],
-        ["y'", "제자리 엣지 블럭이 왼쪽"],
-      ],
-      "엣지 위치 공식은 뒤 엣지 블럭을 그대로 두고 나머지 셋을 옮겨요. 제자리 블럭이 뒤에 오게 쥐어요.",
-    ),
     {
       kind: "quiz",
       body: "처음부터 하나만 맞는 일은 드물어서, 윗면을 돌려 그 모양을 만들어요. 윗면을 위에서 보아 반시계 방향으로 한 칸씩(U') 돌리며 제자리 엣지 블럭을 세어, 둘 이상이면 멈춰요. 그런 곳이 꼭 있고, 많아야 세 번이면 찾아요. 그때 모양은 그림의 셋 가운데 하나예요. 넷 다면 끝이에요. 둘이 이웃해 있으면 U'를 한 칸 더 돌려요. 그러면 꼭 하나만 맞아요. 그 하나가 뒤에 오게 큐브를 y로 돌려 쥐고 공식을 쳐요.",
@@ -828,6 +843,22 @@ const edgePlace: Lesson = {
         why: "이웃한 둘에서 U'를 한 칸 더 돌리면 하나만 맞아요. 그 하나를 뒤에 두고 쳐요.",
       },
     },
+    // 쥐기 문제와 쥐어 보기는 경우 그림 다음(경우 그림이 첫머리 네 쪽 안에 남게)
+    ...gripQuiz(
+      "ep",
+      "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 제자리 엣지 블럭이에요. 엣지 위치 공식으로 넷을 맞추려면 어떻게 쥘까요?",
+      flip(C5),
+      ["UB"],
+      "ll-edges",
+      [
+        ["", "제자리 엣지 블럭이 뒤"],
+        ["y2", "제자리 엣지 블럭이 앞"],
+        ["y", "제자리 엣지 블럭이 오른쪽"],
+        ["y'", "제자리 엣지 블럭이 왼쪽"],
+      ],
+      "엣지 위치 공식은 뒤 엣지 블럭을 그대로 두고 나머지 셋을 옮겨요. 제자리 블럭이 뒤에 오게 쥐어요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 제자리 엣지 블럭이 뒤에 오게 쥐어요.",
+    ),
     {
       kind: "try",
       body: "U'로 한 칸 더 돌려 뒤 하나만 맞게 하고 공식을 쳐 보세요.",
@@ -948,7 +979,8 @@ const twist: Lesson = {
       mask: "ll-twist",
       sheet: "tf-flow",
     },
-    gripQuiz(
+    ...gripQuiz(
+      "twist",
       "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 노란색이 위를 보는 코너 블럭 둘이에요. 코너 방향 공식 한 번으로 다 맞추려면 어떻게 쥘까요?",
       flip(T),
       ["URF", "ULB"],
@@ -963,6 +995,7 @@ const twist: Lesson = {
         ["y'", "위를 보는 둘이 앞-왼쪽과 뒤-오른쪽, 앞-오른쪽 위 노란색이 앞"],
       ],
       "기본형은 위를 보는 둘이 앞-오른쪽 위와 뒤-왼쪽 위이고, 앞-왼쪽 위 노란색이 왼쪽을 볼 때 공식 한 번으로 다 맞아요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 위를 보는 둘이 앞-오른쪽 위와 뒤-왼쪽 위에 오고, 앞-왼쪽 위 노란색이 왼쪽을 보게 쥐어요.",
     ),
     {
       kind: "quiz",
@@ -1124,7 +1157,8 @@ const place: Lesson = {
         },
       ],
     },
-    gripQuiz(
+    ...gripQuiz(
+      "place",
       "같은 큐브를 네 가지로 쥐었어요. 노란 고리는 제자리 코너 블럭과 헤드라이트 둘이에요. 공식 A로 맞추려면 어떻게 쥘까요?",
       flip(A),
       ["URF", "UFL", "ULB"],
@@ -1136,6 +1170,7 @@ const place: Lesson = {
         ["y2", "제자리 블럭이 뒤-왼쪽 위, 헤드라이트가 오른쪽"],
       ],
       "공식 A는 앞-오른쪽 위 제자리 블럭을 그대로 두고 남은 셋을 옮겨요. 제자리 블럭이 앞-오른쪽 위에, 헤드라이트가 왼쪽 면에 오게 쥐어요.",
+      "이번에는 직접 쥐어 봐요. 큐브 전체를 y로 돌려 제자리 블럭이 앞-오른쪽 위에, 헤드라이트가 왼쪽 면에 오게 쥐어요.",
     ),
     {
       kind: "try",

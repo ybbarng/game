@@ -19,6 +19,7 @@ import { type PuzzleState, statesEqual } from "@game/puzzle-core";
 
 import type { StickerMarks } from "../bridge";
 import type { MarkTone } from "../view/types";
+import { gripReady } from "./twist-first-path";
 import {
   type FaceLetter,
   FINGER_NOTATION,
@@ -346,12 +347,16 @@ export function pieceName(type: PieceType): string {
       : "코너 블럭";
 }
 
-/** 둘러보기: 면 `on`의 칸 절반 넘게가 색 `color`인가(큐브를 통째로 돌린 뒤 그 색 면이 어디 있는지) */
+/**
+ * 둘러보기: 면 `on`의 칸 절반 넘게가 색 `color`인가(큐브를 통째로 돌린 뒤 그 색 면이 어디 있는지). 쥐어 보기(`grip`)는
+ * 그 단계의 다음 공식을 더 돌려 쥐지 않고 칠 수 있게 쥐었는가(3×3)
+ */
 export function lookMet(
   n: number,
   state: PuzzleState,
   goal: LookGoal,
 ): boolean {
+  if ("grip" in goal) return n === 3 && gripReady(goal.grip, state);
   const colors = faceColors(n, state);
   const nn = n * n;
   const f = FACE_INDEX[goal.on];

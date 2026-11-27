@@ -3,12 +3,17 @@
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 
+import { lookMet } from "./interact";
 import { GRIP_QUESTION, TWIST_FIRST_333 } from "./lessons-twist-first";
 import {
+  gripPieces,
   nextTwistFirstStep,
   type TwistFirstStageId,
   twistFirstCase,
 } from "./twist-first-path";
+import type { LookGoal } from "./types";
+
+const Y4 = ["", "y", "y2", "y'"];
 
 const STAGE: Record<string, TwistFirstStageId> = {
   "333-tf-cross": "cross",
@@ -52,6 +57,26 @@ describe("쥐기 문제", () => {
             nextTwistFirstStep(stage, play(play(start, p.alg), alg)) === null,
         );
         expect(done).toEqual(done.map((_, i) => i === quiz.answer));
+      }
+    });
+
+    it(`${lesson.title}: 쥐기 문제 바로 뒤 쥐어 보기는 틀린 쥐기에서 시작해, 맞는 쥐기로 돌렸을 때만 통과한다`, () => {
+      for (const q of quizzes) {
+        const look = lesson.steps[lesson.steps.indexOf(q) + 1];
+        if (!look) throw new Error("쥐기 문제 뒤 쪽이 없다");
+        expect(look.kind).toBe("look");
+        expect(look.look).toEqual({ grip: stage });
+        const start = play(solvedCube(3), (look.setup as { alg: string }).alg);
+        // 고리는 쥐는 기준 조각이 돌려 놓인 자리
+        expect(look.focus).toEqual(gripPieces(stage, start));
+        const goal = look.look as LookGoal;
+        // 넷 가운데 하나(쥐기 문제의 맞는 그림과 같은 쥐기)만 통과
+        const passed = Y4.filter((y) => lookMet(3, play(start, y), goal));
+        expect(passed).toHaveLength(1);
+        const quizStart = play(solvedCube(3), (q.setup as { alg: string }).alg);
+        expect(play(start, passed[0] as string).perm).toEqual(quizStart.perm);
+        // 흰 면을 뒤집어 쥐면(x2) 맞는 쥐기가 아니다
+        expect(lookMet(3, play(quizStart, "x2"), goal)).toBe(false);
       }
     });
   }

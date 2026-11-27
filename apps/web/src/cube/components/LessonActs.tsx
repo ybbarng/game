@@ -437,6 +437,7 @@ export function LookPanel({
   mask,
   settings,
   onPassed,
+  marks = null,
 }: {
   lesson: Lesson;
   step: LessonStep;
@@ -444,6 +445,8 @@ export function LookPanel({
   mask: StickerMask | null;
   settings: CubeSettings;
   onPassed: () => void;
+  /** 쥐는 기준 조각의 노란 고리(쥐어 보기, 스티커 정체마다) */
+  marks?: StickerMarks | null;
 }) {
   const n = lesson.size;
   const play = usePlay(n, start);
@@ -490,6 +493,7 @@ export function LookPanel({
         n={n}
         state={play.state}
         mask={mask}
+        marks={marks}
         syncToken={play.syncToken}
         settings={settings}
         onMove={onMove}

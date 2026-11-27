@@ -768,6 +768,25 @@ export function nextTwistFirstStep(
   return NEXT[stage](s);
 }
 
+/**
+ * 쥐어 보기(2026-11-27): 지금 쥔 그대로 그 단계의 다음 공식을 칠 수 있나. 흰 센터 블럭이 그 단계의 쪽(흰 십자·첫 층
+ * 코너는 위, 둘째 층부터 아래)에 있고, 규칙이 고른 다음 걸음에 더 돌려 쥘 수가 없어야 한다. 끝난 모양·규칙이 쥘 방향을
+ * 못 찾는 모양(x·z로 뒤집어 다른 단계처럼 보이는 것)은 아니다
+ */
+export function gripReady(stage: TwistFirstStageId, s: PuzzleState): boolean {
+  const whiteUp =
+    TWIST_FIRST_ORDER.indexOf(stage) <
+    TWIST_FIRST_ORDER.indexOf(TWIST_FIRST_FLIP_BEFORE);
+  // 3×3 면마다 아홉 칸, 가운데 칸(4)이 센터 블럭. U 0, D 3
+  const center = faceColors(3, s)[(whiteUp ? 0 : 3) * 9 + 4];
+  if (center !== WHITE) return false;
+  try {
+    return nextTwistFirstStep(stage, s)?.hold === "";
+  } catch {
+    return false;
+  }
+}
+
 // ── 쥐는 기준 조각 ────────────────────────────────────
 
 /** 면 글자들이 만나는 자리의 스티커 번호(엣지·코너) */

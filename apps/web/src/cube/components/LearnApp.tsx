@@ -656,6 +656,7 @@ function LessonView({
             step={step}
             start={start}
             mask={mask}
+            marks={focus}
             settings={settings}
             onPassed={markActed}
           />

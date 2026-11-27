@@ -1,5 +1,6 @@
 // 큐브 맞추기 배우기·훈련 자료의 모양(docs/47 8절). 화면과 엔진은 이 자료를 읽기만 한다.
 // 공식은 모두 WCA 표기 문자열이다(R U R' U', Rw, 2R, M E S, x y z). 기본 방향은 위 흰색·앞 초록·오른쪽 빨강.
+import type { TwistFirstStageId } from "./twist-first-path";
 
 export type CubeSize = 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -201,11 +202,13 @@ export interface FindTarget {
   misplaced?: boolean;
 }
 
-/** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */
-export interface LookGoal {
-  color: FaceLetter;
-  on: FaceLetter;
-}
+/**
+ * 둘러보기 목표. 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌리거나, 쥐어 보기 `grip`: 코너 방향 먼저
+ * 그 단계의 다음 공식을 더 돌려 쥐지 않고 칠 수 있게 쥔다(`twist-first-path.ts` `gripReady`, 2026-11-27)
+ */
+export type LookGoal =
+  | { color: FaceLetter; on: FaceLetter }
+  | { grip: TwistFirstStageId };
 
 /**
  * 놀이판(play) 자료. 색을 넣을 조각은 맞춘 큐브에서 `focus`에 맞는 조각들이다(여럿 주면 모두 더한다).
