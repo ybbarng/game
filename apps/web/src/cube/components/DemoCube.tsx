@@ -12,10 +12,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { stickersFromState } from "../bridge";
 import { algTokens } from "../learn/notation";
-import type { CubeSettings } from "../settings";
+import type { BackView, CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubePosterPair } from "./CubePosterPair";
 import { KeyCaps, useMoveKeys } from "./MoveChip";
+import { StageBox, useBackView } from "./StageBox";
 import { ViewHome } from "./ViewHome";
 
 /**
@@ -42,6 +43,11 @@ export interface DemoCubeProps {
   showKeys?: boolean;
   /** 재생이 끝까지 가면(배우기: 「이제 해 보세요」로 넘긴다) */
   onEnd?: () => void;
+  /**
+   * 뒷면 보기. 배우기는 해 보기 큐브와 같은 거울 판을 단다(`lessonBackView`, docs/47 16-36). 기본은 끔
+   * (핑거 트릭·패턴·십자 훈련의 시연은 그대로)
+   */
+  backView?: BackView;
 }
 
 export function DemoCube({
@@ -57,6 +63,7 @@ export function DemoCube({
   arrowKeys = false,
   showKeys = true,
   onEnd,
+  backView = "off",
 }: DemoCubeProps) {
   const onEndRef = useRef(onEnd);
   onEndRef.current = onEnd;
@@ -68,6 +75,11 @@ export function DemoCube({
   const [ready, setReady] = useState(false);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(autoPlay);
+  const back = useBackView(backView, !failed);
+  const mirror = back.mode === "mirror";
+  useEffect(() => {
+    if (ready) viewRef.current?.setMirror(mirror);
+  }, [mirror, ready]);
 
   const tokens = useMemo(() => algTokens(alg), [alg]);
   const moves = useMemo<CubeMove[][]>(
@@ -193,27 +205,34 @@ export function DemoCube({
   const current = states[index] as PuzzleState;
   return (
     <div className="flex w-full flex-col items-center gap-2" data-cube-demo>
-      <div className="relative aspect-square w-full max-w-[360px]">
-        {failed ? (
-          <div data-cube-no3d className="flex h-full items-center p-2">
-            <CubePosterPair
-              n={n}
-              state={current}
-              mask={mask}
-              settings={settings}
-              className="w-full"
-            />
+      <StageBox
+        boxRef={back.ref}
+        // 거울이면 판까지 들이도록 넓힌다(StillCube와 같은 폭)
+        maxWidth={mirror ? 440 : 360}
+        stage={
+          <div className="relative aspect-square w-full">
+            {failed ? (
+              <div data-cube-no3d className="flex h-full items-center p-2">
+                <CubePosterPair
+                  n={n}
+                  state={current}
+                  mask={mask}
+                  settings={settings}
+                  className="w-full"
+                />
+              </div>
+            ) : (
+              <canvas
+                ref={canvasRef}
+                data-cube-canvas
+                data-cube-ready={ready ? "" : undefined}
+                className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
+              />
+            )}
+            {!failed && <ViewHome viewRef={viewRef} ready={ready} />}
           </div>
-        ) : (
-          <canvas
-            ref={canvasRef}
-            data-cube-canvas
-            data-cube-ready={ready ? "" : undefined}
-            className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
-          />
-        )}
-        {!failed && <ViewHome viewRef={viewRef} ready={ready} />}
-      </div>
+        }
+      />
       <ol
         className="flex flex-wrap justify-center gap-1 font-mono text-sm"
         data-demo-index={index}

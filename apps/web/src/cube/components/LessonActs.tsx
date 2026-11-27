@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { copula } from "@/lib/josa";
+import { MIRROR_VIEW_MIN_WIDTH } from "../back-view";
 import { stickersFromState } from "../bridge";
 import type { Command } from "../input";
 import {
@@ -37,12 +38,13 @@ import {
 } from "../learn/interact";
 import { algTokens as algTokensOf } from "../learn/notation";
 import type { Lesson, LessonStep } from "../learn/types";
-import type { CubeSettings } from "../settings";
+import type { BackView, CubeSettings } from "../settings";
 import { type CubeView, loadCubeView, type MarkTone } from "../view";
 import { CubeHero } from "./CubeHero";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
 import { MoveChip, useMoveKeys } from "./MoveChip";
+import { StageBox, useBackView } from "./StageBox";
 import { StillCube } from "./StillCube";
 import { ViewHome } from "./ViewHome";
 
@@ -95,6 +97,7 @@ export function FindPanel({
   settings,
   onPassed,
   explore = false,
+  backView,
 }: {
   lesson: Lesson;
   step: LessonStep;
@@ -102,6 +105,8 @@ export function FindPanel({
   mask: StickerMask | null;
   settings: CubeSettings;
   onPassed: () => void;
+  /** 뒷면 보기(배우기는 `lessonBackView`). 없으면 설정대로 */
+  backView?: BackView;
   /** 둘러보며 눌러 보기(처음 안내): 아무 조각이나 누르면 통과하고, 그 뒤로도 누를 때마다 무슨 조각인지 알린다 */
   explore?: boolean;
 }) {
@@ -242,6 +247,7 @@ export function FindPanel({
         settings={settings}
         onSticker={onSticker}
         marks={marks}
+        backView={backView}
       />
     </div>
   );
@@ -256,6 +262,7 @@ export function QuizPanel({
   mask,
   settings,
   onPassed,
+  backView,
 }: {
   lesson: Lesson;
   step: LessonStep;
@@ -263,6 +270,8 @@ export function QuizPanel({
   mask: StickerMask | null;
   settings: CubeSettings;
   onPassed: () => void;
+  /** 뒷면 보기(배우기는 `lessonBackView`). 없으면 설정대로 */
+  backView?: BackView;
 }) {
   const quiz = step.quiz;
   const [choice, setChoice] = useState<number | null>(null);
@@ -297,7 +306,13 @@ export function QuizPanel({
                   : "bg-white/5",
               )}
             >
-              <MiniCube n={n} state={s} mask={mask} settings={settings} />
+              <MiniCube
+                n={n}
+                state={s}
+                mask={mask}
+                settings={settings}
+                backView={backView ?? settings.backView}
+              />
               <span className="font-bold text-sm">{quiz.choices[i]}</span>
             </div>
           ))}
@@ -308,6 +323,7 @@ export function QuizPanel({
           state={start}
           mask={mask}
           settings={settings}
+          backView={backView}
         />
       )}
       <div
@@ -764,22 +780,32 @@ export function PlayPanel({
 
 // ── 작은 그림 큐브(그림 고르기) ───────────────────────────
 
-/** 3D 정지 그림 하나(끌면 둘러보기만). 3D를 못 그리면 비스듬한 큐브 그림 둘 */
+/**
+ * 3D 정지 그림 하나(끌면 둘러보기만). 거울이면 해 보기 큐브와 같은 거울 판을 단다(보기만 하는 큐브라 좁은 칸에서도,
+ * `MIRROR_VIEW_MIN_WIDTH`). 3D를 못 그리면 비스듬한 큐브 그림 둘
+ */
 function MiniCube({
   n,
   state,
   mask,
   settings,
+  backView,
 }: {
   n: number;
   state: PuzzleState;
   mask: StickerMask | null;
   settings: CubeSettings;
+  backView: BackView;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const back = useBackView(backView, !failed, MIRROR_VIEW_MIN_WIDTH);
+  const mirror = back.mode === "mirror";
+  useEffect(() => {
+    if (ready) viewRef.current?.setMirror(mirror);
+  }, [mirror, ready]);
   const live = useRef({ state, mask });
   live.current = { state, mask };
   useEffect(() => {
@@ -834,15 +860,21 @@ function MiniCube({
       />
     </div>
   ) : (
-    <div className="relative aspect-square w-full max-w-[240px]">
-      <canvas
-        ref={canvasRef}
-        data-cube-canvas
-        data-cube-ready={ready ? "" : undefined}
-        className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
-      />
-      <ViewHome viewRef={viewRef} ready={ready} />
-    </div>
+    <StageBox
+      boxRef={back.ref}
+      maxWidth={mirror ? 300 : 240}
+      stage={
+        <div className="relative aspect-square w-full">
+          <canvas
+            ref={canvasRef}
+            data-cube-canvas
+            data-cube-ready={ready ? "" : undefined}
+            className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
+          />
+          <ViewHome viewRef={viewRef} ready={ready} />
+        </div>
+      }
+    />
   );
 }
 

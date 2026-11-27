@@ -7,7 +7,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { type StickerMarks, stickersFromState } from "../bridge";
 import { stickerAtHit } from "../learn/interact";
-import type { CubeSettings } from "../settings";
+import type { BackView, CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubePosterPair } from "./CubePosterPair";
 import { StageBox, useBackView } from "./StageBox";
@@ -24,7 +24,10 @@ export function StillCube({
   fallback,
   hint = true,
   mirrorMinWidth,
+  backView,
 }: {
+  /** 뒷면 보기. 없으면 설정 「거울 / 끔」대로(배우기는 `lessonBackView`를 넘긴다) */
+  backView?: BackView | undefined;
   n: number;
   state: PuzzleState;
   mask: StickerMask | null;
@@ -45,7 +48,11 @@ export function StillCube({
   const [failed, setFailed] = useState(false);
   const live = useRef({ state, mask, onSticker, marks });
   live.current = { state, mask, onSticker, marks };
-  const back = useBackView(settings.backView, !failed, mirrorMinWidth);
+  const back = useBackView(
+    backView ?? settings.backView,
+    !failed,
+    mirrorMinWidth,
+  );
   const mirror = back.mode === "mirror";
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirror);

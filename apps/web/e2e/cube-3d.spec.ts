@@ -16,6 +16,7 @@ import { expect, type Page, test } from "./test";
  * | StateCube(큐브의 수학) | 방향과 홀짝 카드 |
  * | CubeHero(첫 화면 연출) | /cube |
  * | 거울 판(뒷면 보기, StillCube) | 조각과 만나기 「센터 블럭 세기」 |
+ * | 강 안 거울 판(DemoCube 시연·곁 그림) | 흰 십자 시연, 3×3에서 2×2로 첫 쪽 |
  */
 
 /** GPU 없는 CI는 첫 장면에 5초 넘게 걸린다(멈춘 시험을 잡는 상한) */
@@ -44,6 +45,24 @@ test("3D: 시연 큐브(DemoCube)", async ({ page }) => {
   await expect(
     page.locator("[data-cube-demo] [data-cube-canvas][data-cube-ready]"),
   ).toBeVisible(SCENE);
+});
+
+test("3D: 강 안의 시연 큐브와 곁 그림도 해 보기 큐브와 같은 거울 판을 단다(docs/47 16-36)", async ({
+  page,
+}) => {
+  await skipSplash(page);
+  // 시연(DemoCube): 강 밖 시연(핑거 트릭 등)은 거울이 없고, 강 안은 기본 설정이라 판 셋이 뜬다
+  await page.goto("/cube/learn?lesson=333-white-cross");
+  await goToStep(page, "demo");
+  await expect(
+    page.locator("[data-cube-demo] [data-cube-canvas][data-cube-ready]"),
+  ).toHaveAttribute("data-cube-mirror", "on", SCENE);
+  // 곁 그림(220px 칸이던 작은 3×3)과 단계 큐브 모두
+  await page.goto("/cube/learn?lesson=222-from333-corners");
+  const still = page.locator("[data-cube-still] [data-cube-canvas]");
+  await expect(still).toHaveCount(2);
+  for (const c of await still.all())
+    await expect(c).toHaveAttribute("data-cube-mirror", "on", SCENE);
 });
 
 test("3D: 정지 큐브(StillCube)", async ({ page }) => {

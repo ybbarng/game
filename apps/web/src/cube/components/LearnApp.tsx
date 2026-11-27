@@ -4,7 +4,11 @@ import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { backViewText } from "../back-view";
+import {
+  backViewText,
+  lessonBackView,
+  MIRROR_VIEW_MIN_WIDTH,
+} from "../back-view";
 import { courseMethod } from "../learn/course-method";
 import {
   basicsSizeOf,
@@ -41,7 +45,7 @@ import {
   METHODS_TITLE,
 } from "../nav/learn-names";
 import { redirectTarget } from "../nav/redirect";
-import { type CubeSettings, useCubeSettings } from "../settings";
+import { type BackView, type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
 import { AlgChunks } from "./AlgChunks";
 import { DemoCube } from "./DemoCube";
@@ -316,6 +320,8 @@ function LessonView({
   setProgress: (p: LearnProgress) => void;
 }) {
   const settings = useCubeSettings();
+  // 강 안의 모든 큐브는 해 보기 큐브와 같은 거울 보기(docs/47 16-36)
+  const backView = lessonBackView(settings);
   const noKeyboard = useNoKeyboard();
   // 나갔다 들어오면 마지막으로 본 단계로 연다(진도는 단원을 그리기 전에 읽혀 있다)
   const [at, setAt] = useState(() =>
@@ -464,10 +470,7 @@ function LessonView({
             ))
           ) : (
             <MoveText
-              text={touchText(
-                backViewText(step.body, settings.backView),
-                noKeyboard,
-              )}
+              text={touchText(backViewText(step.body, backView), noKeyboard)}
               n={lesson.size}
               letters={lesson.id.startsWith("bld")}
             />
@@ -481,7 +484,11 @@ function LessonView({
           />
         )}
         {step.sheet && (
-          <LessonSheet name={step.sheet} colors={settings.colors} />
+          <LessonSheet
+            name={step.sheet}
+            colors={settings.colors}
+            mirror={backView === "mirror"}
+          />
         )}
         {step.beside && (
           <Beside
@@ -489,6 +496,7 @@ function LessonView({
             beside={step.beside}
             masked={masked}
             settings={settings}
+            backView={backView}
           />
         )}
         {step.kind === "text" && (
@@ -497,6 +505,7 @@ function LessonView({
             state={start}
             mask={mask}
             settings={settings}
+            backView={backView}
           />
         )}
         {lesson.stageMap && !step.stageMap && (
@@ -541,6 +550,7 @@ function LessonView({
               settings={settings}
               arrowKeys
               showKeys={false}
+              backView={backView}
               onEnd={() => {
                 setDemoSeen(true);
                 // 끝까지 본 시연도 단계 표시를 초록으로
@@ -569,6 +579,7 @@ function LessonView({
             mask={mask}
             settings={settings}
             onPassed={markActed}
+            backView={backView}
           />
         )}
         {step.kind === "quiz" && (
@@ -580,6 +591,7 @@ function LessonView({
             mask={mask}
             settings={settings}
             onPassed={markActed}
+            backView={backView}
           />
         )}
         {step.kind === "welcome" && (
@@ -794,10 +806,12 @@ function Beside({
   beside,
   masked,
   settings,
+  backView,
 }: {
   beside: BesideCube;
   masked: boolean;
   settings: CubeSettings;
+  backView: BackView;
 }) {
   const n = beside.size;
   const state = useMemo(
@@ -813,10 +827,21 @@ function Beside({
   );
   return (
     <figure
-      className="mx-auto flex w-full max-w-[220px] flex-col items-center gap-1"
+      className={cn(
+        "mx-auto flex w-full flex-col items-center gap-1",
+        // 거울 판까지 들이면 큐브가 작아지니 칸을 넓힌다(보기만 하는 그림이라 칸 최소 폭은 `MIRROR_VIEW_MIN_WIDTH`)
+        backView === "mirror" ? "max-w-[300px]" : "max-w-[220px]",
+      )}
       data-step-beside={n}
     >
-      <StillCube n={n} state={state} mask={mask} settings={settings} />
+      <StillCube
+        n={n}
+        state={state}
+        mask={mask}
+        settings={settings}
+        backView={backView}
+        mirrorMinWidth={MIRROR_VIEW_MIN_WIDTH}
+      />
       <figcaption className="break-keep text-center text-white/60 text-xs">
         {beside.caption}
       </figcaption>
