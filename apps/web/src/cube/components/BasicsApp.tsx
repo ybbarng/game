@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { BASICS } from "../learn/courses";
+import { useCurrentSize } from "../current-size";
+import { BASICS_SIZES, basicsLessons, basicsSizeFor } from "../learn/courses";
 import { type LearnProgress, loadLearn } from "../learn/progress";
 import {
   BASICS_TITLE,
@@ -14,11 +15,13 @@ import {
 import { useCubeSettings } from "../settings";
 import { CoreCube } from "./CoreCube";
 import { lessonHref } from "./LearnLinks";
+import { SizePicker } from "./SizePicker";
 import "@/cube/components/cube-fx.css";
 
 /**
- * 큐브의 기초(`/cube/basics`, docs/47 16-27): 큐브 상태를 바꾸지 않는 기초. 맨 위에 분해한 큐브의 속 3D, 그 아래 기초 단원
- * 셋(이름과 진행 ✓만), 해법과 상관없이 모두가 쓰는 연습(키 익히기·핑거 트릭), 맨 아래 다음 걸음인 해법 배우기.
+ * 큐브의 기초(`/cube/basics`, docs/47 16-27·16-35): 큐브 상태를 바꾸지 않는 기초. 맨 위 크기 탭(2~5, 보는 화면), 3×3
+ * 탭에만 분해한 큐브의 속 3D, 그 아래 그 크기의 기초 강(이름과 진행 ✓만), 크기와 상관없이 늘 보이는 연습(키 익히기·
+ * 핑거 트릭), 맨 아래 다음 걸음인 해법 배우기.
  * 덧붙임 문구는 두지 않는다(docs/standing-rules.md 3절): 제목, 단원 이름, 칸 이름만.
  */
 
@@ -48,15 +51,43 @@ const PRACTICE: Link[] = [
 const cardClass =
   "flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-3 transition hover:bg-white/10 active:scale-[0.98]";
 
+/** 주소의 `?n=4`(없거나 탭에 없는 크기면 null) */
+function sizeFromUrl(): number | null {
+  try {
+    const n = Number(new URLSearchParams(window.location.search).get("n"));
+    return (BASICS_SIZES as readonly number[]).includes(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 export function BasicsApp() {
   const settings = useCubeSettings();
   const [progress, setProgress] = useState<LearnProgress>({ lessons: {} });
-  useEffect(() => setProgress(loadLearn()), []);
+  // 보는 화면(docs/47 16-28·16-35): 주소 `?n=`, 없으면 지금 크기로 열고, 탭을 바꿔도 지금 크기는 그대로다
+  const current = useCurrentSize();
+  const [viewing, setViewing] = useState<number | null>(null);
+  useEffect(() => {
+    setProgress(loadLearn());
+    setViewing(sizeFromUrl());
+  }, []);
+  const n = basicsSizeFor(current, viewing);
+  const lessons = basicsLessons(n);
+  const pick = (next: number) => {
+    setViewing(next);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("n", String(next));
+      window.history.replaceState(null, "", url);
+    } catch {
+      // 주소를 못 바꿔도 탭은 바뀐다
+    }
+  };
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-4"
-        data-cube-basics=""
+        data-cube-basics={n}
       >
         <header className="flex items-center gap-3">
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
@@ -64,17 +95,28 @@ export function BasicsApp() {
           </a>
           <h1 className="font-bold text-lg">{BASICS_TITLE}</h1>
         </header>
-        {/* 검은 조각·연결부가 바탕에 묻히지 않게 조금 밝은 판 위에 둔다 */}
-        <div
-          className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_50%_45%,#4a4a52_0%,#2a2a30_55%,#1f1f23_100%)]"
-          data-basics-model
-        >
-          <CoreCube colors={settings.colors} />
-        </div>
+        <SizePicker
+          attr="data-basics-sizes"
+          optionAttr="data-basics-size"
+          sizes={BASICS_SIZES}
+          value={n}
+          onPick={pick}
+          className="self-start"
+        />
+        {/* 분해 모델은 3×3만 있다. 다른 크기 탭에는 자리를 두지 않는다(docs/47 16-35) */}
+        {n === 3 && (
+          // 검은 조각·연결부가 바탕에 묻히지 않게 조금 밝은 판 위에 둔다
+          <div
+            className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_50%_45%,#4a4a52_0%,#2a2a30_55%,#1f1f23_100%)]"
+            data-basics-model
+          >
+            <CoreCube colors={settings.colors} />
+          </div>
+        )}
         <section className="flex flex-col gap-1.5">
-          <h2 className="px-1 font-semibold text-white/50 text-xs">단원</h2>
-          <ol className="flex flex-col gap-2">
-            {BASICS.lessons.map((l, i) => {
+          <h2 className="px-1 font-semibold text-white/50 text-xs">강</h2>
+          <ol className="flex flex-col gap-2" data-basics-lessons={n}>
+            {lessons.map((l, i) => {
               const done = progress.lessons[l.id]?.done === true;
               return (
                 <li key={l.id}>

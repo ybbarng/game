@@ -107,7 +107,7 @@ const intro: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "앞 단원에서 2×2가 코너 블럭 여덟 개로 되어 있고, 기준 코너 하나가 다른 코너의 제자리를 정한다는 걸 봤어요. 이번에는 맞추기 전에 알아 둘 것을 봐요. 센터 블럭이 없어도 색의 짝은 3×3과 같아요: 흰↔노랑, 초록↔파랑, 빨강↔주황이 언제나 맞은편이에요. 그래서 한 코너 블럭에 맞은편 두 색은 함께 붙지 않아요.",
+      body: "2×2는 코너 블럭 여덟 개로 되어 있고, 기준 코너 하나가 다른 코너의 제자리를 정해요. 맞추기 전에 알아 둘 것을 더 봐요. 센터 블럭이 없어도 색의 짝은 3×3과 같아요: 흰↔노랑, 초록↔파랑, 빨강↔주황이 언제나 맞은편이에요. 그래서 한 코너 블럭에 맞은편 두 색은 함께 붙지 않아요.",
       mask: "all",
       quiz: {
         question: "빨강의 맞은편 색은 무엇일까요?",
@@ -493,5 +493,18 @@ export const BEGINNER_222: Course = {
   title: "2×2 처음 맞추기",
   summary:
     "첫 층 → 윗면 → 위 층 자리. 공식 셋(코너 돌리기, 윗면 공식, 위 층 코너 바꾸기)이면 돼요. 끝에 오르테가 소개.",
-  lessons: [pieces, intro, firstLayer, topFace, topLayer, ortega],
+  lessons: [intro, firstLayer, topFace, topLayer, ortega],
+};
+
+/**
+ * 큐브의 기초 2×2 탭, 2×2부터 하는 사람의 조각 강(docs/47 16-35). 2×2 처음 맞추기의 첫 강이었다. 강 id는 그대로라
+ * 진도가 이어지고, 「다음 강」은 2×2 처음 맞추기 첫 강으로 잇는다(`continues`)
+ */
+export const BASICS_222: Course = {
+  id: "cube-basics-222",
+  size: 2,
+  title: "큐브의 기초 2×2",
+  summary: "2×2를 이루는 코너 블럭 여덟과 기준 코너를 알아봐요.",
+  continues: "222-beginner",
+  lessons: [pieces],
 };
