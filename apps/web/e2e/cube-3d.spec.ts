@@ -47,7 +47,7 @@ test("3D: 시연 큐브(DemoCube)", async ({ page }) => {
   ).toBeVisible(SCENE);
 });
 
-test("3D: 강 안의 시연 큐브와 곁 그림도 해 보기 큐브와 같은 거울 판을 단다(docs/47 16-36)", async ({
+test("3D: 강 안의 시연 큐브와 곁 그림도 해 보기 큐브와 같은 거울 판을 단다(docs/47 16-37)", async ({
   page,
 }) => {
   await skipSplash(page);

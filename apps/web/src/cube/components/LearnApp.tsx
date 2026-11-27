@@ -320,7 +320,7 @@ function LessonView({
   setProgress: (p: LearnProgress) => void;
 }) {
   const settings = useCubeSettings();
-  // 강 안의 모든 큐브는 해 보기 큐브와 같은 거울 보기(docs/47 16-36)
+  // 강 안의 모든 큐브는 해 보기 큐브와 같은 거울 보기(docs/47 16-37)
   const backView = lessonBackView(settings);
   const noKeyboard = useNoKeyboard();
   // 나갔다 들어오면 마지막으로 본 단계로 연다(진도는 단원을 그리기 전에 읽혀 있다)

@@ -42,7 +42,7 @@ export function AlgPicture({
   mask,
   mirror = false,
 }: {
-  /** 비스듬한 큐브에 거울 판(배우기 경우 표, docs/47 16-36). 윗면 평면도에는 쓰지 않는다 */
+  /** 비스듬한 큐브에 거울 판(배우기 경우 표, docs/47 16-37). 윗면 평면도에는 쓰지 않는다 */
   mirror?: boolean;
   set: AlgSet;
   n: number;

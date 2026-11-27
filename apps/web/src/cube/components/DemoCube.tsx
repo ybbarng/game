@@ -44,7 +44,7 @@ export interface DemoCubeProps {
   /** 재생이 끝까지 가면(배우기: 「이제 해 보세요」로 넘긴다) */
   onEnd?: () => void;
   /**
-   * 뒷면 보기. 배우기는 해 보기 큐브와 같은 거울 판을 단다(`lessonBackView`, docs/47 16-36). 기본은 끔
+   * 뒷면 보기. 배우기는 해 보기 큐브와 같은 거울 판을 단다(`lessonBackView`, docs/47 16-37). 기본은 끔
    * (핑거 트릭·패턴·십자 훈련의 시연은 그대로)
    */
   backView?: BackView;

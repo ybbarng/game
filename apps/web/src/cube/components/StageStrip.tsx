@@ -234,7 +234,7 @@ export function StageStrip({
 }) {
   const states = useMemo(() => stageStates(course), [course]);
   const stages = course.stages ?? [];
-  // 칸마다 큐브 하나 + 거울 판(강 안 큐브와 같은 보기, docs/47 16-36). 거울을 껐으면 그림 둘
+  // 칸마다 큐브 하나 + 거울 판(강 안 큐브와 같은 보기, docs/47 16-37). 거울을 껐으면 그림 둘
   const mirror = lessonBackView(settings) === "mirror";
   return (
     <ol

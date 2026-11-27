@@ -145,7 +145,7 @@ function box(points: string) {
   };
 }
 
-describe("거울 판을 단 큐브 그림(배우기의 작은 그림, docs/47 16-36)", () => {
+describe("거울 판을 단 큐브 그림(배우기의 작은 그림, docs/47 16-37)", () => {
   const SIDE = 200;
 
   it("판 셋(뒤·왼쪽·아래)과 판마다 n²칸, 큐브의 보이는 세 면은 그대로 그린다", () => {
@@ -193,7 +193,7 @@ describe("거울 판을 단 큐브 그림(배우기의 작은 그림, docs/47 16
         expect(b.maxY).toBeLessThanOrEqual(SIDE);
       }
       // 판은 큐브 몸통의 어느 면과도 겹치지 않는다. 판 자리는 정사영으로 정해(`mirrorPanels`) 원근으로 그리면
-      // 5×5부터 왼쪽 판이 큐브 앞 아래 모서리에 1px 안쪽으로 닿는다(3D 장면도 같다, docs/47 16-36). 2~4만 본다
+      // 5×5부터 왼쪽 판이 큐브 앞 아래 모서리에 1px 안쪽으로 닿는다(3D 장면도 같다, docs/47 16-37). 2~4만 본다
       if (n <= 4)
         for (const p of s.mirror?.plates ?? [])
           for (const b of s.body)

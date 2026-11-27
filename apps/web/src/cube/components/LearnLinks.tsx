@@ -144,7 +144,7 @@ export function LessonSheet({
 }: {
   name: SheetName;
   colors: readonly number[];
-  /** 비스듬한 큐브 그림에 거울 판을 단다(강 안 큐브 보기, docs/47 16-36). 윗면 평면도는 그대로 */
+  /** 비스듬한 큐브 그림에 거울 판을 단다(강 안 큐브 보기, docs/47 16-37). 윗면 평면도는 그대로 */
   mirror?: boolean;
 }) {
   if (isBeginnerSheet(name))
