@@ -1,15 +1,18 @@
 "use client";
 
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
+import type { PuzzleState } from "@game/puzzle-core";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import {
   BEGINNER_CASE_SHEETS,
+  caseFocus,
   FLOW_DEMO_START,
   TWIST_FLOW,
   type TwistFlowNode,
 } from "../learn/beginner-cases";
+import { focusMarks } from "../learn/focus";
 import { AlgPicture, isTopSet } from "./AlgPicture";
 import { MoveText } from "./MoveChip";
 
@@ -29,6 +32,9 @@ export function BeginnerCasesSheet({
 }) {
   const sheet = BEGINNER_CASE_SHEETS[name];
   const top = isTopSet(sheet.set);
+  const states = sheet.cases.map((c) =>
+    applyMoves(3, solvedCube(3), parseMoves(3, c.alg)),
+  );
   return (
     <section
       data-sheet={name}
@@ -47,7 +53,12 @@ export function BeginnerCasesSheet({
               <AlgPicture
                 set={sheet.set}
                 n={3}
-                state={applyMoves(3, solvedCube(3), parseMoves(3, c.alg))}
+                state={states[i] as PuzzleState}
+                marks={focusMarks(
+                  3,
+                  states[i] as PuzzleState,
+                  caseFocus(sheet, c),
+                )}
                 colors={colors}
                 {...(sheet.mask ? { mask: sheet.mask } : {})}
                 mirror={mirror}

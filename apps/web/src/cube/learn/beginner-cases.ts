@@ -674,6 +674,15 @@ export function withFlowPick(
   return { ...step, setup: { alg: node.alg }, alg: CORNER_TURN, focus };
 }
 
+/**
+ * 경우 표 그림에서 고리를 두를 기준 조각(그림 상태에서 든 자리 이름). 코너 방향 먼저 강의 표는 다음 한 걸음에서 쥐는
+ * 기준 조각(`gripPieces`, 시연·해 보기의 고리와 같다), 끝난 모양과 처음 맞추기 표는 없음
+ */
+export function caseFocus(sheet: BeginnerCaseSheet, c: BeginnerCase): string[] {
+  if (sheet.stage.path !== "twist-first") return [];
+  return gripPieces(sheet.stage.id, play(solvedCube(3), c.alg));
+}
+
 export const isBeginnerSheet = (
   name: SheetName,
 ): name is keyof typeof BEGINNER_CASE_SHEETS => name in BEGINNER_CASE_SHEETS;

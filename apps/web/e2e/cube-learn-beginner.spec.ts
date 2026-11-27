@@ -177,6 +177,13 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await expect(
     placeSheet.locator('[data-sheet-case="b"] [data-headlights]'),
   ).toHaveAttribute("data-headlights", "R");
+  // 기준 조각 고리: 제자리 코너 블럭과 헤드라이트 둘(코너 블럭 셋 × 윗면·옆면 윗줄 두 칸), 끝난 모양은 없음
+  await expect(
+    placeSheet.locator('[data-sheet-case="a"] [data-sticker-mark="focus"]'),
+  ).toHaveCount(9);
+  await expect(
+    placeSheet.locator('[data-sheet-case="done"] [data-sticker-mark]'),
+  ).toHaveCount(0);
   await shot(page, "learn-tf-place-cases", info.project.name);
   await goStep(page, 3);
   await expect(chunks).toHaveCount(6);

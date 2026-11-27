@@ -1,10 +1,16 @@
 import type { PuzzleState } from "@game/puzzle-core";
 
-import { faceGrid, stickersFromState } from "../bridge";
+import {
+  faceGrid,
+  marksAtSlots,
+  type StickerMarks,
+  stickersFromState,
+} from "../bridge";
 import { ALG_SETS } from "../learn/alg-sets";
 import { maskFor } from "../learn/judge";
 import type { AlgSet, MaskName } from "../learn/types";
 import { hexColor } from "../settings";
+import { MARK_COLOR, type MarkTone } from "../view/types";
 import { CubePoster } from "./CubePoster";
 
 /** 위에서 본 그림을 쓰는 묶음(마지막 층·2×2) */
@@ -41,7 +47,10 @@ export function AlgPicture({
   className,
   mask,
   mirror = false,
+  marks = null,
 }: {
+  /** 칸 표시(스티커 정체마다, 경우 표의 쥐는 기준 조각 고리) */
+  marks?: StickerMarks | null;
   /** 비스듬한 큐브에 거울 판(배우기 경우 표, docs/47 16-37). 윗면 평면도에는 쓰지 않는다 */
   mirror?: boolean;
   set: AlgSet;
@@ -63,7 +72,12 @@ export function AlgPicture({
     return (
       <CubePoster
         n={n}
-        stickers={stickersFromState(n, state, mask ? maskFor(n, mask) : null)}
+        stickers={stickersFromState(
+          n,
+          state,
+          mask ? maskFor(n, mask) : null,
+          marks,
+        )}
         colors={colors}
         width={200}
         height={200}
@@ -81,39 +95,40 @@ export function AlgPicture({
     const c = faces[f]?.[k];
     return c === null || c === undefined ? "#555" : hexColor(colors[c] ?? 0);
   };
-  const rects: { x: number; y: number; w: number; h: number; c: string }[] = [];
-  for (let k = 0; k < n * n; k++)
+  const marked = marksAtSlots(state, marks);
+  const nn = n * n;
+  const rects: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    c: string;
+    mark: MarkTone | null;
+  }[] = [];
+  const push = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    f: number,
+    k: number,
+  ) =>
     rects.push({
-      x: o + (k % n) * cell,
-      y: o + Math.floor(k / n) * cell,
-      w: cell,
-      h: cell,
-      c: fill(U, k),
+      x,
+      y,
+      w,
+      h,
+      c: fill(f, k),
+      mark: marked?.[f * nn + k] ?? null,
     });
+  for (let k = 0; k < nn; k++)
+    push(o + (k % n) * cell, o + Math.floor(k / n) * cell, cell, cell, U, k);
   for (let i = 0; i < n; i++) {
     // 옆면 윗줄(row 0): 앞 F는 왼→오른, 오른 R은 앞→뒤, 뒤 B는 오른→왼, 왼 L은 뒤→앞
-    rects.push({
-      x: o + i * cell,
-      y: o + size + gap,
-      w: cell,
-      h: strip,
-      c: fill(F, i),
-    });
-    rects.push({
-      x: o + size + gap,
-      y: o + i * cell,
-      w: strip,
-      h: cell,
-      c: fill(R, n - 1 - i),
-    });
-    rects.push({
-      x: o + i * cell,
-      y: 0,
-      w: cell,
-      h: strip,
-      c: fill(B, n - 1 - i),
-    });
-    rects.push({ x: 0, y: o + i * cell, w: strip, h: cell, c: fill(L, i) });
+    push(o + i * cell, o + size + gap, cell, strip, F, i);
+    push(o + size + gap, o + i * cell, strip, cell, R, n - 1 - i);
+    push(o + i * cell, 0, cell, strip, B, n - 1 - i);
+    push(0, o + i * cell, strip, cell, L, i);
   }
   const total = 2 * o + size;
   return (
@@ -138,6 +153,36 @@ export function AlgPicture({
           strokeWidth={0.5}
         />
       ))}
+      {rects.map((r, i) =>
+        r.mark ? (
+          // 칸 표시(쥐는 기준 조각의 고리). 노란 칸 위에서도 보이게 검은 테 위에 표시 색을 겹친다
+          <g
+            // biome-ignore lint/suspicious/noArrayIndexKey: 칸 차례가 곧 자리
+            key={`m${i}`}
+            data-sticker-mark={r.mark}
+            fill="none"
+          >
+            <rect
+              x={r.x + 0.9}
+              y={r.y + 0.9}
+              width={r.w - 1.8}
+              height={r.h - 1.8}
+              rx={1}
+              stroke="#000"
+              strokeWidth={1.8}
+            />
+            <rect
+              x={r.x + 0.9}
+              y={r.y + 0.9}
+              width={r.w - 1.8}
+              height={r.h - 1.8}
+              rx={1}
+              stroke={hexColor(MARK_COLOR[r.mark])}
+              strokeWidth={0.9}
+            />
+          </g>
+        ) : null,
+      )}
     </svg>
   );
 }

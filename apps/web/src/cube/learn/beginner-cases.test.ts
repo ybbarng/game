@@ -10,7 +10,11 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
-import { BEGINNER_CASE_SHEETS, type CaseSheetStage } from "./beginner-cases";
+import {
+  BEGINNER_CASE_SHEETS,
+  type CaseSheetStage,
+  caseFocus,
+} from "./beginner-cases";
 import { pathStage, runStage } from "./beginner-path";
 import { BEGINNER_333 } from "./lessons-333";
 import { TWIST_FIRST_333 } from "./lessons-twist-first";
@@ -97,5 +101,52 @@ describe("단계마다 모든 경우 그림", () => {
       // 신광사 흰 십자는 어디를 돌려도 되는지 보이는 돌리기 쪽 넷을 경우 그림보다 먼저 둔다(2026-11-27 사용자)
       expect(at, id).toBeLessThan(id === "333-tf-cross" ? 6 : 4);
     }
+  });
+});
+
+describe("경우 표 그림의 기준 조각 고리", () => {
+  const focusOf = (name: keyof typeof BEGINNER_CASE_SHEETS, id: string) => {
+    const sheet = BEGINNER_CASE_SHEETS[name];
+    const c = sheet.cases.find((x) => x.id === id);
+    if (!c) throw new Error(`${name}에 ${id}가 없다`);
+    return caseFocus(sheet, c);
+  };
+
+  it("코너 방향 먼저 표는 그림마다 다음 걸음의 쥐는 기준 조각(시연·해 보기 고리와 같은 규칙)에 고리를 두른다", () => {
+    // 흰 십자: 올릴 엣지 블럭과 짝 색 센터
+    expect(focusOf("beginner-tf-cross", "down")).toEqual(["DF", "F"]);
+    // 첫 층 코너: 코너 블럭과 넣을 자리를 알려 주는 옆 센터 둘
+    expect(focusOf("beginner-tf-corners", "right")).toEqual(["DFR", "R", "F"]);
+    // 엣지 방향 일자: 앞뒤로 세울 두 엣지 블럭
+    expect(focusOf("beginner-tf-eo", "line")).toEqual(["UF", "UB"]);
+    // 코너 방향 하나(앞-왼쪽 노란색이 앞): 노란색이 위를 보는 코너 블럭 하나
+    expect(focusOf("beginner-tf-twist", "c")).toEqual(["ULB"]);
+    // 코너 위치 헤드라이트 왼쪽: 제자리 코너 블럭과 헤드라이트 둘
+    expect(focusOf("beginner-tf-place", "a")).toEqual(["URF", "UFL", "ULB"]);
+  });
+
+  it("코너 방향 먼저 표에서 고리가 없는 그림은 끝난 모양과 기준 조각이 없는 모양뿐이다", () => {
+    const bare: string[] = [];
+    for (const [name, sheet] of Object.entries(BEGINNER_CASE_SHEETS)) {
+      if (sheet.stage.path !== "twist-first") continue;
+      for (const c of sheet.cases)
+        if (caseFocus(sheet, c).length === 0) bare.push(`${name}/${c.id}`);
+    }
+    expect(bare).toEqual([
+      "beginner-tf-eo/dot",
+      "beginner-tf-eo/done",
+      "beginner-tf-ep/align",
+      "beginner-tf-twist/cross",
+      "beginner-tf-twist/done",
+      "beginner-tf-place/done",
+      "beginner-tf-place/none",
+    ]);
+  });
+
+  it("처음 맞추기 표에는 고리를 두르지 않는다", () => {
+    const sheet = BEGINNER_CASE_SHEETS["beginner-corners"];
+    expect(sheet.cases.map((c) => caseFocus(sheet, c).length)).toEqual(
+      sheet.cases.map(() => 0),
+    );
   });
 });
