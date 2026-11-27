@@ -19,7 +19,7 @@ import { SizePicker } from "./SizePicker";
 import "@/cube/components/cube-fx.css";
 
 /**
- * 큐브의 기초(`/cube/basics`, docs/47 16-27·16-33): 큐브 상태를 바꾸지 않는 기초. 맨 위 크기 탭(2~5, 보는 화면), 3×3
+ * 큐브의 기초(`/cube/basics`, docs/47 16-27·16-35): 큐브 상태를 바꾸지 않는 기초. 맨 위 크기 탭(2~5, 보는 화면), 3×3
  * 탭에만 분해한 큐브의 속 3D, 그 아래 그 크기의 기초 강(이름과 진행 ✓만), 크기와 상관없이 늘 보이는 연습(키 익히기·
  * 핑거 트릭), 맨 아래 다음 걸음인 해법 배우기.
  * 덧붙임 문구는 두지 않는다(docs/standing-rules.md 3절): 제목, 단원 이름, 칸 이름만.
@@ -64,7 +64,7 @@ function sizeFromUrl(): number | null {
 export function BasicsApp() {
   const settings = useCubeSettings();
   const [progress, setProgress] = useState<LearnProgress>({ lessons: {} });
-  // 보는 화면(docs/47 16-28·16-33): 주소 `?n=`, 없으면 지금 크기로 열고, 탭을 바꿔도 지금 크기는 그대로다
+  // 보는 화면(docs/47 16-28·16-35): 주소 `?n=`, 없으면 지금 크기로 열고, 탭을 바꿔도 지금 크기는 그대로다
   const current = useCurrentSize();
   const [viewing, setViewing] = useState<number | null>(null);
   useEffect(() => {
@@ -103,7 +103,7 @@ export function BasicsApp() {
           onPick={pick}
           className="self-start"
         />
-        {/* 분해 모델은 3×3만 있다. 다른 크기 탭에는 자리를 두지 않는다(docs/47 16-33) */}
+        {/* 분해 모델은 3×3만 있다. 다른 크기 탭에는 자리를 두지 않는다(docs/47 16-35) */}
         {n === 3 && (
           // 검은 조각·연결부가 바탕에 묻히지 않게 조금 밝은 판 위에 둔다
           <div

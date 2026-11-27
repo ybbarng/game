@@ -164,7 +164,7 @@ test("보는 화면에서 크기를 바꿔도 지금 크기는 그대로다", {
   await pressed(page, '[data-size-tab="2"]');
   expect(await homeSize(page)).toBe("5");
 
-  // 큐브의 기초(docs/47 16-33): 지금 크기 탭으로 열고, 탭을 바꿔도 지금 크기는 그대로, 주소 ?n=가 이긴다
+  // 큐브의 기초(docs/47 16-35): 지금 크기 탭으로 열고, 탭을 바꿔도 지금 크기는 그대로, 주소 ?n=가 이긴다
   await page.goto("/cube/basics");
   await pressed(page, '[data-basics-size="5"]');
   await page.locator('[data-basics-size="2"]').click();

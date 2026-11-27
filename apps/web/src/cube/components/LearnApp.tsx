@@ -744,7 +744,7 @@ function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
       {basics ? (
         <a
           href={
-            // 3×3이 아닌 기초 강은 그 크기 탭으로 돌아간다(docs/47 16-33)
+            // 3×3이 아닌 기초 강은 그 크기 탭으로 돌아간다(docs/47 16-35)
             basicsSizeOf(course) === 3
               ? BASICS_HREF
               : `${BASICS_HREF}?n=${basicsSizeOf(course)}`
