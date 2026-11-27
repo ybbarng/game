@@ -10,6 +10,11 @@ if let dir = ProcessInfo.processInfo.environment["CUBIE_WINDOW_SHOT"] {
   exit(NativeWindowShot.run(dir: dir))
 }
 
+// 메뉴 막대 아이콘 확인 그림(메뉴 막대에 두지 않고 PNG를 쓰고 끝난다, docs/52 5-26)
+if let dir = ProcessInfo.processInfo.environment["CUBIE_MENU_ICON_SHOT"] {
+  exit(MenuIconShot.run(dir: dir))
+}
+
 // 지난번에 켜다 꺼졌는지 가장 먼저 본다(큐브 창이 저장된 자리를 읽기 전, docs/52 5-24)
 Launch.begin()
 
