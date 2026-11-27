@@ -2,6 +2,17 @@
 
 다음 세션이 이어서 일할 수 있게 정리한 문서. 자세한 할 일 목록은 [06-backlog.md](./06-backlog.md), 설계는 번호순 문서.
 
+## 재부팅 인계(2026-11-27, HQ 세션)
+
+맥 재부팅 전 상태. 돌던 백그라운드 감시·서브에이전트·서버는 없다(모두 끝남). 디스크가 거의 찼다(남은 공간 1GB 안팎). 아래 작업 트리 셋을 지울지 사용자에게 물은 채다.
+
+- **PR #460**(초보자 시연의 흰 십자를 새 길로): 올라가 있고 아직 머지 안 됨. 머지 뒤 Cubie 0.12.6을 낸다. 다시 띄우는 법: HQ 스크래치패드의 `release-0126.sh`가 사라졌으면 `merge-when-green` 흐름(ci-ok 기다려 squash 머지) → `apps/cubie/scripts/release.sh 0.12.6 --notes "공식 연습의 초보자 흰 십자 상황과 홈 화면 초보자 시연이 배우기 강의 새 흰 십자 방법을 따라요."` → `/Users/ybbarng/.local/bin/cubie-release 0.12.6` → appcast PR 머지 → `https://game.byb.kr/cubie/appcast.xml`에서 0.12.6 확인.
+- **PR #450**(신광사 해법, 초안): 브랜치 `cube-twist-first-lessons`(작업 트리 `.claude/worktrees/agent-a44b1679ed6552aea`, 브랜치 `shinkwangsa-faithful`와 같은 커밋). 남은 일: main 합치기(#462 거울 보기가 들어옴) → 잡는 법 문제 그림(`MiniCube`)에 거울 판, 경우 그림 표에 기준 조각 고리, 「돌려서 맞게 쥐면 통과」 해 보기. 그 뒤 바뀐 곳을 로컬 HTML(`private/learn-review/visual/`)로 모아 사용자 확인 → 머지.
+- **지도 갈림길** `cube-lesson-welcome-mirror`: 사용자가 정함(2026-11-27, 환영 연출은 거울 없이 그대로). map.json에 decided로 적어야 한다.
+- **거울 판 겹침**: 5×5 이상에서 3D 거울 왼쪽 판이 큐브 모서리에 1px 안쪽 닿음(웹·Cubie 네이티브 같은 계산). 별도 PR로 함께 고친다.
+- **지울 후보(사용자 답 기다림)**: 머지됐거나 올라간 작업 트리 `agent-ab4c5f8d4165edcf0`(분해 모델)·`agent-a18fd2b239afefba7`(거울 보기)·`agent-a944d9de4163f7c58`(시연, #460), 각 1.1GB.
+- 사용자 확인 대기는 책상(`~/.local/state/secretary/desk/game.json`)에 있다.
+
 ## 미뤄 둔 큰 일
 
 - 그림 큐브(센터 방향까지 맞추기, 3×3) · 사용자가 하기로 정함(2026-11-26), 토큰 여유가 생기면 · 서브에이전트 네다섯 번 · 끝 기준과 순서는 [55-picture-cube-plan.md](./55-picture-cube-plan.md) 5절
