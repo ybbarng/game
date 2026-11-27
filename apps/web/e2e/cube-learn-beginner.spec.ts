@@ -61,7 +61,7 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await goStep(page, 5);
   await expect(cases("beginner-tf-cross")).toHaveCount(4);
   await shot(page, "learn-tf-cross-cases", info.project.name);
-  await goStep(page, 8);
+  await goStep(page, 9);
   await expect(chunks).toHaveCount(4);
   await expect(body).toContainText("D R F' R'");
   await shot(page, "learn-tf-cross-chunks", info.project.name);
@@ -95,7 +95,7 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await expect(chunks).toHaveCount(3);
   await expect(body).toContainText("R' U' R U' R' U2 R");
   await shot(page, "learn-tf-ep-chunks", info.project.name);
-  await goStep(page, 2);
+  await goStep(page, 3);
   await expect(cases("beginner-tf-ep")).toHaveCount(3);
   await shot(page, "learn-tf-ep-cases", info.project.name);
 
@@ -182,6 +182,22 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await expect(chunks).toHaveCount(6);
   await expect(body).toContainText("R U B L B' R' B L' B' R U' R'");
   await shot(page, "learn-tf-place-chunks", info.project.name);
+  // 쥐기 문제(2026-11-27 사용자): 같은 큐브를 넷으로 쥔 그림, 헤드라이트가 뒤인 쥐기는 틀리고 왼쪽인 쥐기가 맞다
+  await goStep(page, 4);
+  const quiz = page.locator("[data-learn-quiz]");
+  await expect(quiz).toContainText("공식을 치기 전에 어떻게 잡아야 할까요?");
+  await expect(page.locator("[data-quiz-picture]")).toHaveCount(4);
+  await quiz.getByRole("button", { name: /헤드라이트가 뒤/ }).click();
+  await expect(page.locator('[data-act="quiz"]')).not.toHaveAttribute(
+    "data-act-passed",
+    "",
+  );
+  await quiz.getByRole("button", { name: /헤드라이트가 왼쪽/ }).click();
+  await expect(page.locator('[data-act="quiz"]')).toHaveAttribute(
+    "data-act-passed",
+    "",
+  );
+  await shot(page, "learn-tf-place-grip", info.project.name);
 });
 
 test("공식 연습: 초보자 코너 방향 상황은 노란색이 보는 쪽으로 부른다", async ({
