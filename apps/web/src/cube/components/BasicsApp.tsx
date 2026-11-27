@@ -13,14 +13,15 @@ import {
   METHODS_TITLE,
 } from "../nav/learn-names";
 import { useCubeSettings } from "../settings";
+import type { ModelSize } from "../view/core-layout";
 import { CoreCube } from "./CoreCube";
 import { lessonHref } from "./LearnLinks";
 import { SizePicker } from "./SizePicker";
 import "@/cube/components/cube-fx.css";
 
 /**
- * 큐브의 기초(`/cube/basics`, docs/47 16-27·16-35): 큐브 상태를 바꾸지 않는 기초. 맨 위 크기 탭(2~5, 보는 화면), 3×3
- * 탭에만 분해한 큐브의 속 3D, 그 아래 그 크기의 기초 강(이름과 진행 ✓만), 크기와 상관없이 늘 보이는 연습(키 익히기·
+ * 큐브의 기초(`/cube/basics`, docs/47 16-27·16-35·16-36): 큐브 상태를 바꾸지 않는 기초. 맨 위 크기 탭(2~5, 보는
+ * 화면), 탭 크기의 분해한 큐브의 속 3D, 그 아래 그 크기의 기초 강(이름과 진행 ✓만), 크기와 상관없이 늘 보이는 연습(키 익히기·
  * 핑거 트릭), 맨 아래 다음 걸음인 해법 배우기.
  * 덧붙임 문구는 두지 않는다(docs/standing-rules.md 3절): 제목, 단원 이름, 칸 이름만.
  */
@@ -103,16 +104,13 @@ export function BasicsApp() {
           onPick={pick}
           className="self-start"
         />
-        {/* 분해 모델은 3×3만 있다. 다른 크기 탭에는 자리를 두지 않는다(docs/47 16-35) */}
-        {n === 3 && (
-          // 검은 조각·연결부가 바탕에 묻히지 않게 조금 밝은 판 위에 둔다
-          <div
-            className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_50%_45%,#4a4a52_0%,#2a2a30_55%,#1f1f23_100%)]"
-            data-basics-model
-          >
-            <CoreCube colors={settings.colors} />
-          </div>
-        )}
+        {/* 탭 크기의 분해 모델(docs/47 16-36). 검은 조각·연결부가 바탕에 묻히지 않게 조금 밝은 판 위에 둔다 */}
+        <div
+          className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_50%_45%,#4a4a52_0%,#2a2a30_55%,#1f1f23_100%)]"
+          data-basics-model={n}
+        >
+          <CoreCube key={n} colors={settings.colors} n={n as ModelSize} />
+        </div>
         <section className="flex flex-col gap-1.5">
           <h2 className="px-1 font-semibold text-white/50 text-xs">강</h2>
           <ol className="flex flex-col gap-2" data-basics-lessons={n}>
