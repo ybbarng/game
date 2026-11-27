@@ -10,7 +10,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { stickersFromState } from "../bridge";
+import { type StickerMarks, stickersFromState } from "../bridge";
 import { algTokens } from "../learn/notation";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
@@ -42,6 +42,8 @@ export interface DemoCubeProps {
   showKeys?: boolean;
   /** 재생이 끝까지 가면(배우기: 「이제 해 보세요」로 넘긴다) */
   onEnd?: () => void;
+  /** 칸 표시(스티커 정체마다, 배우기의 쥐는 기준 조각). 조각을 따라 돈다 */
+  marks?: StickerMarks | null;
 }
 
 export function DemoCube({
@@ -57,6 +59,7 @@ export function DemoCube({
   arrowKeys = false,
   showKeys = true,
   onEnd,
+  marks = null,
 }: DemoCubeProps) {
   const onEndRef = useRef(onEnd);
   onEndRef.current = onEnd;
@@ -84,8 +87,8 @@ export function DemoCube({
     return out;
   }, [n, start, moves]);
 
-  const live = useRef({ states, mask, index });
-  live.current = { states, mask, index };
+  const live = useRef({ states, mask, index, marks });
+  live.current = { states, mask, index, marks };
 
   const moveMs = Math.min(200, Math.round(600 / tps));
   useEffect(() => {
@@ -109,7 +112,12 @@ export function DemoCube({
         });
         const c = live.current;
         view.setStickers(
-          stickersFromState(n, c.states[c.index] as PuzzleState, c.mask),
+          stickersFromState(
+            n,
+            c.states[c.index] as PuzzleState,
+            c.mask,
+            c.marks,
+          ),
         );
         viewRef.current = view;
         ro.observe(canvas);
@@ -135,9 +143,9 @@ export function DemoCube({
   useEffect(() => {
     setIndex(0);
     viewRef.current?.setStickers(
-      stickersFromState(n, states[0] as PuzzleState, mask),
+      stickersFromState(n, states[0] as PuzzleState, mask, marks),
     );
-  }, [n, states, mask]);
+  }, [n, states, mask, marks]);
 
   const goTo = useCallback(
     (to: number) => {
@@ -151,7 +159,7 @@ export function DemoCube({
         } else {
           view.flush();
           view.setStickers(
-            stickersFromState(n, c.states[i] as PuzzleState, c.mask),
+            stickersFromState(n, c.states[i] as PuzzleState, c.mask, c.marks),
           );
         }
       }
@@ -200,6 +208,7 @@ export function DemoCube({
               n={n}
               state={current}
               mask={mask}
+              marks={marks}
               settings={settings}
               className="w-full"
             />

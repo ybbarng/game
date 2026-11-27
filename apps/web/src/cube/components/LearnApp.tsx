@@ -14,6 +14,7 @@ import {
   findLesson as findCourseLesson,
   nextLesson,
 } from "../learn/courses";
+import { focusMarks } from "../learn/focus";
 import {
   demoBodyParts,
   demoOffersTurn,
@@ -378,6 +379,11 @@ function LessonView({
     () => (step ? stepStart(lesson, step, 1) : null),
     [lesson, step],
   );
+  // 쥐는 기준 조각의 노란 고리(쪽 자료 `focus`, learn/focus.ts)
+  const focus = useMemo(
+    () => (start && step ? focusMarks(lesson.size, start, step.focus) : null),
+    [lesson.size, start, step],
+  );
   const mask = useMemo(
     () => (masked ? maskFor(lesson.size, picture.mask) : null),
     [masked, lesson.size, picture.mask],
@@ -541,6 +547,7 @@ function LessonView({
               key={`${lesson.id}-${at}-turn`}
               n={lesson.size}
               start={start}
+              marks={focus}
               alg={step.alg}
               mask={mask}
               settings={settings}
@@ -552,6 +559,7 @@ function LessonView({
               key={`${lesson.id}-${at}-demo-${flowPick ?? ""}`}
               n={lesson.size}
               start={start}
+              marks={focus}
               alg={step.alg}
               mask={mask}
               settings={settings}
@@ -571,6 +579,7 @@ function LessonView({
             start={start}
             alg={step.alg}
             mask={mask}
+            marks={focus}
             settings={settings}
             passedText={step.passedText}
             onPassed={markActed}

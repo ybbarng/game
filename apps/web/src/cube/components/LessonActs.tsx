@@ -15,8 +15,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { cn } from "@/lib/cn";
 import { copula } from "@/lib/josa";
-import { stickersFromState } from "../bridge";
+import { type StickerMarks, stickersFromState } from "../bridge";
 import type { Command } from "../input";
+import { focusMarks } from "../learn/focus";
 import {
   focusMask,
   focusPieces,
@@ -273,6 +274,11 @@ export function QuizPanel({
       null,
     [quiz, n, start],
   );
+  // 쥐는 기준 조각(시작 상태의 자리 이름)에 노란 고리. 그림 여럿에서도 같은 조각을 따라간다
+  const marks = useMemo(
+    () => focusMarks(n, start, step.focus),
+    [n, start, step.focus],
+  );
   if (!quiz) return null;
   const right = choice === quiz.answer;
   return (
@@ -297,7 +303,13 @@ export function QuizPanel({
                   : "bg-white/5",
               )}
             >
-              <MiniCube n={n} state={s} mask={mask} settings={settings} />
+              <MiniCube
+                n={n}
+                state={s}
+                mask={mask}
+                marks={marks}
+                settings={settings}
+              />
               <span className="font-bold text-sm">{quiz.choices[i]}</span>
             </div>
           ))}
@@ -307,6 +319,7 @@ export function QuizPanel({
           n={lesson.size}
           state={start}
           mask={mask}
+          marks={marks}
           settings={settings}
         />
       )}
@@ -491,6 +504,7 @@ export function TurnPanel({
   onPassed,
   axes = false,
   passedText,
+  marks = null,
 }: {
   n: number;
   start: PuzzleState;
@@ -498,6 +512,8 @@ export function TurnPanel({
   mask: StickerMask | null;
   settings: CubeSettings;
   onPassed: () => void;
+  /** 쥐는 기준 조각의 노란 고리(스티커 정체마다) */
+  marks?: StickerMarks | null;
   /** 다 쳤을 때 보일 말(없으면 칭찬) */
   passedText?: string | undefined;
   /** 세 축 화살표(처음 안내의 x·y·z) */
@@ -580,6 +596,7 @@ export function TurnPanel({
         n={n}
         state={play.state}
         mask={mask}
+        marks={marks}
         syncToken={play.syncToken}
         settings={settings}
         onMove={onMove}
@@ -769,19 +786,22 @@ function MiniCube({
   n,
   state,
   mask,
+  marks = null,
   settings,
 }: {
   n: number;
   state: PuzzleState;
   mask: StickerMask | null;
+  /** 쥐는 기준 조각의 노란 고리(스티커 정체마다) */
+  marks?: StickerMarks | null;
   settings: CubeSettings;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
-  const live = useRef({ state, mask });
-  live.current = { state, mask };
+  const live = useRef({ state, mask, marks });
+  live.current = { state, mask, marks };
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -802,7 +822,12 @@ function MiniCube({
           hidden: settings.hidden,
         });
         view.setStickers(
-          stickersFromState(n, live.current.state, live.current.mask),
+          stickersFromState(
+            n,
+            live.current.state,
+            live.current.mask,
+            live.current.marks,
+          ),
         );
         viewRef.current = view;
         ro.observe(canvas);
@@ -828,6 +853,7 @@ function MiniCube({
         n={n}
         state={state}
         mask={mask}
+        marks={marks}
         settings={settings}
         captions={false}
         className="w-full"

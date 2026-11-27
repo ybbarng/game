@@ -9,6 +9,7 @@ import { fitsStart } from "../algs/check";
 import { caseOfAlg, loadAlgBook, usedAlg } from "../algs/store";
 import type { Command } from "../input";
 import { courseById } from "../learn/courses";
+import { focusMarks } from "../learn/focus";
 import {
   countsAsMove,
   goalMet,
@@ -62,6 +63,11 @@ export function TryPanel({
     [lesson, step, seed],
   );
   const [state, setState] = useState<PuzzleState>(start);
+  // 쥐는 기준 조각의 노란 고리(시작 상태의 자리 이름, learn/focus.ts)
+  const marks = useMemo(
+    () => focusMarks(n, start, step.focus),
+    [n, start, step.focus],
+  );
   const [history, setHistory] = useState<CubeMove[]>([]);
   const [passed, setPassed] = useState(false);
   const [hints, setHints] = useState(0);
@@ -399,6 +405,7 @@ export function TryPanel({
         n={n}
         state={state}
         mask={mask}
+        marks={marks}
         syncToken={syncToken}
         settings={settings}
         onMove={onMove}
