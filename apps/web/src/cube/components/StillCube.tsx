@@ -37,7 +37,7 @@ export function StillCube({
   marks?: StickerMarks | null;
   /** 3D를 못 그릴 때 대신 보일 것. 없으면 비스듬한 큐브 그림 둘(앞쪽 셋·뒤쪽 셋, 칸을 누를 수 있다) */
   fallback?: ReactNode;
-  /** 큐브 아래 「끌면 둘러볼 수 있어요」 안내 */
+  /** 칸을 눌러 답하는 큐브(`onSticker`) 아래 「칸을 눌러요」 안내. 끌어 둘러보기는 알리지 않는다(동작 힌트 금지, 2026-11-27) */
   hint?: boolean;
   /** 거울 판을 보일 가장 좁은 자리. 보기만 하는 작은 큐브(모양 만들기 목표)는 `MIRROR_VIEW_MIN_WIDTH` */
   mirrorMinWidth?: number;
@@ -157,15 +157,13 @@ export function StillCube({
           }
         />
       )}
-      {hint && !(failed && (fallback || !onSticker)) && (
+      {hint && onSticker && !(failed && fallback) && (
         <p className="text-white/50 text-xs">
           {failed
             ? "두 그림에서 칸을 눌러요."
-            : onSticker
-              ? back.mode === "mirror"
-                ? "큐브나 거울에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
-                : "큐브에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
-              : "끌면 큐브를 둘러볼 수 있어요."}
+            : back.mode === "mirror"
+              ? "큐브나 거울에서 칸을 눌러요."
+              : "큐브에서 칸을 눌러요."}
         </p>
       )}
     </div>
