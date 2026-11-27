@@ -97,7 +97,7 @@
 
 - `docs/map.json`은 starship-map/1 형식을 따른다. 형식 원본은 `~/personal/projects/starship/src/protocol/map.ts`. 갈림길(`fork`) status는 `open`·`decided`만(끝났으면 `decided`와 `decided`에 정한 내용).
 - 책상(`~/.local/state/secretary/desk/*.json`) 형식 원본은 `~/personal/projects/starship/docs/desk.md`.
-- **사용자에게 고르기·확인을 물을 때는 그림으로 견준다(2026-11-27).** 같은 상황에서 안마다 실제 화면을 한 수씩(또는 한 단계씩) 찍어 나란히 둔 페이지를 휴대폰에서 열리는 주소(Artifact)로 만들어 카드에 단다. 글로만 쓴 긴 표·설명은 피한다.
+- **사용자에게 고르기·확인을 물을 때는 그림으로 견준다(2026-11-27).** 같은 상황에서 안마다 실제 화면을 한 수씩(또는 한 단계씩) 찍어 나란히 둔 페이지를 로컬 HTML 파일(git 밖 `private/` 아래)로 만들어 카드에 경로를 단다. 글로만 쓴 긴 표·설명은 피한다. Artifact는 바깥 서비스에 올리는 일이라 사용자가 원하거나 정말 필요할 때만 쓴다.
 
 ## 지적 기록
 
