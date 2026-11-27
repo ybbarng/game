@@ -33,10 +33,32 @@ const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
 const SEEDS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 /**
- * 십자 엣지는 앞면으로만 내리고 올린다(2026-11-05 사용자 「항상 D면으로 내려서 옮겨서 올려」). 수는 F·D·y뿐이고
- * U(맞춘 면)·R·L·B는 없다. 끝은 늘 F로 올리는 수다
+ * 흰 십자 한 걸음(3×3 처음 맞추기 강의 길, docs/47 16-34): 쥐기(y) → 아랫면으로 자리 밑에(D) → 공식 하나.
+ * 공식은 올리기 F2·R F' R'과 내리기 R' D' R·F2뿐이다
  */
-const FRONT_ONLY = /^([FDy]['2]? )*F['2]?$/;
+const CROSS_STEP = /(?:y['2]? )?(?:D['2]? )?(?:F2|R F' R'|R' D' R)/g;
+const UP = ["F2", "R F' R'"];
+
+/** 엣지 블럭 하나의 수를 걸음으로 나눈다(나뉘지 않으면 null) */
+function crossSteps(alg: string): string[] | null {
+  const steps = alg.match(CROSS_STEP) ?? [];
+  return steps.join(" ") === alg ? steps : null;
+}
+const formulaOf = (step: string) => step.replace(/^(y['2]? )?(D['2]? )?/, "");
+
+/** 엣지 블럭 하나: 걸음 하나(아래 층에서 올림)나 둘(가운데 층 R' D' R·위 층 F2로 내리고 올림) */
+function expectCrossPiece(alg: string, where: string) {
+  const steps = crossSteps(alg);
+  expect(steps, `${where} ${alg}`).not.toBeNull();
+  const formulas = (steps as string[]).map(formulaOf);
+  expect(formulas.length, `${where} ${alg}`).toBeLessThanOrEqual(2);
+  expect(UP, `${where} ${alg}`).toContain(formulas.at(-1));
+  // 내리는 걸음의 쥐기는 y뿐이다(D로 옮기지 않는다)
+  if (formulas.length === 2)
+    expect((steps as string[])[0], `${where} ${alg}`).toMatch(
+      /^(y['2]? )?(F2|R' D' R)$/,
+    );
+}
 
 const crossDone = (s: Solve) => {
   const r = s.rel();
@@ -57,7 +79,7 @@ const fmt = (s: Solve, from: number, to: number) =>
     .join(" ");
 
 describe("배우는 방식 흰 십자", () => {
-  it("엣지마다 F·D·y로만 넣고, 넣은 것을 지키며 늘 십자가 끝난다", () => {
+  it("엣지 블럭마다 강의 공식(F2·R F' R'·R' D' R)으로 아래 층에서 올리고, 넣은 것을 지키며 늘 십자가 끝난다", () => {
     const seen = new Set<CrossCase>();
     for (const seed of SEEDS) {
       const s = new Solve(3, toFacelets(3, randomCubeState(3, seed)));
@@ -66,36 +88,30 @@ describe("배우는 방식 흰 십자", () => {
         const next = nextCrossEdge(s);
         if (!next) break;
         seen.add(next.kind);
-        expect(next.alg, `${seed} ${next.kind}`).toMatch(FRONT_ONLY);
+        expectCrossPiece(next.alg, `${seed} ${next.kind}`);
         s.apply(next.alg);
       }
       expect(nextCrossEdge(s)).toBeNull();
       expect(crossDone(s)).toBe(true);
     }
-    expect(seen.size).toBeGreaterThanOrEqual(4);
+    expect([...seen].sort()).toEqual(["down", "down-side", "middle", "top"]);
   });
 
-  // 레슨(lessons-333.ts 「흰 십자」)의 시연 상황에서 같은 경우로 보고 같은 수를 낸다(둔 그대로, 합치기 전)
+  // 강(lessons-333.ts 「흰 십자」)의 상황에서 같은 경우로 보고 강의 걸음을 낸다(둔 그대로, 합치기 전)
   const LESSON: [CrossCase, string, string][] = [
-    ["down-white-down", "F2", "F2"],
-    ["down-white-down", "D' F2", "F2 D"],
-    ["down-white-down", "y F2", "R2"],
-    ["down-white-down", "y D2 F2", "R2 D2"],
-    ["middle", "F F2", "F"],
-    ["middle", "y F' F2", "R'"],
-    ["middle", "F D F' y F2", "R2 F D' F'"],
-    ["middle", "y F' D' F y' F2", "F2 R' D R"],
-    ["down-white-side", "F D' F' y F", "B R B' D'"],
-    ["down-white-side", "y F' D F y' F'", "R F R' D'"],
-    ["top-flipped", "F y F' D' F y' F2", "R F R' D' F2"],
-    ["top-wrong", "F2 y D F2", "R2 D' F2 D R2"],
+    ["down", "F2", "F2"],
+    ["down", "D' F2", "F2 D"],
+    ["down", "y F2", "R2"],
+    ["down-side", "D R F' R'", "R F R' D'"],
+    ["middle", "R' D' R F2", "F2 R' D R"],
+    ["top", "F2 D R F' R'", "R F R' D' F2"],
+    ["top", "F2 y D F2", "R2 D' F2 D R2"],
   ];
   for (const [kind, alg, setup] of LESSON) {
-    it(`레슨 상황 ${setup} → ${kind} ${alg}`, () => {
+    it(`강 상황 ${setup} → ${kind} ${alg}`, () => {
       const start = new Solve(3, SOLVED).apply(setup);
       const next = nextCrossEdge(start);
       expect(next?.kind).toBe(kind);
-      expect(next?.alg).toMatch(FRONT_ONLY);
       expect(next?.alg).toBe(alg);
     });
   }
@@ -213,15 +229,21 @@ describe("배우는 방식 첫 층 꼭짓점: 되풀이(배우기 첫 방법)", 
   });
 });
 
-describe("흰 십자는 앞면으로만 올린다", () => {
-  it("섞기 300개: 십자 단계 수는 F·D·y뿐이고(4×4·5×5 축소법의 3×3 단계도 같은 함수) 십자가 끝난다", () => {
+describe("흰 십자는 강의 걸음만 쓴다", () => {
+  it("섞기 300개: 십자 단계의 살피는 자리마다 엣지 블럭 하나를 강의 걸음으로 넣고(4×4·5×5 축소법의 3×3 단계도 같은 함수) 십자가 끝난다", () => {
     for (let seed = 1; seed <= 300; seed++) {
       const s = new Solve(3, toFacelets(3, randomCubeState(3, seed)));
       whiteUp(s);
       const from = s.moves.length;
+      const looksBefore = s.lookList.length;
       crossTaught(s);
-      const seg = fmt(s, from, s.moves.length);
-      if (seg) expect(seg, `${seed}`).toMatch(FRONT_ONLY);
+      const cuts = [...s.lookList.slice(looksBefore), s.moves.length];
+      if (cuts.length > 1) expect(cuts[0]).toBe(from);
+      for (let i = 0; i + 1 < cuts.length; i++)
+        expectCrossPiece(
+          fmt(s, cuts[i] as number, cuts[i + 1] as number),
+          `${seed}`,
+        );
       expect(crossDone(s), `${seed}`).toBe(true);
     }
   });
@@ -584,11 +606,11 @@ describe("조각마다 큐브 돌리기 → 반대 면 → 공식(2026-11-05 사
         seg.forEach((t, i) => {
           const prev = seg[i - 1];
           if (!isRot(t) || prev === undefined || isRot(prev)) return;
-          // 토막 경계: 공식이 F로 끝난 뒤에만. D 뒤의 y는 없다(y를 앞에 둔다)
-          expect(prev, `${seed} cross ${seg.join(" ")}`).toMatch(/^F/);
+          // 걸음 경계: 내리는 공식(위 층 F2, 가운데 층 R' D' R)이 끝난 뒤에만. D 뒤의 y는 없다(y를 앞에 둔다)
+          expect(prev, `${seed} cross ${seg.join(" ")}`).toMatch(/^(F2|R)$/);
           rounds++;
         });
-        expect(rounds, `${seed} ${seg.join(" ")}`).toBeLessThanOrEqual(3);
+        expect(rounds, `${seed} ${seg.join(" ")}`).toBeLessThanOrEqual(2);
         if (rounds > 1) rounds2++;
       }
       const end = applyMoves(
@@ -598,7 +620,7 @@ describe("조각마다 큐브 돌리기 → 반대 면 → 공식(2026-11-05 사
       );
       expect(isSolved(3, end), `${seed}`).toBe(true);
     }
-    // 흰색이 옆을 보는 엣지 등은 빼기 토막 뒤 넣기 토막으로 나뉜다
+    // 가운데 층·위 층 엣지 블럭은 내리는 걸음 뒤 올리는 걸음으로 나뉜다
     expect(rounds2).toBeGreaterThan(0);
   });
 });

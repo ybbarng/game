@@ -1,5 +1,4 @@
 import { FACES } from "@game/cube-solver";
-import { frontCrossInsert, type SideFace } from "./cross-front";
 import { EDGE_FACELETS } from "./cubie";
 import { OPPOSITE } from "./facelets";
 import { type Solve, uTurn, yTurn } from "./solve";
@@ -12,17 +11,16 @@ import { type Solve, uTurn, yTurn } from "./solve";
  * 흐름(2026-11-05 사용자): 맞추는 면(흰 면, U)은 돌리지 않는다. 넣을 조각을 안전한 층(맞추는 면의
  * 반대쪽, D)으로 빼고, 안전한 층만 돌려 들어갈 자리 밑에 둔 뒤 정해진 수로 넣는다.
  *
- * 십자(「항상 D면으로 내려서 옮겨서 올려」): 엣지는 늘 앞면(F)으로 내리고 올린다. 넣을 자리를 y로 앞에
- * 가져오고, 수는 F·D·y뿐이다(`cross-front.ts`가 경우마다 가장 짧은 꼴을 찾는다). 경우 이름은
- * `learn/lessons-333.ts` 「흰 십자」의 다섯 경우다.
+ * 십자(2026-11-27, docs/47 16-34): 3×3 처음 맞추기 강의 경우별 정해진 길(웹 `learn/beginner-path.ts` 흰 십자)과 같다.
+ * 넣을 엣지 블럭은 짝 색 센터를 앞으로 쥐고(y) 아래 층에서 올린다. 경우 이름도 그 길의 네 경우다.
+ * 1. 아래 층, 흰색이 아래(`down`): D로 아래-앞에 두고 `F2`.
+ * 2. 아래 층, 흰색이 옆(`down-side`): D로 아래-오른쪽에 두고 `R F' R'`(세우고, 올리고, 되돌린다).
+ * 3. 가운데 층(`middle`): 블럭을 앞-오른쪽에 쥐고 `R' D' R`로 아래 층(아래-앞)에 내린 뒤 1이나 2.
+ * 4. 위 층, 제자리가 아니거나 뒤집힘(`top`): 블럭을 위-앞에 쥐고 `F2`로 내린 뒤 1이나 2.
  * 차례(2026-11-05 사용자 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을 앞으로 가져와서
- * 넣어줘」): 토막마다 ① 큐브 돌리기(y) ② 반대 면(D)으로 칸 밑에 ③ 앞면 공식. 큐브 돌리기는 토막 맨 앞에만 둔다.
- * F·D만으로는 흰색이 옆을 보는 엣지를 바로 세울 수 없어, 그런 엣지는 「빼기」 토막 뒤 「넣기」 토막으로 나뉜다.
- * 1. 아래층, 흰색이 아래: y로 자리를 앞에 가져오고 D로 그 밑에 두고 `F2`(`y D2 F2`).
- * 2. 아래층, 흰색이 옆: 앞면을 비켜 놓으며 가운데 줄로 올린 뒤, y로 돌려 F로 올린다(`F D' F' y F`).
- * 3. 가운데 줄: F로 아래층에 내렸다가 올린다(`F F2`, 합치면 `F'`). 옆색이 오른쪽이면 `y F`.
- * 4. 윗층 흰색 위, 엉뚱한 자리: `F2`로 내린 뒤 1(`F2 y D F2`).
- * 5. 윗층에서 뒤집힘: F로 내린 뒤 2.
+ * 넣어줘」): 걸음마다 ① 큐브 돌리기(y) ② 반대 면(D)으로 자리 밑에 ③ 공식. 엣지 블럭 하나의 걸음(내리기 → 올리기)을
+ * 살피는 자리 하나에 묶어, 살피는 자리마다 엣지 블럭이 하나씩 맞는다. 아래 층 블럭부터 넣으므로 내리기·올리기 사이에
+ * 다른 흰 엣지가 제자리에 들지 않는다.
  *
  * 첫 층 꼭짓점: 넣을 칸을 앞-오른쪽 위(UFR)에 오게 y로 돌려 쥐고, 그 흰 꼭짓점을 D로 바로 밑(DFR)에
  * 데려와 넣는다. 기본은 지름길(2026-11-05 사용자): 흰색이 오른쪽이면 `R' D' R`, 앞이면 `F D F'`, 아래면
@@ -55,105 +53,132 @@ export function whiteUp(s: Solve): void {
   throw new Error("흰 가운데를 찾지 못했다");
 }
 
-interface WhiteEdge {
-  slot: number;
-  /** 흰 스티커 자리 */
-  white: number;
-  /** 다른 색 스티커 자리 */
-  other: number;
-  /** 다른 색(제자리 옆면) */
-  color: FaceLetter;
-}
-
-function whiteEdges(rel: string): WhiteEdge[] {
-  const out: WhiteEdge[] = [];
-  EDGE_FACELETS.forEach(([a, b], slot) => {
-    if (rel[a] === "U")
-      out.push({ slot, white: a, other: b, color: rel[b] as FaceLetter });
-    else if (rel[b] === "U")
-      out.push({ slot, white: b, other: a, color: rel[a] as FaceLetter });
-  });
-  return out;
-}
-
-/** 십자 자리(UR UF UL UB)의 옆 스티커 */
-const CROSS_SIDE = [10, 19, 37, 46];
-
-function crossSolvedSlots(rel: string): number[] {
-  return [0, 1, 2, 3].filter((j) => {
-    const [a, b] = EDGE_FACELETS[j] as readonly [number, number];
-    return rel[a] === "U" && rel[b] === faceOf(b);
-  });
-}
-
 /** 흰 십자·첫 층 코너를 맞추는 면(흰 면 위). 이 면은 돌리지 않는다 */
 export const TAUGHT_SOLVED_FACE: FaceLetter = "U";
 /** 안전한 층: 맞추는 면의 반대쪽. 맞춘 조각이 없어 마음껏 돌린다 */
 export const TAUGHT_SAFE_FACE: FaceLetter = OPPOSITE[TAUGHT_SOLVED_FACE];
-const SAFE = TAUGHT_SAFE_FACE;
 
-export type CrossCase =
-  | "down-white-down"
-  | "middle"
-  | "down-white-side"
-  | "top-flipped"
-  | "top-wrong";
+/** 흰 십자 공식(웹 `learn/beginner-path.ts`와 같다) */
+export const TAUGHT_CROSS_UP = "F2";
+export const TAUGHT_CROSS_SIDE_UP = "R F' R'";
+export const TAUGHT_CROSS_MIDDLE_DOWN = "R' D' R";
+export const TAUGHT_CROSS_TOP_DOWN = "F2";
 
-const CASE_ORDER: readonly CrossCase[] = [
-  "down-white-down",
-  "down-white-side",
-  "middle",
-  "top-wrong",
-  "top-flipped",
-];
+/** 흰 십자의 경우(웹 `beginner-path.ts` 흰 십자 단계의 경우 id) */
+export type CrossCase = "down" | "down-side" | "middle" | "top";
 
-const touches = (slot: number, face: FaceLetter) =>
-  (EDGE_FACELETS[slot] as readonly number[]).some((i) => faceOf(i) === face);
+const CASE_ORDER: readonly CrossCase[] = ["down", "down-side", "middle", "top"];
+/** 옆 색(실제 색 글자) 차례: 초록·빨강·파랑·주황(웹 `SIDE_COLORS`) */
+const SIDE_COLORS: readonly FaceLetter[] = ["F", "R", "B", "L"];
+const Y4 = ["", "y", "y'", "y2"];
+const D4 = ["", "D", "D'", "D2"];
 
-function caseOf(e: WhiteEdge): CrossCase {
-  if (touches(e.slot, SAFE))
-    return faceOf(e.white) === SAFE ? "down-white-down" : "down-white-side";
-  if (!touches(e.slot, TAUGHT_SOLVED_FACE)) return "middle";
-  return faceOf(e.white) === TAUGHT_SOLVED_FACE ? "top-wrong" : "top-flipped";
+/** 흰-`color` 엣지 블럭의 흰 스티커·짝 색 스티커가 보는 면 */
+function whiteEdgeAt(
+  t: Solve,
+  color: FaceLetter,
+): { wf: FaceLetter; cf: FaceLetter } {
+  for (const [a, b] of EDGE_FACELETS) {
+    if (t.f[a] === "U" && t.f[b] === color)
+      return { wf: faceOf(a), cf: faceOf(b) };
+    if (t.f[b] === "U" && t.f[a] === color)
+      return { wf: faceOf(b), cf: faceOf(a) };
+  }
+  throw new Error(`흰 엣지 블럭 없음: ${color}`);
+}
+
+/** 그 색 센터가 있는 면 */
+const centerFace = (t: Solve, color: FaceLetter) =>
+  FACES[
+    [0, 1, 2, 3, 4, 5].find((k) => t.f[k * 9 + 4] === color) as number
+  ] as FaceLetter;
+
+const crossEdgeOk = (t: Solve, color: FaceLetter) => {
+  const e = whiteEdgeAt(t, color);
+  return e.wf === centerFace(t, "U") && e.cf === centerFace(t, color);
+};
+
+const isAt = (t: Solve, color: FaceLetter, faces: [FaceLetter, FaceLetter]) => {
+  const e = whiteEdgeAt(t, color);
+  return faces.includes(e.wf) && faces.includes(e.cf);
+};
+
+function firstTurn(
+  s: Solve,
+  turns: readonly string[],
+  ok: (t: Solve) => boolean,
+): string {
+  const t = turns.find((x) => ok(s.clone().apply(x)));
+  if (t === undefined) throw new Error("쥘 방향을 찾지 못했다");
+  return t;
+}
+
+const joinMoves = (...xs: string[]) => xs.filter(Boolean).join(" ");
+
+/** 흰 십자 한 걸음: 쥐는 수(y·D)와 공식(웹 `beginner-path.ts` `crossNext`와 같은 규칙) */
+export function crossStep(
+  s: Solve,
+  color: FaceLetter,
+): { kind: CrossCase; hold: string; alg: string } {
+  const { wf, cf } = whiteEdgeAt(s, color);
+  if (wf === "D" || cf === "D") {
+    const side = cf === "D";
+    const y = firstTurn(s, Y4, (t) => centerFace(t, color) === "F");
+    const d = firstTurn(s.clone().apply(y), D4, (t) =>
+      isAt(t, color, ["D", side ? "R" : "F"]),
+    );
+    return side
+      ? { kind: "down-side", hold: joinMoves(y, d), alg: TAUGHT_CROSS_SIDE_UP }
+      : { kind: "down", hold: joinMoves(y, d), alg: TAUGHT_CROSS_UP };
+  }
+  if (wf !== "U" && cf !== "U") {
+    const y = firstTurn(s, Y4, (t) => isAt(t, color, ["F", "R"]));
+    return { kind: "middle", hold: y, alg: TAUGHT_CROSS_MIDDLE_DOWN };
+  }
+  const y = firstTurn(s, Y4, (t) => isAt(t, color, ["U", "F"]));
+  return { kind: "top", hold: y, alg: TAUGHT_CROSS_TOP_DOWN };
 }
 
 const length = (alg: string) => (alg ? alg.split(" ").length : 0);
 
+/** 그 엣지 블럭을 제자리에 넣을 때까지의 걸음(가운데·위 층이면 내리고 아래 층에서 올린다) */
+function crossPiece(s: Solve, color: FaceLetter): string {
+  const t = s.clone();
+  const parts: string[] = [];
+  for (let i = 0; !crossEdgeOk(t, color); i++) {
+    if (i > 1) throw new Error("흰 엣지 블럭이 두 걸음 안에 들지 않는다");
+    const st = crossStep(t, color);
+    const moves = joinMoves(st.hold, st.alg);
+    parts.push(moves);
+    t.apply(moves);
+  }
+  return parts.join(" ");
+}
+
 /**
- * 다음에 넣을 흰 엣지 하나와 그 수. 쉬운 경우(1→5 차례)의 엣지부터, 그 경우 안에서는 가장 짧게 넣는 것.
- * 수는 F·D·y뿐이고(`cross-front.ts`) 이미 넣은 엣지는 그대로 남는다. 십자가 다 됐으면 null.
+ * 다음에 넣을 흰 엣지 하나와 그 수(내리기부터 올리기까지). 아래 층 블럭부터(경우 차례: 아래 층 흰색 아래 → 옆 →
+ * 가운데 층 → 위 층), 같은 경우 안에서는 수가 가장 적은 것, 같으면 초록·빨강·파랑·주황 차례.
+ * `kind`는 첫 걸음의 경우, `color`는 지금 쥔 방향에서 그 블럭의 짝 색 센터가 있는 면. 십자가 다 됐으면 null.
  */
 export function nextCrossEdge(
   s: Solve,
 ): { kind: CrossCase; color: FaceLetter; alg: string } | null {
-  const rel = s.rel();
-  const solved = crossSolvedSlots(rel);
-  if (solved.length === 4) return null;
-  const todo = whiteEdges(rel).filter(
-    (e) => !(e.slot < 4 && solved.includes(e.slot)),
-  );
-  for (const kind of CASE_ORDER) {
-    let best: { color: FaceLetter; alg: string } | null = null;
-    for (const e of todo.filter((x) => caseOf(x) === kind)) {
-      // 다른 흰 엣지는 이 엣지를 넣는 동안 제자리에 들이지 않는다(`cross-front.ts`)
-      const others = todo
-        .filter((x) => x !== e)
-        .map((x) => ({ white: x.white, color: x.color as SideFace }));
-      const alg = frontCrossInsert(
-        e.white,
-        e.color as SideFace,
-        solved,
-        others,
-      );
-      if (best === null || length(alg) < length(best.alg))
-        best = { color: e.color, alg };
-    }
-    if (best) return { kind, ...best };
+  const todo = SIDE_COLORS.filter((c) => !crossEdgeOk(s, c));
+  if (todo.length === 0) return null;
+  let best: { kind: CrossCase; color: FaceLetter; alg: string } | null = null;
+  for (const c of todo) {
+    const kind = crossStep(s, c).kind;
+    const alg = crossPiece(s, c);
+    const better =
+      best === null ||
+      CASE_ORDER.indexOf(kind) < CASE_ORDER.indexOf(best.kind) ||
+      (kind === best.kind && length(alg) < length(best.alg));
+    if (better) best = { kind, color: centerFace(s, c), alg };
   }
-  throw new Error("십자 엣지를 넣을 수를 찾지 못했다");
+  return best;
 }
 
-/** 배우는 방식 흰 십자(흰 면 위). 모서리마다 살피고 하나씩 넣는다 */
+/** 배우는 방식 흰 십자(흰 면 위). 엣지 블럭마다 살피고 하나씩 넣는다 */
 export function crossTaught(s: Solve): void {
   for (let i = 0; ; i++) {
     if (i > 4) throw new Error("십자 단계가 끝나지 않는다");
@@ -378,6 +403,9 @@ export function yellowCrossTaught(s: Solve): void {
     s.apply(next ?? TAUGHT_EO);
   }
 }
+
+/** 십자 자리(UR UF UL UB)의 옆 스티커 */
+const CROSS_SIDE = [10, 19, 37, 46];
 
 /** 위 모서리(UR UF UL UB)의 옆색이 옆 가운데와 같은가 */
 export const edgeSidesMatched = (rel: string) =>
