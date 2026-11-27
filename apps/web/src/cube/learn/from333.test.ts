@@ -11,6 +11,7 @@ import {
 } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 
+import { isBasicsCourse } from "./courses";
 import { COURSES } from "./index";
 import { goalMet, maskFor, placedTopCorners, stateForRule } from "./judge";
 import {
@@ -49,7 +50,9 @@ describe("3×3을 아는 사람의 2×2", () => {
   const course = COURSES.find((c) => c.id === "222-from333");
 
   it("2×2 묶음에서 초보자 다음 자리, 3×3 초보자를 마치면 추천", () => {
-    const two = COURSES.filter((c) => c.size === 2).map((c) => c.id);
+    const two = COURSES.filter((c) => c.size === 2 && !isBasicsCourse(c)).map(
+      (c) => c.id,
+    );
     expect(two.slice(0, 2)).toEqual(["222-beginner", "222-from333"]);
     expect(course?.recommendAfter).toBe("333-beginner");
   });

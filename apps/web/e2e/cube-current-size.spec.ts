@@ -163,6 +163,33 @@ test("보는 화면에서 크기를 바꿔도 지금 크기는 그대로다", {
   await page.goto("/cube/methods?m=222-beginner");
   await pressed(page, '[data-size-tab="2"]');
   expect(await homeSize(page)).toBe("5");
+
+  // 큐브의 기초(docs/47 16-33): 지금 크기 탭으로 열고, 탭을 바꿔도 지금 크기는 그대로, 주소 ?n=가 이긴다
+  await page.goto("/cube/basics");
+  await pressed(page, '[data-basics-size="5"]');
+  await page.locator('[data-basics-size="2"]').click();
+  await expect(page.locator("main[data-cube-basics]")).toHaveAttribute(
+    "data-cube-basics",
+    "2",
+  );
+  expect(await homeSize(page)).toBe("5");
+  await page.goto("/cube/basics?n=4");
+  await pressed(page, '[data-basics-size="4"]');
+  expect(await homeSize(page)).toBe("5");
+});
+
+test("큐브의 기초: 지금 크기가 6×6·7×7이면 5×5 탭으로 열고 지금 크기는 그대로다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  for (const n of [6, 7]) {
+    await presetCurrentSize(page, n);
+    await page.goto("/cube/basics");
+    await pressed(page, '[data-basics-size="5"]');
+    expect(await homeSize(page)).toBe(String(n));
+  }
+  // 주소 ?n=가 이긴다
+  await page.goto("/cube/basics?n=2");
+  await pressed(page, '[data-basics-size="2"]');
 });
 
 test("그 화면에 없는 크기면 3×3으로 열리고 지금 크기는 그대로다", {
@@ -241,6 +268,7 @@ test("크기 단추 생김새(스크린샷)", async ({ page }, info) => {
     ["/cube/keys", "keys"],
     ["/cube/tiers", "tiers"],
     ["/cube/math#count", "math-count"],
+    ["/cube/basics", "basics"],
   ] as const) {
     await page.goto(path);
     await expect(page.locator("[data-cube-size-picker]").first()).toBeVisible();

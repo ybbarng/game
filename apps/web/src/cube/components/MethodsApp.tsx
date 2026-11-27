@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
 import {
-  BASICS,
   courseById,
   courseSizes,
+  isBasicsCourse,
   METHOD_COURSES,
 } from "../learn/courses";
 import { type LearnProgress, loadLearn } from "../learn/progress";
@@ -121,7 +121,7 @@ function MethodsHome({
 }) {
   // 이어서 하기는 해법 과정 단원만(기초 단원은 큐브의 기초 페이지에 있다)
   const found = progress.last ? findLesson(progress.last) : null;
-  const last = found && found.course.id !== BASICS.id ? found : null;
+  const last = found && !isBasicsCourse(found.course) ? found : null;
   const pickedCourse = picked ? courseById(picked) : undefined;
   // 보이는 크기: 지금 크기(이 화면에 없으면 3×3, docs/47 16-28). `?m=`로 연 해법은 그 해법 크기를 보이되 지금 크기는
   // 그대로 둔다(보기). 크기 단추를 누르면 지금 크기도 바뀐다
