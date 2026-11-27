@@ -29,16 +29,24 @@ function inverse(alg: string): string {
     .join(" ");
 }
 
-/** 받는 사람·이정표 순번 → 아이템(컴퓨터 첫 이정표 = `bot`, 나머지 = `me`) */
+/**
+ * 섞기 씨앗(컴퓨터와 대결 화면 갈고리 `__cubeVsSeed`, vs-seed.ts). 섞기가 무작위면 컴퓨터가 첫 층을 지나자마자 다 맞춰
+ * 받은 방해를 쓰기 전에 판이 끝나는 판이 섞여 흔들린다(2026-11-27 CI). 이 씨앗은 첫 층을 10초 넘어 지나고 끝내기까지
+ * 넉넉히 남는다는 것을 `vs-seed.test.ts`가 확인한다
+ */
+const SEED = "items-1";
+
+/** 받는 사람·이정표 순번 → 아이템(컴퓨터 첫 이정표 = `bot`, 나머지 = `me`), 섞기 씨앗도 정해 둔다 */
 async function fixDraw(page: Page, bot: string, me: string) {
   await page.addInitScript(
-    ([b, m]) => {
+    ([b, m, s]) => {
       const w = window as unknown as Record<string, unknown>;
       w.__cubeTestHooks = true;
+      w.__cubeVsSeed = s;
       w.__cubeItemDraw = (player: string, milestone: number) =>
         player === "bot1" ? (milestone === 1 ? b : "fog") : m;
     },
-    [bot, me],
+    [bot, me, SEED],
   );
 }
 
