@@ -25,9 +25,9 @@ describe("조각마다 큐브 돌리기 → 반대 면 → 공식(2026-11-05 사
           const cur = shown.moves[i] as string;
           if (cuts.has(i) || !isRot(cur) || isRot(prev)) continue;
           const at = `${seed} ${name}: ${shown.moves.slice(Math.max(st.start, i - 4), i + 2).join(" ")}`;
-          // 십자만 빼기 토막 뒤 넣기 토막이 이어진다(공식이 F로 끝난 뒤)
+          // 십자만 내리는 걸음 뒤 올리는 걸음이 이어진다(위 층 F2·가운데 층 R' D' R이 끝난 뒤)
           expect(name, at).toBe("cross");
-          expect(prev, at).toMatch(/^F/);
+          expect(prev, at).toMatch(/^(F2|R)$/);
         }
       }
       for (const g of shown.gaps) {

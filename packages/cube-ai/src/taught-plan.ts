@@ -61,7 +61,7 @@ export type ColorLetter = "U" | "R" | "F" | "D" | "L" | "B";
 export type TaughtCase =
   /** 큐브 쥐기: 흰 면을 위로(흰 십자·첫 층) 또는 아래로(둘째 층부터) */
   | { kind: "hold"; white: "up" | "down" }
-  /** 흰 십자 모서리 하나와 그 경우(레슨의 다섯 경우) */
+  /** 흰 십자 엣지 블럭 하나와 그 첫 걸음의 경우(강의 네 경우) */
   | { kind: "cross"; colors: ColorLetter[]; case: CrossCase }
   /**
    * 첫 층 꼭짓점 하나. bottom: 아래층에서 칸 밑으로 데려와 넣기, slot: 제 칸에서 돌아감, stuck: 엉뚱한 칸에 박혀 한 번 빼기.
