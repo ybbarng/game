@@ -140,12 +140,15 @@ const SHEET_DATA = {
 export function LessonSheet({
   name,
   colors,
+  mirror = false,
 }: {
   name: SheetName;
   colors: readonly number[];
+  /** 비스듬한 큐브 그림에 거울 판을 단다(강 안 큐브 보기, docs/47 16-37). 윗면 평면도는 그대로 */
+  mirror?: boolean;
 }) {
   if (isBeginnerSheet(name))
-    return <BeginnerCasesSheet name={name} colors={colors} />;
+    return <BeginnerCasesSheet name={name} colors={colors} mirror={mirror} />;
   if (name === "2look-cases") return <TwoLookCasesSheet colors={colors} />;
   if (name === "ll-compare") return <LlCompareSheet />;
   const sheet = SHEET_DATA[name];

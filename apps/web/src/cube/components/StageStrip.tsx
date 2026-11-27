@@ -5,6 +5,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { lessonBackView } from "../back-view";
 import type { LearnProgress } from "../learn/progress";
 import { lessonPlace } from "../learn/stage-map";
 import type { Course } from "../learn/types";
@@ -233,6 +234,8 @@ export function StageStrip({
 }) {
   const states = useMemo(() => stageStates(course), [course]);
   const stages = course.stages ?? [];
+  // 칸마다 큐브 하나 + 거울 판(강 안 큐브와 같은 보기, docs/47 16-37). 거울을 껐으면 그림 둘
+  const mirror = lessonBackView(settings) === "mirror";
   return (
     <ol
       data-stage-strip={stages.length}
@@ -251,6 +254,7 @@ export function StageStrip({
                 state={after}
                 settings={settings}
                 captions={false}
+                mirror={mirror}
                 className="w-full"
               />
             )}
@@ -335,6 +339,7 @@ export function StageMapDemo({
         tps={3}
         autoPlay
         arrowKeys
+        backView={lessonBackView(settings)}
       />
       <div className="flex justify-center gap-2">
         <button

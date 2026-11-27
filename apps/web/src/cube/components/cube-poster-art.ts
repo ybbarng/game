@@ -1,4 +1,14 @@
 import { normalVec, type Vec3 } from "../view/geometry";
+import {
+  cellPoint,
+  MIRROR_CELL,
+  MIRROR_PAD,
+  MIRROR_PLATE_RADIUS,
+  MIRROR_STICKER,
+  mirrorCells,
+  mirrorFrame,
+  mirrorPanels,
+} from "../view/mirror";
 import type { Normal, Sticker } from "../view/types";
 
 /**
@@ -44,11 +54,15 @@ const norm = (a: Vec3): Vec3 => {
 };
 const rad = (d: number) => (d * Math.PI) / 180;
 
-/** 3D 장면의 카메라(cube-view.ts placeCamera와 같은 계산): 큐브를 감싸는 공이 화면 짧은 쪽에 들어가는 거리 */
+/**
+ * 3D 장면의 카메라(cube-view.ts placeCamera와 같은 계산): 큐브를 감싸는 공이 화면 짧은 쪽에 들어가는 거리.
+ * `mirror`면 장면이 거울 판을 켰을 때처럼 큐브와 판 셋이 다 들어오는 자리(`mirrorFrame`)로 물러난다
+ */
 export function posterCamera(
   n: number,
   width: number,
   height: number,
+  mirror = false,
 ): PosterCamera {
   const aspect = width / height;
   const yaw = rad(SCENE_CAMERA.yaw);
@@ -56,13 +70,24 @@ export function posterCamera(
   const radius = (n * Math.sqrt(3)) / 2;
   const vFov = rad(SCENE_CAMERA.fov);
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-  const dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.02;
-  const eye: Vec3 = [
-    dist * Math.cos(pitch) * Math.sin(yaw),
-    dist * Math.sin(pitch),
-    dist * Math.cos(pitch) * Math.cos(yaw),
+  let dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.02;
+  let target: Vec3 = [0, 0, 0];
+  if (mirror) {
+    const f = mirrorFrame(n, mirrorPanels(n), aspect, SCENE_CAMERA.fov);
+    dist = f.dist;
+    target = f.target;
+  }
+  const dir: Vec3 = [
+    Math.cos(pitch) * Math.sin(yaw),
+    Math.sin(pitch),
+    Math.cos(pitch) * Math.cos(yaw),
   ];
-  const z = norm(eye);
+  const eye: Vec3 = [
+    target[0] + dist * dir[0],
+    target[1] + dist * dir[1],
+    target[2] + dist * dir[2],
+  ];
+  const z = norm(dir);
   const x = norm(cross([0, 1, 0], z));
   const y = cross(z, x);
   return { eye, x, y, z, tanHalf: Math.tan(vFov / 2), aspect, width, height };
@@ -106,6 +131,18 @@ function roundedSquare(
   steps = 4,
 ): Vec3[] {
   const [u, v] = faceAxes(nv);
+  return roundedOn(c, u, v, size, r, steps);
+}
+
+/** 두 축 u·v가 놓인 평면 위 둥근 사각형의 둘레 점 */
+function roundedOn(
+  c: Vec3,
+  u: Vec3,
+  v: Vec3,
+  size: number,
+  r: number,
+  steps: number,
+): Vec3[] {
   const h = size / 2;
   const k = h - r;
   const out: Vec3[] = [];
@@ -161,17 +198,32 @@ export interface PosterShapes {
   }[];
   /** 바닥 그림자(타원) */
   shadow: { cx: number; cy: number; rx: number; ry: number };
+  /** 거울 판(`mirror`일 때만): 판 셋과 판 위 칸(뒤·왼쪽·아래 면의 거울상) */
+  mirror: {
+    plates: { normal: Normal; points: string }[];
+    cells: {
+      normal: Normal;
+      points: string;
+      color: number | null;
+      id?: number | undefined;
+      mark?: Sticker["mark"];
+    }[];
+  } | null;
 }
 
-/** 그릴 모양 전부. 보이는 면의 스티커만 고른다 */
+/**
+ * 그릴 모양 전부. 보이는 면의 스티커만 고른다. `mirror`면 3D 장면의 거울 판(`view/mirror.ts`)과 같은 자리·크기의
+ * 판 셋과 그 위 칸도 낸다(판 테두리 여백·칸 크기·둥글기는 cube-view.ts buildMirror와 같은 값)
+ */
 export function posterShapes(
   n: number,
   stickers: readonly Sticker[],
   width: number,
   height: number,
   stickerless = false,
+  mirror = false,
 ): PosterShapes {
-  const cam = posterCamera(n, width, height);
+  const cam = posterCamera(n, width, height, mirror);
   const h = n / 2;
   const edge = h - (1 - SCENE_CUBIE) / 2;
   const normals: Normal[] = ["+x", "-x", "+y", "-y", "+z", "-z"];
@@ -238,6 +290,7 @@ export function posterShapes(
   return {
     body,
     stickers: out,
+    mirror: mirror ? mirrorShapes(cam, n, stickers) : null,
     shadow: {
       cx: (minX + maxX) / 2,
       cy: (minY + maxY) / 2,
@@ -245,4 +298,52 @@ export function posterShapes(
       ry: (maxY - minY) / 2,
     },
   };
+}
+
+const BACK: readonly Normal[] = ["-x", "-y", "-z"];
+
+/** 거울 판 셋과 판 위 칸(3D 장면 buildMirror와 같은 크기: 판 한 변 (n + 2·PAD)·CELL, 칸 STICKER·CELL) */
+function mirrorShapes(
+  cam: PosterCamera,
+  n: number,
+  stickers: readonly Sticker[],
+): NonNullable<PosterShapes["mirror"]> {
+  const panels = mirrorPanels(n);
+  const plates = panels.map((p) => ({
+    normal: p.normal as Normal,
+    points: pts(
+      cam,
+      roundedOn(
+        p.center,
+        p.right,
+        p.up,
+        (n + MIRROR_PAD * 2) * MIRROR_CELL,
+        MIRROR_PLATE_RADIUS * MIRROR_CELL,
+        4,
+      ),
+    ),
+  }));
+  const back = stickers.filter((s) => BACK.includes(s.normal));
+  const cells = mirrorCells(back).map((c, i) => {
+    const p = panels.find((q) => q.normal === c.panel);
+    if (!p) throw new Error(`거울 판 없음: ${c.panel}`);
+    return {
+      normal: c.panel as Normal,
+      points: pts(
+        cam,
+        roundedOn(
+          cellPoint(p, c.u, c.v),
+          p.right,
+          p.up,
+          MIRROR_STICKER * MIRROR_CELL,
+          0.12 * MIRROR_CELL,
+          3,
+        ),
+      ),
+      color: c.color,
+      id: back[i]?.id,
+      mark: c.mark,
+    };
+  });
+  return { plates, cells };
 }
