@@ -1,8 +1,19 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-import { buildCoreModel } from "./core-model";
-import { dragYaw, nextYaw, REST_YAW, type SpinState } from "./core-spin";
+import {
+  buildSizedCoreModel,
+  type ModelSize,
+  modelBounds,
+} from "./core-model-sizes";
+import { dragYaw, nextYaw, restYawFor, type SpinState } from "./core-spin";
+
+/**
+ * 다른 크기 모델의 그림 범위 반지름(modelBounds, 가운데에서 가장 먼 꼭짓점까지)을 이만큼으로 맞춰 3×3과 같은 카메라로
+ * 본다. 3×3은 4.75(가운데 원점)이지만 먼 꼭짓점이 대각선 코너 블럭뿐이라 틀에 든다. 다른 크기는 한 바퀴 도는 동안
+ * 틀 밖으로 나가지 않게 조금 작게
+ */
+const FIT_RADIUS = 4.2;
 
 /**
  * 분해한 큐브의 속(3D, 큐브의 기초 `/cube/basics` 맨 위, docs/47 16-27). 해법 지도 시안(2026-11-25 사용자 「내부 축이랑,
@@ -13,7 +24,7 @@ import { dragYaw, nextYaw, REST_YAW, type SpinState } from "./core-spin";
  *   (위-앞 모서리 가운데)으로 떼어 놓는다. 스티커는 그 자리에서 바깥을 보는 면 그대로다(2026-11-26 사용자 「엣지 조각이
  *   코너 위치에 있는 것 같은데, 엣지 위치 기준으로 배치해 줘」).
  * - 조각 안쪽 생김새는 실제 루빅스 큐브 구조를 자료로 확인해 따른다(2026-11-26 사용자 「조금 어색해 보여서 좀 더 실제
- *   같으면」, 출처는 docs/47 16-27). 도형은 core-model.ts.
+ *   같으면」, 출처는 docs/47 16-27). 도형은 core-model.ts. 2×2·4×4·5×5는 core-model-sizes.ts(docs/47 16-36).
  * - 세로축으로 천천히 한 바퀴씩 돈다(40초에 한 바퀴, 2026-11-26 사용자 「회전을 더 시켜서 엣지 반대쪽도 보이게」).
  *   끌어 돌리면 따라 돌고, 놓으면 그 각도에서 잠시 뒤 다시 돈다. 동작 줄이기면 다리가 잘 보이는 각도에 멈춘다(끌어
  *   돌리기는 된다). 화면 밖이면 그리지 않는다.
@@ -27,6 +38,8 @@ import { dragYaw, nextYaw, REST_YAW, type SpinState } from "./core-spin";
 export interface CoreSceneOptions {
   /** 면 번호(U R F D L B)별 색 */
   colors: readonly number[];
+  /** 큐브 크기(2~5, 기본 3). 짜임은 core-model-sizes.ts */
+  n?: ModelSize;
   /** 그리기를 잃으면(문맥 잃음) */
   onLost?: () => void;
 }
@@ -40,11 +53,7 @@ export class CoreScene {
   private raf = 0;
   private visible = true;
   private last = performance.now();
-  private readonly spin: SpinState = {
-    yaw: REST_YAW,
-    releasedAt: null,
-    dragging: false,
-  };
+  private readonly spin: SpinState;
   private dragX = 0;
   private dragYaw = 0;
   private readonly reduced: MediaQueryList | null;
@@ -59,6 +68,8 @@ export class CoreScene {
     private readonly canvas: HTMLCanvasElement,
     o: CoreSceneOptions,
   ) {
+    const n = o.n ?? 3;
+    this.spin = { yaw: restYawFor(n), releasedAt: null, dragging: false };
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -110,12 +121,21 @@ export class CoreScene {
     });
     this.disposables.push(body, metal);
 
-    const model = buildCoreModel();
-    this.disposables.push(model.body, model.metal);
-    this.group.add(
-      new THREE.Mesh(model.body, body),
-      new THREE.Mesh(model.metal, metal),
-    );
+    const model = buildSizedCoreModel(n);
+    // 크기마다 그림 범위가 달라 3×3과 같은 크기로 맞추고, 제 가운데를 축으로 돌게 한다(3×3은 그대로)
+    const fit = new THREE.Group();
+    if (n !== 3) {
+      const s = modelBounds(model);
+      fit.position.copy(s.center).negate();
+      this.group.scale.setScalar(FIT_RADIUS / s.radius);
+    }
+    this.group.add(fit);
+    this.disposables.push(model.body);
+    fit.add(new THREE.Mesh(model.body, body));
+    if (model.metal) {
+      this.disposables.push(model.metal);
+      fit.add(new THREE.Mesh(model.metal, metal));
+    }
     for (const [face, g] of model.stickers) {
       const m = new THREE.MeshPhysicalMaterial({
         color: o.colors[face] ?? 0xffffff,
@@ -125,7 +145,7 @@ export class CoreScene {
         clearcoatRoughness: 0.22,
       });
       this.disposables.push(g, m);
-      this.group.add(new THREE.Mesh(g, m));
+      fit.add(new THREE.Mesh(g, m));
     }
 
     // 위·앞·오른쪽이 보이는 비스듬한 각(큐브 장면 기본 각과 비슷하게). 큐브가 도니 멀찍이

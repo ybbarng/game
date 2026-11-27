@@ -36,7 +36,7 @@ describe("분해한 큐브의 속 도형", () => {
   it("재질별로 합쳐 그리기는 여덟 번: 검은 플라스틱 하나, 쇠 하나, 면 색 여섯", () => {
     expect([...model.stickers.keys()].sort()).toEqual([0, 1, 2, 3, 4, 5]);
     expect(model.body.index).toBeNull();
-    expect(model.metal.getAttribute("position").count).toBeGreaterThan(0);
+    expect(model.metal?.getAttribute("position").count).toBeGreaterThan(0);
   });
 
   it("센터 받침이 엣지 발을, 엣지 발이 코너 발을 덮고, 모두 센터 블럭 몸통 안쪽 면보다 안에 있다", () => {
