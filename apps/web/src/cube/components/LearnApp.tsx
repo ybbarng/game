@@ -7,10 +7,11 @@ import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
 import { courseMethod } from "../learn/course-method";
 import {
-  BASICS,
+  basicsSizeOf,
   COURSES,
   courseById,
   findLesson as findCourseLesson,
+  isBasicsCourse,
   nextLesson,
 } from "../learn/courses";
 import {
@@ -325,7 +326,7 @@ function LessonView({
   const lessonIndex = course.lessons.indexOf(lesson);
   // 기초 단원의 마지막은 초보자 과정 첫 단원으로 이어진다(docs/47 16-27)
   const next = nextLesson(course, lesson.id);
-  const basics = course.id === BASICS.id;
+  const basics = isBasicsCourse(course);
   const passed = progress.lessons[lesson.id]?.passed ?? [];
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 단원을 열 때 한 번
@@ -741,7 +742,16 @@ function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
       className="flex flex-wrap items-center gap-x-1.5 break-keep text-sm text-white/65"
     >
       {basics ? (
-        <a href={BASICS_HREF} data-lesson-back className={link}>
+        <a
+          href={
+            // 3×3이 아닌 기초 강은 그 크기 탭으로 돌아간다(docs/47 16-35)
+            basicsSizeOf(course) === 3
+              ? BASICS_HREF
+              : `${BASICS_HREF}?n=${basicsSizeOf(course)}`
+          }
+          data-lesson-back
+          className={link}
+        >
           {BASICS_TITLE}
         </a>
       ) : (

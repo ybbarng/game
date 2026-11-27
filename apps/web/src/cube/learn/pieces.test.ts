@@ -67,9 +67,10 @@ const UF = { colors: ["U", "F"] } as FindTarget;
 describe("과정 맨 앞의 조각 단원", () => {
   it.each([
     ["cube-basics", "333-start"],
-    ["222-beginner", "222-pieces"],
-    ["444-reduction", "444-pieces"],
-    ["555-reduction", "555-pieces"],
+    ["cube-basics-222", "222-pieces"],
+    ["cube-basics-222-from333", "222-from333-corners"],
+    ["cube-basics-444", "444-pieces"],
+    ["cube-basics-555", "555-pieces"],
   ])("%s의 첫 단원은 %s", (course, lesson) => {
     expect(COURSES.find((c) => c.id === course)?.lessons[0]?.id).toBe(lesson);
   });
