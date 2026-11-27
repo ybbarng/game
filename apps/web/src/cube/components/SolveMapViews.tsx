@@ -844,7 +844,9 @@ export function MapView({ ctx }: { ctx: MapCtx }) {
   const height = panel
     ? Math.max(layout.height, panel.y + panel.h + 40)
     : layout.height;
-  // 해법을 고르면 고른 길 전체가 보이게(펼쳤으면 펼친 칸과 그 앞 「3×3처럼」이 보이게)
+  // 해법을 고르면 고른 길 전체가 보이게(펼쳤으면 펼친 칸과 그 앞 「3×3처럼」이 보이게). 펼친 칸과 「3×3처럼」이 한
+  // 화면에 다 들어가지 않으면(휴대폰 세로) 펼친 칸이 다 보이게 오른쪽 끝에 맞춘다(왼쪽 머리에 맞추면 펼친 칸의 머리 줄·
+  // 해법 칩이 화면 밖에 남았다, 2026-11-27)
   const fit = useMemo(() => {
     if (panel) {
       const x0 = Math.min(...panel.from.map((p) => p.x), panel.x) - 70;
@@ -853,6 +855,7 @@ export function MapView({ ctx }: { ctx: MapCtx }) {
         y: panel.y - 20,
         w: panel.x + panel.w + 20 - x0,
         h: panel.h + 40,
+        end: true,
       };
     }
     const ps = [...new Set(ctx.selected.flatMap(methodNodes))]
@@ -1258,8 +1261,8 @@ function MapFrame({
 }: {
   width: number;
   height: number;
-  /** 해법을 고르면 맞출 영역 */
-  fit: { x: number; y: number; w: number; h: number } | null;
+  /** 해법을 고르면 맞출 영역(`end`면 가로로 넘칠 때 오른쪽 끝을 맞춘다) */
+  fit: { x: number; y: number; w: number; h: number; end?: boolean } | null;
   fitKey: string;
   mini: ReactNode;
   children: ReactNode;
@@ -1307,10 +1310,18 @@ function MapFrame({
     [size],
   );
 
-  /** 영역을 배율 k로: 화면에 들어가면 가운데, 넘치면 그 방향은 머리(왼쪽·위쪽)를 맞춘다 */
+  /** 영역을 배율 k로: 화면에 들어가면 가운데, 넘치면 그 방향은 머리(왼쪽·위쪽, `end`면 가로는 오른쪽 끝)를 맞춘다 */
   const headOf = useCallback(
-    (r: { x: number; y: number; w: number; h: number }, k: number): View => {
-      const cx = r.w * k > size.w ? r.x + size.w / (2 * k) : r.x + r.w / 2;
+    (
+      r: { x: number; y: number; w: number; h: number; end?: boolean },
+      k: number,
+    ): View => {
+      const cx =
+        r.w * k <= size.w
+          ? r.x + r.w / 2
+          : r.end
+            ? r.x + r.w - size.w / (2 * k)
+            : r.x + size.w / (2 * k);
       const cy = r.h * k > size.h ? r.y + size.h / (2 * k) : r.y + r.h / 2;
       return centerOn({ x: cx, y: cy }, k);
     },
@@ -1465,8 +1476,11 @@ function MapFrame({
   return (
     <div
       ref={box}
-      // 화면 전체를 쓰는 A·C: 부모(위 얇은 줄 아래 남은 화면)를 끝까지 채운다
-      className="relative h-full min-h-0 w-full flex-1 touch-none select-none overflow-hidden bg-neutral-950"
+      // 화면 전체를 쓰는 A·C: 부모(위 얇은 줄 아래 남은 화면)를 끝까지 채운다.
+      // 지도는 transform으로만 움직인다. 틀은 스크롤되지 않는 상자(overflow: clip)라 틀 밖에 걸친 링크로 포커스가 가거나
+      // 스크립트가 화면 안으로 스크롤해도 보기가 어긋나지 않는다. 예전에는 overflow: hidden 틀이 스크롤되면 onScroll에서
+      // 0으로 되돌렸는데, 누르는 사이에 되돌림이 끼면 손을 뗀 자리가 달라져 누르기가 조용히 사라졌다(2026-11-27)
+      className="relative h-full min-h-0 w-full flex-1 touch-none select-none overflow-clip bg-neutral-950"
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
@@ -1477,11 +1491,6 @@ function MapFrame({
           ev.stopPropagation();
           suppress.current = false;
         }
-      }}
-      // 지도는 transform으로만 움직인다. 틀 밖에 걸친 링크로 포커스가 가면 브라우저가 틀을 스크롤해 보기가 어긋나니 되돌린다
-      onScroll={(ev) => {
-        ev.currentTarget.scrollTop = 0;
-        ev.currentTarget.scrollLeft = 0;
       }}
       data-map-frame
     >
