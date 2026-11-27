@@ -196,8 +196,8 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     expect(edgesMatched(s)).toEqual(["B"]);
   });
 
-  it("엣지 위치 셋째 쪽: 앞과 왼쪽이 제자리이고 이웃이라 U'를 한 칸 더 돌리면 뒤 하나만 맞는다", () => {
-    const s = stateOf(lesson("333-tf-ep")?.steps[2] as LessonStep);
+  it("엣지 위치 「하나만 맞는 일은 드물어서」 쪽: 앞과 왼쪽이 제자리이고 이웃이라 U'를 한 칸 더 돌리면 뒤 하나만 맞는다", () => {
+    const s = stateOf(stepWith("333-tf-ep", "하나만 맞는 일은 드물어서"));
     expect(edgesMatched(s).sort()).toEqual(["F", "L"]);
     expect(nextTwistFirstStep("ep", s)).toMatchObject({
       caseId: "adjacent",
