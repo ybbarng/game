@@ -46,6 +46,16 @@ export interface DemoCubeProps {
   /** 칸 표시(스티커 정체마다, 배우기의 쥐는 기준 조각). 조각을 따라 돈다 */
   marks?: StickerMarks | null;
   /**
+   * 수마다 다시 정하는 칸 표시(배우기의 넣을 자리 고리처럼 층을 돌려도 자리에 남는 것, `learn/focus.ts`). 있으면
+   * `marks` 대신 쓴다
+   */
+  marksAt?: ((state: PuzzleState) => StickerMarks | null) | undefined;
+  /**
+   * 쥐는 법 차례(2026-11-27 사용자 「내가 무엇을 맞추고 싶은지를 먼저 정하고 그것이 들어갈 위치를 살펴보고」): 있으면 수
+   * 앞에 「맞출 조각」(이 표시)과 「들어갈 자리」(`marksAt`·`marks`) 두 칸을 두고 그 차례로 고리를 옮긴 뒤 수를 둔다
+   */
+  pick?: StickerMarks | null;
+  /**
    * 뒷면 보기. 배우기는 해 보기 큐브와 같은 거울 판을 단다(`lessonBackView`, docs/47 16-37). 기본은 끔
    * (핑거 트릭·패턴·십자 훈련의 시연은 그대로)
    */
@@ -66,6 +76,8 @@ export function DemoCube({
   showKeys = true,
   onEnd,
   marks = null,
+  marksAt,
+  pick = null,
   backView = "off",
 }: DemoCubeProps) {
   const onEndRef = useRef(onEnd);
@@ -76,7 +88,13 @@ export function DemoCube({
   const [failed, setFailed] = useState(false);
   /** 3D 장면을 만들었다(화면 시험이 3D 길을 확인하는 표시) */
   const [ready, setReady] = useState(false);
-  const [index, setIndex] = useState(0);
+  /**
+   * 보이는 칸(frame). 「맞출 조각」 칸이 있으면(pre 1) 0번이 그 칸, 1번이 시작 상태(「들어갈 자리」), 그 뒤가 수마다.
+   * 없으면 0번이 시작 상태
+   */
+  const [frame, setFrame] = useState(0);
+  const pre = pick ? 1 : 0;
+  const index = Math.max(0, frame - pre);
   const [playing, setPlaying] = useState(autoPlay);
   const back = useBackView(backView, !failed);
   const mirror = back.mode === "mirror";
@@ -99,8 +117,17 @@ export function DemoCube({
     return out;
   }, [n, start, moves]);
 
-  const live = useRef({ states, mask, index, marks });
-  live.current = { states, mask, index, marks };
+  /** 그 칸의 표시 */
+  const marksOf = useCallback(
+    (f: number): StickerMarks | null => {
+      if (f < pre) return pick;
+      const s = states[Math.max(0, f - pre)] as PuzzleState;
+      return marksAt ? marksAt(s) : marks;
+    },
+    [pre, pick, states, marksAt, marks],
+  );
+  const live = useRef({ states, mask, frame, marksOf, pre });
+  live.current = { states, mask, frame, marksOf, pre };
 
   const moveMs = Math.min(200, Math.round(600 / tps));
   useEffect(() => {
@@ -126,9 +153,9 @@ export function DemoCube({
         view.setStickers(
           stickersFromState(
             n,
-            c.states[c.index] as PuzzleState,
+            c.states[Math.max(0, c.frame - c.pre)] as PuzzleState,
             c.mask,
-            c.marks,
+            c.marksOf(c.frame),
           ),
         );
         viewRef.current = view;
@@ -153,54 +180,64 @@ export function DemoCube({
 
   // 상황·공식·가리기가 바뀌면 처음으로
   useEffect(() => {
-    setIndex(0);
+    setFrame(0);
     viewRef.current?.setStickers(
-      stickersFromState(n, states[0] as PuzzleState, mask, marks),
+      stickersFromState(n, states[0] as PuzzleState, mask, marksOf(0)),
     );
-  }, [n, states, mask, marks]);
+  }, [n, states, mask, marksOf]);
 
   const goTo = useCallback(
     (to: number) => {
       const c = live.current;
-      const last = c.states.length - 1;
-      const i = Math.max(0, Math.min(last, to));
+      const lastFrame = c.states.length - 1 + pre;
+      const f = Math.max(0, Math.min(lastFrame, to));
+      const from = Math.max(0, c.frame - pre);
+      const i = Math.max(0, f - pre);
       const view = viewRef.current;
       if (view) {
-        if (i === c.index + 1) {
-          for (const m of moves[c.index] ?? []) view.enqueue(m);
+        if (i === from + 1) {
+          for (const m of moves[from] ?? []) view.enqueue(m);
+          view.setMarks(c.marksOf(f));
+        } else if (i === from) {
+          view.setMarks(c.marksOf(f));
         } else {
           view.flush();
           view.setStickers(
-            stickersFromState(n, c.states[i] as PuzzleState, c.mask, c.marks),
+            stickersFromState(
+              n,
+              c.states[i] as PuzzleState,
+              c.mask,
+              c.marksOf(f),
+            ),
           );
         }
       }
-      setIndex(i);
-      if (i === last && i > 0) onEndRef.current?.();
+      setFrame(f);
+      if (f === lastFrame && i > 0) onEndRef.current?.();
     },
-    [n, moves],
+    [n, moves, pre],
   );
 
+  const last = states.length - 1 + pre;
   // 재생
   useEffect(() => {
     if (!playing) return;
-    const last = states.length - 1;
     const id = window.setTimeout(
       () => {
-        if (index < last) goTo(index + 1);
+        if (frame < last) goTo(frame + 1);
         else if (loop) goTo(0);
         else setPlaying(false);
       },
-      index < last ? 1000 / tps : 1200,
+      frame < last ? 1000 / tps : 1200,
     );
     return () => window.clearTimeout(id);
-  }, [playing, index, states.length, tps, loop, goTo]);
+  }, [playing, frame, last, tps, loop, goTo]);
 
   useEffect(() => {
     if (!arrowKeys) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") goTo(live.current.index + 1);
-      else if (e.key === "ArrowLeft") goTo(live.current.index - 1);
+      if (e.key === "ArrowRight") goTo(live.current.frame + 1);
+      else if (e.key === "ArrowLeft") goTo(live.current.frame - 1);
       else return;
       e.preventDefault();
       setPlaying(false);
@@ -209,8 +246,14 @@ export function DemoCube({
     return () => window.removeEventListener("keydown", onKey);
   }, [arrowKeys, goTo]);
 
-  const last = states.length - 1;
   const current = states[index] as PuzzleState;
+  /** 쥐는 법 차례의 칸 둘(맞출 조각 → 들어갈 자리). 지금 칸이 그 칸이면 밝게 */
+  const cues = pick
+    ? [
+        { label: "맞출 조각", at: 0 },
+        { label: "들어갈 자리", at: 1 },
+      ]
+    : [];
   return (
     <div className="flex w-full flex-col items-center gap-2" data-cube-demo>
       <StageBox
@@ -225,7 +268,7 @@ export function DemoCube({
                   n={n}
                   state={current}
                   mask={mask}
-                  marks={marks}
+                  marks={marksOf(frame)}
                   settings={settings}
                   className="w-full"
                 />
@@ -246,6 +289,29 @@ export function DemoCube({
         className="flex flex-wrap justify-center gap-1 font-mono text-sm"
         data-demo-index={index}
       >
+        {cues.map((c) => (
+          <li key={c.label}>
+            <button
+              type="button"
+              data-demo-cue={c.at === 0 ? "pick" : "slot"}
+              onClick={() => {
+                setPlaying(false);
+                goTo(c.at);
+              }}
+              aria-current={frame === c.at ? "step" : undefined}
+              className={cn(
+                "flex min-h-9 items-center rounded-md px-2 py-0.5 font-sans",
+                frame === c.at
+                  ? "bg-amber-400 font-bold text-black"
+                  : frame > c.at
+                    ? "bg-white/15 text-white/70"
+                    : "bg-white/5 text-white",
+              )}
+            >
+              {c.label}
+            </button>
+          </li>
+        ))}
         {tokens.map((t, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
           <li key={`${i}-${t}`}>
@@ -253,14 +319,14 @@ export function DemoCube({
               type="button"
               onClick={() => {
                 setPlaying(false);
-                goTo(i + 1);
+                goTo(i + 1 + pre);
               }}
-              aria-current={i === index - 1 ? "step" : undefined}
+              aria-current={i === frame - pre - 1 ? "step" : undefined}
               className={cn(
                 "flex min-w-9 flex-col items-center rounded-md px-1.5 py-0.5",
-                i === index - 1
+                i === frame - pre - 1
                   ? "bg-amber-400 font-bold text-black"
-                  : i < index
+                  : i < frame - pre
                     ? "bg-white/15 text-white/70"
                     : "bg-white/5 text-white",
               )}
@@ -286,10 +352,10 @@ export function DemoCube({
           ⏮ 처음으로
         </DemoButton>
         <DemoButton
-          disabled={index === 0}
+          disabled={frame === 0}
           onClick={() => {
             setPlaying(false);
-            goTo(index - 1);
+            goTo(frame - 1);
           }}
         >
           ◀ 한 수 뒤
@@ -297,17 +363,17 @@ export function DemoCube({
         <DemoButton
           primary
           onClick={() => {
-            if (!playing && index === last) goTo(0);
+            if (!playing && frame === last) goTo(0);
             setPlaying((p) => !p);
           }}
         >
           {playing ? "⏸ 멈춤" : "▶ 재생"}
         </DemoButton>
         <DemoButton
-          disabled={index === last}
+          disabled={frame === last}
           onClick={() => {
             setPlaying(false);
-            goTo(index + 1);
+            goTo(frame + 1);
           }}
         >
           한 수 앞 ▶

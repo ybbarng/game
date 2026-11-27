@@ -7,6 +7,7 @@ import { lookMet } from "./interact";
 import { GRIP_QUESTION, TWIST_FIRST_333 } from "./lessons-twist-first";
 import {
   gripPieces,
+  gripReady,
   nextTwistFirstStep,
   type TwistFirstStageId,
   twistFirstCase,
@@ -80,4 +81,16 @@ describe("쥐기 문제", () => {
       }
     });
   }
+
+  it("흰 십자·첫 층 코너의 쥐어 보기는 넣을 자리가 기준 위치에 오면 쥔 것이다(블럭을 자리 밑으로 데려오는 아랫면 돌리기는 쥔 뒤의 일)", () => {
+    // 흰-초록 엣지 블럭이 아래-오른쪽: 들어갈 자리(위-앞)는 이미 앞이라 쥔 것, y'로 돌리면 아니다
+    const cross = play(solvedCube(3), "F2 D'");
+    expect(nextTwistFirstStep("cross", cross)?.hold).toBe("D");
+    expect(gripReady("cross", cross)).toBe(true);
+    expect(gripReady("cross", play(cross, "y'"))).toBe(false);
+    // 코너 블럭이 아래-앞-왼쪽: 들어갈 자리(앞-오른쪽 위)는 이미 앞-오른쪽이라 쥔 것
+    const corner = play(solvedCube(3), "R F' R' F D'");
+    expect(gripReady("corners", corner)).toBe(true);
+    expect(gripReady("corners", play(corner, "y"))).toBe(false);
+  });
 });

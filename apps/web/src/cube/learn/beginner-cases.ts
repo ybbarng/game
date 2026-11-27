@@ -355,7 +355,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     set: "f2l",
     mask: "cross",
     title:
-      "흰 엣지 블럭의 네 경우(아래 층은 짝 색 센터 바로 아래로 데려와 봐요)",
+      "흰 엣지 블럭의 네 경우(아래 층은 들어갈 자리 바로 아래로 데려와 봐요)",
     cases: [
       {
         id: "down",
@@ -675,8 +675,8 @@ export function withFlowPick(
 }
 
 /**
- * 경우 표 그림에서 고리를 두를 기준 조각(그림 상태에서 든 자리 이름). 코너 방향 먼저 강의 표는 다음 한 걸음에서 쥐는
- * 기준 조각(`gripPieces`, 시연·해 보기의 고리와 같다), 끝난 모양과 처음 맞추기 표는 없음
+ * 경우 표 그림에서 고리를 두를 쥐는 기준(그림 상태에서 보이는 자리 이름, 「@」는 넣을 자리). 코너 방향 먼저 강의 표는
+ * 다음 한 걸음에서 쥐는 기준(`gripPieces`, 시연·해 보기의 고리와 같다), 끝난 모양과 처음 맞추기 표는 없음
  */
 export function caseFocus(sheet: BeginnerCaseSheet, c: BeginnerCase): string[] {
   if (sheet.stage.path !== "twist-first") return [];

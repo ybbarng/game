@@ -67,7 +67,27 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   );
   await goStep(page, 5);
   await expect(cases("beginner-tf-cross")).toHaveCount(4);
+  // 쥐는 기준 고리는 넣을 자리(위-앞 엣지 자리의 두 칸), 올릴 블럭에는 두르지 않는다(2026-11-27 사용자)
+  const crossDown = page.locator(
+    '[data-sheet="beginner-tf-cross"] [data-sheet-case="down"]',
+  );
+  await expect(crossDown.locator('[data-sticker-mark="focus"]')).toHaveCount(2);
   await shot(page, "learn-tf-cross-cases", info.project.name);
+  // 시연은 쥐는 법 차례대로: 맞출 조각 → 들어갈 자리 → 수
+  await goStep(page, 6);
+  const pickCue = page.locator('[data-demo-cue="pick"]');
+  const slotCue = page.locator('[data-demo-cue="slot"]');
+  await expect(pickCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-cross-demo-pick", info.project.name);
+  await slotCue.click();
+  await expect(slotCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-cross-demo-slot", info.project.name);
+  await page.locator('[data-cube-demo] [data-move-chip="F2"]').click();
+  await expect(page.locator("[data-demo-index]")).toHaveAttribute(
+    "data-demo-index",
+    "1",
+  );
+  await shot(page, "learn-tf-cross-demo-f2", info.project.name);
   await goStep(page, 10);
   await expect(chunks).toHaveCount(4);
   await expect(body).toContainText("D R F' R'");
@@ -76,10 +96,26 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await page.goto("/cube/learn?lesson=333-tf-corners");
   await goStep(page, 1);
   await expect(cases("beginner-tf-corners")).toHaveCount(4);
+  // 넣을 자리(앞-오른쪽 위 코너 자리의 세 칸)에 고리
+  await expect(
+    page.locator(
+      '[data-sheet="beginner-tf-corners"] [data-sheet-case="right"] [data-sticker-mark="focus"]',
+    ),
+  ).toHaveCount(3);
   await shot(page, "learn-tf-corners-cases", info.project.name);
   await goStep(page, 2);
   await expect(chunks).toHaveCount(4);
   await expect(body).toContainText("F' R F R'");
+  await expect(pickCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-corners-demo-pick", info.project.name);
+  await slotCue.click();
+  await expect(slotCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-corners-demo-slot", info.project.name);
+  await page.locator('[data-cube-demo] [data-move-chip="R\'"]').click();
+  await expect(page.locator("[data-demo-index]")).toHaveAttribute(
+    "data-demo-index",
+    "4",
+  );
   await shot(page, "learn-tf-corners-chunks", info.project.name);
 
   await page.goto("/cube/learn?lesson=333-tf-second");
@@ -243,6 +279,18 @@ test("배우기: 신광사 쥐어 보기는 큐브 전체를 돌려 맞는 쥐�
     else await expect(look).not.toHaveAttribute("data-act-passed", "");
     await shot(page, `learn-tf-place-hold-${i + 1}`, info.project.name);
   }
+
+  // 흰 십자 쥐어 보기(9쪽): 들어갈 자리가 위-오른쪽인 쥐기에서 시작해, y 한 번으로 그 자리가 위-앞에 오면 통과
+  await page.goto("/cube/learn?lesson=333-tf-cross");
+  await goStep(page, 8);
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "들어갈 자리는 흰 센터와 초록 센터 사이",
+  );
+  await inputReady(page);
+  await shot(page, "learn-tf-cross-hold-0", info.project.name);
+  for (const k of keysFor("y")) await page.keyboard.press(k);
+  await expect(look).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-tf-cross-hold-1", info.project.name);
 });
 
 test("배우기: 흰 십자는 첫머리에 여섯 모양을 훑고, 옆으로 옮겨 올리는 공식을 네 덩어리로 보이고, 끝에 모양마다 할 일을 다시 묶는다", async ({

@@ -1,6 +1,7 @@
 "use client";
 
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
+import type { PuzzleState } from "@game/puzzle-core";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -19,7 +20,7 @@ import {
   isBasicsCourse,
   nextLesson,
 } from "../learn/courses";
-import { focusMarks } from "../learn/focus";
+import { focusMarks, focusMoves } from "../learn/focus";
 import {
   demoBodyParts,
   demoOffersTurn,
@@ -391,6 +392,20 @@ function LessonView({
     () => (start && step ? focusMarks(lesson.size, start, step.focus) : null),
     [lesson.size, start, step],
   );
+  // 넣을 자리 고리는 층을 돌려도 자리에 남게 수마다 다시 정한다(learn/focus.ts 「@」)
+  const focusAt = useMemo(
+    () =>
+      start && step && focusMoves(step.focus)
+        ? (s: PuzzleState) => focusMarks(lesson.size, start, step.focus, s)
+        : undefined,
+    [lesson.size, start, step],
+  );
+  // 쥐는 법 차례의 첫째: 맞출 조각(쪽 자료 `pick`, 시연만)
+  const pick = useMemo(
+    () =>
+      start && step?.pick ? focusMarks(lesson.size, start, step.pick) : null,
+    [lesson.size, start, step],
+  );
   const mask = useMemo(
     () => (masked ? maskFor(lesson.size, picture.mask) : null),
     [masked, lesson.size, picture.mask],
@@ -555,6 +570,7 @@ function LessonView({
               n={lesson.size}
               start={start}
               marks={focus}
+              marksAt={focusAt}
               alg={step.alg}
               mask={mask}
               settings={settings}
@@ -567,6 +583,8 @@ function LessonView({
               n={lesson.size}
               start={start}
               marks={focus}
+              marksAt={focusAt}
+              pick={pick}
               alg={step.alg}
               mask={mask}
               settings={settings}
@@ -588,6 +606,7 @@ function LessonView({
             alg={step.alg}
             mask={mask}
             marks={focus}
+            marksAt={focusAt}
             settings={settings}
             passedText={step.passedText}
             onPassed={markActed}

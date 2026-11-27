@@ -203,9 +203,7 @@ export function CubePoster({
               stroke={mark ? hexColor(MARK_COLOR[mark]) : undefined}
               strokeWidth={mark ? 2.4 : undefined}
               strokeLinejoin="round"
-              data-sticker-mark={
-                slot !== undefined ? (mark ?? undefined) : undefined
-              }
+              data-sticker-mark={mark ?? undefined}
               data-sticker-cell={press ? slot : undefined}
               role={press ? "button" : undefined}
               tabIndex={press ? 0 : undefined}

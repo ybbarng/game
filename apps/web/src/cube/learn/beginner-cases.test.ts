@@ -112,11 +112,14 @@ describe("경우 표 그림의 기준 조각 고리", () => {
     return caseFocus(sheet, c);
   };
 
-  it("코너 방향 먼저 표는 그림마다 다음 걸음의 쥐는 기준 조각(시연·해 보기 고리와 같은 규칙)에 고리를 두른다", () => {
-    // 흰 십자: 올릴 엣지 블럭과 짝 색 센터
-    expect(focusOf("beginner-tf-cross", "down")).toEqual(["DF", "F"]);
-    // 첫 층 코너: 코너 블럭과 넣을 자리를 알려 주는 옆 센터 둘
-    expect(focusOf("beginner-tf-corners", "right")).toEqual(["DFR", "R", "F"]);
+  it("코너 방향 먼저 표는 그림마다 다음 걸음의 쥐는 기준(시연·해 보기 고리와 같은 규칙)에 고리를 두른다", () => {
+    // 흰 십자: 올릴 엣지 블럭이 들어갈 자리(위-앞에 오게 쥔다), 잘못 든 블럭을 뺄 때는 그 블럭
+    expect(focusOf("beginner-tf-cross", "down")).toEqual(["@UF"]);
+    expect(focusOf("beginner-tf-cross", "top")).toEqual(["UR"]);
+    // 첫 층 코너: 코너 블럭이 들어갈 자리(앞-오른쪽 위에 오게 쥔다)
+    expect(focusOf("beginner-tf-corners", "right")).toEqual(["@UFR"]);
+    // 둘째 층: 넣을 엣지 블럭과 그 블럭의 두 색 센터(블럭이 옆 색 센터 위에 있는 면을 앞으로)
+    expect(focusOf("beginner-tf-second", "right")).toEqual(["UF", "R", "F"]);
     // 엣지 방향 일자: 앞뒤로 세울 두 엣지 블럭
     expect(focusOf("beginner-tf-eo", "line")).toEqual(["UF", "UB"]);
     // 코너 방향 하나(앞-왼쪽 노란색이 앞): 노란색이 위를 보는 코너 블럭 하나

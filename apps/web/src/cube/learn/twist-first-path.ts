@@ -781,7 +781,13 @@ export function gripReady(stage: TwistFirstStageId, s: PuzzleState): boolean {
   const center = faceColors(3, s)[(whiteUp ? 0 : 3) * 9 + 4];
   if (center !== WHITE) return false;
   try {
-    return nextTwistFirstStep(stage, s)?.hold === "";
+    const hold = nextTwistFirstStep(stage, s)?.hold;
+    if (hold === undefined) return false;
+    // 흰 십자·첫 층 코너의 기준은 넣을 자리라, 큐브 전체 돌리기가 남지 않았으면 쥔 것이다(블럭을 자리 밑으로
+    // 데려오는 아랫면 돌리기는 쥔 뒤에 옮기는 일, 2026-11-27)
+    if (stage === "cross" || stage === "corners")
+      return !hold.split(" ").some((t) => /^[xyz]/.test(t));
+    return hold === "";
   } catch {
     return false;
   }
@@ -810,16 +816,24 @@ const colorsAt = (s: PuzzleState, faces: string) => {
 const placeOf = (s: PuzzleState, colors: readonly number[]) =>
   [...pieceAt(s, colors).values()].join("");
 
-/** 쥔 모습에서 기준으로 보는 자리(면 글자)와 함께 보일 센터 색(조각의 색 가운데 흰색·노란색 말고) */
-const GRIP_AT: Record<string, { places: string[]; centers?: boolean }> = {
-  "cross/down": { places: ["DF"], centers: true },
-  "cross/front": { places: ["DF"], centers: true },
-  "cross/middle": { places: ["FR"], centers: true },
-  "cross/top": { places: ["UR"], centers: true },
-  "corners/right": { places: ["DFR"], centers: true },
-  "corners/front": { places: ["DFR"], centers: true },
-  "corners/down": { places: ["DFR"], centers: true },
-  "corners/slot": { places: ["UFR"], centers: true },
+/**
+ * 쥔 모습에서 기준으로 보는 자리(면 글자). `slot`이면 조각이 아니라 그 자리(넣을 자리, 2026-11-27 사용자 「맞추고 싶은 위치가
+ * FU 위치로 오게」), `centers`면 조각과 함께 그 조각 색의 센터(흰색·노란색 말고)
+ */
+const GRIP_AT: Record<
+  string,
+  { places: string[]; centers?: boolean; slot?: boolean }
+> = {
+  // 흰 십자·첫 층 코너: 넣을 자리를 위-앞·앞-오른쪽 위에 오게 쥔다(자리). 잘못 든 블럭을 뺄 때는 그 블럭을 둔다(조각)
+  "cross/down": { places: ["UF"], slot: true },
+  "cross/front": { places: ["UF"], slot: true },
+  "cross/middle": { places: ["FR"] },
+  "cross/top": { places: ["UR"] },
+  "corners/right": { places: ["UFR"], slot: true },
+  "corners/front": { places: ["UFR"], slot: true },
+  "corners/down": { places: ["UFR"], slot: true },
+  "corners/slot": { places: ["UFR"] },
+  // 둘째 층: 넣을 엣지 블럭이 옆 색 센터 위에 있는 면을 앞으로(조각과 두 색 센터)
   "second/right": { places: ["UF"], centers: true },
   "second/left": { places: ["UF"], centers: true },
   "second/stuck": { places: ["FR"] },
@@ -832,10 +846,12 @@ const GRIP_AT: Record<string, { places: string[]; centers?: boolean }> = {
 };
 
 /**
- * 그 단계 다음 한 걸음에서 쥐는 기준이 되는 조각이 지금(쥐기 전) 든 자리 이름(2026-11-27 사용자 「잡는 기준은 그림에서
- * 강조」). 흰 십자는 올릴 엣지 블럭과 짝 색 센터, 첫 층 코너는 코너 블럭과 넣을 자리를 알려 주는 옆 센터 둘, 둘째 층은
- * 넣을 엣지 블럭과 위 색·옆 색 센터, 엣지 방향은 ㄱ자·일자 두 엣지, 엣지 위치는 뒤에 둘(마주 보면 맞은 둘) 엣지,
- * 코너 방향은 노란색이 위를 보는 코너(둘인 옆면 모양은 그 둘), 코너 위치는 제자리 코너와 헤드라이트 둘. 없으면 빈 목록
+ * 그 단계 다음 한 걸음의 쥐는 기준(강 글이 「○○가 △△에 오게 쥐어요」라고 하는 것)이 지금(쥐기 전) 보이는 자리
+ * 이름(2026-11-27 사용자 「잡는 기준은 그림에서 강조」, 같은 날 「맞추고 싶은 위치가 FU 위치로 오게」). 기준이 자리면
+ * 「@」를 붙인다(`focus.ts`). 흰 십자는 넣을 자리(위-앞에 오게), 첫 층 코너는 넣을 자리(앞-오른쪽 위에 오게), 둘 다
+ * 잘못 든 블럭을 뺄 때는 그 블럭. 둘째 층은 넣을 엣지 블럭과 위 색·옆 색 센터, 엣지 방향은 ㄱ자·일자 두 엣지, 엣지
+ * 위치는 뒤에 둘(마주 보면 맞은 둘) 엣지, 코너 방향은 노란색이 위를 보는 코너(둘인 옆면 모양은 그 둘), 코너 위치는
+ * 제자리 코너와 헤드라이트 둘. 없으면 빈 목록
  */
 export function gripPieces(stage: TwistFirstStageId, s: PuzzleState): string[] {
   const st = NEXT[stage](s);
@@ -852,8 +868,16 @@ export function gripPieces(stage: TwistFirstStageId, s: PuzzleState): string[] {
     places = ["UFR", "UFL", "UBL", "UBR"].filter((_, k) => ys[k] === "U");
   }
   const col = faceColors(3, s);
+  const heldCol = faceColors(3, held);
   const out: string[] = [];
   for (const p of places) {
+    if (GRIP_AT[key]?.slot) {
+      // 자리: 쥔 모습에서 그 자리를 둘러싼 센터 색들이 지금(쥐기 전) 보는 면
+      out.push(
+        `@${[...p].map((f) => centerOf(col, center(heldCol, f as Face))).join("")}`,
+      );
+      continue;
+    }
     const colors = colorsAt(held, p);
     out.push(placeOf(s, colors));
     if (GRIP_AT[key]?.centers)
@@ -861,6 +885,24 @@ export function gripPieces(stage: TwistFirstStageId, s: PuzzleState): string[] {
         if (c !== WHITE && c !== YELLOW) out.push(centerOf(col, c));
   }
   return out;
+}
+
+/**
+ * 쥐는 기준이 자리인 걸음(흰 십자·첫 층 코너에서 넣기)의 맞출 조각: 그 자리가 제자리인 조각이 지금 든 자리 이름. 쥐는 법
+ * 차례 「맞출 조각 → 들어갈 자리 → 쥐기 → 옮겨 넣기」의 첫째(2026-11-27 사용자). 기준이 조각인 걸음은 빈 목록
+ */
+export function gripPick(stage: TwistFirstStageId, s: PuzzleState): string[] {
+  const st = NEXT[stage](s);
+  if (!st) return [];
+  const key = `${stage}/${st.caseId}`;
+  if (!GRIP_AT[key]?.slot) return [];
+  const heldCol = faceColors(3, play(s, st.hold));
+  return (GRIP_AT[key]?.places ?? []).map((p) =>
+    placeOf(
+      s,
+      [...p].map((f) => center(heldCol, f as Face)),
+    ),
+  );
 }
 
 export interface TwistFirstRun {

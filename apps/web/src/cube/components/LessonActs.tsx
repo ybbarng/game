@@ -520,6 +520,7 @@ export function TurnPanel({
   axes = false,
   passedText,
   marks = null,
+  marksAt,
 }: {
   n: number;
   start: PuzzleState;
@@ -529,6 +530,8 @@ export function TurnPanel({
   onPassed: () => void;
   /** 쥐는 기준 조각의 노란 고리(스티커 정체마다) */
   marks?: StickerMarks | null;
+  /** 수마다 다시 정하는 고리(넣을 자리, `learn/focus.ts`). 있으면 `marks` 대신 */
+  marksAt?: ((state: PuzzleState) => StickerMarks | null) | undefined;
   /** 다 쳤을 때 보일 말(없으면 칭찬) */
   passedText?: string | undefined;
   /** 세 축 화살표(처음 안내의 x·y·z) */
@@ -547,6 +550,10 @@ export function TurnPanel({
   const { keysOf } = useMoveKeys(n);
   const next = !passed ? tokens[progress.step] : undefined;
   const want = next && keysOf ? keysOf(next) : null;
+  const slotMarks = useMemo(
+    () => (marksAt ? marksAt(play.state) : null),
+    [marksAt, play.state],
+  );
 
   const onMove = useCallback(
     (m: CubeMove) => {
@@ -611,7 +618,8 @@ export function TurnPanel({
         n={n}
         state={play.state}
         mask={mask}
-        marks={marks}
+        marks={marksAt ? null : marks}
+        glow={slotMarks}
         syncToken={play.syncToken}
         settings={settings}
         onMove={onMove}
