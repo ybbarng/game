@@ -94,7 +94,8 @@ describe("단계마다 모든 경우 그림", () => {
       const lesson = lessons.find((l) => l.id === id);
       const at = lesson?.steps.findIndex((s) => s.sheet === sheet) ?? -1;
       expect(at, id).toBeGreaterThanOrEqual(0);
-      expect(at, id).toBeLessThan(4);
+      // 신광사 흰 십자는 어디를 돌려도 되는지 보이는 돌리기 쪽 넷을 경우 그림보다 먼저 둔다(2026-11-27 사용자)
+      expect(at, id).toBeLessThan(id === "333-tf-cross" ? 6 : 4);
     }
   });
 });

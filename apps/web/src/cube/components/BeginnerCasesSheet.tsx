@@ -3,8 +3,10 @@
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
+import { cn } from "@/lib/cn";
 import {
   BEGINNER_CASE_SHEETS,
+  FLOW_DEMO_START,
   TWIST_FLOW,
   type TwistFlowNode,
 } from "../learn/beginner-cases";
@@ -37,14 +39,35 @@ export function BeginnerCasesSheet({
             data-sheet-case={c.id}
             className="flex flex-col items-center gap-1 rounded-lg bg-white/5 p-2"
           >
-            <AlgPicture
-              set={sheet.set}
-              n={3}
-              state={applyMoves(3, solvedCube(3), parseMoves(3, c.alg))}
-              colors={colors}
-              {...(sheet.mask ? { mask: sheet.mask } : {})}
-              className="h-20 w-20"
-            />
+            <span className="relative">
+              <AlgPicture
+                set={sheet.set}
+                n={3}
+                state={applyMoves(3, solvedCube(3), parseMoves(3, c.alg))}
+                colors={colors}
+                {...(sheet.mask ? { mask: sheet.mask } : {})}
+                className="h-20 w-20"
+              />
+              {c.headlights && (
+                // 헤드라이트 옆면의 윗줄 띠(윗면 평면도의 왼쪽·오른쪽 띠)를 테두리로 강조한다
+                <span
+                  data-headlights={c.headlights}
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute top-[9%] h-[82%] w-[14%] rounded-sm border-2 border-amber-300",
+                    c.headlights === "L" ? "-left-[3%]" : "-right-[3%]",
+                  )}
+                />
+              )}
+            </span>
+            {sheet.front && (
+              <span
+                data-sheet-front
+                className="text-[0.625rem] text-white/60 leading-none"
+              >
+                ▲ 앞
+              </span>
+            )}
             <span className="break-keep text-center font-semibold text-xs">
               {c.caption}
             </span>
@@ -99,21 +122,16 @@ function measureLines(box: HTMLElement): FlowLine[] {
 function FlowNode({
   node,
   colors,
+  selected,
+  onPick,
 }: {
   node: TwistFlowNode;
   colors: readonly number[];
+  selected: boolean;
+  onPick?: (id: string) => void;
 }) {
-  return (
-    <li
-      data-flow-node={node.id}
-      data-flow-to={node.to ?? ""}
-      style={
-        node.col === undefined
-          ? { gridRow: node.row + 1, gridColumn: "1 / -1" }
-          : { gridRow: node.row + 1, gridColumn: node.col + 1 }
-      }
-      className="flex w-full max-w-[5.5rem] flex-col items-center gap-0.5 justify-self-center rounded-lg bg-white/5 p-1"
-    >
+  const body = (
+    <>
       <AlgPicture
         set="2look-oll"
         n={3}
@@ -131,6 +149,38 @@ function FlowNode({
       <span className="break-keep text-center font-semibold text-[0.6875rem] leading-tight wrap-anywhere">
         {node.title}
       </span>
+    </>
+  );
+  const box =
+    "flex w-full flex-col items-center gap-0.5 rounded-lg bg-white/5 p-1";
+  return (
+    <li
+      data-flow-node={node.id}
+      data-flow-to={node.to ?? ""}
+      style={
+        node.col === undefined
+          ? { gridRow: node.row + 1, gridColumn: "1 / -1" }
+          : { gridRow: node.row + 1, gridColumn: node.col + 1 }
+      }
+      className="flex w-full max-w-[5.5rem] justify-self-center"
+    >
+      {onPick && node.to ? (
+        <button
+          type="button"
+          aria-pressed={selected}
+          onClick={() => onPick(node.id)}
+          className={cn(
+            box,
+            "border hover:bg-white/10",
+            selected ? "border-amber-300 bg-white/10" : "border-transparent",
+          )}
+          data-flow-pick={node.id}
+        >
+          {body}
+        </button>
+      ) : (
+        <span className={box}>{body}</span>
+      )}
     </li>
   );
 }
@@ -138,9 +188,21 @@ function FlowNode({
 /**
  * 코너 방향 관계도(docs/47 16-33, 2026-11-26 사용자 요청): 마디는 위에서 본 노란 면 모양(쥘 모습대로, 아래가 앞)이고,
  * 화살표는 그 마디에서 공식을 한 번 친 결과 마디로 잇는다. 위에서 아래로 「하나도 없음 → 둘·하나 → 기본형 → 다 맞음」이
- * 한눈에 보인다. 화살표는 마디 자리를 재서 긋고, 크기가 바뀌면 다시 잰다(휴대폰 폭에서도 화살표가 보이게)
+ * 한눈에 보인다. 화살표는 마디 자리를 재서 긋고, 크기가 바뀌면 다시 잰다(휴대폰 폭에서도 화살표가 보이게).
+ * 시연 쪽에서는(`onPick`) 마디를 누르면 그 모양에서 공식을 한 번 치는 시연으로 바뀌고, 고른 마디와 그 화살표 하나만
+ * 밝게 보인다(2026-11-27 사용자 「공식 한 번 = 화살표 하나」)
  */
-export function TwistFlowSheet({ colors }: { colors: readonly number[] }) {
+export function TwistFlowSheet({
+  colors,
+  pick,
+  onPick,
+}: {
+  colors: readonly number[];
+  /** 고른 마디(시연 쪽, 없으면 시연의 시작 마디) */
+  pick?: string | null;
+  onPick?: (id: string) => void;
+}) {
+  const chosen = onPick ? (pick ?? FLOW_DEMO_START) : null;
   const box = useRef<HTMLOListElement>(null);
   const [lines, setLines] = useState<FlowLine[]>([]);
   const marker = `tf-flow-arrow-${useId().replace(/[^\w-]/g, "")}`;
@@ -165,7 +227,13 @@ export function TwistFlowSheet({ colors }: { colors: readonly number[] }) {
       <div className="relative">
         <ol ref={box} className="relative grid grid-cols-4 gap-x-1 gap-y-7">
           {TWIST_FLOW.map((n) => (
-            <FlowNode key={n.id} node={n} colors={colors} />
+            <FlowNode
+              key={n.id}
+              node={n}
+              colors={colors}
+              selected={n.id === chosen}
+              {...(onPick ? { onPick } : {})}
+            />
           ))}
         </ol>
         <svg
@@ -189,12 +257,14 @@ export function TwistFlowSheet({ colors }: { colors: readonly number[] }) {
             <line
               key={l.from}
               data-flow-edge={`${l.from}-${l.to}`}
+              data-flow-edge-on={chosen === l.from ? "" : undefined}
               x1={l.x1}
               y1={l.y1}
               x2={l.x2}
               y2={l.y2}
               stroke="currentColor"
-              strokeWidth={1.75}
+              strokeWidth={chosen === l.from ? 3 : 1.75}
+              opacity={chosen && chosen !== l.from ? 0.4 : 1}
               markerEnd={`url(#${marker})`}
             />
           ))}

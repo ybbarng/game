@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
+import { withFlowPick } from "../learn/beginner-cases";
 import { courseMethod } from "../learn/course-method";
 import {
   BASICS,
@@ -321,7 +322,17 @@ function LessonView({
     resumeStep(progress, lesson.id, lesson.steps.length),
   );
   const [masked, setMasked] = useState(true);
-  const step = lesson.steps[at] ?? lesson.steps[0];
+  // 관계도 시연 쪽에서 고른 마디: 그 모양에서 공식을 한 번 치는 시연으로 바꾼다(beginner-cases.ts withFlowPick)
+  const [flowPick, setFlowPick] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 쪽을 옮기면 고른 마디를 지운다
+  useEffect(() => {
+    setFlowPick(null);
+  }, [lesson.id, at]);
+  const baseStep = lesson.steps[at] ?? lesson.steps[0];
+  const step = useMemo(
+    () => baseStep && withFlowPick(baseStep, flowPick),
+    [baseStep, flowPick],
+  );
   const lessonIndex = course.lessons.indexOf(lesson);
   // 기초 단원의 마지막은 초보자 과정 첫 단원으로 이어진다(docs/47 16-27)
   const next = nextLesson(course, lesson.id);
@@ -480,7 +491,12 @@ function LessonView({
           />
         )}
         {step.sheet && (
-          <LessonSheet name={step.sheet} colors={settings.colors} />
+          <LessonSheet
+            name={step.sheet}
+            colors={settings.colors}
+            flowPick={flowPick}
+            {...(step.kind === "demo" ? { onFlowPick: setFlowPick } : {})}
+          />
         )}
         {step.beside && (
           <Beside
@@ -533,6 +549,7 @@ function LessonView({
             />
           ) : (
             <DemoCube
+              key={`${lesson.id}-${at}-demo-${flowPick ?? ""}`}
               n={lesson.size}
               start={start}
               alg={step.alg}

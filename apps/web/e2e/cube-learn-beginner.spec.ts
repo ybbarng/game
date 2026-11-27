@@ -52,10 +52,16 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   const body = page.locator("[data-step-body]");
 
   await page.goto("/cube/learn?lesson=333-tf-cross");
+  // 경우 그림 앞에 어디를 돌려도 되는지 보이는 돌리기 쪽 넷(윗면·되돌리기·옆면·아랫면)
   await goStep(page, 1);
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    "turn",
+  );
+  await goStep(page, 5);
   await expect(cases("beginner-tf-cross")).toHaveCount(4);
   await shot(page, "learn-tf-cross-cases", info.project.name);
-  await goStep(page, 4);
+  await goStep(page, 8);
   await expect(chunks).toHaveCount(4);
   await expect(body).toContainText("D R F' R'");
   await shot(page, "learn-tf-cross-chunks", info.project.name);
@@ -131,12 +137,48 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
     ]);
     expect(Number(y2) - Number(y1)).toBeGreaterThan(10);
   }
+  // 시연은 공식 한 번(8수)이고, 처음에는 「없음, 둘인 면 하나」와 그 화살표가 밝다. 다른 마디를 누르면 그 모양에서
+  // 한 번 치는 시연으로 바뀐다(2026-11-27 사용자 「공식 한 번 = 화살표 하나」)
+  const chips = page.locator("[data-cube-demo] [data-move-chip]");
+  await expect(chips).toHaveCount(8);
+  await expect(flow.locator('[data-flow-pick="bar"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(flow.locator("[data-flow-edge-on]")).toHaveAttribute(
+    "data-flow-edge",
+    "bar-b",
+  );
   await shot(page, "learn-tf-twist-flow", info.project.name);
+  await flow.locator('[data-flow-pick="c"]').click();
+  await expect(flow.locator('[data-flow-pick="c"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(flow.locator("[data-flow-edge-on]")).toHaveAttribute(
+    "data-flow-edge",
+    "c-base",
+  );
+  await expect(chips).toHaveCount(8);
+  await expect(flow.locator('[data-flow-pick="done"]')).toHaveCount(0);
+  await shot(page, "learn-tf-twist-flow-pick", info.project.name);
 
   await page.goto("/cube/learn?lesson=333-tf-place");
+  // 헤드라이트를 먼저 풀고, 잡는 법 그림은 앞 표시와 헤드라이트 강조(왼쪽 → 공식 A, 오른쪽 → 공식 B)
   await goStep(page, 1);
-  await expect(cases("beginner-tf-place")).toHaveCount(4);
+  await expect(body).toContainText("「헤드라이트」라고 불러요");
   await goStep(page, 2);
+  const placeSheet = page.locator('[data-sheet="beginner-tf-place"]');
+  await expect(cases("beginner-tf-place")).toHaveCount(4);
+  await expect(placeSheet.locator("[data-sheet-front]")).toHaveCount(4);
+  await expect(
+    placeSheet.locator('[data-sheet-case="a"] [data-headlights]'),
+  ).toHaveAttribute("data-headlights", "L");
+  await expect(
+    placeSheet.locator('[data-sheet-case="b"] [data-headlights]'),
+  ).toHaveAttribute("data-headlights", "R");
+  await shot(page, "learn-tf-place-cases", info.project.name);
+  await goStep(page, 3);
   await expect(chunks).toHaveCount(6);
   await expect(body).toContainText("R U B L B' R' B L' B' R U' R'");
   await shot(page, "learn-tf-place-chunks", info.project.name);

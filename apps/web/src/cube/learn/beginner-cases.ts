@@ -57,7 +57,7 @@ import {
   SECOND_B,
   type TwistFirstStageId,
 } from "./twist-first-path";
-import type { AlgSet, MaskName, SheetName } from "./types";
+import type { AlgSet, LessonStep, MaskName, SheetName } from "./types";
 
 export interface BeginnerCase {
   /** 경우별 정해진 길의 경우 이름(`PathCase.id`). 끝난 모양은 "done" */
@@ -68,6 +68,8 @@ export interface BeginnerCase {
   caption: string;
   /** 이 모양이면 무엇을 하는지 */
   action: string;
+  /** 헤드라이트(위 층 코너 블럭 둘의 스티커가 같은 색으로 나란한 옆면)를 강조할 쪽(윗면 평면도, 코너 위치) */
+  headlights?: "L" | "R";
 }
 
 /** 그림이 보이는 단계: 3×3 처음 맞추기(beginner-path.ts) 또는 코너 방향 먼저 마지막 층(twist-first-path.ts) */
@@ -81,6 +83,8 @@ export interface BeginnerCaseSheet {
   set: AlgSet;
   mask?: MaskName;
   title: string;
+  /** 그림마다 앞 표시(▲ 앞)를 단다(쥘 모습대로 그린 그림) */
+  front?: boolean;
   cases: BeginnerCase[];
 }
 
@@ -485,6 +489,7 @@ export const BEGINNER_CASE_SHEETS: Record<
     set: "2look-oll",
     mask: "oll",
     title: "위 엣지가 맞은 윗면 모양 여덟(쥘 모습대로 그림)",
+    front: true,
     cases: [
       {
         id: "base",
@@ -534,20 +539,23 @@ export const BEGINNER_CASE_SHEETS: Record<
   "beginner-tf-place": {
     stage: { path: "twist-first", id: "place" },
     set: "2look-pll",
-    title: "제자리 코너 블럭으로 가르는 경우",
+    title: "제자리 코너 블럭과 헤드라이트로 가르는 경우(쥘 모습대로 그림)",
+    front: true,
     cases: [
       { id: "done", alg: "z2", caption: "넷 다 제자리", action: "끝이에요." },
       {
         id: "a",
         alg: flip(CORNER_A),
-        caption: "하나, 남은 셋을 시계 방향으로",
-        action: "제자리 블럭을 앞-오른쪽 위에 두고 공식 A를 한 번 쳐요.",
+        caption: "하나, 헤드라이트가 왼쪽 면",
+        action: "제자리 블럭은 앞-오른쪽 위예요. 공식 A를 한 번 쳐요.",
+        headlights: "L",
       },
       {
         id: "b",
-        alg: flip(`y ${CORNER_B}`),
-        caption: "하나, 남은 셋을 반시계 방향으로",
-        action: "제자리 블럭을 앞-왼쪽 위에 두고 공식 B를 한 번 쳐요.",
+        alg: flip(CORNER_B),
+        caption: "하나, 헤드라이트가 오른쪽 면",
+        action: "제자리 블럭은 앞-왼쪽 위예요. 공식 B를 한 번 쳐요.",
+        headlights: "R",
       },
       {
         id: "none",
@@ -633,6 +641,23 @@ export const TWIST_FLOW: TwistFlowNode[] = [
 
 /** 관계도의 글(용어 순서 시험이 단계 글과 함께 읽는다) */
 export const twistFlowText = () => TWIST_FLOW.map((n) => n.title).join("\n");
+
+/** 관계도 시연 쪽이 처음 보이는 마디(쪽 자료의 시작 상황과 같다, 시험이 본다) */
+export const FLOW_DEMO_START = "bar";
+
+/**
+ * 관계도 시연 쪽에서 마디를 고르면, 그 마디 모양에서 코너 방향 공식을 한 번 치는 시연으로 바꾼다(2026-11-27 사용자
+ * 「공식 한 번 = 화살표 하나」). 끝 모습은 화살표가 가리키는 마디다. 다 맞음 마디나 관계도가 아닌 쪽은 그대로
+ */
+export function withFlowPick(
+  step: LessonStep,
+  pick: string | null,
+): LessonStep {
+  if (!pick || step.kind !== "demo" || step.sheet !== "tf-flow") return step;
+  const node = TWIST_FLOW.find((n) => n.id === pick);
+  if (!node?.to) return step;
+  return { ...step, setup: { alg: node.alg }, alg: CORNER_TURN };
+}
 
 export const isBeginnerSheet = (
   name: SheetName,

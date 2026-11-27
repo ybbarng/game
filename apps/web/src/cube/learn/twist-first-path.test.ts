@@ -297,6 +297,43 @@ describe("단계마다 나올 수 있는 모양 모두", () => {
   });
 });
 
+/** 위 층 코너 블럭 둘의 옆면 스티커가 같은 색인 옆면(헤드라이트) */
+function headlights(s: PuzzleState): string[] {
+  const c = faceColors(3, s);
+  const SIDES: [string, number, number][] = [
+    ["F", 18, 20],
+    ["R", 9, 11],
+    ["B", 45, 47],
+    ["L", 36, 38],
+  ];
+  return SIDES.filter(([, a, b]) => c[a] === c[b]).map(([f]) => f);
+}
+
+describe("코너 위치의 잡는 법: 제자리 블럭을 앞면 위에, 헤드라이트를 왼쪽이나 오른쪽 면에(2026-11-27 사용자)", () => {
+  it("제자리가 하나인 모양마다 헤드라이트는 한 면이고, 규칙대로 쥐면 공식 A는 헤드라이트가 왼쪽(제자리 앞-오른쪽 위), 공식 B는 오른쪽(제자리 앞-왼쪽 위)이다", () => {
+    const shapes = collect([CORNER_A, `y ${CORNER_A} y'`], 8);
+    let n = 0;
+    for (const s of shapes) {
+      if (placedCorners(s).length !== 1) continue;
+      expect(headlights(s).length).toBe(1);
+      const st = nextTwistFirstStep("place", s) as TwistFirstStep;
+      const held = play(s, st.hold);
+      expect([headlights(held), placedCorners(held)], st.caseId).toEqual(
+        st.caseId === "a" ? [["L"], [0]] : [["R"], [1]],
+      );
+      // 다른 쥐기(제자리 블럭을 앞면 위에 두는 나머지 하나)는 헤드라이트가 왼쪽·오른쪽 면이 아니다
+      for (const y of ["", "y", "y2", "y'"]) {
+        const t = play(held, y);
+        const front = placedCorners(t).some((k) => k === 0 || k === 1);
+        const side = headlights(t).some((f) => f === "L" || f === "R");
+        if (y !== "") expect(front && side, y).toBe(false);
+      }
+      n++;
+    }
+    expect(n).toBe(8);
+  });
+});
+
 describe("공식은 설명서 그림의 결과대로 조각을 옮긴다", () => {
   /** 그 공식이 한 번에 맞추는 모양 */
   const solvedBy = (alg: string) =>

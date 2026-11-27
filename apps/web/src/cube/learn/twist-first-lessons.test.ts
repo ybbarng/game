@@ -1,6 +1,11 @@
 // 코너 방향 먼저(신광사 해법) 강(lessons-twist-first.ts)의 시연·해 보기 모범 답이 경우별 정해진 길(twist-first-path.ts)과
 // 같고, 고르기 문제의 답이 그림 상황과 맞는지 엔진으로 본다(docs/47 16-33).
-import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
+import {
+  applyMoves,
+  faceColors,
+  parseMoves,
+  solvedCube,
+} from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
@@ -64,12 +69,17 @@ describe("강 모범 답 = 경우별 정해진 길", () => {
     const stage = STAGE[l.id] as TwistFirstStageId;
     l.steps.forEach((step, i) => {
       if (!step.alg || !step.setup || !("alg" in step.setup)) return;
+      // 어디를 돌려도 되는지 보이는 돌리기 쪽(흰 십자 앞쪽, 다 쳤을 때 말이 따로 있음)은 풀이가 아니다
+      if (step.kind === "turn" && step.passedText) return;
       it(`${l.title} ${i + 1}번(${step.kind})`, () => {
         const r = runTwistFirstStage(stage, stateOf(step));
         const want = norm(r.steps.map(twistFirstMoves).join(" "));
-        // 직접 치기(turn)는 풀이의 앞부분만 칠 수 있다
+        // 시연은 공식 한 번 단위(2026-11-27 사용자): 풀이의 첫 걸음(쥐기 + 공식 한 번)과 같다. 직접 치기는 그 앞부분
+        const first = norm(r.steps[0] ? twistFirstMoves(r.steps[0]) : "");
         if (step.kind === "turn")
           expect(want.startsWith(norm(step.alg as string))).toBe(true);
+        else if (step.kind === "demo")
+          expect(first.endsWith(norm(step.alg as string))).toBe(true);
         else expect(want).toBe(norm(step.alg as string));
         if (step.goal) expect(goalMet(3, r.state, step.goal)).toBe(true);
       });
@@ -118,9 +128,30 @@ describe("강 모범 답 = 경우별 정해진 길", () => {
 });
 
 describe("고르기 문제의 답 = 그림 상황", () => {
-  it("흰 십자 첫 두 쪽: 흰-초록 엣지 블럭이 아래-앞, 흰색이 아래라 F2", () => {
-    for (const k of [0, 1]) {
-      const s = stateOf(lesson("333-tf-cross")?.steps[k] as LessonStep);
+  it("흰 십자 돌리기 쪽: 윗면 U는 흰 엣지 블럭 넷을 모두 벗어나게, 옆면 R은 위-오른쪽을 내리고, 아랫면 D D는 흰 십자를 그대로 둔다(경우 그림보다 앞)", () => {
+    const steps = lesson("333-tf-cross")?.steps ?? [];
+    const sheet = steps.findIndex((s) => s.sheet === "beginner-tf-cross");
+    const turns = steps.slice(0, sheet).filter((s) => s.kind === "turn");
+    expect(turns.map((s) => s.alg)).toEqual(["U", "U'", "R", "D D"]);
+    const cross = (alg: string) =>
+      goalMet(
+        3,
+        applyMoves(3, solvedCube(3), parseMoves(3, alg)),
+        "white-cross",
+      );
+    expect([cross("U"), cross("U U'"), cross("R"), cross("D D")]).toEqual([
+      false,
+      true,
+      false,
+      true,
+    ]);
+  });
+
+  it("흰 십자 첫 쪽과 경우 그림 쪽: 흰-초록 엣지 블럭이 아래-앞, 흰색이 아래라 F2", () => {
+    const steps = lesson("333-tf-cross")?.steps ?? [];
+    const sheet = steps.findIndex((s) => s.sheet === "beginner-tf-cross");
+    for (const k of [0, sheet]) {
+      const s = stateOf(steps[k] as LessonStep);
       expect(nextTwistFirstStep("cross", s)).toMatchObject({
         caseId: "down",
         hold: "",
@@ -199,13 +230,25 @@ describe("고르기 문제의 답 = 그림 상황", () => {
     expect(runTwistFirstStage("twist", s).steps.length).toBe(3);
   });
 
+  it("코너 위치 헤드라이트 쪽: 헤드라이트는 왼쪽 면(위 층 코너 블럭 둘의 왼쪽 면 스티커가 같은 색)", () => {
+    const step = stepWith("333-tf-place", "「헤드라이트」라고 불러요");
+    const c = faceColors(3, stateOf(step));
+    expect(c[36]).toBe(c[38]);
+    expect([c[9] === c[11], c[18] === c[20], c[45] === c[47]]).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    expect(step.quiz?.choices[step.quiz.answer]).toBe("왼쪽 면");
+  });
+
   it("코너 위치 첫 쪽: 제자리 코너 블럭은 앞-오른쪽 위 하나", () => {
     const s = stateOf(lesson("333-tf-place")?.steps[0] as LessonStep);
     expect(placedCorners(s)).toEqual([0]);
   });
 
   it("B 고르기 쪽: 제자리는 앞-오른쪽 위 하나이고, y로 다시 쥐고 공식 B 한 번이면 다 맞는다", () => {
-    const s = stateOf(stepWith("333-tf-place", "반시계 방향으로 옮겨야 해요"));
+    const s = stateOf(stepWith("333-tf-place", "헤드라이트가 뒤 면에 있어요"));
     expect(placedCorners(s)).toEqual([0]);
     expect(nextTwistFirstStep("place", s)).toMatchObject({
       caseId: "b",
@@ -217,7 +260,9 @@ describe("고르기 문제의 답 = 그림 상황", () => {
   });
 
   it("A 시연 쪽: 제자리는 앞-오른쪽 위, 앞-왼쪽 위 블럭의 제자리는 뒤-왼쪽 위라 공식 A", () => {
-    const s = stateOf(stepWith("333-tf-place", "제자리가 뒤-왼쪽 위예요"));
+    const s = stateOf(
+      stepWith("333-tf-place", "헤드라이트가 왼쪽 면이에요. 공식 A"),
+    );
     expect(placedCorners(s)).toEqual([0]);
     expect(nextTwistFirstStep("place", s)).toMatchObject({
       caseId: "a",
@@ -256,8 +301,8 @@ describe("글", () => {
     expect(texts().filter((t) => words.test(t))).toEqual([]);
   });
 
-  it("전문 이름(퍼뮤·수네·섹시 무브·OLL·PLL·헤드라이트)을 쓰지 않는다", () => {
-    const words = /퍼뮤|수네|섹시|OLL|PLL|헤드라이트|permutation/i;
+  it("전문 이름(퍼뮤·수네·섹시 무브·OLL·PLL)을 쓰지 않는다(헤드라이트는 뜻을 풀고 쓴다, 2026-11-27 사용자)", () => {
+    const words = /퍼뮤|수네|섹시|OLL|PLL|permutation/i;
     expect(texts().filter((t) => words.test(t))).toEqual([]);
   });
 

@@ -140,13 +140,25 @@ const SHEET_DATA = {
 export function LessonSheet({
   name,
   colors,
+  flowPick,
+  onFlowPick,
 }: {
   name: SheetName;
   colors: readonly number[];
+  /** 관계도 시연 쪽에서 고른 마디와 고르기(`withFlowPick`) */
+  flowPick?: string | null;
+  onFlowPick?: (id: string) => void;
 }) {
   if (isBeginnerSheet(name))
     return <BeginnerCasesSheet name={name} colors={colors} />;
-  if (name === "tf-flow") return <TwistFlowSheet colors={colors} />;
+  if (name === "tf-flow")
+    return (
+      <TwistFlowSheet
+        colors={colors}
+        pick={flowPick ?? null}
+        {...(onFlowPick ? { onPick: onFlowPick } : {})}
+      />
+    );
   if (name === "2look-cases") return <TwoLookCasesSheet colors={colors} />;
   if (name === "ll-compare") return <LlCompareSheet />;
   const sheet = SHEET_DATA[name];

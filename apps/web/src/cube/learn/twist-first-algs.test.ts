@@ -18,6 +18,7 @@ import { invertAlg } from "./notation";
 import {
   CORNER_A,
   CORNER_B,
+  CORNER_DOWN,
   CORNER_IN,
   CORNER_PULL,
   CORNER_TURN,
@@ -130,10 +131,48 @@ describe("첫 층 코너: 코너 넣기 F' R F R' = (F', R)의 「돌리고 · �
     expect(goalMet(3, at(CORNER_IN, start), "first-layer")).toBe(true);
   });
 
-  it("빼기 R' D' R은 앞-오른쪽 위 코너 블럭을 아래 층(아래-앞-왼쪽)으로 내리고 흰 십자는 그대로 둔다", () => {
+  it("빼기 R' D' R은 아래-앞-오른쪽 코너 블럭을 위-앞-오른쪽 자리에 올려 넣고, 들어 있던 블럭은 아래-앞-왼쪽으로 밀려 나오며, 흰 십자는 그대로다", () => {
     const s = at(CORNER_PULL, solvedCube(3));
+    expect(whereUp(s, ["D", "F", "R"])).toBe(slot("UFR"));
     expect(whereUp(s, ["U", "F", "R"])).toBe(slot("DFL"));
     expect(goalMet(3, s, "white-cross")).toBe(true);
+    // 덩어리마다: R'로 들어 있던 블럭이 아래-앞-오른쪽, 아래-앞-오른쪽 블럭은 아래-뒤-오른쪽으로. D'로 들어 있던 블럭은
+    // 아래-앞-왼쪽, 비켰던 블럭은 아래-앞-오른쪽으로
+    const r = at("R'", solvedCube(3));
+    expect([whereUp(r, ["U", "F", "R"]), whereUp(r, ["D", "F", "R"])]).toEqual([
+      slot("DFR"),
+      slot("DBR"),
+    ]);
+    const d = at("R' D'", solvedCube(3));
+    expect([whereUp(d, ["U", "F", "R"]), whereUp(d, ["D", "F", "R"])]).toEqual([
+      slot("DFL"),
+      slot("DFR"),
+    ]);
+  });
+
+  it("빼기 R2 D R2도 아래-앞 엣지 블럭을 위-오른쪽 자리에 올려 넣고, 들어 있던 블럭은 아래-뒤로 밀려 나온다", () => {
+    const s = at(CROSS_PULL, solvedCube(3));
+    expect([whereUp(s, ["D", "F"]), whereUp(s, ["U", "R"])]).toEqual([
+      slot("UR"),
+      slot("DB"),
+    ]);
+  });
+
+  it("다시 놓기 R' D2 R: 자리 밑에서 흰색이 바닥인 코너 블럭이 R'로 굴러 흰색이 뒤, D2로 아래-앞-왼쪽에 흰색이 앞, R 뒤에도 그대로이고 흰 십자도 그대로다", () => {
+    // 코너 블럭 넣기 앞 D까지 치면 맞는 상황: 자리 밑, 흰색 아래
+    const start = solvedUpBy(`${CORNER_DOWN} D ${CORNER_IN}`);
+    const c: Face[] = ["U", "F", "R"];
+    expect([whereUp(start, c), piecePlace(start, c)[0]]).toEqual([
+      slot("DFR"),
+      "D",
+    ]);
+    const r = at("R'", start);
+    expect([whereUp(r, c), piecePlace(r, c)[0]]).toEqual([slot("DBR"), "B"]);
+    const d = at("R' D2", start);
+    expect([whereUp(d, c), piecePlace(d, c)[0]]).toEqual([slot("DFL"), "F"]);
+    const e = at(CORNER_DOWN, start);
+    expect([whereUp(e, c), piecePlace(e, c)[0]]).toEqual([slot("DFL"), "F"]);
+    expect(goalMet(3, e, "white-cross")).toBe(true);
   });
 });
 
@@ -242,6 +281,33 @@ describe("코너 위치 A = (R U) · (B L B') · R' · (B L' B') · R · (U' R')
     expect(CORNER_B).toBe(
       `L' U' ${Y} L ${invertAlg(Y)} L' ${invertAlg("L' U'")}`,
     );
+  });
+
+  it("말로 외우는 움직임이 실제와 같다: 앞면에서 보아 R·L'은 올리고 R'·L은 내리며, B는 위 줄을 왼쪽으로 B'는 오른쪽으로 보낸다", () => {
+    // 앞면 오른쪽 줄(20)·왼쪽 줄(18) 스티커가 윗면(U)으로 가면 올림, 아랫면(D)으로 가면 내림
+    const faceOfFront = (move: string, i: number) => {
+      const s = at(move, down());
+      const c = faceColors(3, s);
+      const front = faceColors(3, down())[i];
+      // 그 스티커 색이 옮겨 간 면: 윗면 칸 6~8 또는 아랫면 칸 27~29 등. 윗면 앞줄·아랫면 앞줄을 본다
+      if ([0, 3, 6, 2, 5, 8].some((k) => c[k] === front)) return "up";
+      if ([27, 30, 33, 29, 32, 35].some((k) => c[k] === front)) return "down";
+      return "?";
+    };
+    expect(
+      ["R", "L'", "R'", "L"].map((m) =>
+        faceOfFront(m, m.startsWith("R") ? 20 : 18),
+      ),
+    ).toEqual(["up", "up", "down", "down"]);
+    // 뒤면을 돌리면 윗면 뒤 줄(0·1·2) 스티커가 B는 왼쪽 면(36~44), B'는 오른쪽 면(9~17)으로
+    const topBack = faceColors(3, down())[1];
+    const sideOf = (move: string) => {
+      const c = faceColors(3, at(move, down()));
+      if ([36, 39, 42].some((k) => c[k] === topBack)) return "left";
+      if ([11, 14, 17].some((k) => c[k] === topBack)) return "right";
+      return "?";
+    };
+    expect([sideOf("B"), sideOf("B'")]).toEqual(["left", "right"]);
   });
 
   it("R U로 뒤-오른쪽 위 코너 블럭이 뒤-오른쪽 아래로 내려간다", () => {
