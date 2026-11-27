@@ -16,7 +16,10 @@ export interface CourseMethod {
   title: string;
   /** 해법 카드 id. 카드가 없는 해법은 없다 */
   id?: MapMethodId;
-  /** 화면에 쓰는 이름(3×3이 아니면 크기를 앞에: 「2×2 처음 맞추기 해법」) */
+  /**
+   * 화면에 쓰는 이름(3×3이 아니면 크기를 앞에: 「2×2 처음 맞추기 해법」). 둘째 이름이 있으면 「해법」 대신 함께 적는다
+   * (「초보자(코너 방향 먼저) · 신광사 해법」, 「해법」을 두 번 쓰지 않는다)
+   */
   label: string;
 }
 
@@ -35,6 +38,8 @@ export function courseMethod(course: Course): CourseMethod | undefined {
   return {
     title,
     ...(card ? { id: card.id } : {}),
-    label: `${size}${title} 해법`,
+    label: card?.alias
+      ? `${size}${title} · ${card.alias}`
+      : `${size}${title} 해법`,
   };
 }

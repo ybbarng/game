@@ -236,15 +236,13 @@ describe("그래프", () => {
       "zz-ll",
       "cfop-2look-oll",
       "zz-eo",
-      undefined,
+      "333-tf-twist",
     ]);
   });
 
-  it("단원이 없는 걸음은 코너 방향 먼저 하는 초보자 둘, 페트루스 F2L 마무리, 사이트에 없는 마지막 층 갈래·코너 먼저다", () => {
+  it("단원이 없는 걸음은 페트루스 F2L 마무리, 사이트에 없는 마지막 층 갈래·코너 먼저다(코너 방향 먼저 두 걸음은 신광사 해법 강이 있다)", () => {
     expect(MAP_EDGES.filter((e) => !e.lessons.length).map((e) => e.id)).toEqual(
       [
-        "twist-first",
-        "twist-first-place",
         "petrus-f2l",
         "coll",
         "zbll",
@@ -292,8 +290,15 @@ describe("공식 수", () => {
       "beginner-edges": 1,
       "beginner-corner-place": 1,
       "beginner-corner-twist": 1,
+      // 신광사 설명서 1~7단계: 흰 십자(옆에서 올리기·빼기), 첫 층 코너(넣기·빼기·다시 놓기), 둘째 층 A·B, 엣지 방향,
+      // 엣지 위치, 코너 방향, 코너 위치 A·B
+      "twist-first-cross": 2,
+      "twist-first-corners": 3,
+      "twist-first-second": 2,
+      "twist-first-eo": 1,
+      "twist-first-ep": 1,
       "twist-first": 1,
-      "twist-first-place": 1,
+      "twist-first-place": 2,
       "two-look-cross": 3,
       "two-look-face": 7,
       "two-look-corners": 2,
@@ -347,7 +352,7 @@ describe("공식 수", () => {
       Object.fromEntries(MAP_METHODS.map((m) => [m.id, methodFormulaCount(m)])),
     ).toEqual({
       beginner: 6,
-      "beginner-twist-first": 6,
+      "beginner-twist-first": 12,
       "two-look": 19,
       cfop: 87,
       roux: 9,
@@ -368,10 +373,19 @@ describe("공식 수", () => {
   });
 
   it("앞 길에서 배운 공식은 뒤 길에서 새로 세지 않는다(첫 층 코너에서 배운 코너 돌리기)", () => {
+    // 코너 방향 먼저: 일곱 걸음 모두 신광사 설명서의 공식(첫 층 코너의 빼기 R' D' R은 흰 십자 가운데 층 채움에도 쓴다)
     const twistFirst = newFormulas(method("beginner-twist-first"));
     expect(
-      ["first-corners", "twist-first"].map((id) => twistFirst.get(id)),
-    ).toEqual([1, 0]);
+      [
+        "twist-first-cross",
+        "twist-first-corners",
+        "twist-first-second",
+        "twist-first-eo",
+        "twist-first-ep",
+        "twist-first",
+        "twist-first-place",
+      ].map((id) => twistFirst.get(id)),
+    ).toEqual([2, 3, 2, 1, 1, 1, 2]);
     expect(newFormulas(method("beginner")).get("beginner-corner-twist")).toBe(
       0,
     );

@@ -49,6 +49,20 @@ import {
   SPLIT_RIGHT,
   WHITE_UP,
 } from "./lessons-cfop";
+import {
+  CORNER_A,
+  CORNER_B,
+  CORNER_DOWN,
+  CORNER_IN,
+  CORNER_PULL,
+  CORNER_TURN,
+  CROSS_FRONT,
+  CROSS_PULL,
+  EDGE_CYCLE,
+  EDGE_FLIP,
+  SECOND_A,
+  SECOND_B,
+} from "./twist-first-path";
 import { ZZ_PAIR_CASES } from "./zz-path";
 
 export type MapNodeId =
@@ -329,7 +343,7 @@ const F2L_TAUGHT = [
   EDGE_STUCK,
 ].map((alg) => F2L_CASES.find((c) => c.algs.includes(alg))?.id ?? alg);
 const ZZ_PAIR = ZZ_PAIR_CASES.map((c) => `zz-pair-${c.white}-${c.edge}`);
-/** 코너 셋 돌리기(Aa퍼뮤)와 대각 바꾸기(Y퍼뮤): 루 CMLL 둘째 걸음(lessons-roux.ts), 코너 방향 먼저 하는 초보자 */
+/** 코너 셋 돌리기(Aa퍼뮤)와 대각 바꾸기(Y퍼뮤): 루 CMLL 둘째 걸음(lessons-roux.ts) */
 const A_PERM = "pll-aa";
 const Y_PERM = "pll-y";
 
@@ -403,22 +417,63 @@ const BASE_EDGES: readonly MapEdge[] = [
     lessons: ["333-ll-corner-twist"],
     formulas: [TWIST],
   },
-  // 초보자, 코너 방향 먼저(docs/47 0절 2026-11-04, 8-2 「다른 방식」): 단원 없음
+  // 초보자, 코너 방향 먼저(신광사 큐브 설명서의 해법, docs/47 16-33): 일곱 단계 모두 설명서 공식으로 흰 십자 → 첫 층 코너 →
+  // 둘째 층 엣지 → 엣지 방향 → 엣지 위치 → 코너 방향 → 코너 위치
+  {
+    id: "twist-first-cross",
+    from: "scrambled",
+    to: "cross",
+    title: "흰 십자",
+    lessons: ["333-tf-cross"],
+    formulas: [CROSS_FRONT, CROSS_PULL],
+  },
+  {
+    id: "twist-first-corners",
+    from: "cross",
+    to: "first-layer",
+    title: "첫 층 코너",
+    lessons: ["333-tf-corners"],
+    formulas: [CORNER_IN, CORNER_PULL, CORNER_DOWN],
+  },
+  {
+    id: "twist-first-second",
+    from: "first-layer",
+    to: "f2l",
+    title: "둘째 층 엣지",
+    lessons: ["333-tf-second"],
+    formulas: [SECOND_A, SECOND_B],
+  },
+  {
+    id: "twist-first-eo",
+    from: "f2l",
+    to: "yellow-cross",
+    title: "엣지 방향",
+    lessons: ["333-tf-eo"],
+    formulas: [EDGE_FLIP],
+  },
+  {
+    id: "twist-first-ep",
+    from: "yellow-cross",
+    to: "yellow-edges",
+    title: "엣지 위치",
+    lessons: ["333-tf-ep"],
+    formulas: [EDGE_CYCLE],
+  },
   {
     id: "twist-first",
     from: "yellow-edges",
     to: "ll-corners-oriented",
     title: "코너 방향",
-    lessons: [],
-    formulas: [TWIST],
+    lessons: ["333-tf-twist"],
+    formulas: [CORNER_TURN],
   },
   {
     id: "twist-first-place",
     from: "ll-corners-oriented",
     to: "solved",
-    title: "코너 자리(A퍼뮤)",
-    lessons: [],
-    formulas: [A_PERM],
+    title: "코너 위치",
+    lessons: ["333-tf-place"],
+    formulas: [CORNER_A, CORNER_B],
   },
   // 2단계 OLL·PLL(ZZ·페트루스 마지막 층도 같은 공식, zz-path.ts runZzLl)
   {
@@ -781,6 +836,11 @@ export type MapMethodId =
 export interface MapMethod {
   id: MapMethodId;
   title: string;
+  /**
+   * 함께 부르는 둘째 이름. 이름이 보이는 곳(카드·해법 화면 머리·지도의 해법 칩·강 경로)에 이름과 함께 보인다
+   * (2026-11-27 사용자: 「초보자(코너 방향 먼저)」는 그대로 두고 「신광사 해법」을 함께 적는다)
+   */
+  alias?: string;
   /** 기본으로 접어 두는 해법(사이트에 단원이 없거나 다른 크기). 켜고 끌 수 있다 */
   extra?: boolean;
   /** 길을 누르면 이 과정의 단원을 먼저 연다(길에 단원이 여럿일 때) */
@@ -820,11 +880,14 @@ const MAP_METHODS_3: readonly MapMethod[] = [
   {
     id: "beginner-twist-first",
     title: "초보자(코너 방향 먼저)",
-    course: "333-beginner",
+    alias: "신광사 해법",
+    course: "333-twist-first",
     edges: [
-      ...BEGINNER_LOWER,
-      "beginner-yellow-cross",
-      "beginner-edges",
+      "twist-first-cross",
+      "twist-first-corners",
+      "twist-first-second",
+      "twist-first-eo",
+      "twist-first-ep",
       "twist-first",
       "twist-first-place",
     ],
@@ -1136,9 +1199,9 @@ export const methodSize = (m: MapMethod): CubeSize => m.size ?? 3;
 
 /**
  * 해법마다 잰 평균 수(큐브 전체 돌리기 x·y·z는 빼고 U2·M도 한 수, ll-compare.ts turnCount). 대회 섞기(cube-scramble
- * "333") 씨앗 1~seeds를 맞춘 평균의 반올림(solve-map-measure.ts measureMap). 초보자·2단계·ZZ는 단원 규칙
- * (beginner-path.ts·ll-compare.ts·zz-path.ts), CFOP·루는 컴퓨터 해법(@game/cube-ai solveCfop·solveRoux, 탐색이라
- * 사람보다 짧다). 코너 방향 먼저 하는 초보자와 페트루스는 끝까지 맞추는 규칙·해법이 없어 비운다. 루 컴퓨터 해법은
+ * "333") 씨앗 1~seeds를 맞춘 평균의 반올림(solve-map-measure.ts measureMap). 초보자·코너 방향 먼저·2단계·ZZ는 단원
+ * 규칙(beginner-path.ts·twist-first-path.ts·ll-compare.ts·zz-path.ts), CFOP·루는 컴퓨터 해법(@game/cube-ai
+ * solveCfop·solveRoux, 탐색이라 사람보다 짧다). 페트루스는 끝까지 맞추는 규칙·해법이 없어 비운다. 루 컴퓨터 해법은
  * CMLL을 한 번에 풀어 위 코너 방향·자리 두 길을 `cmll` 하나로 잰다. 2×2는 단원 규칙(beginner-path-222.ts, 오르테가는
  * 규칙이 없어 비움), 4×4·5×5는 앞부분 단원 규칙(big-path.ts·big-edges-555.ts·yau-solve.ts)과 3×3처럼 축소법 풀이
  * (big-solve.ts solveReduced, 초보자 마무리)로 잰다. CFOP 마무리는 큰 큐브 CFOP 풀이가 없어 뒤 묶음을 비운다.
@@ -1157,6 +1220,7 @@ export const MAP_MEASURE: {
   seeds: 30,
   turns: {
     beginner: 125,
+    "beginner-twist-first": 134,
     "two-look": 116,
     cfop: 55,
     roux: 54,
@@ -1176,6 +1240,15 @@ export const MAP_MEASURE: {
       "beginner-edges": 9,
       "beginner-corner-place": 9,
       "beginner-corner-twist": 21,
+    },
+    "beginner-twist-first": {
+      "twist-first-cross": 18,
+      "twist-first-corners": 29,
+      "twist-first-second": 36,
+      "twist-first-eo": 11,
+      "twist-first-ep": 9,
+      "twist-first": 15,
+      "twist-first-place": 16,
     },
     "two-look": {
       cross: 16,

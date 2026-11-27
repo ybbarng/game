@@ -1,6 +1,7 @@
 "use client";
 
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
+import type { PuzzleState } from "@game/puzzle-core";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -9,6 +10,7 @@ import {
   lessonBackView,
   MIRROR_VIEW_MIN_WIDTH,
 } from "../back-view";
+import { withFlowPick } from "../learn/beginner-cases";
 import { courseMethod } from "../learn/course-method";
 import {
   basicsSizeOf,
@@ -18,6 +20,7 @@ import {
   isBasicsCourse,
   nextLesson,
 } from "../learn/courses";
+import { focusMarks, focusMoves } from "../learn/focus";
 import {
   demoBodyParts,
   demoOffersTurn,
@@ -328,7 +331,17 @@ function LessonView({
     resumeStep(progress, lesson.id, lesson.steps.length),
   );
   const [masked, setMasked] = useState(true);
-  const step = lesson.steps[at] ?? lesson.steps[0];
+  // 관계도 시연 쪽에서 고른 마디: 그 모양에서 공식을 한 번 치는 시연으로 바꾼다(beginner-cases.ts withFlowPick)
+  const [flowPick, setFlowPick] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 쪽을 옮기면 고른 마디를 지운다
+  useEffect(() => {
+    setFlowPick(null);
+  }, [lesson.id, at]);
+  const baseStep = lesson.steps[at] ?? lesson.steps[0];
+  const step = useMemo(
+    () => baseStep && withFlowPick(baseStep, flowPick),
+    [baseStep, flowPick],
+  );
   const lessonIndex = course.lessons.indexOf(lesson);
   // 기초 단원의 마지막은 초보자 과정 첫 단원으로 이어진다(docs/47 16-27)
   const next = nextLesson(course, lesson.id);
@@ -373,6 +386,25 @@ function LessonView({
   const start = useMemo(
     () => (step ? stepStart(lesson, step, 1) : null),
     [lesson, step],
+  );
+  // 쥐는 기준 조각의 노란 고리(쪽 자료 `focus`, learn/focus.ts)
+  const focus = useMemo(
+    () => (start && step ? focusMarks(lesson.size, start, step.focus) : null),
+    [lesson.size, start, step],
+  );
+  // 넣을 자리 고리는 층을 돌려도 자리에 남게 수마다 다시 정한다(learn/focus.ts 「@」)
+  const focusAt = useMemo(
+    () =>
+      start && step && focusMoves(step.focus)
+        ? (s: PuzzleState) => focusMarks(lesson.size, start, step.focus, s)
+        : undefined,
+    [lesson.size, start, step],
+  );
+  // 쥐는 법 차례의 첫째: 맞출 조각(쪽 자료 `pick`, 시연만)
+  const pick = useMemo(
+    () =>
+      start && step?.pick ? focusMarks(lesson.size, start, step.pick) : null,
+    [lesson.size, start, step],
   );
   const mask = useMemo(
     () => (masked ? maskFor(lesson.size, picture.mask) : null),
@@ -487,6 +519,8 @@ function LessonView({
           <LessonSheet
             name={step.sheet}
             colors={settings.colors}
+            flowPick={flowPick}
+            {...(step.kind === "demo" ? { onFlowPick: setFlowPick } : {})}
             mirror={backView === "mirror"}
           />
         )}
@@ -535,6 +569,8 @@ function LessonView({
               key={`${lesson.id}-${at}-turn`}
               n={lesson.size}
               start={start}
+              marks={focus}
+              marksAt={focusAt}
               alg={step.alg}
               mask={mask}
               settings={settings}
@@ -543,8 +579,12 @@ function LessonView({
             />
           ) : (
             <DemoCube
+              key={`${lesson.id}-${at}-demo-${flowPick ?? ""}`}
               n={lesson.size}
               start={start}
+              marks={focus}
+              marksAt={focusAt}
+              pick={pick}
               alg={step.alg}
               mask={mask}
               settings={settings}
@@ -565,6 +605,8 @@ function LessonView({
             start={start}
             alg={step.alg}
             mask={mask}
+            marks={focus}
+            marksAt={focusAt}
             settings={settings}
             passedText={step.passedText}
             onPassed={markActed}
@@ -633,6 +675,7 @@ function LessonView({
             step={step}
             start={start}
             mask={mask}
+            marks={focus}
             settings={settings}
             onPassed={markActed}
           />

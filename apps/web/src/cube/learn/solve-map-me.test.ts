@@ -30,11 +30,24 @@ describe("진도 밝기", () => {
       teachingLessons(edge("cross"), method("beginner"), courseOf),
       // 2단계 과정엔 십자 강이 없어 앞 과정(초보자) 강
       teachingLessons(edge("cross"), method("two-look"), courseOf),
-      teachingLessons(edge("twist-first"), method("beginner"), courseOf),
+      // 코너 방향 먼저: 옆면 맞추기는 초보자 강, 코너 방향은 코너 방향 먼저 강
+      teachingLessons(
+        edge("beginner-edges"),
+        method("beginner-twist-first"),
+        courseOf,
+      ),
+      teachingLessons(
+        edge("twist-first"),
+        method("beginner-twist-first"),
+        courseOf,
+      ),
+      teachingLessons(edge("petrus-f2l"), method("petrus"), courseOf),
     ]).toEqual([
       ["cfop-cross"],
       ["333-safe-turns", "333-white-cross"],
       ["333-safe-turns", "333-white-cross"],
+      ["333-ll-edges"],
+      ["333-tf-twist"],
       [],
     ]);
   });
@@ -54,8 +67,17 @@ describe("진도 밝기", () => {
       p("beginner-edges", "beginner", DEMO_PROGRESS),
       p("cross", "beginner", half),
       p("cross", "cfop", half),
-      p("twist-first", "beginner-twist-first", all),
-    ]).toEqual(["done", "learning", "none", "learning", "none", "none"]);
+      p("petrus-f2l", "petrus", all),
+      p("twist-first-place", "beginner-twist-first", all),
+    ]).toEqual([
+      "done",
+      "learning",
+      "none",
+      "learning",
+      "none",
+      "none",
+      "done",
+    ]);
   });
 
   it("카드 칸(큰 단계)은 강이 있는 걸음을 모두 마쳐야 완료다(2단계: 아래 두 층 완료, 노란 십자 완료, 노란 면 배우는 중)", () => {

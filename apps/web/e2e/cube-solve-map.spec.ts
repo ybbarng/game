@@ -51,6 +51,11 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
     "zz",
     "petrus",
   ]);
+  // 초보자(코너 방향 먼저) 카드에는 둘째 이름 「신광사 해법」이 함께 보이고, 다른 카드에는 둘째 이름이 없다(2026-11-27)
+  await expect(page.locator("[data-card] [data-method-alias]")).toHaveCount(1);
+  await expect(
+    page.locator('[data-card="beginner-twist-first"] [data-method-alias]'),
+  ).toHaveText("신광사 해법");
   const cfop = page.locator('[data-card="cfop"]');
   await expect(cfop.locator("[data-strip-node]")).toHaveCount(5);
   await expect(cfop.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
@@ -108,9 +113,28 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await screen.locator("[data-method-back]").click();
   await expect(page).toHaveURL(/\/cube\/methods$/);
   await expect(page.locator('[data-card="cfop"]')).toBeVisible();
+  // 코너 방향 먼저(신광사 해법)의 일곱 걸음은 그 강의 단원으로 간다(docs/47 16-33). 머리에는 두 이름이 함께 보인다
   await page.goto("/cube/methods?method=beginner-twist-first");
+  await expect(page.locator("[data-method-screen] h2")).toContainText(
+    "초보자(코너 방향 먼저)",
+  );
   await expect(
-    page.locator('[data-method-screen] [data-edge="twist-first-place"]'),
+    page.locator("[data-method-screen] h2 [data-method-alias]"),
+  ).toHaveText("신광사 해법");
+  for (const [edge, lesson] of [
+    ["twist-first-cross", "333-tf-cross"],
+    ["twist-first-corners", "333-tf-corners"],
+    ["twist-first-second", "333-tf-second"],
+    ["twist-first-eo", "333-tf-eo"],
+    ["twist-first-ep", "333-tf-ep"],
+    ["twist-first-place", "333-tf-place"],
+  ])
+    await expect(
+      page.locator(`[data-method-screen] [data-edge="${edge}"]`),
+    ).toHaveAttribute("href", `/cube/learn?lesson=${lesson}`);
+  await page.goto("/cube/methods?method=petrus");
+  await expect(
+    page.locator('[data-method-screen] [data-edge="petrus-f2l"]'),
   ).toHaveAttribute("aria-disabled", "true");
 });
 
@@ -126,10 +150,10 @@ test("전체 보기: 지도는 「다 섞임」에서 시작하고, 초보자 �
     "href",
     "/cube/learn?lesson=333-first-corners-up",
   );
-  // 단원이 없는 걸음(코너 방향 먼저)은 누를 수 없다
+  // 코너 방향 먼저 길의 꼬리표도 그 강의 단원으로 간다
   await expect(page.locator('[data-edge="twist-first"]')).toHaveAttribute(
-    "aria-disabled",
-    "true",
+    "href",
+    "/cube/learn?lesson=333-tf-twist",
   );
   await page.locator("[data-map-close]").click();
   await expect(page.locator('[data-method-cards="3"]')).toBeVisible();

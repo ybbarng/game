@@ -24,6 +24,12 @@ import {
 import { solveReduced } from "./big-solve";
 import { yellowCrossByFormula } from "./ll-compare";
 import type { MapMethodId } from "./solve-map";
+import {
+  runTwistFirstStage,
+  TWIST_FIRST_FLIP_BEFORE,
+  type TwistFirstStageId,
+  twistFirstMoves,
+} from "./twist-first-path";
 import { solveYau, type YauStageId } from "./yau-solve";
 import { runZzLl, solveZzByRules, stepMovesLl } from "./zz-path";
 
@@ -89,6 +95,28 @@ const RUNS: Partial<Record<MapMethodId, (text: string) => Run>> = {
       const r = runStage(id, s);
       s = r.state;
       run[edge] = join(r.steps.map(stepMoves));
+    }
+    return run;
+  },
+  "beginner-twist-first": (text) => {
+    // 일곱 단계 모두 신광사 설명서 공식(twist-first-path.ts), 둘째 층 앞에서 흰 면을 아래로 뒤집는다
+    let s = play(solvedCube(3), text);
+    const run: Run = {};
+    const legs: [string, TwistFirstStageId][] = [
+      ["twist-first-cross", "cross"],
+      ["twist-first-corners", "corners"],
+      ["twist-first-second", "second"],
+      ["twist-first-eo", "eo"],
+      ["twist-first-ep", "ep"],
+      ["twist-first", "twist"],
+      ["twist-first-place", "place"],
+    ];
+    for (const [edge, id] of legs) {
+      const flip = id === TWIST_FIRST_FLIP_BEFORE ? "z2" : "";
+      s = play(s, flip);
+      const r = runTwistFirstStage(id, s);
+      s = r.state;
+      run[edge] = join([flip, ...r.steps.map(twistFirstMoves)]);
     }
     return run;
   },

@@ -660,6 +660,8 @@ describe("과정 끝과 먼저 배울 과정", () => {
         expect(courseById(r), c.id).toBeDefined();
     const base = courseById("333-beginner");
     expect(base && nextCourses(base).map((c) => c.id)).toEqual([
+      // 노란 십자까지 같은 강을 쓰고 그 뒤를 코너 방향부터(docs/47 16-33)
+      "333-twist-first",
       "222-from333",
       "333-2look",
       "444-reduction",

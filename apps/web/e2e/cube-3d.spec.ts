@@ -1,4 +1,4 @@
-import { goToStep } from "./cube";
+import { goStep, goToStep } from "./cube";
 import { expect, type Page, test } from "./test";
 
 /**
@@ -62,6 +62,13 @@ test("3D: 강 안의 시연 큐브와 곁 그림도 해 보기 큐브와 같은 
   const still = page.locator("[data-cube-still] [data-cube-canvas]");
   await expect(still).toHaveCount(2);
   for (const c of await still.all())
+    await expect(c).toHaveAttribute("data-cube-mirror", "on", SCENE);
+  // 잡는 법 문제 그림(MiniCube) 넷도. 휴대폰 폭에서도 한 칸이 거울 최소 폭을 넘는다
+  await page.goto("/cube/learn?lesson=333-tf-place");
+  await goStep(page, 4);
+  const grips = page.locator("[data-quiz-picture] [data-cube-canvas]");
+  await expect(grips).toHaveCount(4);
+  for (const c of await grips.all())
     await expect(c).toHaveAttribute("data-cube-mirror", "on", SCENE);
 });
 

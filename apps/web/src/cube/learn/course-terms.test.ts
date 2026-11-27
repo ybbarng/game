@@ -194,6 +194,47 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     { term: "기준 코너", use: /기준 코너/, define: /「기준 코너」/ },
     { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
   ],
+  // 코너 방향 먼저(docs/47 16-33): 앞 과정은 3×3 처음 맞추기라 CFOP 낱말은 쓰지 않는다
+  "333-twist-first": [
+    ...NOTATION,
+    // 신광사 설명서의 낱말(docs/47 16-33)
+    { term: "기본형", use: /기본형/, define: /「기본형」이라고/ },
+    {
+      term: "오른쪽·왼쪽 넣기",
+      use: /오른쪽 넣기|왼쪽 넣기/,
+      define: /공식 「오른쪽 넣기」를.*「왼쪽 넣기」를/,
+    },
+    {
+      term: "「엣지 방향」 공식",
+      use: /「엣지 방향」 공식/,
+      define: /「엣지 방향」 공식 R' U' F' U F R/,
+    },
+    {
+      term: "「엣지 위치」 공식",
+      use: /「엣지 위치」 공식/,
+      define: /「엣지 위치」 공식 R' U' R U' R' U2 R/,
+    },
+    {
+      term: "「코너 방향」 공식",
+      use: /「코너 방향」 공식/,
+      define: /「코너 방향」 공식 R' F' L' F R F' L F/,
+    },
+    {
+      term: "공식 A·B",
+      use: /공식 [AB](?![A-Za-z])|[AB]를 (한 번|쳐)/,
+      define: /헤드라이트가 왼쪽 면이면.*공식 A, 오른쪽 면이면.*공식 B/,
+    },
+    // 사용자가 쓰던 낱말이라 코너 위치에서 그림과 함께 먼저 풀고 쓴다(2026-11-27 사용자, docs/47 1-1)
+    {
+      term: "헤드라이트",
+      use: /헤드라이트/,
+      define: /「헤드라이트」라고 불러요/,
+    },
+    // 공식 쪽에서 「거울」을 쓰면 화면의 뒤쪽 보기 판(거울)과 헷갈린다
+    // (화면의 「거울 판」을 가리키는 것은 괜찮다)
+    { term: "거울(쓰지 않음)", use: /거울(?! 판)/, define: /$^/ },
+    { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네/, define: /$^/ },
+  ],
   "333-2look": [...NOTATION, ...CFOP_TERMS],
   cfop: [...NOTATION, ...CFOP_TERMS],
   roux: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],

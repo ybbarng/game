@@ -22,6 +22,12 @@ import {
 } from "./big-path";
 import { solveReduced } from "./big-solve";
 import { solveTwoLook } from "./ll-compare";
+import {
+  runTwistFirstStage,
+  TWIST_FIRST_FLIP_BEFORE,
+  TWIST_FIRST_ORDER,
+  twistFirstMoves,
+} from "./twist-first-path";
 import type {
   Course,
   CourseStage,
@@ -98,6 +104,23 @@ function twoLookDemoMoves(scramble: string): string[] {
   const ll = solveTwoLook(s);
   const text = (xs: string[]) => xs.filter(Boolean).join(" ");
   return [text(lower), text(ll.oll), text(ll.pll)];
+}
+
+// 코너 방향 먼저: 일곱 단계 모두 twist-first-path.ts(신광사 설명서 공식)로, 둘째 층 앞에서 흰 면을 아래로 뒤집는다
+// (docs/47 16-33). 초보자 섞기는 엣지 방향 뒤 위 엣지가 윗면 돌리기만으로 맞아 「엣지 위치」 단계가 비므로, 일곱 단계마다
+// 할 일이 있는 섞기를 쓴다(시험이 단계마다 시작 전에는 목표가 아닌지 본다)
+const TWIST_FIRST_SCRAMBLE =
+  "D B2 D2 B L B U R2 B2 F D' L2 R2 F2 B2 F U D' L2 B'";
+function twistFirstDemoMoves(scramble: string): string[] {
+  let s = play(solvedCube(3), scramble);
+  const text = (xs: string[]) => xs.filter(Boolean).join(" ");
+  return TWIST_FIRST_ORDER.map((id) => {
+    const flip = id === TWIST_FIRST_FLIP_BEFORE ? "z2" : "";
+    s = play(s, flip);
+    const r = runTwistFirstStage(id, s);
+    s = r.state;
+    return text([flip, ...r.steps.map(twistFirstMoves)]);
+  });
 }
 
 // 2×2 둘: 같은 섞기 하나를 단원의 경우별 정해진 길(beginner-path-222.ts)로 푼 수(2026-11-10)
@@ -263,6 +286,43 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         ],
         answer: 0,
         why: "2×2는 코너뿐이라 3×3의 코너 단계만 남아요.",
+      },
+    ],
+  },
+  "333-twist-first": {
+    // 신광사 설명서 1~7단계. 해법 카드 띠와 같은 일곱 단계
+    stages: [
+      { title: "흰 십자", lessons: ["333-tf-cross"], goal: "white-cross" },
+      {
+        title: "첫 층 코너",
+        lessons: ["333-tf-corners"],
+        goal: "first-layer",
+      },
+      {
+        title: "둘째 층 엣지",
+        lessons: ["333-tf-second"],
+        goal: "second-layer",
+      },
+      { title: "엣지 방향", lessons: ["333-tf-eo"], goal: "yellow-cross" },
+      { title: "엣지 위치", lessons: ["333-tf-ep"], goal: "yellow-edges" },
+      { title: "코너 방향", lessons: ["333-tf-twist"], goal: "oll" },
+      { title: "코너 위치", lessons: ["333-tf-place"], goal: "solved" },
+    ],
+    lead: "예전 문방구 신광사 큐브 설명서의 해법이에요. 설명서 공식으로 흰 면과 첫 층, 둘째 층을 맞추고, 위 층은 엣지 블럭의 방향과 자리를 맞추고, 코너 블럭은 방향, 그러니까 노란색이 어느 쪽을 보는지를 먼저 맞추고 자리를 나중에 맞춰요.",
+    demo: {
+      scramble: TWIST_FIRST_SCRAMBLE,
+      moves: twistFirstDemoMoves(TWIST_FIRST_SCRAMBLE),
+      source: "단원 규칙(twist-first-path.ts runTwistFirstStage, 일곱 단계)",
+    },
+    quizzes: [
+      {
+        question: "이 해법은 위 층 엣지 블럭을 맞춘 다음 무엇부터 맞출까요?",
+        choices: [
+          "위 층 코너 블럭의 방향(노란색을 모두 위로)",
+          "위 층 코너 블럭의 자리",
+        ],
+        answer: 0,
+        why: "위 층 엣지 블럭 뒤에 코너 블럭의 방향을 먼저 맞추고, 마지막에 코너 블럭의 자리를 맞춰요.",
       },
     ],
   },

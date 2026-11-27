@@ -61,6 +61,28 @@ import {
 } from "./solve-map-model";
 
 /** 진도를 화면 낭독기에만 읽어 준다(보이는 글자는 두지 않는다, 진도 밝기 docs/47 16-30) */
+/**
+ * 해법의 둘째 이름(있으면, `MapMethod.alias`): 이름과 함께 보이되 조금 작고 옅게, 줄이 바뀌어도 한 덩이로 둔다
+ * (2026-11-27 사용자 「초보자(코너 방향 먼저)」와 「신광사 해법」을 함께)
+ */
+export function MethodAlias({
+  m,
+  className,
+}: {
+  m: MapMethod;
+  className?: string;
+}) {
+  if (!m.alias) return null;
+  return (
+    <span
+      data-method-alias
+      className={cn("whitespace-nowrap font-normal text-white/70", className)}
+    >
+      {m.alias}
+    </span>
+  );
+}
+
 export function ProgressSr({ p }: { p: StepProgress }) {
   const t = PROGRESS_SR[p];
   return t ? <span className="sr-only">{` ${t}`}</span> : null;
@@ -151,6 +173,7 @@ export function FinishPanel({ ctx }: { ctx: MapCtx }) {
               data-finish-method={id}
             >
               {m.title}
+              <MethodAlias m={m} className="ml-1" />
             </button>
           );
         })}

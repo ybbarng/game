@@ -89,7 +89,7 @@ const overview: Lesson = {
       kind: "quiz",
       body: "마지막 층 공식은 한 번에 다 외우지 않아도 돼요. 앞 과정에서 익힌 **2단계 OLL**(10개)·**2단계 PLL**(6개)로 시작하고, 손에 익으면 자주 나오는 것부터 전체 OLL 57·PLL 21로 넓혀요(이 과정의 끝 단원). 그래서 이 과정에서 새로 익힐 것은 아래 십자와 F2L 짝이에요.",
       setup: { alg: "z2" },
-      mask: "oll",
+      mask: "f2l-oll",
       quiz: {
         question: "처음 CFOP로 맞출 때 마지막 층은 어떻게 할까요?",
         choices: [

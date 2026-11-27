@@ -1,5 +1,6 @@
 // 큐브 맞추기 배우기·훈련 자료의 모양(docs/47 8절). 화면과 엔진은 이 자료를 읽기만 한다.
 // 공식은 모두 WCA 표기 문자열이다(R U R' U', Rw, 2R, M E S, x y z). 기본 방향은 위 흰색·앞 초록·오른쪽 빨강.
+import type { TwistFirstStageId } from "./twist-first-path";
 
 export type CubeSize = 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -83,6 +84,10 @@ export const MASKS = {
   "ll-edges":
     "아래 두 층 + 윗층 엣지 블럭만 보임(윗층 코너 블럭은 회색. 옆면 맞추기에서 엣지 블럭만 보게)",
   pll: "아래 두 층 + 윗층 전부 보임(윗면은 회색으로 둬도 됨)",
+  "ll-twist":
+    "아래 두 층 + 윗층 엣지 블럭 + 윗층 코너 블럭의 노란 칸만 보임(코너 블럭의 다른 칸은 회색. 엣지가 맞은 뒤 코너 방향 단계, 2026-11-27 사용자 「앞 단계까지 맞춘 조각은 색」)",
+  "f2l-oll":
+    "아래 두 층 + 윗층 조각의 노란 칸만 보임(윗층의 다른 칸은 회색. 아래 두 층을 맞춘 뒤 노란 면 단계, 2×2는 첫 층 + 위 층 노란 칸)",
   all: "모두 보임(가리지 않음)",
   "roux-fb": "루 첫 블록(흰 면 아래로 쥐었을 때 왼쪽 블록)과 센터만 보임",
   "roux-fb:F":
@@ -111,6 +116,8 @@ export const SCRAMBLE_RULES = {
   "ll-cross-solved": "아래 두 층과 노란 십자 맞음(옆면 맞추기 연습)",
   "ll-edges-solved": "아래 두 층과 위 엣지 맞음(코너 자리 연습)",
   "ll-corners-placed": "코너 방향만 남음(코너 방향 연습)",
+  "ll-corners-unplaced":
+    "아래 두 층·위 엣지·윗면이 맞고 위 코너 자리만 섞임(코너 방향 먼저의 코너 위치 연습)",
   "f2l-one-slot": "십자와 F2L 칸 셋 맞음, 앞-오른쪽 짝만 흩어짐",
   "2x2-random": "2×2 모두 섞음",
   "2x2-first-layer-solved": "2×2 첫 층 맞음",
@@ -195,11 +202,13 @@ export interface FindTarget {
   misplaced?: boolean;
 }
 
-/** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */
-export interface LookGoal {
-  color: FaceLetter;
-  on: FaceLetter;
-}
+/**
+ * 둘러보기 목표. 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌리거나, 쥐어 보기 `grip`: 코너 방향 먼저
+ * 그 단계의 다음 공식을 더 돌려 쥐지 않고 칠 수 있게 쥔다(`twist-first-path.ts` `gripReady`, 2026-11-27)
+ */
+export type LookGoal =
+  | { color: FaceLetter; on: FaceLetter }
+  | { grip: TwistFirstStageId };
 
 /**
  * 놀이판(play) 자료. 색을 넣을 조각은 맞춘 큐브에서 `focus`에 맞는 조각들이다(여럿 주면 모두 더한다).
@@ -269,6 +278,17 @@ export interface LessonStep {
    * 화면은 공식 아래에 덩어리마다 수와 그 덩어리가 조각을 어떻게 옮기는지를 나란히 보인다
    */
   chunks?: AlgChunk[];
+  /**
+   * 쥐는 기준(시작 상태에서 보이는 자리 이름: UFR·UB·DF·F …). 큐브 그림·시연·문제 그림 모두에서 노란 고리를 두른다
+   * (`learn/focus.ts`, 2026-11-27 사용자). 그냥 이름은 그 조각(조각을 따라 돈다), 「@」를 붙인 이름은 그 자리(넣을 자리,
+   * 큐브 전체 돌리기는 따라가고 층을 돌려도 자리에 남는다). 강 글이 「○○가 △△에 오게 쥐어요」라고 하는 ○○와 같다
+   */
+  focus?: readonly string[];
+  /**
+   * demo: 쥐는 법 차례의 첫째인 맞출 조각(2026-11-27 사용자 「내가 무엇을 맞추고 싶은지를 먼저 정하고」). 있으면 시연이
+   * 수 앞에 「맞출 조각」(이 조각에 고리) → 「들어갈 자리」(`focus`에 고리) 두 칸을 먼저 보인다. 기준이 자리인 쪽만
+   */
+  pick?: readonly string[];
 }
 
 /** 공식의 덩어리 하나: 수와 그 수가 하는 일(해요체 한두 문장) */
@@ -307,6 +327,16 @@ export const SHEETS = {
   "beginner-edges": "옆면 맞추기: 윗면을 돌려 찾은 세 경우",
   "beginner-corner-place": "코너 자리: 제자리 코너 블럭으로 가르는 네 경우",
   "beginner-corner-twist": "코너 방향: 앞-오른쪽 위 코너 블럭의 세 경우",
+  // 3×3 초보자(코너 방향 먼저, 신광사 설명서 1~7단계)(beginner-cases.ts, docs/47 16-33)
+  "beginner-tf-cross": "흰 십자: 흰 엣지 블럭의 네 경우",
+  "beginner-tf-corners": "첫 층 코너: 흰 코너 블럭의 네 경우",
+  "beginner-tf-second": "둘째 층 엣지: 넣을 엣지 블럭의 세 경우",
+  "beginner-tf-eo": "엣지 방향: 윗면 모양 넷",
+  "beginner-tf-ep": "엣지 위치: 윗면을 반시계 방향으로 돌려 찾은 세 경우",
+  "beginner-tf-twist": "코너 방향: 위 엣지가 맞은 윗면 모양 여덟",
+  "beginner-tf-place": "코너 위치: 제자리 코너 블럭으로 가르는 경우",
+  "tf-flow":
+    "코너 방향 관계도: 모양마다 그림처럼 쥐고 공식을 한 번 치면 가는 모양(beginner-cases.ts TWIST_FLOW)",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

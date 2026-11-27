@@ -1,4 +1,11 @@
-import { goStep, no3d, shot } from "./cube";
+import {
+  goStep,
+  inputReady,
+  keysFor,
+  no3d,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -41,6 +48,249 @@ test("배우기: 첫 층 코너·코너 자리·코너 방향은 모양마다 �
   await expect(body).toContainText("두 번");
   await expect(body).not.toContainText("때까지");
   await shot(page, "learn-beginner-corner-twist", info.project.name);
+});
+
+test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경우 그림·관계도·덩어리 짜임을 보인다(docs/47 16-33)", async ({
+  page,
+}, info) => {
+  const cases = (name: string) =>
+    page.locator(`[data-sheet="${name}"] [data-sheet-case]`);
+  const chunks = page.locator("[data-alg-chunks] [data-alg-chunk]");
+  const body = page.locator("[data-step-body]");
+
+  await page.goto("/cube/learn?lesson=333-tf-cross");
+  // 경우 그림 앞에 어디를 돌려도 되는지 보이는 돌리기 쪽 넷(윗면·되돌리기·옆면·아랫면)
+  await goStep(page, 1);
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    "turn",
+  );
+  await goStep(page, 5);
+  await expect(cases("beginner-tf-cross")).toHaveCount(4);
+  // 쥐는 기준 고리는 넣을 자리(위-앞 엣지 자리의 두 칸), 올릴 블럭에는 두르지 않는다(2026-11-27 사용자)
+  const crossDown = page.locator(
+    '[data-sheet="beginner-tf-cross"] [data-sheet-case="down"]',
+  );
+  await expect(crossDown.locator('[data-sticker-mark="focus"]')).toHaveCount(2);
+  await shot(page, "learn-tf-cross-cases", info.project.name);
+  // 시연은 쥐는 법 차례대로: 맞출 조각 → 들어갈 자리 → 수
+  await goStep(page, 6);
+  const pickCue = page.locator('[data-demo-cue="pick"]');
+  const slotCue = page.locator('[data-demo-cue="slot"]');
+  await expect(pickCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-cross-demo-pick", info.project.name);
+  await slotCue.click();
+  await expect(slotCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-cross-demo-slot", info.project.name);
+  await page.locator('[data-cube-demo] [data-move-chip="F2"]').click();
+  await expect(page.locator("[data-demo-index]")).toHaveAttribute(
+    "data-demo-index",
+    "1",
+  );
+  await shot(page, "learn-tf-cross-demo-f2", info.project.name);
+  await goStep(page, 10);
+  await expect(chunks).toHaveCount(4);
+  await expect(body).toContainText("D R F' R'");
+  await shot(page, "learn-tf-cross-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-corners");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-corners")).toHaveCount(4);
+  // 넣을 자리(앞-오른쪽 위 코너 자리의 세 칸)에 고리
+  await expect(
+    page.locator(
+      '[data-sheet="beginner-tf-corners"] [data-sheet-case="right"] [data-sticker-mark="focus"]',
+    ),
+  ).toHaveCount(3);
+  await shot(page, "learn-tf-corners-cases", info.project.name);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(4);
+  await expect(body).toContainText("F' R F R'");
+  await expect(pickCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-corners-demo-pick", info.project.name);
+  await slotCue.click();
+  await expect(slotCue).toHaveAttribute("aria-current", "step");
+  await shot(page, "learn-tf-corners-demo-slot", info.project.name);
+  await page.locator('[data-cube-demo] [data-move-chip="R\'"]').click();
+  await expect(page.locator("[data-demo-index]")).toHaveAttribute(
+    "data-demo-index",
+    "4",
+  );
+  await shot(page, "learn-tf-corners-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-second");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-second")).toHaveCount(3);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(2);
+  await shot(page, "learn-tf-second-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-eo");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-eo")).toHaveCount(4);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(3);
+  await expect(body).toContainText("R' U' F' U F R");
+  await shot(page, "learn-tf-eo-chunks", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-ep");
+  await goStep(page, 1);
+  await expect(chunks).toHaveCount(3);
+  await expect(body).toContainText("R' U' R U' R' U2 R");
+  await shot(page, "learn-tf-ep-chunks", info.project.name);
+  await goStep(page, 2);
+  await expect(cases("beginner-tf-ep")).toHaveCount(3);
+  await shot(page, "learn-tf-ep-cases", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-twist");
+  await goStep(page, 1);
+  await expect(cases("beginner-tf-twist")).toHaveCount(8);
+  await shot(page, "learn-tf-twist-cases", info.project.name);
+  await goStep(page, 2);
+  await expect(chunks).toHaveCount(4);
+  await expect(body).toContainText("R' F' L' F R F' L F");
+  await shot(page, "learn-tf-twist-chunks", info.project.name);
+  // 관계도(공식 시연 바로 다음 쪽, 문제 없는 시연 쪽): 일곱 모양 + 다 맞음, 하나도 없음 → 둘·하나 → 기본형 → 다 맞음을
+  // 화살표로 잇는다. 문제는 다음 쪽
+  await goStep(page, 3);
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    "demo",
+  );
+  const flow = page.locator('[data-sheet="tf-flow"]');
+  await expect(flow.locator("[data-flow-node]")).toHaveCount(8);
+  await expect(flow.locator("[data-flow-front]")).toHaveCount(8);
+  const edges = flow.locator("[data-flow-edge]");
+  await expect(edges).toHaveCount(7);
+  for (const e of [
+    "bar-b",
+    "cross-d",
+    "a-base",
+    "b-base",
+    "c-base",
+    "d-base",
+    "base-done",
+  ])
+    await expect(flow.locator(`[data-flow-edge="${e}"]`)).toHaveCount(1);
+  // 화살표는 위 마디의 아래에서 아래 마디의 위로 내려간다(휴대폰 폭에서도 길이가 있다)
+  for (const e of await edges.all()) {
+    const [y1, y2] = await Promise.all([
+      e.getAttribute("y1"),
+      e.getAttribute("y2"),
+    ]);
+    expect(Number(y2) - Number(y1)).toBeGreaterThan(10);
+  }
+  // 시연은 공식 한 번(8수)이고, 처음에는 「없음, 둘인 면 하나」와 그 화살표가 밝다. 다른 마디를 누르면 그 모양에서
+  // 한 번 치는 시연으로 바뀐다(2026-11-27 사용자 「공식 한 번 = 화살표 하나」)
+  const chips = page.locator("[data-cube-demo] [data-move-chip]");
+  await expect(chips).toHaveCount(8);
+  await expect(flow.locator('[data-flow-pick="bar"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(flow.locator("[data-flow-edge-on]")).toHaveAttribute(
+    "data-flow-edge",
+    "bar-b",
+  );
+  await shot(page, "learn-tf-twist-flow", info.project.name);
+  await flow.locator('[data-flow-pick="c"]').click();
+  await expect(flow.locator('[data-flow-pick="c"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(flow.locator("[data-flow-edge-on]")).toHaveAttribute(
+    "data-flow-edge",
+    "c-base",
+  );
+  await expect(chips).toHaveCount(8);
+  await expect(flow.locator('[data-flow-pick="done"]')).toHaveCount(0);
+  await shot(page, "learn-tf-twist-flow-pick", info.project.name);
+
+  await page.goto("/cube/learn?lesson=333-tf-place");
+  // 헤드라이트를 먼저 풀고, 잡는 법 그림은 앞 표시와 헤드라이트 강조(왼쪽 → 공식 A, 오른쪽 → 공식 B)
+  await goStep(page, 1);
+  await expect(body).toContainText("「헤드라이트」라고 불러요");
+  await goStep(page, 2);
+  const placeSheet = page.locator('[data-sheet="beginner-tf-place"]');
+  await expect(cases("beginner-tf-place")).toHaveCount(4);
+  await expect(placeSheet.locator("[data-sheet-front]")).toHaveCount(4);
+  await expect(
+    placeSheet.locator('[data-sheet-case="a"] [data-headlights]'),
+  ).toHaveAttribute("data-headlights", "L");
+  await expect(
+    placeSheet.locator('[data-sheet-case="b"] [data-headlights]'),
+  ).toHaveAttribute("data-headlights", "R");
+  // 기준 조각 고리: 제자리 코너 블럭과 헤드라이트 둘(코너 블럭 셋 × 윗면·옆면 윗줄 두 칸), 끝난 모양은 없음
+  await expect(
+    placeSheet.locator('[data-sheet-case="a"] [data-sticker-mark="focus"]'),
+  ).toHaveCount(9);
+  await expect(
+    placeSheet.locator('[data-sheet-case="done"] [data-sticker-mark]'),
+  ).toHaveCount(0);
+  await shot(page, "learn-tf-place-cases", info.project.name);
+  await goStep(page, 3);
+  await expect(chunks).toHaveCount(6);
+  await expect(body).toContainText("R U B L B' R' B L' B' R U' R'");
+  await shot(page, "learn-tf-place-chunks", info.project.name);
+  // 쥐기 문제(2026-11-27 사용자): 같은 큐브를 넷으로 쥔 그림, 헤드라이트가 뒤인 쥐기는 틀리고 왼쪽인 쥐기가 맞다
+  await goStep(page, 4);
+  const quiz = page.locator("[data-learn-quiz]");
+  await expect(quiz).toContainText("공식을 치기 전에 어떻게 잡아야 할까요?");
+  await expect(page.locator("[data-quiz-picture]")).toHaveCount(4);
+  await quiz.getByRole("button", { name: /헤드라이트가 뒤/ }).click();
+  await expect(page.locator('[data-act="quiz"]')).not.toHaveAttribute(
+    "data-act-passed",
+    "",
+  );
+  await quiz.getByRole("button", { name: /헤드라이트가 왼쪽/ }).click();
+  await expect(page.locator('[data-act="quiz"]')).toHaveAttribute(
+    "data-act-passed",
+    "",
+  );
+  await shot(page, "learn-tf-place-grip", info.project.name);
+});
+
+test("배우기: 신광사 쥐어 보기는 큐브 전체를 돌려 맞는 쥐기가 되면 통과하고, 층 돌리기는 받지 않는다", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=333-tf-place");
+  // 쥐기 문제(4) 바로 뒤 쪽(5): 쥐기 문제의 틀린 쥐기 「헤드라이트가 뒤」에서 시작한다
+  await goStep(page, 5);
+  const look = page.locator('[data-act="look"]');
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    "look",
+  );
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "직접 쥐어 봐요",
+  );
+  await inputReady(page);
+  await shot(page, "learn-tf-place-hold-0", info.project.name);
+  if (info.project.name !== "desktop") return;
+  // 층 돌리기는 받지 않는다
+  await page.keyboard.press("KeyR");
+  await expect(look).toContainText("여기서는 층을 돌리지 않아요");
+  await expect(look).not.toHaveAttribute("data-act-passed", "");
+  // y를 한 번씩: 헤드라이트가 오른쪽 → 앞 → 왼쪽(맞는 쥐기)
+  for (const [i, passed] of [false, false, true].entries()) {
+    for (const k of keysFor("y")) await page.keyboard.press(k);
+    if (passed) await expect(look).toHaveAttribute("data-act-passed", "");
+    else await expect(look).not.toHaveAttribute("data-act-passed", "");
+    await shot(page, `learn-tf-place-hold-${i + 1}`, info.project.name);
+  }
+
+  // 흰 십자 쥐어 보기(9쪽): 들어갈 자리가 위-오른쪽인 쥐기에서 시작해, y 한 번으로 그 자리가 위-앞에 오면 통과
+  await page.goto("/cube/learn?lesson=333-tf-cross");
+  await goStep(page, 8);
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "들어갈 자리는 흰 센터와 초록 센터 사이",
+  );
+  await inputReady(page);
+  await shot(page, "learn-tf-cross-hold-0", info.project.name);
+  for (const k of keysFor("y")) await page.keyboard.press(k);
+  await expect(look).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-tf-cross-hold-1", info.project.name);
 });
 
 test("배우기: 흰 십자는 첫머리에 여섯 모양을 훑고, 옆으로 옮겨 올리는 공식을 네 덩어리로 보이고, 끝에 모양마다 할 일을 다시 묶는다", async ({

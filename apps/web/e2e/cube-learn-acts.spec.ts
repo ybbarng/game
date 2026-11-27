@@ -487,6 +487,12 @@ test("강 화면: 이동 경로에 해법 카드와 같은 해법 이름과 강�
       "3×3을 아는 사람의 2×2 강의",
     ],
     [
+      "333-tf-twist",
+      "초보자(코너 방향 먼저) · 신광사 해법",
+      "/cube/methods?method=beginner-twist-first",
+      "코너 방향 먼저 맞추기 강의",
+    ],
+    [
       "bld-edges",
       "올드 포흐만 해법",
       "/cube/methods?m=bld-op",

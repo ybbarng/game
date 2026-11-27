@@ -161,6 +161,20 @@ describe("본문 속 수 찾기", () => {
     ]);
   });
 
+  test("「공식 B」의 홑 글자는 공식 이름이고, 「공식 F R U …」의 첫 수는 수다", () => {
+    expect(moves("반시계 방향이면 공식 B를 한 번 쳐요.")).toEqual([]);
+    expect(moves("공식 B(R2 B2 R)는")).toEqual(["R2", "B2", "R"]);
+    expect(moves("「노란 십자」 공식 F R U R' U' F'을")).toEqual([
+      "F",
+      "R",
+      "U",
+      "R'",
+      "U'",
+      "F'",
+    ]);
+    expect(moves("공식 R' D' R D를")).toEqual(["R'", "D'", "R", "D"]);
+  });
+
   test("영어 약어·낱말은 건드리지 않는다", () => {
     for (const t of [
       "OLL과 PLL",
