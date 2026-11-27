@@ -1,18 +1,14 @@
 //! 배우는 방식 3×3 초보자 해법(홈 시연 「초보자 해법」, 사이트 `packages/cube-ai` `solveBeginner3(state, { taught: true })`).
 //!
-//! 옮긴 원본: `methods.ts` `BEGINNER3_TAUGHT_STEPS`, `taught.ts`(흰 면 위 십자·첫 층 코너 지름길·둘째 층 앞-오른쪽 칸·
-//! 마지막 층 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향), `cross-front.ts`(흰 십자 엣지를 F·D·y로만 넣는 너비 우선
-//! 탐색). 같은 상태면 사이트와 같은 수가 나온다(공통 시험 자료 `fixtures/hero-show.json`).
+//! 옮긴 원본: `methods.ts` `BEGINNER3_TAUGHT_STEPS`, `taught.ts`(흰 면 위 십자는 3×3 처음 맞추기 강의 길 그대로,
+//! 첫 층 코너 지름길·둘째 층 앞-오른쪽 칸·마지막 층 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향).
+//! 같은 상태면 사이트와 같은 수가 나온다(공통 시험 자료 `fixtures/hero-show.json`).
 //!
 //! 흐름: 흰 면을 위로 들고(맞추는 면은 돌리지 않는다) 넣을 조각을 아랫면으로 빼서 칸 밑에 둔 뒤 정해진 수로 넣는다.
 //! 첫 층이 끝나면 z2로 뒤집어 둘째 층·마지막 층을 맞춘다. 살피는 자리 앞뒤의 수는 합치지 않는다(`look_barrier`).
 
-use std::collections::{HashMap, HashSet};
-use std::sync::{Mutex, OnceLock};
-
 use crate::human::{finish, u_turn, HumanSolve, Solve, SolveError, StageName, EDGE_FACELETS, R};
-use crate::notation::parse_moves;
-use crate::state::{face_colors, move_table, State};
+use crate::state::{face_colors, State};
 
 const TRIGGER: &str = "R' D' R D";
 const TRIGGER_BACK: &str = "D' R' D R";
@@ -88,110 +84,128 @@ pub(crate) fn white_up(s: &mut Solve) -> R<()> {
     Err(SolveError("흰 가운데를 찾지 못했다"))
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct WhiteEdge {
-    slot: usize,
-    white: usize,
-    color: u8,
-}
+// 흰 십자(사이트 `taught.ts`, 3×3 처음 맞추기 강의 `beginner-path.ts` 흰 십자와 같은 길, docs/47 16-34): 넣을 엣지
+// 블럭은 짝 색 센터를 앞으로 쥐고(y) 아래 층에서 올린다. 아래 층 흰색 아래는 D로 아래-앞에 두고 F2, 흰색 옆은
+// 아래-오른쪽에 두고 R F' R'. 가운데 층은 앞-오른쪽에 쥐고 R' D' R, 위 층은 위-앞에 쥐고 F2로 내린 뒤 올린다.
 
-fn white_edges(rel: &[u8]) -> Vec<WhiteEdge> {
-    let mut out = vec![];
-    for (slot, &[a, b]) in EDGE_FACELETS.iter().enumerate() {
-        if rel[a] == U {
-            out.push(WhiteEdge {
-                slot,
-                white: a,
-                color: rel[b],
-            });
-        } else if rel[b] == U {
-            out.push(WhiteEdge {
-                slot,
-                white: b,
-                color: rel[a],
-            });
-        }
-    }
-    out
-}
+const CROSS_UP: &str = "F2";
+const CROSS_SIDE_UP: &str = "R F' R'";
+const CROSS_MIDDLE_DOWN: &str = "R' D' R";
+const CROSS_TOP_DOWN: &str = "F2";
+/// 쥐기를 찾는 차례(사이트 `Y4`·`D4`)
+const Y4: [&str; 4] = ["", "y", "y'", "y2"];
+const D4: [&str; 4] = ["", "D", "D'", "D2"];
+/// 옆 색 차례: 초록·빨강·파랑·주황(사이트 `SIDE_COLORS`)
+const SIDE_COLORS: [u8; 4] = [2, 1, 5, 4];
 
-fn cross_solved_slots(rel: &[u8]) -> Vec<usize> {
-    (0..4)
-        .filter(|&j| {
-            let [a, b] = EDGE_FACELETS[j];
-            rel[a] == U && rel[b] == face_of(b)
-        })
-        .collect()
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum CrossCase {
-    DownWhiteDown,
-    DownWhiteSide,
+    Down,
+    DownSide,
     Middle,
-    TopWrong,
-    TopFlipped,
+    Top,
 }
 
-const CASE_ORDER: [CrossCase; 5] = [
-    CrossCase::DownWhiteDown,
-    CrossCase::DownWhiteSide,
-    CrossCase::Middle,
-    CrossCase::TopWrong,
-    CrossCase::TopFlipped,
-];
-
-fn touches(slot: usize, face: u8) -> bool {
-    EDGE_FACELETS[slot].iter().any(|&i| face_of(i) == face)
+/// 흰-`color` 엣지 블럭의 흰 스티커·짝 색 스티커가 보는 면
+fn white_edge_at(t: &Solve, color: u8) -> (u8, u8) {
+    for [a, b] in EDGE_FACELETS {
+        if t.f[a] == U && t.f[b] == color {
+            return (face_of(a), face_of(b));
+        }
+        if t.f[b] == U && t.f[a] == color {
+            return (face_of(b), face_of(a));
+        }
+    }
+    unreachable!("흰 엣지 블럭이 없다")
 }
 
-fn case_of(e: &WhiteEdge) -> CrossCase {
-    if touches(e.slot, D) {
-        return if face_of(e.white) == D {
-            CrossCase::DownWhiteDown
+/// 그 색 센터가 있는 면
+fn center_face(t: &Solve, color: u8) -> u8 {
+    (0..6u8)
+        .find(|&k| t.f[k as usize * 9 + 4] == color)
+        .unwrap_or(6)
+}
+
+fn cross_edge_ok(t: &Solve, color: u8) -> bool {
+    let (wf, cf) = white_edge_at(t, color);
+    wf == center_face(t, U) && cf == center_face(t, color)
+}
+
+fn edge_is_at(t: &Solve, color: u8, faces: [u8; 2]) -> bool {
+    let (wf, cf) = white_edge_at(t, color);
+    faces.contains(&wf) && faces.contains(&cf)
+}
+
+fn first_turn(s: &Solve, turns: &[&'static str], ok: impl Fn(&Solve) -> bool) -> R<&'static str> {
+    turns
+        .iter()
+        .copied()
+        .find(|x| ok(&probe_with(s, x)))
+        .ok_or(SolveError("쥘 방향을 찾지 못했다"))
+}
+
+/// 흰 십자 한 걸음(사이트 `crossStep`): 경우, 쥐는 수, 공식
+fn cross_step(s: &Solve, color: u8) -> R<(CrossCase, String, &'static str)> {
+    const F: u8 = 2;
+    const RR: u8 = 1;
+    let (wf, cf) = white_edge_at(s, color);
+    if wf == D || cf == D {
+        let side = cf == D;
+        let y = first_turn(s, &Y4, |t| center_face(t, color) == F)?;
+        let d = first_turn(&probe_with(s, y), &D4, |t| {
+            edge_is_at(t, color, [D, if side { RR } else { F }])
+        })?;
+        let hold = join(&[y, d]);
+        return Ok(if side {
+            (CrossCase::DownSide, hold, CROSS_SIDE_UP)
         } else {
-            CrossCase::DownWhiteSide
-        };
+            (CrossCase::Down, hold, CROSS_UP)
+        });
     }
-    if !touches(e.slot, U) {
-        return CrossCase::Middle;
+    if wf != U && cf != U {
+        let y = first_turn(s, &Y4, |t| edge_is_at(t, color, [F, RR]))?;
+        return Ok((CrossCase::Middle, y.to_string(), CROSS_MIDDLE_DOWN));
     }
-    if face_of(e.white) == U {
-        CrossCase::TopWrong
-    } else {
-        CrossCase::TopFlipped
-    }
+    let y = first_turn(s, &Y4, |t| edge_is_at(t, color, [U, F]))?;
+    Ok((CrossCase::Top, y.to_string(), CROSS_TOP_DOWN))
 }
 
-/// 다음에 넣을 흰 엣지 하나의 수(사이트 `nextCrossEdge`). 십자가 다 됐으면 None
+/// 그 엣지 블럭을 제자리에 넣을 때까지의 걸음(가운데·위 층이면 내리고 아래 층에서 올린다)
+fn cross_piece(s: &Solve, color: u8) -> R<String> {
+    let mut t = s.probe();
+    let mut parts: Vec<String> = vec![];
+    for i in 0.. {
+        if cross_edge_ok(&t, color) {
+            break;
+        }
+        guard(i, 1, "흰 엣지 블럭이 두 걸음 안에 들지 않는다")?;
+        let (_, hold, alg) = cross_step(&t, color)?;
+        let moves = join(&[&hold, alg]);
+        t.apply(&moves);
+        parts.push(moves);
+    }
+    Ok(parts.join(" "))
+}
+
+/// 다음에 넣을 흰 엣지 하나의 수(사이트 `nextCrossEdge`). 아래 층 블럭부터, 같은 경우 안에서는 수가 적은 것,
+/// 같으면 초록·빨강·파랑·주황 차례. 십자가 다 됐으면 None
 fn next_cross_edge(s: &Solve) -> R<Option<String>> {
-    let rel = s.rel();
-    let solved = cross_solved_slots(&rel);
-    if solved.len() == 4 {
-        return Ok(None);
-    }
-    let todo: Vec<WhiteEdge> = white_edges(&rel)
-        .into_iter()
-        .filter(|e| !(e.slot < 4 && solved.contains(&e.slot)))
-        .collect();
-    for kind in CASE_ORDER {
-        let mut best: Option<String> = None;
-        for e in todo.iter().filter(|x| case_of(x) == kind) {
-            let others: Vec<(usize, u8)> = todo
-                .iter()
-                .filter(|x| *x != e)
-                .map(|x| (x.white, x.color))
-                .collect();
-            let alg = front_cross_insert(e.white, e.color, &solved, &others)?;
-            if best.as_ref().is_none_or(|b| alg_len(&alg) < alg_len(b)) {
-                best = Some(alg);
-            }
+    let mut best: Option<(CrossCase, String)> = None;
+    for c in SIDE_COLORS {
+        if cross_edge_ok(s, c) {
+            continue;
         }
-        if best.is_some() {
-            return Ok(best);
+        let kind = cross_step(s, c)?.0;
+        let alg = cross_piece(s, c)?;
+        let better = match &best {
+            None => true,
+            Some((k, b)) => kind < *k || (kind == *k && alg_len(&alg) < alg_len(b)),
+        };
+        if better {
+            best = Some((kind, alg));
         }
     }
-    Err(SolveError("십자 엣지를 넣을 수를 찾지 못했다"))
+    Ok(best.map(|b| b.1))
 }
 
 pub(crate) fn cross_taught(s: &mut Solve) -> R<()> {
@@ -206,245 +220,8 @@ pub(crate) fn cross_taught(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-// ── 흰 십자 엣지를 F·D·y로만(사이트 `cross-front.ts`) ───────────
-
-const MOVES: [&str; 9] = ["D", "D'", "D2", "F", "F'", "F2", "y", "y'", "y2"];
-const LAYER: [u8; 9] = [0, 0, 0, 1, 1, 1, 2, 2, 2];
-const CROSS_WHITE: [usize; 4] = [5, 7, 3, 1];
+/// 십자 자리(UR UF UL UB)의 옆 스티커
 const CROSS_SIDE: [usize; 4] = [10, 19, 37, 46];
-const SIDE_CENTERS: [usize; 4] = [13, 22, 40, 49];
-const MAX_ROUNDS: u8 = 3;
-
-/// 옆면 글자 → R F L B 차례 번호
-fn side_index(face: u8) -> usize {
-    match face {
-        1 => 0,
-        2 => 1,
-        4 => 2,
-        _ => 3,
-    }
-}
-
-fn perms() -> &'static [Vec<u16>; 9] {
-    static P: OnceLock<[Vec<u16>; 9]> = OnceLock::new();
-    P.get_or_init(|| {
-        MOVES.map(|name| {
-            let m = parse_moves(3, name).expect("수")[0];
-            move_table(3, &m).dest.clone()
-        })
-    })
-}
-
-fn partner_of(i: usize) -> usize {
-    for [a, b] in EDGE_FACELETS {
-        if a == i {
-            return b;
-        }
-        if b == i {
-            return a;
-        }
-    }
-    unreachable!("엣지 스티커가 아니다")
-}
-
-/// 사이트 `frontCrossInsert`: 넣을 엣지의 흰 스티커 자리·다른 색, 이미 맞은 십자 자리, 아직 안 넣은 다른 흰 엣지
-fn front_cross_insert(
-    white: usize,
-    color: u8,
-    solved: &[usize],
-    others: &[(usize, u8)],
-) -> R<String> {
-    static MEMO: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
-    let mut rest: Vec<String> = others
-        .iter()
-        .map(|&(w, c)| format!("{w}{}", ["U", "R", "F", "D", "L", "B"][c as usize]))
-        .collect();
-    rest.sort();
-    let mut sol = solved.to_vec();
-    sol.sort();
-    let key = format!(
-        "{white}|{color}|{}|{}",
-        sol.iter().map(|j| j.to_string()).collect::<String>(),
-        rest.join(",")
-    );
-    let memo = MEMO.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Some(hit) = memo.lock().expect("잠금").get(&key) {
-        return Ok(hit.clone());
-    }
-    let alg = cross_search(white, color, solved, others)?;
-    memo.lock().expect("잠금").insert(key, alg.clone());
-    Ok(alg)
-}
-
-struct CrossProblem {
-    want: Vec<usize>,
-    others: Vec<usize>,
-    from: usize,
-}
-
-impl CrossProblem {
-    fn placed(p: &[u16], at: usize, c: usize) -> bool {
-        p[at] < 9 && p[at + 1] / 9 == p[c] / 9
-    }
-    fn stray(&self, p: &[u16]) -> bool {
-        self.others
-            .iter()
-            .enumerate()
-            .any(|(k, &c)| Self::placed(p, self.from + k * 2, c))
-    }
-    fn done(&self, p: &[u16]) -> bool {
-        self.want.iter().enumerate().all(|(e, &c)| {
-            let w = p[4 + e * 2];
-            let o = p[5 + e * 2];
-            w < 9 && o / 9 == p[c] / 9
-        })
-    }
-    fn low(p: &[u16]) -> bool {
-        p[4] / 9 == 3 || p[5] / 9 == 3
-    }
-}
-
-fn cross_search(white: usize, color: u8, solved: &[usize], others: &[(usize, u8)]) -> R<String> {
-    let mut start: Vec<u16> = SIDE_CENTERS.iter().map(|&i| i as u16).collect();
-    start.push(white as u16);
-    start.push(partner_of(white) as u16);
-    let mut want = vec![side_index(color)];
-    for &j in solved {
-        start.push(CROSS_WHITE[j] as u16);
-        start.push(CROSS_SIDE[j] as u16);
-        want.push(j);
-    }
-    let from = start.len();
-    for &(w, _) in others {
-        start.push(w as u16);
-        start.push(partner_of(w) as u16);
-    }
-    let prob = CrossProblem {
-        want,
-        others: others.iter().map(|&(_, c)| side_index(c)).collect(),
-        from,
-    };
-    let v0 = CrossProblem::low(&start);
-    if prob.done(&start) {
-        return Ok(String::new());
-    }
-    let guards: &[bool] = if others.is_empty() {
-        &[false]
-    } else {
-        &[true, false]
-    };
-    for &g in guards {
-        for max_rounds in 1..=MAX_ROUNDS {
-            if let Some(found) = search_rounds(&prob, &start, v0, max_rounds, g) {
-                return Ok(found);
-            }
-        }
-    }
-    Err(SolveError("F·D·y로 십자 엣지를 넣지 못했다"))
-}
-
-struct Node {
-    p: Vec<u16>,
-    path: Vec<usize>,
-    ys: u32,
-    v: bool,
-    phase: u8,
-    rounds: u8,
-}
-
-fn search_rounds(
-    prob: &CrossProblem,
-    start: &[u16],
-    v0: bool,
-    max_rounds: u8,
-    use_stray: bool,
-) -> Option<String> {
-    let perms = perms();
-    let mut seen: HashSet<(Vec<u16>, bool, u8, u8, u8)> = HashSet::new();
-    let mut layer = vec![Node {
-        p: start.to_vec(),
-        path: vec![],
-        ys: 0,
-        v: v0,
-        phase: 0,
-        rounds: 1,
-    }];
-    let stray = |p: &[u16]| use_stray && prob.stray(p);
-    for _depth in 1..=14 {
-        let mut next: Vec<Node> = vec![];
-        let mut best: Option<Node> = None;
-        for node in &layer {
-            let last = node.path.last().copied();
-            let last_layer: i32 = last.map_or(-1, |l| LAYER[l] as i32);
-            for mi in 0..MOVES.len() {
-                let kind = LAYER[mi];
-                let phase: u8;
-                let mut rounds = node.rounds;
-                if kind == 2 {
-                    if node.phase == 0 {
-                        phase = 1;
-                    } else if node.phase == 3 && last_layer == 1 {
-                        if rounds >= max_rounds || stray(&node.p) {
-                            continue;
-                        }
-                        rounds += 1;
-                        phase = 1;
-                    } else {
-                        continue;
-                    }
-                } else if kind == 0 {
-                    if node.phase == 2 || last_layer == 0 {
-                        continue;
-                    }
-                    phase = if node.phase == 3 { 3 } else { 2 };
-                } else {
-                    let lower_raise = matches!(last, Some(3) | Some(4)) && mi == 5;
-                    if last_layer == 1 && !lower_raise {
-                        continue;
-                    }
-                    phase = 3;
-                }
-                let perm = &perms[mi];
-                let p: Vec<u16> = node.p.iter().map(|&i| perm[i as usize]).collect();
-                let v = node.v || CrossProblem::low(&p);
-                if !seen.insert((p.clone(), v, phase, rounds, kind)) {
-                    continue;
-                }
-                let mut path = node.path.clone();
-                path.push(mi);
-                let child = Node {
-                    ys: node.ys + u32::from(kind == 2),
-                    p,
-                    path,
-                    v,
-                    phase,
-                    rounds,
-                };
-                if v && prob.done(&child.p) {
-                    if stray(&child.p) {
-                        continue;
-                    }
-                    if best.as_ref().is_none_or(|b| child.ys < b.ys) {
-                        best = Some(child);
-                    }
-                    continue;
-                }
-                next.push(child);
-            }
-        }
-        if let Some(b) = best {
-            return Some(
-                b.path
-                    .iter()
-                    .map(|&i| MOVES[i])
-                    .collect::<Vec<_>>()
-                    .join(" "),
-            );
-        }
-        layer = next;
-    }
-    None
-}
 
 // ── 첫 층 코너(흰 면 위, 지름길) ──────────────────────────
 

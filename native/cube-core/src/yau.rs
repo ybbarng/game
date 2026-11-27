@@ -130,7 +130,11 @@ const YELLOW_CROSS_BACK: &str = "F U R U' R' F'";
 const EDGE_SWAP: &str = "R U R' U R U2 R' U";
 const CORNER_CYCLE: &str = "U R U' L' U R' U' L";
 const CORNER_CYCLE_BACK: &str = "L' U R U' L U R' U'";
-const CROSS_SIDE_UP: &str = "F D' F' y F";
+// 흰 십자(docs/47 16-34): 아래 층에서 올리기 둘, 가운데·위 층에서 내리기 둘
+const CROSS_UP: &str = "F2";
+const CROSS_SIDE_UP: &str = "R F' R'";
+const CROSS_MIDDLE_DOWN: &str = "R' D' R";
+const CROSS_TOP_DOWN: &str = "F2";
 
 fn reps(alg: &str, k: usize) -> String {
     vec![alg; k].join(" ")
@@ -286,45 +290,27 @@ fn cross_next(s: &State) -> R<Option<PathStep>> {
     let cf = get(&e, c);
     let at =
         |t: &State, faces: &[usize]| same_set(&faces_of(&found(&View::new(t), &[WHITE, c])), faces);
+    // 아래 층: 짝 색 센터를 앞으로 쥐고, 흰색이 아래면 아래-앞(F2), 옆이면 아래-오른쪽(R F' R')
     if wf == D || cf == D {
         let side = cf == D;
-        let y = first_turn(3, s, &Y4, |t| {
-            View::new(t).center_of(c) == if side { RR } else { F }
-        })?;
+        let y = first_turn(3, s, &Y4, |t| View::new(t).center_of(c) == F)?;
         let d = first_turn(3, &play(3, s, y), &D4, |t| {
             at(t, &[D, if side { RR } else { F }])
         })?;
         return Ok(Some(if side {
             step("down-side", &join(&[y, d]), CROSS_SIDE_UP.into())
         } else {
-            step("down", &join(&[y, d]), "F2".into())
+            step("down", &join(&[y, d]), CROSS_UP.into())
         }));
     }
+    // 가운데 층: 앞-오른쪽으로 쥐고 R' D' R로 아래 층에 내린다
     if wf != U && cf != U {
-        let y = first_turn(3, s, &Y4, |t| {
-            get(&found(&View::new(t), &[WHITE, c]), c) == F
-        })?;
-        let t = play(3, s, y);
-        let right = at(&t, &[F, RR]);
-        if v.center_of(c) == cf {
-            return Ok(Some(step(
-                "middle",
-                y,
-                if right { "F'" } else { "F" }.into(),
-            )));
-        }
-        return Ok(Some(step(
-            "middle-other",
-            y,
-            if right { "F D F'" } else { "F' D' F" }.into(),
-        )));
+        let y = first_turn(3, s, &Y4, |t| at(t, &[F, RR]))?;
+        return Ok(Some(step("middle", y, CROSS_MIDDLE_DOWN.into())));
     }
+    // 위 층(다른 자리·뒤집힘): 위-앞으로 쥐고 F2로 아래 층에 내린다
     let y = first_turn(3, s, &Y4, |t| at(t, &[U, F]))?;
-    Ok(Some(if wf == U {
-        step("top-wrong", y, "F2".into())
-    } else {
-        step("top-side", y, "F".into())
-    }))
+    Ok(Some(step("top", y, CROSS_TOP_DOWN.into())))
 }
 
 fn corners_next(s: &State) -> R<Option<PathStep>> {
@@ -1677,5 +1663,45 @@ mod tests {
                 assert!([53, 54, 57, 58].iter().all(|&i| c[i] as usize == first));
             }
         }
+    }
+
+    #[test]
+    fn white_cross_path_uses_lesson_formulas_and_finishes() {
+        // 사이트 `beginner-path.ts` 흰 십자(docs/47 16-34): 걸음마다 쥐기(y·D) 뒤 F2·R F' R'·R' D' R 하나, 끝에 십자가 맞는다
+        let mut cases = HashSet::new();
+        for seed in 1..=40u32 {
+            let mut rng = Rng::new(seed);
+            let (_, _, state) = hero_scramble(3, &mut || rng.next_float());
+            let up = first_turn(3, &state, &["", "x2", "x", "x'", "z", "z'"], |t| {
+                View::new(t).color_of(U) == WHITE
+            })
+            .expect("흰 면 위로");
+            let s = play(3, &state, up);
+            let steps = run_stage(PathStage::Cross, &s).expect("흰 십자");
+            for st in &steps {
+                assert!(
+                    st.hold
+                        .split_whitespace()
+                        .all(|m| m.starts_with('y') || m.starts_with('D')),
+                    "씨앗 {seed} {}",
+                    st.moves()
+                );
+                assert!(
+                    ["F2", "R F' R'", "R' D' R"].contains(&st.alg.as_str()),
+                    "씨앗 {seed} {}",
+                    st.moves()
+                );
+                cases.insert(st.case_id);
+            }
+            let moves: Vec<String> = steps.iter().map(PathStep::moves).collect();
+            let end = play(3, &s, &moves.join(" "));
+            let v = View::new(&end);
+            for c in SIDE_COLORS {
+                assert!(piece_ok(&v, &[WHITE, c]), "씨앗 {seed}");
+            }
+        }
+        let mut seen: Vec<_> = cases.into_iter().collect();
+        seen.sort_unstable();
+        assert_eq!(seen, ["down", "down-side", "middle", "top"]);
     }
 }

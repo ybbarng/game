@@ -232,14 +232,14 @@ describe("조각 찾기와 강조 사건(3×3 초보자·프리드리히)", () =
     });
   }
 
-  it("3×3 초보자: 흰 십자는 화면에서도 F·D와 큐브 돌리기만(앞면으로 올린다), 둘째 층에 왼쪽 면이 없다", async () => {
+  it("3×3 초보자: 흰 십자는 화면에서도 강의 공식의 F·R·D와 큐브 돌리기만(맞춘 면 U는 돌리지 않는다), 둘째 층에 왼쪽 면이 없다", async () => {
     for (const seed of SEEDS) {
       const { shown } = await run("3-beginner", seed);
       const cross = shown.stages.find((s) => s.name === "cross");
       const middle = shown.stages.find((s) => s.name === "middle");
       if (!cross || !middle) throw new Error("단계 없음");
       for (const m of shown.moves.slice(cross.start, cross.end))
-        expect(m, `${seed} 십자`).toMatch(/^([FD]|[xyz])['2]?$/);
+        expect(m, `${seed} 십자`).toMatch(/^([FRD]|[xyz])['2]?$/);
       // 넣을 자리를 앞으로 가져오는 y가 있다
       expect(
         shown.moves

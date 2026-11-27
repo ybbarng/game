@@ -591,7 +591,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 남은 것
 
 1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절). **2026-11-16 3×3을 옮겼다**: 미니 화면은 떠 있을 때 한 판마다 연출을 새로 시작해 그 크기 해법 차례의 첫 해법을 쓴다(설정 「첫 화면 큐브」가 번갈아면 초보자 해법, 같은 크기의 해법을 골랐으면 그것). 코어가 그 해법 둘을 옮겼다.
-   - `taught.rs`: 배우는 방식 3×3 초보자(사이트 `solveBeginner3(state, { taught: true })`, `taught.ts`·`cross-front.ts`): 흰 면 위 십자를 F·D·y로만, 첫 층 코너 지름길, z2 뒤 둘째 층은 앞-오른쪽 칸만, 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향. 살피는 자리 앞뒤 수를 합치지 않는다(`look_barrier`).
+   - `taught.rs`: 배우는 방식 3×3 초보자(사이트 `solveBeginner3(state, { taught: true })`, `taught.ts`): 흰 면 위 십자를 강의 길로(2026-11-27부터, 5-25. 예전 F·D·y로만), 첫 층 코너 지름길, z2 뒤 둘째 층은 앞-오른쪽 칸만, 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향. 살피는 자리 앞뒤 수를 합치지 않는다(`look_barrier`).
    - `hero_show.rs`: 조각 강조(`piece-marks.ts`), 보여 주기 변환(`present.ts` 전부: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 보이는 세 면에서 찾는 돌리기, 이미 맞은 조각 확인, 마지막 층 맞출 칸·알아볼 모양, 쉬는 자리), 연출 걸음과 시간(`loop.ts` `heroTiming`·`randomScramble`·`orientForSolve`·`scrambleSteps`·`orientSteps`·`solveSteps` 강조 「잠깐」·`heroMoveMs`), 꼬리표(`heroStageLabel`). 걸음은 시각표(`hero_timeline`: 시각·수·회전 시간, 「맞춤」 멈춤이 시작하는 때)로 앱에 준다.
    - 공통 자료 `fixtures/hero-show.json`(씨앗 8개 × 초보자·프리드리히): 씨앗 → 섞기·쥐는 방향, 첫 면 색, 변환 뒤 수·단계·살피는 자리·찾는 돌리기·쉬는 자리·강조(스티커까지), 연출 걸음 전부. 어긋남 0. 씨앗 150개 × 둘(300판)로도 한 번 견줘 어긋남 0이었다(자료에는 8개만 남김).
    - 앱: C ABI `cubie_hero_steps(해법, 씨앗)` → `NativeCubeWindow.startHero`가 맞춘 큐브에서 시각표대로 돌리고 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다(사이트 미니와 같다). 해법은 설정 `heroSize`·`heroMethod`를 사이트와 같은 규칙으로 읽는다(`CubeSettings.heroMethodId`, 시험 `HeroSettingsTests`). (2026-11-26) 사이트가 `heroSize`를 없애 앱도 `heroMethod`만 읽는다(5-22).
@@ -1125,6 +1125,15 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - **안전하게 켜기**: 화면 구성별 저장 자리 `{{-2400, 500}, {250, 250}}`을 넣고, 켜고 1초 뒤 SIGKILL로 끄기를 되풀이했다. 보통 켜기(250×250 저장 자리) → 강제 종료 → `launch mode=safe left=0.12.4/0`, 창은 기본 96×96(내장 화면 오른쪽 아래), 켜자마자 `proceed 0.99.2 check=background go=true` → Sparkle 창, 8초 뒤 표시 지움. 다시 보통 켜기 → 강제 종료 → safe(1) → 강제 종료 → safe(2) → 강제 종료 → `safeQuiet`(새 판 창 없음, 기본 자리) → 무사히 켜져 표시 지움 → 다음은 보통 켜기로 저장 자리 250×250이 그대로 돌아왔다.
 - 시험: `test.sh`(머리 파일 시험 + Swift 시험 265개), 새 시험 `UpdateFlowTests`·`LaunchGuardTests`. 정해진 확인을 이어 가게, 반복 막기 경계를 하나 늦게 바꾸면 두 묶음이 실패하는 것을 확인했다.
 - **Cubie 새 판이 필요하다**(0.12.5에 함께).
+
+### 5-25. 홈 시연 초보자 해법의 흰 십자를 강의 새 길로(2026-11-27)
+
+사이트 3×3 처음 맞추기 강의 흰 십자를 바꾼 것(docs/47 16-34)에 맞춰, 홈 시연 「초보자 해법」(3×3)과 4×4~7×7 「축소법(초보자)」의 3×3 단계가 흰 십자를 강과 같은 길로 맞춘다. 짝 색 센터를 앞으로 쥐고 아래 층에서 F2·R F' R'로 올리고, 가운데 층은 R' D' R, 위 층은 F2로 내린다. 첫 층 코너부터는 그대로다.
+
+- 코어 `taught.rs`가 사이트 `taught.ts`와 같은 수를 낸다. 공통 자료 `hero-show.json`·`hero-show-big.json`을 다시 썼고 `cargo test` 어긋남 0. F·D·y 너비 우선 탐색(`front_cross_insert`)은 지웠다.
+- 코어 `yau.rs`가 옮겨 둔 `beginner-path.ts` 흰 십자도 새 길로 맞췄다(야우 시연의 수는 같다, `hero-show-yau.json` 그대로).
+- 한 판 평균(섞기 300개, 층 돌리기) 111.67 → 114.70수.
+- **Cubie 새 판이 필요하다**: 홈 시연은 앱 코어가 계산하므로 새 판을 내야 사용자 앱에서 바뀐다.
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

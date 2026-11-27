@@ -16,7 +16,7 @@
 //! | [`keys`] | `apps/web/src/cube/input/`(키 배치·해석기: 키 → 수·명령), 키캡 줄은 `keys/move-keys.ts`·`keys/reach.ts` |
 //! | [`progress`]·[`combo`]·[`session`] | `packages/cube-engine/src/solve-progress.ts`(조각 점수·이정표·흐름 진행 칸), 웹 `flow/combo.ts`·`solve-session.ts`(Cubie 미니의 한 판: 기록 칸) |
 //! | [`hero`]·[`hero_show`] | 웹 `hero/methods.ts`(홈 시연 해법 표·첫 면 색 고르기)·`hero/present.ts`·`hero/loop.ts`·`piece-marks.ts`(보여 주기 변환·연출 걸음) |
-//! | [`taught`] | `packages/cube-ai` `taught.ts`·`cross-front.ts`(배우는 방식 2×2·3×3 초보자, 홈 시연) |
+//! | [`taught`] | `packages/cube-ai` `taught.ts`(배우는 방식 2×2·3×3 초보자, 홈 시연) |
 //! | [`roux_zz`] | `packages/cube-ai` `methods-roux-zz.ts`·`piece-search.ts`(루·ZZ, 홈 시연) |
 //! | [`yau`] | 웹 `cube/learn/yau-solve.ts`·`yau-hero.ts`와 쓰는 단원 길(`beginner-path.ts`·`big-path.ts`·`big-solve.ts`·`yau-path.ts`, 홈 시연 4×4 야우) |
 //! | [`reduction`]·[`big`] | `packages/cube-reduction`(축소법 네 단계)·`packages/cube-ai` `big.ts`(축소 뒤 3×3 사람 해법, 홈 시연 4×4~7×7) |
