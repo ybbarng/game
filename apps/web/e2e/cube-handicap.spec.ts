@@ -52,6 +52,41 @@ async function solve(page: Page, scramble: string) {
   );
 }
 
+/**
+ * 컴퓨터보다 먼저 맞춘다(시계는 `startPaused`로 멈춰 둔 채). 수마다 40ms씩만 감아, 내가 다 두는 동안(2×2 섞기 수 × 40ms,
+ * 1초 안쪽) 컴퓨터는 계획 시각이 지난 수만 둔다(초고수 2×2도 다 맞추는 데 1.5초 넘게 걸린다). 시계를 흐르게 두면 키를 치는
+ * 실제 시간만큼 컴퓨터도 두어, 기기가 느리거나 섞기가 쉬우면 컴퓨터가 먼저 끝난다. 다 두면 시계를 다시 흐르게 한다
+ */
+async function solveFirst(page: Page, scramble: string) {
+  for (const key of keysFor(inverse(scramble))) {
+    await page.keyboard.press(key);
+    await page.clock.fastForward(40);
+  }
+  await expect(page.locator('[data-cube-peer="me"]')).toHaveAttribute(
+    "data-cube-peer-status",
+    "done",
+  );
+  await page.clock.resume();
+}
+
+/** 시계를 멈추고 대결을 시작해, 판이 열릴 때까지 조금씩 감는다(그동안 컴퓨터는 계획 시각이 지난 수만 둔다) */
+async function startPaused(page: Page) {
+  // 페이지에서 읽은 뒤에도 시계가 흐르므로 넉넉히 앞(1초 뒤)에서 멈춘다(바로 뒤면 「지난 시각」이 될 수 있다)
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
+  await page.locator("[data-cube-vs-start]").click();
+  const racing = page.locator('[data-cube-race-phase="race"]');
+  const ready = page.locator("[data-cube-stage][data-input-ready]");
+  await fastForwardUntil(
+    page,
+    async () => (await racing.count()) > 0 && (await ready.count()) > 0,
+    { step: 50, timeout: SCRAMBLE_TIMEOUT },
+  );
+  await inputReady(page);
+  return (await page
+    .locator("[data-cube-scramble]")
+    .getAttribute("data-cube-scramble")) as string;
+}
+
 async function finalResult(page: Page) {
   const result = page.locator("[data-cube-result]");
   await fastForwardUntil(
@@ -149,11 +184,9 @@ test(
     );
     await expect(page.locator("[data-cube-vs-goal]")).toHaveCount(0);
     await page.getByLabel("15초 살펴보기").uncheck();
-    await page.locator("[data-cube-vs-start]").click();
-
-    const scramble = await race(page);
+    const scramble = await startPaused(page);
     await stageFits(page, info.project.name);
-    await solve(page, scramble);
+    await solveFirst(page, scramble);
     const result = await finalResult(page);
     // 평균 60초보다 훨씬 빠르니 −로, 평균이 없는 컴퓨터는 첫 판이 기준이라 0%
     await expect(result.locator('[data-cube-ratio="me"]')).toHaveText(
