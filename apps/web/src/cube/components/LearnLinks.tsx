@@ -142,15 +142,18 @@ export function LessonSheet({
   colors,
   flowPick,
   onFlowPick,
+  mirror = false,
 }: {
   name: SheetName;
   colors: readonly number[];
   /** 관계도 시연 쪽에서 고른 마디와 고르기(`withFlowPick`) */
   flowPick?: string | null;
   onFlowPick?: (id: string) => void;
+  /** 비스듬한 큐브 그림에 거울 판을 단다(강 안 큐브 보기, docs/47 16-37). 윗면 평면도는 그대로 */
+  mirror?: boolean;
 }) {
   if (isBeginnerSheet(name))
-    return <BeginnerCasesSheet name={name} colors={colors} />;
+    return <BeginnerCasesSheet name={name} colors={colors} mirror={mirror} />;
   if (name === "tf-flow")
     return (
       <TwistFlowSheet

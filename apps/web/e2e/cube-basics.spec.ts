@@ -123,6 +123,105 @@ test("큐브와 만나기 첫머리: 환영 → 스티커 54개 → 「조각으
   await shot(page, "basics-start-4", info.project.name);
 });
 
+test("크기 탭: 탭마다 그 크기의 조각 강과 그 크기의 분해 모델, 표기 읽기·연습·해법 배우기는 늘 보인다", async ({
+  page,
+}, info) => {
+  await no3d(page);
+  await page.goto("/cube/basics");
+  const tabs = page.locator("[data-basics-sizes] [data-basics-size]");
+  expect(
+    await tabs.evaluateAll((els) =>
+      els.map((b) => b.getAttribute("data-basics-size")),
+    ),
+  ).toEqual(["2", "3", "4", "5"]);
+  // 휴대폰 폭에서도 탭 넷이 한 줄(줄바꿈·잘림 없음)
+  const tops = await tabs.evaluateAll((els) =>
+    els.map((b) => Math.round(b.getBoundingClientRect().top)),
+  );
+  expect(new Set(tops).size).toBe(1);
+  await expect(page.locator('[data-basics-size="3"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // 분해 모델: 3D를 못 그리면 그 크기의 SVG(docs/47 16-36)
+  const model = (n: string) =>
+    expect(
+      page.locator(`[data-basics-model="${n}"] [data-cube-exploded="${n}"]`),
+    ).toBeVisible();
+  await model("3");
+
+  const lessonIds = () =>
+    page
+      .locator("[data-cube-basics] [data-lesson]")
+      .evaluateAll((els) => els.map((a) => a.getAttribute("data-lesson")));
+  const always = async () => {
+    await expect(page.locator("[data-basics-keys]")).toBeVisible();
+    await expect(page.locator("[data-basics-fingers]")).toBeVisible();
+    await expect(page.locator("[data-basics-methods]")).toBeVisible();
+  };
+  for (const [n, ids, titles] of [
+    [
+      "2",
+      ["222-pieces", "222-from333-corners", "333-notation"],
+      ["2×2의 조각", "3×3에서 2×2로", "표기 읽기"],
+    ],
+    ["4", ["444-pieces", "333-notation"], ["4×4의 조각", "표기 읽기"]],
+    ["5", ["555-pieces", "333-notation"], ["5×5의 조각", "표기 읽기"]],
+  ] as const) {
+    await page.locator(`[data-basics-size="${n}"]`).click();
+    await expect(page.locator("main[data-cube-basics]")).toHaveAttribute(
+      "data-cube-basics",
+      n,
+    );
+    await expect(page).toHaveURL(`/cube/basics?n=${n}`);
+    expect(await lessonIds()).toEqual(ids);
+    expect(
+      await page
+        .locator("[data-cube-basics] [data-lesson] span.truncate")
+        .allTextContents(),
+    ).toEqual(titles);
+    await model(n);
+    await expect(page.locator("[data-basics-model]")).toHaveCount(1);
+    await always();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      ),
+    ).toBe(false);
+    await shot(page, `basics-tab-${n}`, info.project.name);
+  }
+  await page.locator('[data-basics-size="3"]').click();
+  expect(await lessonIds()).toEqual([
+    "333-start",
+    "333-piece-moves",
+    "333-notation",
+  ]);
+  await always();
+});
+
+test("크기마다의 기초 강: 돌아가기는 그 크기 탭, 다음 강은 그 해법 강의 첫 강", async ({
+  page,
+}) => {
+  await no3d(page);
+  const back = page.locator("[data-lesson-back]");
+  for (const [lesson, n, next] of [
+    ["222-pieces", "2", "222-intro"],
+    ["222-from333-corners", "2", "222-from333-map"],
+    ["444-pieces", "4", "444-reduction-map"],
+    ["555-pieces", "5", "555-reduction-map"],
+  ] as const) {
+    await page.goto(`/cube/learn?lesson=${lesson}`);
+    await expect(back).toHaveText("큐브의 기초");
+    await expect(back).toHaveAttribute("href", `/cube/basics?n=${n}`);
+    await expect(page.locator("[data-lesson-method]")).toHaveCount(0);
+    await page.locator("[data-step-to]").last().click();
+    await expect(page.locator("[data-lesson-next]")).toHaveAttribute(
+      "href",
+      `/cube/learn?lesson=${next}`,
+    );
+  }
+});
+
 test("기초 단원: 돌아가기는 큐브의 기초, 마지막 단원 다음은 초보자 과정 첫 단원", async ({
   page,
 }) => {
@@ -173,5 +272,31 @@ test(
     // 100px × 0.012 = 1.2라디안 돌고, 손을 떼도 그대로
     await expect.poll(yaw).toBeCloseTo(rest + 1.2, 2);
     await shot(page, "basics-3d", info.project.name);
+  },
+);
+
+test(
+  "큐브의 기초 3D: 크기 탭마다 그 크기의 분해 모델, 멈춘 각과 그리기 횟수",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    // 멈춘 각(core-spin.ts REST_YAW_DEG)과 재질 수(검은 플라스틱 + 쇠 + 스티커 면 색, core-model-sizes.ts)
+    for (const [n, deg, calls] of [
+      ["2", 150, "5"],
+      ["4", 240, "4"],
+      ["5", 240, "8"],
+    ] as const) {
+      await page.goto(`/cube/basics?n=${n}`);
+      const canvas = page.locator(
+        `[data-basics-model="${n}"] [data-core-cube="live"]`,
+      );
+      await expect(canvas).toBeVisible({ timeout: 30_000 });
+      await expect(canvas).toHaveAttribute("data-core-size", n);
+      await expect
+        .poll(async () => Number(await canvas.getAttribute("data-core-yaw")))
+        .toBeCloseTo((deg * Math.PI) / 180, 2);
+      await expect(canvas).toHaveAttribute("data-core-calls", calls);
+      await shot(page, `basics-3d-${n}`, info.project.name);
+    }
   },
 );

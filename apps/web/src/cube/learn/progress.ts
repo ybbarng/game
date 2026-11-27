@@ -98,33 +98,57 @@ export const LESSON_RENAMES: Readonly<Record<string, string>> = {
 /**
  * 쪽을 더하거나 차례를 바꿨지만 id는 그대로 둔 단원(2026-11-26 3×3 처음 맞추기 다시 쓰기, docs/47 16-32). id를 바꾸면
  * 해법 지도·단계 지도·주소가 모두 따라 바뀌어야 해서, 옛 쪽 번호 → 새 쪽 번호 표로 진도를 옮긴다. 같은 활동(종류·상황·
- * 공식이 같은 쪽)만 옮기고, 없어진 쪽의 번호는 버린다. 「끝냄」은 그대로다. 다시 바꾸면 `v`를 올리고 표를 그 판 기준으로 쓴다
+ * 공식이 같은 쪽)만 옮기고, 없어진 쪽의 번호는 버린다. 「끝냄」은 그대로다. 다시 바꾸면 `v`를 올리고, `from`은 바로 앞
+ * 판(`v - 1`, 판이 없는 기록은 1판) 기준 표로 쓰고, 그 앞 판의 표는 `before`에 남긴다(더 옛 기록은 판마다 차례로 옮긴다)
  */
-export const STEP_REMAPS: Readonly<
-  Record<string, { v: number; from: Readonly<Record<number, number>> }>
-> = {
+export interface StepRemap {
+  v: number;
+  /** 바로 앞 판(v - 1)의 쪽 번호 → 이 판의 쪽 번호 */
+  from: Readonly<Record<number, number>>;
+  /** 앞 판으로 옮기는 표(앞 판이 1판이면 없다) */
+  before?: StepRemap;
+}
+
+export const STEP_REMAPS: Readonly<Record<string, StepRemap>> = {
   "333-safe-turns": { v: 2, from: { 0: 0, 1: 1, 2: 2, 3: 4 } },
+  // 3판(2026-11-26 흰 십자를 「올리기 → 옆으로 옮겨 올리기 → 앞면 아래로 데려오기 → 안전한 면」 차례로, docs/47 16-34)
   "333-white-cross": {
-    v: 2,
+    v: 3,
     from: {
       0: 0,
       1: 1,
-      2: 3,
-      3: 4,
-      4: 6,
-      5: 7,
-      6: 9,
-      7: 11,
-      8: 12,
-      9: 13,
-      10: 15,
-      12: 16,
-      13: 17,
-      15: 21,
-      18: 24,
-      19: 25,
-      20: 26,
-      21: 27,
+      2: 2,
+      3: 3,
+      4: 10,
+      6: 4,
+      8: 5,
+      22: 16,
+      23: 18,
+      24: 21,
+      27: 23,
+    },
+    before: {
+      v: 2,
+      from: {
+        0: 0,
+        1: 1,
+        2: 3,
+        3: 4,
+        4: 6,
+        5: 7,
+        6: 9,
+        7: 11,
+        8: 12,
+        9: 13,
+        10: 15,
+        12: 16,
+        13: 17,
+        15: 21,
+        18: 24,
+        19: 25,
+        20: 26,
+        21: 27,
+      },
     },
   },
   "333-first-corners-up": {
@@ -175,7 +199,19 @@ export const STEP_REMAPS: Readonly<
 /** 판이 다른 옛 기록의 쪽 번호를 새 차례로(없어진 쪽은 버린다) */
 function remapSteps(id: string, p: LessonProgress): LessonProgress {
   const remap = STEP_REMAPS[id];
-  if (!remap || p.v === remap.v) return p;
+  return remap ? upgrade(remap, p) : p;
+}
+
+/** 기록을 `remap.v` 판으로(판이 없는 기록은 1판, 더 옛 판이면 `before`로 먼저 앞 판까지 옮긴다) */
+function upgrade(remap: StepRemap, p: LessonProgress): LessonProgress {
+  const at = p.v ?? 1;
+  if (at >= remap.v) return p;
+  const base =
+    remap.before && at < remap.before.v ? upgrade(remap.before, p) : p;
+  return applyRemap(remap, base);
+}
+
+function applyRemap(remap: StepRemap, p: LessonProgress): LessonProgress {
   const to = (i: number) => remap.from[i];
   const moved = (xs: number[] | undefined) =>
     (xs ?? [])

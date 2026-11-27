@@ -23,7 +23,7 @@ import { presentSolve } from "./present";
  *
  * 예전(고치기 전) 초보자 흰 십자는 섞기 300개 가운데 160여 판에서 어긋났다: 앞 엣지의 끝 수(F2)와 다음 엣지의
  * 첫 수(F')가 하나(F)로 합쳐져 앞 엣지를 넣는 수가 다음 엣지 차례 안으로 들어갔고, 엣지 하나를 넣는 수가 다른
- * 흰 엣지를 제자리로 올리기도 했다(`@game/cube-ai` `Solve.lookBarrier`, `cross-front.ts`).
+ * 흰 엣지를 제자리로 올리기도 했다(`@game/cube-ai` `Solve.lookBarrier`, 2026-11-27까지 쓰던 `cross-front.ts`).
  */
 
 function seq(seed: number): () => number {

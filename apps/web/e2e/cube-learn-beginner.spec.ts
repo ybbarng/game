@@ -200,6 +200,42 @@ test("배우기: 코너 방향 먼저(신광사 해법) 일곱 강은 모든 경
   await shot(page, "learn-tf-place-grip", info.project.name);
 });
 
+test("배우기: 흰 십자는 첫머리에 여섯 모양을 훑고, 옆으로 옮겨 올리는 공식을 네 덩어리로 보이고, 끝에 모양마다 할 일을 다시 묶는다", async ({
+  page,
+}, info) => {
+  const body = page.locator("[data-step-body]");
+  await page.goto("/cube/learn?lesson=333-white-cross");
+
+  // 3번(0부터 2): 할 일 없이 모양만
+  await goStep(page, 2);
+  const look = page.locator('[data-sheet="beginner-cross-look"]');
+  await expect(look.locator("[data-sheet-case]")).toHaveCount(6);
+  await expect(look).not.toContainText("F2");
+  await shot(page, "learn-beginner-cross-look", info.project.name);
+
+  // 8번(0부터 7): 흰색이 앞이면 D R F' R'(옮기고 세우고 올리고 되돌린다)
+  await goStep(page, 7);
+  await expect(body).toContainText("옆으로 옮겨서 세운 뒤 올려요");
+  const chunks = page.locator("[data-alg-chunk]");
+  await expect(chunks).toHaveCount(4);
+  for (const [i, m] of ["D", "R", "F'", "R'"].entries())
+    await expect(chunks.nth(i)).toHaveAttribute("data-alg-chunk", m);
+  await shot(page, "learn-beginner-cross-flip", info.project.name);
+
+  // 22번(0부터 21): 정리 그림은 모양마다 할 일
+  await goStep(page, 21);
+  const all = page.locator('[data-sheet="beginner-cross"]');
+  await expect(all.locator("[data-sheet-case]")).toHaveCount(6);
+  await expect(all.locator('[data-sheet-case="down-side"]')).toContainText(
+    "아래-오른쪽으로 데려와",
+  );
+  await expect(all.locator('[data-sheet-case="middle"]').first()).toContainText(
+    "아래 층에 내려요",
+  );
+  await expect(body).not.toContainText("전체를 보며");
+  await shot(page, "learn-beginner-cross-sheet", info.project.name);
+});
+
 test("공식 연습: 초보자 코너 방향 상황은 노란색이 보는 쪽으로 부른다", async ({
   page,
 }, info) => {

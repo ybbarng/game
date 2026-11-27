@@ -252,37 +252,133 @@ describe("마지막 층: 나올 수 있는 모양 모두", () => {
   });
 });
 
+// 흰 엣지 열둘 자리의 스티커 번호(면마다 9칸, U R F D L B 차례)
+const EDGE_SLOTS = [
+  [5, 10],
+  [7, 19],
+  [3, 37],
+  [1, 46],
+  [32, 16],
+  [28, 25],
+  [30, 43],
+  [34, 52],
+  [23, 12],
+  [21, 41],
+  [50, 39],
+  [48, 14],
+];
+/** 흰-초록 엣지 블럭의 자리·방향 열쇠 */
+function greenKey(s: PuzzleState): string {
+  const col = faceColorsKey(s);
+  const k = EDGE_SLOTS.findIndex(
+    ([a, b]) =>
+      (col[a as number] === 0 && col[b as number] === 2) ||
+      (col[a as number] === 2 && col[b as number] === 0),
+  );
+  const flip = col[(EDGE_SLOTS[k] as number[])[0] as number] === 0 ? 0 : 1;
+  return `${k}:${flip}`;
+}
+/** 제자리·바른 방향인 흰 엣지의 짝 색(스티커마다 그 면 센터와 같은 색, 쥔 방향과 상관없다) */
+function placedWhiteEdges(s: PuzzleState): number[] {
+  const col = faceColorsKey(s);
+  const center = (i: number) => col[Math.floor(i / 9) * 9 + 4];
+  const out: number[] = [];
+  for (const [a, b] of EDGE_SLOTS as [number, number][]) {
+    if (col[a] !== center(a) || col[b] !== center(b)) continue;
+    if (col[a] === 0) out.push(col[b] as number);
+    else if (col[b] === 0) out.push(col[a] as number);
+  }
+  return out.sort();
+}
+
+describe("흰 십자: 올리기 둘과 데려오기로 모든 경우를 닫는다(docs/47 16-34)", () => {
+  // 흰-초록 엣지 블럭이 갈 수 있는 24자리(자리 12 × 방향 2). 다른 흰 엣지를 건드리지 않는 수(아랫면, 흰-초록 자리만
+  // 닿는 앞면, 옆면을 같은 수 안에서 되돌리는 꼴)로 아래·가운데 층과 위-앞을 모으고, 위 층 다른 자리는 그 자리 짝의
+  // 엣지와 맞바꿔 만든다
+  const conj = (k: string, x: string) =>
+    k ? `${k} ${x} ${{ y: "y'", "y'": "y", y2: "y2" }[k]}` : x;
+  const SAFE = [
+    "D",
+    "F",
+    "R F R'",
+    ...["", "y", "y2", "y'"].map((k) => conj(k, "R' D R")),
+  ];
+  const safe = collect([solvedCube(3)], SAFE, greenKey, 8);
+  const swapped = safe
+    .flatMap((s) => ["R2", "B2", "L2"].map((x) => play(s, x)))
+    .filter((t) => !safe.some((s) => greenKey(s) === greenKey(t)));
+  const starts = [
+    ...safe,
+    ...new Map(swapped.map((t) => [greenKey(t), t])).values(),
+  ];
+
+  it("24자리를 모두 만든다(아래·가운데 층과 위-앞은 다른 흰 엣지가 모두 제자리)", () => {
+    expect(new Set(starts.map(greenKey)).size).toBe(24);
+    expect(safe.length).toBe(18);
+    for (const s of safe)
+      expect(placedWhiteEdges(s)).toEqual(
+        greenKey(s) === greenKey(solvedCube(3)) ? [1, 2, 4, 5] : [1, 4, 5],
+      );
+  });
+
+  it("어느 자리든 블럭마다 「(가운데 층·위 층이면 내리고) 아래 층에서 올린다」로 끝나고, 쓰는 수는 정해진 넷뿐이다", () => {
+    const ALGS = ["F2", "R F' R'", "R' D' R"];
+    for (const s0 of starts)
+      for (const seedPick of [1, 2, 3]) {
+        const pick = seededPick(seedPick);
+        let s = s0;
+        const byPiece = new Map<string, string[]>();
+        for (let guard = 0; ; guard++) {
+          expect(guard).toBeLessThanOrEqual(12);
+          const st = nextStep("cross", s, pick);
+          if (!st) break;
+          expect(ALGS, st.alg).toContain(st.alg);
+          // 쥐기는 큐브 돌려 쥐기 뒤 아랫면 한 번까지
+          expect(st.hold).toMatch(/^(y['2]?)?( ?D['2]?)?$/);
+          const key = (st.piece ?? []).join("");
+          byPiece.set(key, [...(byPiece.get(key) ?? []), st.caseId]);
+          s = play(s, stepMoves(st));
+        }
+        expect(goalMet(3, s, "white-cross")).toBe(true);
+        for (const [piece, ids] of byPiece)
+          expect(ids.join(" "), `${greenKey(s0)} ${piece}`).toMatch(
+            /^((top|middle) )?(down|down-side)$/,
+          );
+      }
+  });
+
+  it("한 걸음을 치는 동안 이미 올린 흰 엣지는 하나도 빠지지 않는다(아랫면만 마음껏, 옆면은 되돌린다)", () => {
+    for (const s0 of starts)
+      for (const seedPick of [1, 2, 3]) {
+        const pick = seededPick(seedPick);
+        let s = s0;
+        for (;;) {
+          const st = nextStep("cross", s, pick);
+          if (!st) break;
+          const before = placedWhiteEdges(s);
+          s = play(s, stepMoves(st));
+          const after = placedWhiteEdges(s);
+          for (const c of before)
+            expect(after, `${greenKey(s0)} ${stepMoves(st)}`).toContain(c);
+        }
+      }
+  });
+
+  it("아래-앞에서 흰색이 앞이면 옆으로 옮겨(D) 세우고(R) 올리고(F') 되돌린다(R')", () => {
+    const s = play(solvedCube(3), "R F R' D'");
+    const r = runStage("cross", s);
+    expect(r.steps.map(stepMoves)).toEqual(["D R F' R'"]);
+    expect(r.steps[0]?.caseId).toBe("down-side");
+  });
+});
+
 describe("첫 두 층: 조각 하나의 모든 자리", () => {
   it("흰 십자: 흰-초록 엣지가 갈 수 있는 24자리(제자리 포함)마다, 어느 차례로 해도 끝난다", () => {
-    // 흰-초록 엣지만 흩고 나머지 흰 엣지는 제자리(아래층·가운데 층 수만 써서 모은다)
+    // 옆면 한 수씩으로 흩는다(다른 흰 엣지도 함께 흩어진다)
     const starts = collect(
       [solvedCube(3)],
       ["F", "D", "y F y'", "y' F y", "y2 F y2"],
-      (s) => {
-        const col = faceColorsKey(s);
-        // 흰-초록 자리·방향 열쇠
-        const edges = [
-          [5, 10],
-          [7, 19],
-          [3, 37],
-          [1, 46],
-          [32, 16],
-          [28, 25],
-          [30, 43],
-          [34, 52],
-          [23, 12],
-          [21, 41],
-          [50, 39],
-          [48, 14],
-        ];
-        const k = edges.findIndex(
-          ([a, b]) =>
-            (col[a as number] === 0 && col[b as number] === 2) ||
-            (col[a as number] === 2 && col[b as number] === 0),
-        );
-        const flip = col[(edges[k] as number[])[0] as number] === 0 ? 0 : 1;
-        return `${k}:${flip}`;
-      },
+      greenKey,
       9,
     );
     expect(starts.length).toBe(24);

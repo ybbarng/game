@@ -17,6 +17,22 @@ const MAX_STEP = 100;
  */
 export const REST_YAW = (240 * Math.PI) / 180;
 
+/**
+ * 크기별 처음·멈춘 각도(도). 3×3은 위 REST_YAW. 다른 크기는 0~300°를 60°마다 찍어 골랐다(docs/47 16-36): 2×2는
+ * 150°에서 코너 블럭의 오목한 안쪽·받침과 숨은 엣지 블럭, 센터 블럭 여섯이 함께 보이고, 4×4·5×5는 240°에서 센터
+ * 블럭 기둥·발과 날개 발, 코너 블럭 목이 옆으로 보인다
+ */
+export const REST_YAW_DEG: Record<number, number> = {
+  2: 150,
+  3: 240,
+  4: 240,
+  5: 240,
+};
+
+/** 크기 `n`의 처음·멈춘 각도(라디안) */
+export const restYawFor = (n: number): number =>
+  ((REST_YAW_DEG[n] ?? 240) * Math.PI) / 180;
+
 export interface SpinState {
   yaw: number;
   /** 마지막으로 손을 뗀 때(ms). 이때부터 RESUME_AFTER 동안은 그 각도에 머문다 */

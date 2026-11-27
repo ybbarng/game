@@ -63,7 +63,7 @@ describe("taughtStagePlan", () => {
     expect(taughtStagePlan("cross", at("R2")).segments[0]?.info).toEqual({
       kind: "cross",
       colors: ["U", "R"],
-      case: "down-white-down",
+      case: "down",
     });
     // 흰 면이 아래면 먼저 흰 면을 위로
     const held = taughtStagePlan("cross", at("x2 R2"));

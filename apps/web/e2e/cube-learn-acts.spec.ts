@@ -480,7 +480,8 @@ test("강 화면: 이동 경로에 해법 카드와 같은 해법 이름과 강�
       "3×3 처음 맞추기 강의",
     ],
     [
-      "222-from333-corners",
+      // 첫 강 「3×3에서 2×2로」는 큐브의 기초로 옮겼다(docs/47 16-35)
+      "222-from333-first-layer-up",
       "2×2 3×3을 아는 사람 해법",
       "/cube/methods?method=222-from333",
       "3×3을 아는 사람의 2×2 강의",
@@ -580,4 +581,41 @@ test("강은 아무 곳이나 자유롭게: 처음 온 기기에서 마지막 �
   // 마지막 쪽에서 「강 끝내기」가 눌리고 다음 강의 추천은 막지 않는다
   await page.locator("[data-lesson-done]").click();
   await expect(page.locator("[data-lesson-done]")).toHaveText("끝낸 강 ✓");
+});
+
+test("강 안 작은 그림(경우 표·단계 띠)은 큐브 하나 + 거울 판이고, 해 보기 「거울」 스위치를 끄면 그림 둘로 돌아간다", async ({
+  page,
+}) => {
+  // 흰 엣지 블럭 여섯 모양: 비스듬한 큐브에 거울 판. 「아래 층, 흰색이 아래」의 흰 칸은 아래 판에 보인다
+  await page.goto("/cube/learn?lesson=333-white-cross");
+  const sheet = page.locator('[data-sheet="beginner-cross-look"]');
+  await goStep(page, 2);
+  await expect(sheet.locator("[data-cube-poster-mirror]")).toHaveCount(6);
+  await expect(
+    sheet.locator(
+      '[data-sheet-case="down"] [data-mirror-face="-y"][data-poster-mirror="0"]',
+    ),
+  ).toHaveCount(1);
+  // 단계 띠: 칸마다 큐브 하나(뒤쪽 그림 없이)
+  await page.goto("/cube/learn?lesson=333-beginner-map");
+  await goToStep(page, "quiz");
+  const strip = page.locator("[data-stage-strip]");
+  await expect(strip.locator('[data-cube-posters="mirror"]')).toHaveCount(7);
+  await expect(strip.locator("[data-cube-poster]")).toHaveCount(7);
+
+  // 해 보기 큐브 곁 「거울」 스위치를 끈 저장값(`backViewShown`)이면 강의 그림도 거울을 떼고 그림 둘로.
+  // 이 시험은 3D를 꺼서 스위치가 보이지 않으니 저장값을 바로 쓴다(스위치는 cube-solo가 본다)
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "cube.settings.v1",
+      JSON.stringify({ version: 1, backViewShown: false }),
+    ),
+  );
+  await page.goto("/cube/learn?lesson=333-white-cross");
+  await goStep(page, 2);
+  await expect(sheet.locator("[data-cube-poster]")).toHaveCount(6);
+  await expect(sheet.locator("[data-cube-poster-mirror]")).toHaveCount(0);
+  await page.goto("/cube/learn?lesson=333-beginner-map");
+  await goToStep(page, "quiz");
+  await expect(strip.locator("[data-cube-poster]")).toHaveCount(14);
 });
