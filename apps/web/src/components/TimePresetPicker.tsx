@@ -21,7 +21,7 @@ export function timePresetHelp(preset: TimePreset): string {
   const { base, byoyomi, periods } = TIME_PRESETS[preset];
   const min = base / 60_000;
   const sec = byoyomi / 1000;
-  return `한 사람에게 기본 ${min}분을 줘요. 기본 시간을 다 쓰면 차례마다 ${sec}초 안에 끝내야 하고, 이것을 초읽기라 해요. ${sec}초를 넘길 때마다 초읽기 ${periods}번 가운데 한 번이 줄고, ${periods}번을 다 쓰면 시간이 다 되어 져요(시간패).`;
+  return `한 사람에게 기본 ${min}분을 줘요. 기본 시간을 다 쓰면 차례마다 ${sec}초 안에 끝내야 하고, 이것을 초읽기라 해요. ${sec}초를 넘길 때마다 초읽기 ${periods}번 가운데 한 번이 줄고, ${periods}번을 다 쓰면 시간이 다 돼서 져요(시간패).`;
 }
 
 /**
