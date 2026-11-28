@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { courseMethod } from "./course-method";
+import { courseLabel, courseMethod } from "./course-method";
 import { BASICS, courseById, METHOD_COURSES } from "./courses";
 import { MAP_METHODS } from "./solve-map";
 
@@ -67,6 +67,34 @@ describe("강 화면 이동 경로의 해법 이름(docs/47 16-31)", () => {
     expect(overview?.steps[0]?.body).toContain(
       "제시카 프리드리히가 1997년 인터넷에 정리해 올리면서 널리 퍼져, 그 이름을 따 프리드리히 해법이라고도 해요.",
     );
+  });
+
+  it("강의 이름은 해법 이름과 같다(3×3이 아니면 크기를 앞에, 사용자 결정을 기다리는 다섯만 따로)", () => {
+    // 해법마다 강의가 하나라 강의 이름(이어서 하기·강의 목록·다음에 할 것·첫 화면 「다음 해법」)이 해법 이름과 다르면
+    // 같은 것을 두 이름으로 부른다(2026-11-28 사용자 「문제를 찾았으면 고쳐야지」, docs/47 16-38). 아래 다섯은 강의
+    // 이름이 입문자에게 더 쉬워, 해법 이름을 강의 이름에 맞출지 사용자가 정한다(그때까지 지금 이름을 확인한다)
+    const PENDING: Record<string, string> = {
+      "333-beginner": "3×3 처음 맞추기",
+      "333-twist-first": "코너 방향 먼저 맞추기",
+      "333-2look": "마지막 층을 공식으로",
+      "222-from333": "3×3을 아는 사람의 2×2",
+      "bld-op": "블라인드(올드 포흐만)",
+    };
+    const got = METHOD_COURSES.map((c) => [
+      c.id,
+      c.title,
+      PENDING[c.id] ?? courseMethod(c)?.name,
+    ]);
+    expect(got.filter(([, title, want]) => title !== want)).toEqual([]);
+  });
+
+  it("강의를 부르는 이름(이어서 하기·강의 끝 글·다음 강의 링크)은 해법 공식 이름, 기초는 강의 이름", () => {
+    expect(courseLabel(course("cfop"))).toBe("CFOP 해법");
+    expect(courseLabel(course("333-twist-first"))).toBe(
+      "초보자(코너 방향 먼저) 해법",
+    );
+    expect(courseLabel(course("444-yau"))).toBe("4×4 야우 해법");
+    expect(courseLabel(BASICS)).toBe("큐브의 기초");
   });
 
   it("큐브의 기초는 해법이 아니라 해법 이름이 없다", () => {

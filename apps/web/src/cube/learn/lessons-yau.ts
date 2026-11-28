@@ -811,7 +811,7 @@ const finish: Lesson = {
 export const YAU_444: Course = {
   id: "444-yau",
   size: 4,
-  title: "4×4 야우(Yau)",
+  title: "4×4 야우",
   summary: "흰·노랑 센터 → 흰 십자 셋 → 옆 센터 → 엣지 묶기 → 3×3처럼.",
   lessons: [udCenters, cross3, sideCenters, edges, finish],
 };

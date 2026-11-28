@@ -290,7 +290,7 @@ const lse: Lesson = {
 export const ROUX: Course = {
   id: "roux",
   size: 3,
-  title: "루(Roux)",
+  title: "루",
   summary: "왼쪽 블록 → 오른쪽 블록 → 위 층 코너(CMLL) → 남은 엣지 여섯(LSE).",
   lessons: [intro, firstBlock, secondBlock, cmll, lse],
 };

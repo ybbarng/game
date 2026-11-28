@@ -51,7 +51,7 @@ export const CROSS_TOP_SIDE = "U' R' F R";
 const overview: Lesson = {
   id: "cfop-overview",
   size: 3,
-  title: "프리드리히(CFOP) 한눈에",
+  title: "CFOP 한눈에",
   summary: "Cross·F2L·OLL·PLL 네 단계. 대회 선수 대부분이 쓰는 방법이에요.",
   steps: [
     {
@@ -385,7 +385,7 @@ const fullSets: Lesson = {
 export const CFOP_INTRO: Course = {
   id: "cfop",
   size: 3,
-  title: "프리드리히(CFOP)",
+  title: "CFOP",
   summary:
     "아래 십자 → F2L 짝 → 전체 OLL·PLL. 마지막 층은 2단계 OLL·PLL로 시작해요.",
   lessons: [overview, cross, f2lPair, fullSets],

@@ -646,7 +646,7 @@ const petrus: Lesson = {
 export const PETRUS: Course = {
   id: "petrus",
   size: 3,
-  title: "페트루스(소개)",
+  title: "페트루스",
   summary: "작은 블록을 키우고, 엣지 방향을 고친 뒤 R·U만으로 F2L.",
   lessons: [petrus],
 };

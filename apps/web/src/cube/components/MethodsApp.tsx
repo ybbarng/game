@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { setCurrentSize, sizeFor, useCurrentSize } from "../current-size";
+import { courseLabel } from "../learn/course-method";
 import {
   courseById,
   courseSizes,
@@ -191,7 +192,7 @@ function MethodsHome({
           href={lessonHref(last.lesson.id)}
           className="self-start rounded-xl bg-sky-500 px-4 py-2 font-semibold text-black text-sm"
         >
-          이어서 하기: {last.course.title} · {last.lesson.title}
+          이어서 하기: {courseLabel(last.course)} · {last.lesson.title}
         </a>
       )}
       {/* 배우기 전에 볼 것(처음 온 사람의 길이 여기서도 이어지게, 2026-11-05 점검) */}

@@ -3,6 +3,7 @@
 import { ALG_SETS } from "../learn/alg-sets";
 import { isBeginnerSheet } from "../learn/beginner-cases";
 import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "../learn/bld";
+import { courseLabel } from "../learn/course-method";
 import { nextCourses } from "../learn/courses";
 import type { AlgSet, Course, SheetName } from "../learn/types";
 import { BeginnerCasesSheet, TwistFlowSheet } from "./BeginnerCasesSheet";
@@ -37,8 +38,8 @@ export function CourseNext({ course }: { course: Course }) {
     >
       <h2 className="font-bold">다음에 할 것</h2>
       <p className="break-keep text-sm text-white/70">
-        「{course.title}」 강의를 다 봤어요. 손에 익을 때까지 여러 번 맞춰 보고,
-        다음 것으로 넓혀 보세요.
+        「{courseLabel(course)}」 강의를 다 봤어요. 손에 익을 때까지 여러 번
+        맞춰 보고, 다음 것으로 넓혀 보세요.
       </p>
       {next.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -63,7 +64,7 @@ export function CourseNext({ course }: { course: Course }) {
                       추천
                     </span>
                   )}
-                  {c.title} →
+                  {courseLabel(c)} →
                 </a>
               );
             })}
