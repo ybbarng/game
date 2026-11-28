@@ -314,7 +314,7 @@ export const BIG_666_777: Course = {
   id: "big-666-777",
   size: 6,
   sizes: [6, 7],
-  title: "6×6·7×7로 넓히기",
+  title: "6×6·7×7 축소법",
   summary:
     "4×4·5×5 축소법에서 6×6·7×7로 넓힐 때 새로 부딪히는 셋(큰 센터, 더 많은 날개, 여러 곳의 패리티)만 배워요.",
   lessons: [centers, edges, parity6],
