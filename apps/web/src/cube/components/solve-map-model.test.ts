@@ -6,9 +6,11 @@ import {
   clampView,
   edgeFormulaLabel,
   isExtra,
+  type MapWheel,
   methodById,
   parseSelected,
   visibleMethods,
+  wheelView,
 } from "./solve-map-model";
 
 describe("고른 해법", () => {
@@ -52,6 +54,71 @@ describe("줌·패닝 범위", () => {
       y: -40,
       k: 0.5,
     });
+  });
+});
+
+describe("휠·트랙패드(Figma 방식)", () => {
+  const v = { x: -100, y: -200, k: 1 };
+  const p = { x: 400, y: 300 };
+  const wheel = (o: Partial<MapWheel>): MapWheel => ({
+    deltaX: 0,
+    deltaY: 0,
+    deltaMode: 0,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    ...o,
+  });
+
+  it("두 손가락 밀기·마우스 휠은 밀린 만큼 옮기고 배율은 그대로", () => {
+    expect(wheelView(v, wheel({ deltaX: 30, deltaY: 50 }), p, 600)).toEqual({
+      x: -130,
+      y: -250,
+      k: 1,
+    });
+  });
+
+  it("줄 단위 휠은 한 줄 16px, 쪽 단위 휠은 한 쪽 = 틀 높이로 옮긴다", () => {
+    expect([
+      wheelView(v, wheel({ deltaY: 3, deltaMode: 1 }), p, 600),
+      wheelView(v, wheel({ deltaY: 1, deltaMode: 2 }), p, 600),
+    ]).toEqual([
+      { x: -100, y: -248, k: 1 },
+      { x: -100, y: -800, k: 1 },
+    ]);
+  });
+
+  it("Shift + 세로 휠은 가로로 옮기고, 브라우저가 이미 가로로 준 것은 그대로 쓴다", () => {
+    expect([
+      wheelView(v, wheel({ deltaY: 40, shiftKey: true }), p, 600),
+      wheelView(v, wheel({ deltaX: 40, shiftKey: true }), p, 600),
+    ]).toEqual([
+      { x: -140, y: -200, k: 1 },
+      { x: -140, y: -200, k: 1 },
+    ]);
+  });
+
+  it("Ctrl 휠(오므리기)은 가리킨 자리를 그대로 두고 키운다(deltaY −10 → e^0.1배)", () => {
+    const z = wheelView(v, wheel({ deltaY: -10, ctrlKey: true }), p, 600);
+    const k = Math.exp(0.1);
+    expect(z.k).toBeCloseTo(k, 10);
+    // 가리킨 자리의 지도 좌표가 줌 앞뒤로 같다
+    expect((p.x - z.x) / z.k).toBeCloseTo((p.x - v.x) / v.k, 10);
+    expect((p.y - z.y) / z.k).toBeCloseTo((p.y - v.y) / v.k, 10);
+  });
+
+  it("⌘ + 휠도 줌, 마우스 휠 한 칸(deltaY 100)은 한 번에 e^0.5배까지만 줄인다", () => {
+    const z = wheelView(v, wheel({ deltaY: 100, metaKey: true }), p, 600);
+    expect(z.k).toBeCloseTo(Math.exp(-0.5), 10);
+  });
+
+  it("배율은 0.12~2.5 안에 묶인다", () => {
+    expect([
+      wheelView({ ...v, k: 2.4 }, wheel({ deltaY: -50, ctrlKey: true }), p, 600)
+        .k,
+      wheelView({ ...v, k: 0.13 }, wheel({ deltaY: 50, ctrlKey: true }), p, 600)
+        .k,
+    ]).toEqual([2.5, 0.12]);
   });
 });
 

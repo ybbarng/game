@@ -383,6 +383,67 @@ test("전체 보기: 처음 모습은 칸 이름이 11px 이상으로 읽히고 
     .toBeGreaterThanOrEqual(11);
 });
 
+/** 지도 보기의 옮긴 자리와 배율(`translate(x, y) scale(k)`) */
+async function mapView(page: Page) {
+  return page.locator("[data-map-content]").evaluate((el) => {
+    const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(
+      (el as HTMLElement).style.transform,
+    );
+    return m ? { x: Number(m[1]), y: Number(m[2]), k: Number(m[3]) } : null;
+  });
+}
+
+test("전체 보기: 휠·두 손가락 밀기는 지도를 옮기고(Shift는 가로), Ctrl + 휠·오므리기만 확대·축소한다(Figma 방식)", {
+  tag: ONLY_DESKTOP,
+}, async ({ page }) => {
+  // 3×3 다른 해법을 펼쳐 지도가 틀보다 가로·세로로 넓게
+  await page.goto("/cube/methods?view=map&sel=beginner&more=1");
+  const frame = page.locator("[data-map-frame]");
+  await expect(frame).toBeVisible();
+  await expect.poll(() => mapView(page)).not.toBeNull();
+  // 두 번 키워 지도가 틀보다 넉넉히 넓게(지도 끝에 막히지 않고 옮겨지게)
+  const content = page.locator("[data-map-content]");
+  for (const zoom of ["1.25", "1.56"]) {
+    await page.getByRole("button", { name: "크게" }).click();
+    await expect(content).toHaveAttribute("data-map-zoom", zoom);
+  }
+  const box = await frame.boundingBox();
+  if (!box) throw new Error("지도 틀 없음");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const start = await mapView(page);
+  if (!start) throw new Error("지도 보기 없음");
+
+  // 그냥 휠(아래로 120): 지도가 위로 120 옮겨지고 배율은 그대로, 페이지는 스크롤되지 않는다
+  await page.mouse.wheel(0, 120);
+  await expect
+    .poll(() => mapView(page))
+    .toEqual({ x: start.x, y: start.y - 120, k: start.k });
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+  // 가로 휠(두 손가락 옆으로 밀기)
+  await page.mouse.wheel(80, 0);
+  await expect
+    .poll(() => mapView(page))
+    .toEqual({ x: start.x - 80, y: start.y - 120, k: start.k });
+
+  // Shift + 세로 휠은 가로로
+  await page.keyboard.down("Shift");
+  await page.mouse.wheel(0, 40);
+  await page.keyboard.up("Shift");
+  await expect
+    .poll(() => mapView(page))
+    .toEqual({ x: start.x - 120, y: start.y - 120, k: start.k });
+
+  // Ctrl + 휠(트랙패드 오므리기와 같은 사건): 배율이 바뀐다. 위로 굴리면 커진다
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -20);
+  await page.keyboard.up("Control");
+  await expect
+    .poll(async () => (await mapView(page))?.k)
+    .toBeGreaterThan(start.k);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 /** 견본 기록: 초보자 흰 십자 강 둘(안전한 회전·흰 십자)의 진도 */
 const CROSS_SCENES = {
   없음: null,

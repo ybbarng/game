@@ -209,8 +209,61 @@ export interface FrameView {
   k: number;
 }
 
+const MIN_K = 0.12;
+const MAX_K = 2.5;
+/** 지도 배율의 범위 */
+export const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
+
+/** 휠 사건에서 지도가 쓰는 값(`WheelEvent`의 일부) */
+export interface MapWheel {
+  deltaX: number;
+  deltaY: number;
+  /** 0 화소, 1 줄, 2 쪽(`WheelEvent.DOM_DELTA_*`) */
+  deltaMode: number;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}
+
+/** 줄 단위 휠 한 칸의 화소(Firefox 마우스 휠은 줄 단위로 온다) */
+const LINE_PX = 16;
+/** 확대·축소 한 번에 바뀌는 배율의 지수 상한(Ctrl + 마우스 휠 한 칸이 deltaY 100쯤이라 한 번에 튀지 않게) */
+const MAX_ZOOM_STEP = 0.5;
+
 /**
- * 보기를 지도 범위 안으로: 지도가 틀보다 넓으면 지도 끝이 틀 끝을 넘어 들어오지 않게(지도 밖 빈칸이 보이지 않게),
+ * 휠·트랙패드 한 번으로 바뀐 보기(Figma 방식, 2026-11-29 사용자). `p`는 틀 안에서 가리킨 자리, `pageH`는 쪽 단위 휠의
+ * 한 쪽 높이(틀 높이).
+ * - Ctrl(트랙패드 오므리기는 브라우저가 Ctrl 휠로 준다, 맥·윈도 모두)·⌘ + 휠: 가리킨 자리를 두고 확대·축소
+ * - 그 밖(두 손가락 밀기·마우스 휠): 밀린 만큼 옮기기, Shift + 휠은 가로로
+ */
+export function wheelView(
+  v: FrameView,
+  ev: MapWheel,
+  p: { x: number; y: number },
+  pageH: number,
+): FrameView {
+  const unit = ev.deltaMode === 1 ? LINE_PX : ev.deltaMode === 2 ? pageH : 1;
+  let dx = ev.deltaX * unit;
+  let dy = ev.deltaY * unit;
+  if (ev.ctrlKey || ev.metaKey) {
+    const step = Math.max(-MAX_ZOOM_STEP, Math.min(MAX_ZOOM_STEP, -dy * 0.01));
+    const k = clampK(v.k * Math.exp(step));
+    return {
+      k,
+      x: p.x - ((p.x - v.x) / v.k) * k,
+      y: p.y - ((p.y - v.y) / v.k) * k,
+    };
+  }
+  // Shift + 마우스 휠: 브라우저가 이미 가로(deltaX)로 바꿔 주지 않았으면 세로 밀기를 가로로
+  if (ev.shiftKey && dx === 0) {
+    dx = dy;
+    dy = 0;
+  }
+  return { k: v.k, x: v.x - dx, y: v.y - dy };
+}
+
+/**
+ * 보기를 지도 범위 안으로:지도가 틀보다 넓으면 지도 끝이 틀 끝을 넘어 들어오지 않게(지도 밖 빈칸이 보이지 않게),
  * 좁으면 가운데에 둔다(전체 보기). `w`·`h`는 틀 크기, `width`·`height`는 지도 크기(배율 1)
  */
 export function clampView(
