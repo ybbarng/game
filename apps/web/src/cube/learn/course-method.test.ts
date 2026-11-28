@@ -29,10 +29,10 @@ describe("강 화면 이동 경로의 해법 이름(docs/47 16-31)", () => {
 
   it("3×3은 해법 이름만, 다른 크기는 크기를 앞에 붙인다", () => {
     expect(courseMethod(course("333-beginner"))?.label).toBe("초보자 해법");
-    // 둘째 이름이 있는 해법은 함께 적고 「해법」을 두 번 쓰지 않는다(2026-11-27·11-28 사용자)
-    expect(courseMethod(course("cfop"))?.label).toBe("CFOP · 프리드리히 해법");
+    // 해법을 이름으로 부르는 곳은 공식 이름만, 별칭은 넣지 않는다(2026-11-28 사용자)
+    expect(courseMethod(course("cfop"))?.label).toBe("CFOP 해법");
     expect(courseMethod(course("333-twist-first"))?.label).toBe(
-      "초보자(코너 방향 먼저) · 신광사 해법",
+      "초보자(코너 방향 먼저) 해법",
     );
     expect(courseMethod(course("222-beginner"))?.label).toBe(
       "2×2 처음 맞추기 해법",
@@ -41,6 +41,20 @@ describe("강 화면 이동 경로의 해법 이름(docs/47 16-31)", () => {
     expect(courseMethod(course("big-666-777"))?.label).toBe(
       "6×6·7×7 축소법 해법",
     );
+  });
+
+  it("별칭(둘째 이름)은 해법을 부르는 이름에 들지 않는다: 해법 카드와 해법 화면 머리에만(docs/47 16-38)", () => {
+    const named = MAP_METHODS.filter((m) => m.alias && m.course);
+    expect(named.map((m) => m.alias)).toEqual([
+      "신광사 해법",
+      "프리드리히 해법",
+    ]);
+    for (const m of named) {
+      const word = (m.alias as string).replace(/ 해법$/, "");
+      expect(courseMethod(course(m.course as string))?.label).not.toContain(
+        word,
+      );
+    }
   });
 
   it("CFOP 한눈에 첫 쪽은 둘째 이름 「프리드리히 해법」과 그 유래를 밝힌다(docs/47 16-38)", () => {

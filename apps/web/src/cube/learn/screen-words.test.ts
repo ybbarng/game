@@ -88,6 +88,25 @@ describe("큐브 배우기 화면 글의 구조 낱말과 첫머리 틀(standing
     expect(found).toEqual([]);
   });
 
+  it("해법 별칭(「신광사 해법」·「프리드리히 해법」)은 해법 자료의 둘째 이름 칸과 그 이름의 유래를 밝히는 강 글에만 있다", () => {
+    // 해법을 이름으로 부르는 곳(이동 경로·다음 해법·이어서 하기 등)은 공식 이름 「○○ 해법」만 쓰고, 별칭은 해법 카드와
+    // 해법 화면 머리(`MapMethod.alias`를 그리는 `MethodAlias`)에만 보인다(2026-11-28 사용자, docs/47 16-38).
+    // CFOP 한눈에 첫 쪽은 이름의 유래를 밝히는 글이라 둔다
+    const ALLOWED = [
+      "./lessons-cfop.ts: 프리드리히 해법",
+      "./solve-map.ts: 신광사 해법",
+      "./solve-map.ts: 프리드리히 해법",
+    ];
+    const found = Object.entries(CUBE_SOURCES).flatMap(([file, src]) =>
+      sourceTexts(src).flatMap((t) =>
+        ["신광사 해법", "프리드리히 해법"]
+          .filter((alias) => t.text.includes(alias))
+          .map((alias) => `${file}: ${alias}`),
+      ),
+    );
+    expect([...new Set(found)].sort()).toEqual(ALLOWED);
+  });
+
   it("「이번 강에서는」·「이 강의에서는」 같은 가리킴 틀과 「화면의 큐브는 …상태예요」로 열지 않는다", () => {
     expect(FRAMES.flatMap(hits)).toEqual([]);
   });

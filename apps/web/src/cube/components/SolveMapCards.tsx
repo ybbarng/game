@@ -258,10 +258,11 @@ export function MethodScreen({
         >
           ← 해법 목록
         </button>
-        {/* 둘째 이름은 이름 옆에 작게, 휴대폰 320에서도 한 줄(2026-11-28 사용자 「두 줄이라 어색」, docs/47 16-38) */}
-        <h2 className="flex flex-none flex-wrap items-baseline gap-x-2 break-keep font-semibold text-xl">
+        {/* 둘째 이름은 이름 옆에 작게, 휴대폰 320에서도 한 줄(2026-11-28 사용자 「두 줄이라 어색」, docs/47 16-38).
+            글꼴이 다른 기기에서도 한 줄이게 휴대폰 폭에서는 한 단계 작게 써 폭을 넉넉히 남긴다 */}
+        <h2 className="flex flex-none flex-wrap items-baseline gap-x-2 break-keep font-semibold text-lg sm:text-xl">
           <span style={{ color: METHOD_COLOR[m.id] }}>{m.title}</span>
-          <MethodAlias m={m} className="text-sm" />
+          <MethodAlias m={m} className="text-xs sm:text-sm" />
         </h2>
         <Totals m={m} />
       </div>

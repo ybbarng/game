@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { ONLY_DESKTOP } from "./projects";
 import { expect, test } from "./test";
-import { renderedLines } from "./word-wrap";
+import { lineSlack, renderedLines } from "./word-wrap";
 
 /**
  * 해법 배우기(/cube/methods)의 해법 카드와 지도(docs/47 16-30). 첫 모습은 해법 카드 세로, 「전체 보기」는 지도,
@@ -164,6 +164,14 @@ test("해법 화면 머리: 이름과 둘째 이름은 휴대폰 320·390에서�
       ]);
       const box = await head.boundingBox();
       expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+      // 글꼴이 다른 CI에서도 한 줄이게 머리 줄 폭의 15% 넘게 남긴다(2026-11-28 이동 경로가 맥에서만 한 줄이었다)
+      expect(
+        await lineSlack(
+          head,
+          page.locator("[data-method-screen] > div").first(),
+        ),
+        `${width} ${id} 남는 폭`,
+      ).toBeGreaterThan(0.15);
     }
 });
 

@@ -240,10 +240,10 @@ test("기초 단원: 돌아가기는 큐브의 기초, 마지막 단원 다음�
     "/cube/learn?lesson=333-beginner-map",
   );
 
-  // 해법 강의 돌아가기는 해법 배우기의 그 강의
+  // 해법 강의 돌아가기는 해법 칸(해법 이름, 해법 화면으로, docs/47 16-38)
   await page.goto("/cube/learn?lesson=333-safe-turns");
-  await expect(back).toHaveText("3×3 처음 맞추기 강의");
-  await expect(back).toHaveAttribute("href", "/cube/methods?m=333-beginner");
+  await expect(back).toHaveText("초보자 해법");
+  await expect(back).toHaveAttribute("href", "/cube/methods?method=beginner");
 });
 
 test(
