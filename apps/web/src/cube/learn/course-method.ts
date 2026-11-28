@@ -21,6 +21,8 @@ export interface CourseMethod {
    * 해법」). 둘째 이름(별칭)은 넣지 않는다: 별칭은 해법 카드와 해법 화면 머리에만(2026-11-28 사용자, docs/47 16-38)
    */
   label: string;
+  /** 크기를 앞에 붙인 해법 이름(「CFOP」, 「4×4 야우」). 강의 이름(`Course.title`)은 이것과 같게 둔다 */
+  name: string;
 }
 
 const sizeText = (course: Course) =>
@@ -38,6 +40,7 @@ export function courseMethod(course: Course): CourseMethod | undefined {
   return {
     title,
     ...(card ? { id: card.id } : {}),
+    name: `${size}${title}`,
     label: `${size}${title} 해법`,
   };
 }

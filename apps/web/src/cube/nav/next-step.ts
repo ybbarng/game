@@ -1,6 +1,7 @@
 // 첫 화면 맨 위 「다음에 할 것」(docs/47 16-5). 이미 있는 진도·기록만 읽고 저장 형식을 새로 만들지 않는다.
 // 권하는 차례: 사이트 쓰는 법 → 처음 맞추기(큐브의 기초 단원 → 3×3 초보자 단원) → 초보자 해법 연습 → (처음 완성 뒤) 혼자 맞추기 기록 재기 → 다음 해법.
 
+import { courseMethod } from "../learn/course-method";
 import type { LearnProgress } from "../learn/progress";
 import type { Course, Lesson } from "../learn/types";
 
@@ -115,7 +116,8 @@ export function nextStep(input: NextInput, courses: Course[]): NextStep {
       return {
         kind: "method",
         icon: "🎓",
-        title: `다음 해법: ${course.title}`,
+        // 해법을 말하는 곳이라 해법 카드 이름(강의 이름이 아니라, docs/47 16-38)
+        title: `다음 해법: ${courseMethod(course)?.name ?? course.title}`,
         href: lessonHref(undone.id),
       };
   }

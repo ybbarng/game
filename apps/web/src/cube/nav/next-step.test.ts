@@ -111,7 +111,8 @@ describe("다음에 할 것", () => {
       ),
     ).toMatchObject({
       kind: "method",
-      title: `다음 해법: ${bridge.title}`,
+      // 해법 카드 이름(강의 이름 「마지막 층을 공식으로」가 아니라)
+      title: "다음 해법: 2단계 OLL·PLL",
       href: `/cube/learn?lesson=${bridge.lessons[0]?.id}`,
     });
   });
@@ -130,7 +131,7 @@ describe("다음에 할 것", () => {
       ),
     ).toMatchObject({
       kind: "method",
-      title: `다음 해법: ${cfop.title}`,
+      title: "다음 해법: CFOP",
       href: `/cube/learn?lesson=${cfop.lessons[0]?.id}`,
     });
   });

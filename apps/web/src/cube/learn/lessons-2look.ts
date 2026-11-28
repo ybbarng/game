@@ -271,6 +271,6 @@ export const TWO_LOOK_LL: Course = {
   size: 3,
   title: "마지막 층을 공식으로",
   summary:
-    "초보자 해법으로 아래 두 층을 맞춘 뒤, 마지막 층을 2단계 OLL·PLL 공식 16개로 끝내요. 프리드리히(CFOP)로 가는 다리예요.",
+    "초보자 해법으로 아래 두 층을 맞춘 뒤, 마지막 층을 2단계 OLL·PLL 공식 16개로 끝내요. CFOP로 가는 다리예요.",
   lessons: [intro, twoLookOll, twoLookPll],
 };
