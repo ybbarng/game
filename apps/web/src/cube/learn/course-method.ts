@@ -29,6 +29,13 @@ const sizeText = (course: Course) =>
   (course.sizes ?? [course.size]).map((n) => `${n}×${n}`).join("·");
 
 /**
+ * 강의를 사용자에게 부르는 이름: 해법이면 공식 이름 「○○ 해법」(이어서 하기·강의 끝 글·다음 강의 링크, 별칭 없음),
+ * 해법이 아닌 강의(큐브의 기초)는 강의 이름(2026-11-28 사용자, docs/47 16-38)
+ */
+export const courseLabel = (course: Course): string =>
+  courseMethod(course)?.label ?? course.title;
+
+/**
  * 이 강의가 가르치는 해법. 카드가 여럿이면(초보자 강의 = 초보자·초보자(코너 방향 먼저)) 기본으로 펼친 카드의 첫째.
  * 해법이 아닌 강의(큐브의 기초)는 없다
  */

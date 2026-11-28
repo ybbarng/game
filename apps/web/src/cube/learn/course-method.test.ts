@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { courseMethod } from "./course-method";
+import { courseLabel, courseMethod } from "./course-method";
 import { BASICS, courseById, METHOD_COURSES } from "./courses";
 import { MAP_METHODS } from "./solve-map";
 
@@ -86,6 +86,15 @@ describe("강 화면 이동 경로의 해법 이름(docs/47 16-31)", () => {
       PENDING[c.id] ?? courseMethod(c)?.name,
     ]);
     expect(got.filter(([, title, want]) => title !== want)).toEqual([]);
+  });
+
+  it("강의를 부르는 이름(이어서 하기·강의 끝 글·다음 강의 링크)은 해법 공식 이름, 기초는 강의 이름", () => {
+    expect(courseLabel(course("cfop"))).toBe("CFOP 해법");
+    expect(courseLabel(course("333-twist-first"))).toBe(
+      "초보자(코너 방향 먼저) 해법",
+    );
+    expect(courseLabel(course("444-yau"))).toBe("4×4 야우 해법");
+    expect(courseLabel(BASICS)).toBe("큐브의 기초");
   });
 
   it("큐브의 기초는 해법이 아니라 해법 이름이 없다", () => {
