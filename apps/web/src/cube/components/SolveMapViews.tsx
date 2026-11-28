@@ -35,8 +35,6 @@ import {
   PARITY_LOOPS,
 } from "../learn/solve-map";
 import {
-  arrowLit,
-  cellLit,
   type EdgeSolo,
   edgeProgress,
   edgeTrain,
@@ -88,8 +86,11 @@ export function ProgressSr({ p }: { p: StepProgress }) {
   return t ? <span className="sr-only">{` ${t}`}</span> : null;
 }
 
-/** 진도가 아직인 칸: 그림·이름을 조금 어둡게(기록이 없어도 처음부터) */
+/** 진도가 아직인 칸: 그림·이름을 조금 어둡게(기록이 없어도 처음부터, 해법 카드 띠) */
 export const DIM = "opacity-45";
+
+/** 지도에서 들어오는 걸음을 마친 지점·칸의 진도 테두리(얇은 초록, 2026-11-29 사용자) */
+const DONE_OUTLINE = "outline outline-2 outline-emerald-400";
 
 /** 펼치기·접기 주소(큰 큐브 「3×3 맞추기」) */
 const toggleHref = (ctx: MapCtx) =>
@@ -193,8 +194,9 @@ export function FinishPanel({ ctx }: { ctx: MapCtx }) {
                 className={cn(
                   "shrink-0",
                   CUBE_CELL,
-                  !cellLit(false, progress) && DIM,
+                  progress === "done" && DONE_OUTLINE,
                 )}
+                data-node-progress={progress === "done" ? "done" : "none"}
               >
                 <NodeCube
                   id={e.to}
@@ -1004,26 +1006,19 @@ function MapLayer({
                 strokeDasharray={dash}
               />
             );
-          // 걸음 선은 카드의 화살표 역할: 배우는 중부터 밝게, 아직이면 흐리게(진도 밝기)
-          return ms.map((m, j) => {
-            const lit = arrowLit(
-              edgeProgress(g.e, m, ctx.progress, ctx.courseOf),
-            );
-            return (
-              <path
-                key={`${g.e.id}-${m.id}`}
-                d={path(g, (j - (ms.length - 1) / 2) * 5)}
-                fill="none"
-                stroke={METHOD_COLOR[m.id]}
-                strokeOpacity={lit ? 1 : 0.35}
-                strokeWidth={lit ? 4.5 : 3.5}
-                strokeDasharray={dash}
-                strokeLinecap="round"
-                data-edge-line={g.e.id}
-                data-edge-lit={lit ? "lit" : "dim"}
-              />
-            );
-          });
+          // 고른 해법의 걸음 선은 진도와 상관없이 또렷하게. 진도는 지점의 초록 테두리로만(2026-11-29 사용자)
+          return ms.map((m, j) => (
+            <path
+              key={`${g.e.id}-${m.id}`}
+              d={path(g, (j - (ms.length - 1) / 2) * 5)}
+              fill="none"
+              stroke={METHOD_COLOR[m.id]}
+              strokeWidth={4.5}
+              strokeDasharray={dash}
+              strokeLinecap="round"
+              data-edge-line={g.e.id}
+            />
+          ));
         })}
       </svg>
       {geo.map((g) => {
@@ -1078,16 +1073,14 @@ function MapLayer({
         const on = selectedNodes.has(id);
         const shared = ctx.selected.filter((m) => methodNodes(m).includes(id));
         const href = nodeHrefOf(id, ctx);
-        // 고른 길의 지점: 다 섞임은 늘 밝고, 그 밖은 들어오는 걸음을 마쳤을 때만 밝다(진도 밝기)
-        const lit = on && nodeLit(id, ctx);
+        // 고른 길의 지점은 진도와 상관없이 또렷하고, 고르지 않은 지점만 흐리다. 진도는 들어오는 걸음을 마친 지점의
+        // 초록 테두리로 따로 보인다(다 섞임은 없음, 2026-11-29 사용자)
+        const done = on && nodeDone(id, ctx);
         const body = (
           <>
             <span
-              className={cn(
-                "flex flex-col items-center",
-                !on ? "opacity-35" : !lit && DIM,
-              )}
-              data-node-lit={on ? (lit ? "lit" : "dim") : undefined}
+              className={cn("flex flex-col items-center", !on && "opacity-35")}
+              data-node-progress={on ? (done ? "done" : "none") : undefined}
             >
               <NodePic id={id} ctx={ctx} px={60} />
               <span
@@ -1096,14 +1089,18 @@ function MapLayer({
               >
                 {nodeById(id).title}
               </span>
+              {done && <ProgressSr p="done" />}
             </span>
           </>
         );
-        // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게
+        // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게. 여러 해법이 지나는 지점의 흰 테두리(box-shadow)와
+        // 진도 초록 테두리(outline)가 함께면 흰 안쪽 + 초록 바깥
         const cls = cn(
           "-translate-x-1/2 absolute flex w-[100px] flex-col items-center rounded-lg px-1 py-1",
           on ? "bg-neutral-800" : "bg-neutral-900",
           shared.length > 1 && "ring-2 ring-white/70",
+          done && DONE_OUTLINE,
+          done && shared.length > 1 && "outline-offset-2",
         );
         const style = { left: p.x, top: p.y, height: layout.nodeH, zIndex: 2 };
         return href ? (
@@ -1128,15 +1125,13 @@ function MapLayer({
   );
 }
 
-/** 고른 해법 가운데 이 지점에서 시작하거나, 이 지점으로 들어오는 걸음을 마친 해법이 있나 */
-function nodeLit(id: MapNodeId, ctx: MapCtx): boolean {
+/** 고른 해법 가운데 이 지점으로 들어오는 걸음을 마친 해법이 있나(다 섞임은 들어오는 걸음이 없어 늘 아니다) */
+function nodeDone(id: MapNodeId, ctx: MapCtx): boolean {
   return ctx.selected.some((m) => {
-    const nodes = methodNodes(m);
-    const i = nodes.indexOf(id);
-    if (i < 0) return false;
-    if (i === 0) return cellLit(true, "none");
+    const i = methodNodes(m).indexOf(id);
+    if (i <= 0) return false;
     const e = edgeById(m.edges[i - 1] as string) as MapEdge;
-    return cellLit(false, edgeProgress(e, m, ctx.progress, ctx.courseOf));
+    return edgeProgress(e, m, ctx.progress, ctx.courseOf) === "done";
   });
 }
 
