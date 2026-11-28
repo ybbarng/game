@@ -774,7 +774,7 @@ function LessonView({
 /** 이동 경로의 한 칸: 앞 칸과 가르는 ›는 이 칸에 붙어 줄 끝에 홀로 남지 않는다 */
 function Crumb({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-1 sm:gap-1.5">
       <span aria-hidden className="text-white/30">
         ›
       </span>
@@ -795,7 +795,9 @@ function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
     <nav
       aria-label="이동 경로"
       data-lesson-crumbs
-      className="flex flex-wrap items-center gap-x-1.5 break-keep text-sm text-white/65"
+      // 휴대폰 폭에서는 한 단계 작게: 가장 긴 「해법 배우기 › 초보자(코너 방향 먼저) 해법」도 글꼴이 다른 기기(CI 리눅스
+      // 글꼴은 이 맥보다 넓다)에서 한 줄에 넉넉히 들어가게(2026-11-28 #476)
+      className="flex flex-wrap items-center gap-x-1 break-keep text-white/65 text-xs sm:gap-x-1.5 sm:text-sm"
     >
       {basics ? (
         <a
