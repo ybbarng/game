@@ -159,8 +159,8 @@ export function StageProgress({
             >
               <a
                 href={main ? `/cube/learn?lesson=${main}` : undefined}
-                aria-label={`${i + 1}단계 ${st.title}${done ? "(맞음)" : ""} 단원 다시 보기`}
-                title="이 단원 다시 보기"
+                aria-label={`${i + 1}단계 ${st.title}${done ? "(맞음)" : ""} 강 다시 보기`}
+                title="이 단계 강 다시 보기"
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-center text-[11px] leading-tight",
                   current
@@ -204,7 +204,7 @@ export function StageProgress({
                 href={`/cube/learn?lesson=${review}`}
                 className="text-sky-300 underline hover:text-sky-200"
               >
-                이 단원 다시 보기 →
+                이 단계 강 다시 보기 →
               </a>
             )}
           </>

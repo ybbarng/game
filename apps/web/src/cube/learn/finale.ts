@@ -38,14 +38,14 @@ export function finaleLesson(course: Course, spec: FinaleSpec): Lesson {
     steps: [
       {
         kind: "quiz",
-        body: "단원마다 해 본 해 보기는 앞 단계까지 맞춘 큐브에서 시작했어요. 이제 섞인 큐브 하나를 처음부터 끝까지 혼자 맞춰요. 먼저 차례를 떠올려 보세요.",
+        body: "강마다 해 본 해 보기는 앞 단계까지 맞춘 큐브에서 시작했어요. 이제 섞인 큐브 하나를 처음부터 끝까지 혼자 맞춰요. 먼저 차례를 떠올려 보세요.",
         setup: { rule: spec.rule },
         quiz: {
           question: "맞추는 차례로 알맞은 것은?",
           // 답 자리를 가운데에 둔다
           choices: [wrongA as string, order, wrongB as string],
           answer: 1,
-          why: `${order} 차례예요. 막히면 그 단원으로 돌아가 다시 봐도 돼요.${spec.elsewhere ? ` ${spec.elsewhere}` : ""}`,
+          why: `${order} 차례예요. 막히면 그 단계의 강으로 돌아가 다시 봐도 돼요.${spec.elsewhere ? ` ${spec.elsewhere}` : ""}`,
         },
       },
       {

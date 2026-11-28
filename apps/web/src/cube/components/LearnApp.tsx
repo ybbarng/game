@@ -238,7 +238,7 @@ export function CourseGrid({
                 >
                   ▸
                 </span>
-                배우기 · 단원 {course.lessons.length}개
+                배우기 · 강 {course.lessons.length}개
                 {done > 0 && ` · ${done}개 끝냄`}
                 {/* 접혀 있어도 무엇을 배우는지 보이게 단원 이름을 한 줄로 */}
                 <span
