@@ -11,7 +11,7 @@ import {
   MIRROR_VIEW_MIN_WIDTH,
 } from "../back-view";
 import { withFlowPick } from "../learn/beginner-cases";
-import { courseMethod } from "../learn/course-method";
+import { courseLabel, courseMethod } from "../learn/course-method";
 import {
   basicsSizeOf,
   COURSES,
@@ -216,7 +216,7 @@ export function CourseGrid({
                           href={lessonHref(first.id)}
                           className="underline hover:text-amber-100"
                         >
-                          {c?.title}
+                          {c ? courseLabel(c) : id}
                         </a>
                       ) : (
                         id

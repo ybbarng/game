@@ -44,6 +44,7 @@ import {
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import {
+  clampK,
   clampView,
   type Detour,
   detours,
@@ -56,6 +57,7 @@ import {
   seconds,
   visibleEdges,
   visibleNodes,
+  wheelView,
 } from "./solve-map-model";
 
 /** 진도를 화면 낭독기에만 읽어 준다(보이는 글자는 두지 않는다, 진도 밝기 docs/47 16-30) */
@@ -1210,11 +1212,8 @@ interface View {
   y: number;
   k: number;
 }
-const MIN_K = 0.12;
 /** 처음 배율의 하한: 칸 이름(11px 글씨)이 화면에서 11px 이상(2026-11-26 HQ 검토) */
 export const READABLE_K = 1;
-const MAX_K = 2.5;
-const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
 
 /** 미니맵 위 지금 보는 영역(미니맵 밖으로 나간 부분은 잘라 낸다) */
 function miniRect(
@@ -1358,7 +1357,8 @@ function MapFrame({
     setView(headOf(fit, k));
   }, [fitKey]);
 
-  // 휠·트랙패드: 가리킨 자리를 두고 줌(페이지 스크롤과 싸우지 않게 막는다)
+  // 휠·트랙패드(Figma 방식): Ctrl·⌘ + 휠과 오므리기는 가리킨 자리를 두고 줌, 그 밖은 옮기기(`wheelView`).
+  // 페이지 스크롤·브라우저 페이지 확대와 싸우지 않게 지도 위 휠은 모두 막는다
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -1366,15 +1366,7 @@ function MapFrame({
       ev.preventDefault();
       const r = el.getBoundingClientRect();
       const p = { x: ev.clientX - r.left, y: ev.clientY - r.top };
-      const f = Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0015));
-      setView((v) => {
-        const k = clampK(v.k * f);
-        return {
-          k,
-          x: p.x - ((p.x - v.x) / v.k) * k,
-          y: p.y - ((p.y - v.y) / v.k) * k,
-        };
-      });
+      setView((v) => wheelView(v, ev, p, r.height));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
