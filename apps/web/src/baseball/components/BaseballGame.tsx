@@ -50,7 +50,7 @@ function resultText(
   switch (result.kind) {
     case "hit":
       if (puzzle) return `${cluesOf(view, me).length}번 만에 맞혔어요!`;
-      return mine ? "맞혔어요! 이겼어요." : "상대가 먼저 맞혀 졌어요.";
+      return mine ? "맞혔어요! 이겼어요." : "상대가 먼저 맞혀서 졌어요.";
     case "draw":
       return "둘 다 맞혀 비겼어요.";
     case "resign":
