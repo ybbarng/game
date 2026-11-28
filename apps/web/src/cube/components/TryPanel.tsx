@@ -399,8 +399,8 @@ export function TryPanel({
               className="break-keep text-sm text-white/70"
               data-cube-taught-stuck
             >
-              지금 모양은 이 단원 방식으로 바로 이어 갈 수 없어요. 하던 수를
-              되돌리거나 「처음 상황으로」를 눌러요.
+              지금 모양은 이 강에서 배운 방식으로 바로 이어 갈 수 없어요. 하던
+              수를 되돌리거나 「처음 상황으로」를 눌러요.
             </p>
           )}
         </div>

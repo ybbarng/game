@@ -156,7 +156,7 @@ export const METHOD_COURSES: Course[] = [
   withFinale(staged(TWO_LOOK_LL), {
     rule: "random-cross",
     stages: ["아래 두 층", "OLL(방향)", "PLL(자리)"],
-    elsewhere: "아래 두 층은 3×3 처음 맞추기 과정에 있어요.",
+    elsewhere: "아래 두 층은 3×3 처음 맞추기 강의에 있어요.",
   }),
   withFinale(staged(CFOP_INTRO), {
     rule: "random-cross",

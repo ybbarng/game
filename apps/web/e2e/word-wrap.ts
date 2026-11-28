@@ -37,6 +37,26 @@ export function renderedLines(locator: Locator): Promise<string[]> {
 }
 
 /**
+ * 한 줄로 둘 글이 감싼 상자 폭에서 얼마나 남는지(비율, 0~1). 글꼴이 다른 기기(CI 리눅스 글꼴 등)에서도 한 줄이려면
+ * 이 맥에서 잰 한 줄만 보지 말고 여유를 둔다(2026-11-28 이동 경로가 맥에서 한 줄, CI에서 두 줄).
+ * `text`는 글 요소, `box`는 그 글이 들어갈 수 있는 폭을 가진 상자(안쪽 여백은 뺀다)
+ */
+export async function lineSlack(text: Locator, box: Locator): Promise<number> {
+  const used = await text.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return range.getBoundingClientRect().width;
+  });
+  const room = await box.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return (
+      el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
+    );
+  });
+  return (room - used) / room;
+}
+
+/**
  * 줄이 낱말(띄어쓰기) 경계에서만 바뀌었는지 본다: 줄마다 이어 붙이면 띄어쓰기로 나눈 낱말 목록과 같아야 한다.
  * 실패하면 화면 줄과 낱말을 함께 보여 어디서 끊겼는지 알 수 있다.
  */

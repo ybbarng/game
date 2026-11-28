@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { ONLY_DESKTOP } from "./projects";
 import { expect, test } from "./test";
-import { renderedLines } from "./word-wrap";
+import { lineSlack, renderedLines } from "./word-wrap";
 
 /**
  * 해법 배우기(/cube/methods)의 해법 카드와 지도(docs/47 16-30). 첫 모습은 해법 카드 세로, 「전체 보기」는 지도,
@@ -143,6 +143,39 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await expect(
     page.locator('[data-method-screen] [data-edge="petrus-f2l"]'),
   ).toHaveAttribute("aria-disabled", "true");
+});
+
+test("해법 화면 머리: 이름과 둘째 이름은 휴대폰 360·390에서도 한 줄에, 360 아래에서는 둘째 이름을 숨기고, 화면 밖으로 넘치지 않는다", {
+  tag: ONLY_DESKTOP,
+}, async ({ page }) => {
+  // 이름 아래 줄에 둘째 이름을 두면 휴대폰에서 두 줄이라 어색했다(2026-11-28 사용자). 이름 옆에 작게 둔다. 320px은 CI
+  // 리눅스 글꼴에서 여유가 모자라 둘째 이름을 숨긴다(사용자가 정한 차례 ③, docs/47 16-38)
+  for (const width of [320, 360, 390])
+    for (const [id, title, alias] of [
+      ["beginner-twist-first", "초보자(코너 방향 먼저)", "신광사 해법"],
+      ["cfop", "CFOP", "프리드리히 해법"],
+    ] as const) {
+      await page.setViewportSize({ width, height: 700 });
+      await page.goto(`/cube/methods?method=${id}`);
+      const head = page.locator("[data-method-screen] h2");
+      const shown = head.locator("[data-method-alias]");
+      if (width < 360) await expect(shown).toBeHidden();
+      else await expect(shown).toHaveText(alias);
+      // 두 칸 사이는 글자가 아니라 간격이라 한 줄 글은 이름과 둘째 이름을 바로 잇는다(숨긴 글은 자리가 없어 그 줄에 붙는다)
+      expect(await renderedLines(head), `${width} ${id}`).toEqual([
+        `${title}${alias}`,
+      ]);
+      const box = await head.boundingBox();
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+      // 글꼴이 다른 CI에서도 한 줄이게 머리 줄 폭의 15% 넘게 남긴다(2026-11-28 이동 경로가 맥에서만 한 줄이었다)
+      expect(
+        await lineSlack(
+          head,
+          page.locator("[data-method-screen] > div").first(),
+        ),
+        `${width} ${id} 남는 폭`,
+      ).toBeGreaterThan(0.15);
+    }
 });
 
 test("전체 보기: 지도는 「다 섞임」에서 시작하고, 초보자 길의 꼬리표는 그 단원으로 간다", async ({
