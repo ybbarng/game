@@ -535,8 +535,8 @@ for (const [scene, lessons] of Object.entries(CROSS_SCENES)) {
 }
 
 /**
- * 지도의 고른 지점마다 보이는 모습: 흐린지(opacity < 1)와 진도 테두리(초록 outline)가 있는지. 여러 해법이 지나는
- * 지점의 흰 테두리(box-shadow)와 함께면 초록이 그 바깥(outline-offset 2px)
+ * 지도의 고른 지점마다 보이는 모습: 흐린지(opacity < 1), 진도 테두리(초록 outline)가 있는지, 그 밖의 테두리
+ * (예전 여러 해법이 지나는 지점의 흰 `ring`, 퍼짐이 0이 아닌 box-shadow)가 있는지
  */
 async function mapNodeLooks(page: Page): Promise<Record<string, string>> {
   return page.locator("[data-node]").evaluateAll((els) =>
@@ -549,12 +549,13 @@ async function mapNodeLooks(page: Page): Promise<Record<string, string>> {
           Number(getComputedStyle(inner).opacity) < 1 ? "흐림" : "또렷",
         ];
         const ring = s.outlineStyle !== "none" && s.outlineWidth !== "0px";
-        if (ring)
-          parts.push(
-            s.outlineOffset === "2px"
-              ? "완료 테두리(흰 테두리 바깥)"
-              : "완료 테두리",
-          );
+        if (ring) parts.push("완료 테두리");
+        if (
+          /(?:^|\s)-?[\d.]+px -?[\d.]+px [\d.]+px [1-9][\d.]*px/.test(
+            s.boxShadow,
+          )
+        )
+          parts.push("다른 테두리");
         // 화면 읽기용 속성과 보이는 테두리는 늘 함께다
         if (ring !== (inner.getAttribute("data-node-progress") === "done"))
           parts.push("속성 어긋남");
@@ -606,14 +607,18 @@ test("지도 진도 테두리: 진도 없이 CFOP를 고르면 마디가 모두 
     solved: "또렷",
   });
 
-  // 초보자·CFOP가 함께 지나는 흰 십자(흰 테두리)도 마쳤으면 초록 테두리가 흰 테두리 바깥에
+  // 초보자·CFOP가 함께 지나도 흰 테두리는 없다(흰색 해법처럼 보였다, 2026-11-29 사용자). 마친 흰 십자만 초록
   await page.goto("/cube/methods?view=map&sel=beginner,cfop");
   await expect(page.locator('[data-node="cross"]')).toBeVisible();
   const both = await mapNodeLooks(page);
-  expect([both.scrambled, both.cross]).toEqual([
+  expect([both.scrambled, both.cross, both.solved]).toEqual([
     "또렷",
-    "또렷 · 완료 테두리(흰 테두리 바깥)",
+    "또렷 · 완료 테두리",
+    "또렷",
   ]);
+  expect(Object.values(both).filter((x) => x.includes("다른 테두리"))).toEqual(
+    [],
+  );
 });
 
 /**

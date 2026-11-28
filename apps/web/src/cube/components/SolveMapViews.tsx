@@ -1073,7 +1073,6 @@ function MapLayer({
       })}
       {[...pos].map(([id, p]) => {
         const on = selectedNodes.has(id);
-        const shared = ctx.selected.filter((m) => methodNodes(m).includes(id));
         const href = nodeHrefOf(id, ctx);
         // 고른 길의 지점은 진도와 상관없이 또렷하고, 고르지 않은 지점만 흐리다. 진도는 들어오는 걸음을 마친 지점의
         // 초록 테두리로 따로 보인다(다 섞임은 없음, 2026-11-29 사용자)
@@ -1095,14 +1094,13 @@ function MapLayer({
             </span>
           </>
         );
-        // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게. 여러 해법이 지나는 지점의 흰 테두리(box-shadow)와
-        // 진도 초록 테두리(outline)가 함께면 흰 안쪽 + 초록 바깥
+        // 흐린 지점도 어두운 바탕을 깔아 뒤 선이 비치지 않게. 지점 테두리는 진도 초록 하나뿐이다. 여러 해법이
+        // 함께 지나는 것은 들어오는 나란한 선으로 보이니 따로 테두리를 두지 않는다(흰 테두리가 흰색 해법처럼 보였다,
+        // 2026-11-29 사용자)
         const cls = cn(
           "-translate-x-1/2 absolute flex w-[100px] flex-col items-center rounded-lg px-1 py-1",
           on ? "bg-neutral-800" : "bg-neutral-900",
-          shared.length > 1 && "ring-2 ring-white/70",
           done && DONE_OUTLINE,
-          done && shared.length > 1 && "outline-offset-2",
         );
         const style = { left: p.x, top: p.y, height: layout.nodeH, zIndex: 2 };
         return href ? (
