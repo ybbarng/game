@@ -16,6 +16,13 @@ for (const a of "123456789")
  */
 const SEED = 1;
 
+/**
+ * 컴퓨터와 겨루는 시험의 내 비밀 수. 컴퓨터 물음은 씨앗과 내 답으로 정해지니, 비밀을 「무작위」로 두면 씨앗이 같아도
+ * 판이 달라진다. 씨앗 1에서 504개 가운데 10개는 내가 세 번 묻기 전에 컴퓨터가 맞혀 판이 끝났다(2026-11-29 CI,
+ * 981·198 등). 586이면 컴퓨터(선)가 처음 여섯 번 안에 맞히지 못해, 아래 시험들은 늘 「내 차례」로 이어진다
+ */
+const MY_SECRET = "586";
+
 const status = (page: Page) => page.getByRole("status").first();
 /** 게임이 끝나면 혼자 하기·온라인 모두 「처음으로」가 뜬다(「다시 하기」는 혼자 하기만) */
 const over = (page: Page) => page.getByRole("button", { name: "처음으로" });
@@ -139,6 +146,17 @@ async function startSolo(page: Page, level = "입문", mode = "서로 맞히기"
   await page.getByRole("button", { name: /나홀로 숫자야구/ }).click();
 }
 
+/** 비밀 수 정하기: 숫자 패드로 정한 수를 넣는다 */
+async function chooseSecret(page: Page, secret: string): Promise<void> {
+  await expect(status(page)).toContainText("내 비밀 수를 정하세요");
+  for (const d of secret)
+    await page.getByRole("button", { name: d, exact: true }).click();
+  await expect(
+    page.getByRole("img", { name: `넣은 수 ${secret}` }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "이 수로 정하기" }).click();
+}
+
 /** 비밀 수 정하기: 무작위를 눌러 정한다. 정한 수를 돌려준다 */
 async function chooseRandomSecret(page: Page): Promise<string> {
   await expect(status(page)).toContainText("내 비밀 수를 정하세요");
@@ -179,7 +197,14 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
 
   await expect(page.getByRole("button", { name: "무작위" })).toBeVisible();
   await page.screenshot({ path: info.outputPath("baseball-setup.png") });
-  const secret = await chooseRandomSecret(page);
+  // 「무작위」는 세 자리를 채운다. 판은 늘 같게 정한 수로 한다(MY_SECRET 설명).
+  await page.getByRole("button", { name: "무작위" }).click();
+  await expect(
+    page.getByRole("img", { name: /^넣은 수 \d{3}$/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "비우기" }).click();
+  const secret = MY_SECRET;
+  await chooseSecret(page, secret);
   await expect(
     page.getByRole("img", { name: secret.split("").join(" ") }).first(),
   ).toBeVisible();
@@ -188,20 +213,10 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   );
   expect(overflow).toBe(false);
 
-  // 첫 물음과 컴퓨터 답을 보고 무르기로 되돌린다(선이 컴퓨터면 컴퓨터가 먼저 묻는다).
-  // 선인 컴퓨터가 첫 물음에 맞혔으면 "마지막 기회"라 무르기 확인은 건너뛴다.
-  await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-    timeout: 15_000,
-  });
-  const lastChance = /마지막 기회/.test(
-    (await status(page).textContent()) ?? "",
-  );
-  if (!lastChance) {
-    await askNext(page, touch);
-    await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-      timeout: 15_000,
-    });
-  }
+  // 첫 물음과 컴퓨터 답을 보고 무르기로 되돌린다(씨앗 1은 컴퓨터가 선이라 컴퓨터가 먼저 묻는다).
+  await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
+  await askNext(page, touch);
+  await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
   await page.screenshot({ path: info.outputPath("baseball-play.png") });
   // 전광판: 회와 두 팀 줄
   await expect(page.locator("[data-inning]")).toHaveAttribute(
@@ -221,10 +236,8 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   const myBox = await mine.boundingBox();
   expect(theirBox && board && theirBox.y < board.y).toBe(true);
   expect(myBox && board && myBox.y > board.y).toBe(true);
-  if (!lastChance) {
-    await page.getByRole("button", { name: "무르기" }).click();
-    await expect(myRows(page)).toHaveCount(0);
-  }
+  await page.getByRole("button", { name: "무르기" }).click();
+  await expect(myRows(page)).toHaveCount(0);
 
   for (let i = 0; i < 60; i++) if (!(await playStep(page, touch))) break;
   await expect(over(page)).toBeVisible();
@@ -254,17 +267,13 @@ test(
     // 판을 늘 같게 둔다(첫 시험과 같은 씨앗)
     await page.goto(`/baseball?seed=${SEED}`);
     await startSolo(page);
-    await chooseRandomSecret(page);
+    await chooseSecret(page, MY_SECRET);
     // 두 사람 기록에 줄이 쌓인 뒤에 본다(기록이 늘어도 패드가 밀려나지 않아야 한다).
     for (let i = 0; i < 3; i++) {
-      await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-        timeout: 15_000,
-      });
+      await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
       await askNext(page, true);
     }
-    await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-      timeout: 15_000,
-    });
+    await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
     const targets = [
       page.getByRole("img", { name: /^넣은 수 / }),
       page.getByRole("button", { name: "1", exact: true }),
@@ -301,8 +310,8 @@ test(
   "숫자야구 퍼즐: 컴퓨터 수만 맞히기",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
-    // 흐름은 화면 크기와 상관없다
-    await page.goto("/baseball");
+    // 흐름은 화면 크기와 상관없다. 컴퓨터 수를 늘 같게 둔다(SEED 설명)
+    await page.goto(`/baseball?seed=${SEED}`);
     await startSolo(page, "입문", "컴퓨터 수만 맞히기");
     await expect(page.getByRole("button", { name: "무작위" })).toHaveCount(0);
     await expect(status(page)).toContainText("컴퓨터 수를 맞혀 보세요");
@@ -410,15 +419,14 @@ test("숫자야구 숫자 패드: 키보드로 넣고 지우고, 메모는 수�
 test("숫자야구: 하던 게임은 새로고침해도 이어 하고, 내 비밀 수도 그대로다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
-  // 저장은 화면 크기와 상관없다
-  await page.goto("/baseball");
+  // 저장은 화면 크기와 상관없다. 판을 늘 같게 둔다(SEED·MY_SECRET 설명)
+  await page.goto(`/baseball?seed=${SEED}`);
   await startSolo(page);
-  const secret = await chooseRandomSecret(page);
+  const secret = MY_SECRET;
+  await chooseSecret(page, secret);
   await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
   await askNext(page, false);
-  await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-    timeout: 15_000,
-  });
+  await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
   await page.evaluate(() => sessionStorage.setItem("keep", "1"));
   await page.goto("/baseball?keep");
   await page.getByRole("button", { name: /이어하기/ }).click();
@@ -428,9 +436,7 @@ test("숫자야구: 하던 게임은 새로고침해도 이어 하고, 내 비�
   ).toBeVisible();
   // 이어서 컴퓨터 물음에도 자동으로 답한다.
   await askNext(page, false);
-  await expect(status(page)).toContainText(/내 차례|마지막 기회|이겼|졌|비겼/, {
-    timeout: 15_000,
-  });
+  await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
 });
 
 test(
@@ -523,19 +529,17 @@ test(
   "숫자야구: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
-    // 기록은 화면 크기와 상관없다
-    await page.goto("/baseball");
+    // 기록은 화면 크기와 상관없다. 판을 늘 같게 둔다(SEED·MY_SECRET 설명)
+    await page.goto(`/baseball?seed=${SEED}`);
     await startSolo(page);
-    await chooseRandomSecret(page);
+    await chooseSecret(page, MY_SECRET);
     await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
     await askNext(page, false);
-    await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-      timeout: 15_000,
-    });
+    await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
     // 기권은 한 번 더 묻는다. 「계속하기」면 판이 그대로다.
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "계속하기" }).click();
-    await expect(status(page)).toContainText(/내 차례|마지막 기회/);
+    await expect(status(page)).toContainText("내 차례");
     await page.getByRole("button", { name: "기권" }).click();
     await page.getByRole("button", { name: "기권하기" }).click();
     await expect(status(page)).toHaveText("기권했어요.");
