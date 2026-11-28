@@ -51,11 +51,15 @@ test("해법 배우기 첫 모습: 해법 카드가 초보자 → 고급 차례�
     "zz",
     "petrus",
   ]);
-  // 초보자(코너 방향 먼저) 카드에는 둘째 이름 「신광사 해법」이 함께 보이고, 다른 카드에는 둘째 이름이 없다(2026-11-27)
-  await expect(page.locator("[data-card] [data-method-alias]")).toHaveCount(1);
+  // 초보자(코너 방향 먼저) 카드에는 둘째 이름 「신광사 해법」, CFOP 카드에는 「프리드리히 해법」이 함께 보이고,
+  // 다른 카드에는 둘째 이름이 없다(2026-11-27·11-28)
+  await expect(page.locator("[data-card] [data-method-alias]")).toHaveCount(2);
   await expect(
     page.locator('[data-card="beginner-twist-first"] [data-method-alias]'),
   ).toHaveText("신광사 해법");
+  await expect(
+    page.locator('[data-card="cfop"] [data-method-alias]'),
+  ).toHaveText("프리드리히 해법");
   const cfop = page.locator('[data-card="cfop"]');
   await expect(cfop.locator("[data-strip-node]")).toHaveCount(5);
   await expect(cfop.locator('[data-strip-node="pair-1"]')).toHaveCount(0);
@@ -101,6 +105,9 @@ test("해법 카드를 누르면 해법 화면에서 세부 걸음과 그 해법
   await page.locator('[data-card="cfop"]').click();
   await expect(page).toHaveURL(/\/cube\/methods\?method=cfop$/);
   const screen = page.locator('[data-method-screen="cfop"]');
+  await expect(screen.locator("h2 [data-method-alias]")).toHaveText(
+    "프리드리히 해법",
+  );
   // 짝 넷을 넣는 F2L은 한 걸음(같은 일을 되풀이하는 걸음은 하나로)
   expect(
     await screen

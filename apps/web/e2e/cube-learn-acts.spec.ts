@@ -469,7 +469,7 @@ test("강 화면: 이동 경로에 해법 카드와 같은 해법 이름과 강�
   for (const [lesson, label, href, back] of [
     [
       "cfop-f2l-pair",
-      "CFOP 해법",
+      "CFOP · 프리드리히 해법",
       "/cube/methods?method=cfop",
       "프리드리히(CFOP) 강의",
     ],
