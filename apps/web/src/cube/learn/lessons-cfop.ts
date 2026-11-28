@@ -56,7 +56,7 @@ const overview: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "앞 과정 「마지막 층을 공식으로」에서 아래 두 층은 초보자 해법으로 맞추고, 마지막 층은 2단계 OLL·PLL로 끝냈어요. 이번 과정에서는 아래 두 층도 빠르게 맞추는, 대회 선수 대부분이 쓰는 방법을 배워요. CFOP는 네 단계 이름의 첫 글자예요. Cross(십자), F2L(First Two Layers, 아래 두 층을 한꺼번에), OLL(Orientation of the Last Layer, 마지막 층 조각의 방향을 맞춰 노란 스티커가 모두 위를 보게), PLL(Permutation of the Last Layer, 마지막 층 조각의 자리 맞추기). 만든 사람 이름을 따 프리드리히 방법이라고도 해요.",
+      body: "앞 과정 「마지막 층을 공식으로」에서 아래 두 층은 초보자 해법으로 맞추고, 마지막 층은 2단계 OLL·PLL로 끝냈어요. 이번 과정에서는 아래 두 층도 빠르게 맞추는, 대회 선수 대부분이 쓰는 방법을 배워요. CFOP는 네 단계 이름의 첫 글자예요. Cross(십자), F2L(First Two Layers, 아래 두 층을 한꺼번에), OLL(Orientation of the Last Layer, 마지막 층 조각의 방향을 맞춰 노란 스티커가 모두 위를 보게), PLL(Permutation of the Last Layer, 마지막 층 조각의 자리 맞추기). 제시카 프리드리히가 1997년 인터넷에 정리해 올리면서 널리 퍼져, 그 이름을 따 프리드리히 해법이라고도 해요.",
       setup: { alg: "z2" },
       mask: "f2l",
       quiz: {
