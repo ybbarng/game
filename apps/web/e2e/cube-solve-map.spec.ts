@@ -473,7 +473,7 @@ const beginnerStrip = (page: Page) =>
     );
 
 for (const [scene, lessons] of Object.entries(CROSS_SCENES)) {
-  test(`진도 밝기(${scene}): 다 섞임은 늘 밝고, 배우는 중이면 화살표만, 완료면 화살표와 칸이 밝다. 글자 표시는 없다`, async ({
+  test(`진도(${scene}): 카드 띠는 다 섞임은 늘 밝고 배우는 중이면 화살표만, 완료면 화살표와 칸이 밝다. 지도는 늘 또렷하고 마친 지점에만 초록 테두리. 글자 표시는 없다`, async ({
     page,
   }) => {
     if (lessons)
@@ -513,30 +513,113 @@ for (const [scene, lessons] of Object.entries(CROSS_SCENES)) {
     expect(await page.locator("[data-map-cards]").innerText()).not.toContain(
       "✓",
     );
-    // 지도: 걸음 선은 화살표, 끝 지점은 칸과 같은 규칙
+    // 지도: 고른 길의 지점·선은 진도와 상관없이 또렷하고, 진도는 마친 지점의 초록 테두리로만(2026-11-29 사용자)
     await page.goto("/cube/methods?view=map&sel=beginner");
     await expect(page.locator('[data-node="cross"]')).toBeVisible();
-    expect([
-      await page
-        .locator('[data-node="scrambled"] [data-node-lit]')
-        .getAttribute("data-node-lit"),
-      await page
-        .locator('[data-edge-line="cross"]')
-        .getAttribute("data-edge-lit"),
-      await page
-        .locator('[data-node="cross"] [data-node-lit]')
-        .getAttribute("data-node-lit"),
-      await page
-        .locator('[data-edge-line="first-corners"]')
-        .getAttribute("data-edge-lit"),
-    ]).toEqual([
-      "lit",
-      cross.startsWith("lit") ? "lit" : "dim",
-      cross.endsWith(":lit") ? "lit" : "dim",
-      "dim",
+    const looks = await mapNodeLooks(page);
+    const crossDone = scene === "흰 십자 완료";
+    expect([looks.scrambled, looks.cross, looks["first-layer"]]).toEqual([
+      "또렷",
+      crossDone ? "또렷 · 완료 테두리" : "또렷",
+      "또렷",
     ]);
+    expect(await mapLineLooks(page, ["cross", "first-corners"])).toEqual([
+      "또렷",
+      "또렷",
+    ]);
+    // 마친 지점은 화면 읽기용 이름에도 「완료」
+    await expect(page.locator('[data-node="cross"]')).toHaveText(
+      crossDone ? /흰 십자\s*완료/ : /^\s*흰 십자\s*$/,
+    );
   });
 }
+
+/**
+ * 지도의 고른 지점마다 보이는 모습: 흐린지(opacity < 1), 진도 테두리(초록 outline)가 있는지, 그 밖의 테두리
+ * (예전 여러 해법이 지나는 지점의 흰 `ring`, 퍼짐이 0이 아닌 box-shadow)가 있는지
+ */
+async function mapNodeLooks(page: Page): Promise<Record<string, string>> {
+  return page.locator("[data-node]").evaluateAll((els) =>
+    Object.fromEntries(
+      els.flatMap((el) => {
+        const inner = el.querySelector<HTMLElement>("[data-node-progress]");
+        if (!inner) return [];
+        const s = getComputedStyle(el);
+        const parts = [
+          Number(getComputedStyle(inner).opacity) < 1 ? "흐림" : "또렷",
+        ];
+        const ring = s.outlineStyle !== "none" && s.outlineWidth !== "0px";
+        if (ring) parts.push("완료 테두리");
+        if (
+          /(?:^|\s)-?[\d.]+px -?[\d.]+px [\d.]+px [1-9][\d.]*px/.test(
+            s.boxShadow,
+          )
+        )
+          parts.push("다른 테두리");
+        // 화면 읽기용 속성과 보이는 테두리는 늘 함께다
+        if (ring !== (inner.getAttribute("data-node-progress") === "done"))
+          parts.push("속성 어긋남");
+        return [[el.getAttribute("data-node") as string, parts.join(" · ")]];
+      }),
+    ),
+  );
+}
+
+/** 지도의 고른 걸음 선이 또렷한지(선 굵기 4.5, 투명도 1) */
+async function mapLineLooks(page: Page, edges: string[]) {
+  return page.evaluate(
+    (ids) =>
+      ids.map((id) => {
+        const line = document.querySelector(`[data-edge-line="${id}"]`);
+        if (!line) return "없음";
+        const s = getComputedStyle(line);
+        return Number(s.strokeOpacity) === 1 && s.strokeWidth === "4.5px"
+          ? "또렷"
+          : "흐림";
+      }),
+    edges,
+  );
+}
+
+test("지도 진도 테두리: 진도 없이 CFOP를 고르면 마디가 모두 또렷하고 테두리가 없다. 진도가 있는 초보자는 마친 지점에만 테두리", async ({
+  page,
+}) => {
+  await page.goto("/cube/methods?view=map&sel=cfop");
+  await expect(page.locator('[data-node="f2l"]')).toBeVisible();
+  const cfop = await mapNodeLooks(page);
+  expect(Object.keys(cfop).sort()).toEqual(
+    ["scrambled", "cross", "f2l", "oll", "solved"].sort(),
+  );
+  expect(new Set(Object.values(cfop))).toEqual(new Set(["또렷"]));
+
+  await withProgress(page);
+  await page.goto("/cube/methods?view=map&sel=beginner");
+  await expect(page.locator('[data-node="cross"]')).toBeVisible();
+  // 노란 십자는 배우는 중이라 테두리 없음, 다 섞임은 진도 표시 없음
+  expect(await mapNodeLooks(page)).toEqual({
+    scrambled: "또렷",
+    cross: "또렷 · 완료 테두리",
+    "first-layer": "또렷 · 완료 테두리",
+    f2l: "또렷 · 완료 테두리",
+    "yellow-cross": "또렷",
+    "yellow-edges": "또렷",
+    "ll-corners-placed": "또렷",
+    solved: "또렷",
+  });
+
+  // 초보자·CFOP가 함께 지나도 흰 테두리는 없다(흰색 해법처럼 보였다, 2026-11-29 사용자). 마친 흰 십자만 초록
+  await page.goto("/cube/methods?view=map&sel=beginner,cfop");
+  await expect(page.locator('[data-node="cross"]')).toBeVisible();
+  const both = await mapNodeLooks(page);
+  expect([both.scrambled, both.cross, both.solved]).toEqual([
+    "또렷",
+    "또렷 · 완료 테두리",
+    "또렷",
+  ]);
+  expect(Object.values(both).filter((x) => x.includes("다른 테두리"))).toEqual(
+    [],
+  );
+});
 
 /**
  * 카드·해법 화면·지도 안의 글 조각(화면 읽기용 글 포함) 가운데 같은 단계 표시(「= 초보자」·「초보자와 같음」)나
