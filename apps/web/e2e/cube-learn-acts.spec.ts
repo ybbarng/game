@@ -8,6 +8,7 @@ import {
   useNotationKeys,
 } from "./cube";
 import { expect, test } from "./test";
+import { renderedLines } from "./word-wrap";
 
 /**
  * 큐브 배우기의 상호작용 단계(조각 찾기·고르기 문제·글자 표, /cube/learn, docs/47 8절).
@@ -463,55 +464,49 @@ test("배우기: 3×3을 아는 사람의 2×2는 코너만 보이는 3×3을 �
   await shot(page, "learn-222-from333", info.project.name);
 });
 
-test("강 화면: 이동 경로에 해법 카드와 같은 해법 이름과 강의 이름", async ({
+test("강 화면: 이동 경로는 해법 배우기 › 해법 카드와 같은 해법 이름 두 칸이고 휴대폰에서도 한 줄이다", async ({
   page,
 }) => {
-  for (const [lesson, label, href, back] of [
-    [
-      "cfop-f2l-pair",
-      "CFOP · 프리드리히 해법",
-      "/cube/methods?method=cfop",
-      "프리드리히(CFOP) 강의",
-    ],
-    [
-      "333-white-cross",
-      "초보자 해법",
-      "/cube/methods?method=beginner",
-      "3×3 처음 맞추기 강의",
-    ],
+  // 해법마다 강의가 하나라 강의 칸은 두지 않는다(같은 것을 두 번 말했다, 2026-11-28 사용자, docs/47 16-31). 해법 칸이
+  // 돌아가는 길이다
+  for (const [lesson, label, href] of [
+    ["cfop-f2l-pair", "CFOP · 프리드리히 해법", "/cube/methods?method=cfop"],
+    ["333-white-cross", "초보자 해법", "/cube/methods?method=beginner"],
     [
       // 첫 강 「3×3에서 2×2로」는 큐브의 기초로 옮겼다(docs/47 16-35)
       "222-from333-first-layer-up",
       "2×2 3×3을 아는 사람 해법",
       "/cube/methods?method=222-from333",
-      "3×3을 아는 사람의 2×2 강의",
     ],
     [
       "333-tf-twist",
       "초보자(코너 방향 먼저) · 신광사 해법",
       "/cube/methods?method=beginner-twist-first",
-      "코너 방향 먼저 맞추기 강의",
     ],
-    [
-      "bld-edges",
-      "올드 포흐만 해법",
-      "/cube/methods?m=bld-op",
-      "블라인드(올드 포흐만) 강의",
-    ],
+    ["bld-edges", "올드 포흐만 해법", "/cube/methods?m=bld-op"],
   ] as const) {
     await page.goto(`/cube/learn?lesson=${lesson}`);
     const crumbs = page.getByRole("navigation", { name: "이동 경로" });
-    await expect(crumbs.locator("[data-lesson-method]")).toHaveText(label);
+    await expect(crumbs.locator("a")).toHaveText(["해법 배우기", label]);
     await expect(crumbs.locator("[data-lesson-method]")).toHaveAttribute(
       "href",
       href,
     );
-    await expect(crumbs.locator("[data-lesson-back]")).toHaveText(back);
+    await expect(crumbs.locator("[data-lesson-back]")).toHaveText(label);
   }
   // 강 제목은 「n강 이름」(블라인드 강의는 블라인드란 → 지도 → 글자 붙이기 → 엣지 보내기)
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "4강 엣지 보내기",
   );
+  // 휴대폰 320·390에서 이동 경로는 한 줄(가장 긴 둘: 별칭이 붙은 해법)
+  for (const width of [320, 390])
+    for (const lesson of ["333-tf-twist", "cfop-f2l-pair"]) {
+      await page.setViewportSize({ width, height: 700 });
+      await page.goto(`/cube/learn?lesson=${lesson}`);
+      const crumbs = page.getByRole("navigation", { name: "이동 경로" });
+      await expect(crumbs.locator("[data-lesson-method]")).toBeVisible();
+      expect(await renderedLines(crumbs), `${width} ${lesson}`).toHaveLength(1);
+    }
 });
 
 test("강 화면 쪽 칸: 번호·종류·지금 쪽·마친 쪽을 칸 이름과 지금 쪽 줄로 읽는다", async ({

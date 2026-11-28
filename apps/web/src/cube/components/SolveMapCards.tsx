@@ -258,7 +258,8 @@ export function MethodScreen({
         >
           ← 해법 목록
         </button>
-        <h2 className="flex flex-col break-keep font-semibold text-xl">
+        {/* 둘째 이름은 이름 옆에 작게, 휴대폰 320에서도 한 줄(2026-11-28 사용자 「두 줄이라 어색」, docs/47 16-38) */}
+        <h2 className="flex flex-none flex-wrap items-baseline gap-x-2 break-keep font-semibold text-xl">
           <span style={{ color: METHOD_COLOR[m.id] }}>{m.title}</span>
           <MethodAlias m={m} className="text-sm" />
         </h2>

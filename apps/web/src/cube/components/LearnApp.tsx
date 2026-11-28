@@ -784,7 +784,8 @@ function Crumb({ children }: { children: ReactNode }) {
 }
 
 /**
- * 강 머리의 이동 경로(docs/47 16-31): 해법 배우기 › 해법 › 강의. 해법 이름은 해법 카드와 같다(`courseMethod`).
+ * 강 머리의 이동 경로(docs/47 16-31): 해법 배우기 › 해법. 해법 이름은 해법 카드와 같다(`courseMethod`). 해법마다
+ * 강의가 하나라 강의 칸은 두지 않는다(같은 것을 두 번 말했다, 2026-11-28 사용자). 강 제목은 경로 아래에 크게 보인다.
  * 기초 강은 큐브의 기초 하나(기초는 해법이 아니다)
  */
 function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
@@ -814,7 +815,7 @@ function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
           <a href={METHODS_HREF} className={link}>
             {METHODS_TITLE}
           </a>
-          {method && (
+          {method ? (
             <Crumb>
               <a
                 href={
@@ -823,21 +824,23 @@ function LessonCrumbs({ course, basics }: { course: Course; basics: boolean }) {
                     : `${METHODS_HREF}?m=${course.id}`
                 }
                 data-lesson-method={method.id ?? ""}
+                data-lesson-back
                 className={cn(link, "font-semibold text-white/85")}
               >
                 {method.label}
               </a>
             </Crumb>
+          ) : (
+            <Crumb>
+              <a
+                href={`${METHODS_HREF}?m=${course.id}`}
+                data-lesson-back
+                className={link}
+              >
+                {course.title} 강의
+              </a>
+            </Crumb>
           )}
-          <Crumb>
-            <a
-              href={`${METHODS_HREF}?m=${course.id}`}
-              data-lesson-back
-              className={link}
-            >
-              {course.title} 강의
-            </a>
-          </Crumb>
         </>
       )}
     </nav>
